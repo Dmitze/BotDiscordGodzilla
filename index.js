@@ -11,7 +11,7 @@ const client = new Client({
 });
 
 // URL до твого Google Apps Script
-const API_URL = 'https://script.google.com/macros/s/AKfycbzLuqwjPNcQu_oPkgbd88VPI9HUdQEc50sEzUE_G6FdZ62WfrSbfzt8RnfwGipVgLQ8/exec'; 
+const API_URL = ''; 
 
 // Команди
 const commands = [
@@ -64,4 +64,4 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 // Логін бота
-client.login('MTM4MTI0MzAyOTEwNDQ5MjY3NQ.GcfrGM.A_GsbWzL7oifUU3MxPbfci282PudVponbuLKIo');
+client.login('');
