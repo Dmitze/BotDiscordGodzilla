@@ -1,6 +1,10 @@
 {
   "dependencies": {
+    "@discordjs/builders": "^1.11.2",
+    "@discordjs/rest": "^2.5.0",
+    "discord-api-types": "^0.38.11",
     "discord.js": "^14.19.3",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "xlsx": "^0.18.5"
   }
 }
