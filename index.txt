@@ -2,12 +2,11 @@ const { Client, GatewayIntentBits, Routes } = require('discord.js');
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 const XLSX = require('xlsx');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('@discordjs/builders');
-
 // ❗ Заміни на свої дані
-const SHEET_ID = '';
-const SHEET_NAME = '';
-const GOOGLE_API_KEY = '';
-const APP_SCRIPT_URL = ''; 
+const SHEET_ID = '1U4dWhUOMr2szb1QrPB9OE2KHL5kRq4iBZS2gul9A7nQ';
+const SHEET_NAME = 'Аркуш1';
+const GOOGLE_API_KEY = 'AIzaSyA-8g4l9hciFcdui9d8QwTOeEU6vrvodNs';
+const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby8AxY3eXMLMsxPQeWWeyCsow8UYVrtLNC3UA7n7xCTvsz8QW2gdHmFONs-u0dgX7jP/exec'; 
 
 const API_URL = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}?key=${GOOGLE_API_KEY}`;
 const CELLS_URL = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/C964:E964?key=${GOOGLE_API_KEY}`;
@@ -111,7 +110,7 @@ const commands = [
   }
 ];
 
-const rest = new REST({ version: '10' }).setToken('MTM4MTI0MzAyOTEwNDQ5MjY3NQ.GlG0w_.1yZ1eu3tI0MQNkDClz9sUIxxgEK9KJUnIsPsZk');
+const rest = new REST({ version: '10' }).setToken('MTM4MTI0MzAyOTEwNDQ5MjY3NQ.GwREGI.9_C6kSNKVpVaYMW6ep_rJeUueYO7u7pmw4VRKQ');
 
 // ────────────────
 // 🧠 Функція: автоматичне сповіщення при зміні в таблиці
@@ -151,6 +150,7 @@ async function checkForChanges(botClient) {
 
     if (changedCells.length > 0) {
       const channel = botClient.channels.cache.find(ch => ch.name === 'склад' && ch.type === 0);
+
       if (!channel) return;
 
       let message = `🔔 Виявлено зміни в таблиці:\n\n`;
@@ -226,38 +226,29 @@ client.on('interactionCreate', async interaction => {
           .setFooter({ text: 'Фінансова служба' })
           .setTimestamp();
 
-        await interaction.reply({ embeds: [embed], flags: {} });
+        await interaction.reply({ embeds: [embed], flags: { flags: { ephemeral: false } } });
         break;
 
-      case 'оновити':
-        res = await fetch(API_URL);
-        data = await res.json();
-        rows = data.values?.slice(1) || [];
-        headers = data.values?.[0] || [];
-
-        if (rows.length === 0) {
-          await interaction.reply({ content: '⚠️ Таблиця порожня.', flags: {} });
-          return;
-        }
-
-        let output = '| Назва       | Кількість | Ціна |\n|--------------|------------|--------|\n';
-
-        for (let i = Math.max(0, rows.length - 10); i < rows.length; i++) {
-          const row = rows[i];
-          const name = row[6] || '—';
-          const quantity = row[3] || '—';
-          const price = row[4] || '—';
-          output += `| ${name.padEnd(13).slice(0, 13)} | ${quantity.toString().padStart(9)} | ${price.toString().padStart(6)} |\n`;
-        }
-
-        const embedUpdate = new EmbedBuilder()
-          .setTitle('🔄 Останні записи')
-          .setDescription(`\`\`\`md\n${output}\`\`\``)
-          .setColor(3066993)
-          .setFooter({ text: 'Виведено останні 10 записів' });
-
-        await interaction.reply({ embeds: [embedUpdate], flags: {} });
-        break;
+        case 'оновити':
+          const res = await fetch(API_URL);
+          const data = await res.json();
+          const rows = data.values.slice(1);
+          const headers = data.values[0];
+        
+          var output = '| Назва | Кількість | Ціна |\n|--------|------------|------|\n';
+        
+          for (let i = Math.max(0, rows.length - 10); i < rows.length; i++) {
+            const row = rows[i];
+            output += `| ${row[6]} | ${row[3]} | ${row[4]} |\n`;
+          }
+        
+          const embed = new EmbedBuilder()
+            .setTitle('🔄 Останні записи')
+            .setDescription(`\`\`\`md\n${output}\`\`\``)
+            .setColor(3066993);
+        
+          await interaction.reply({ embeds: [embed], flags: {} });
+          break;
 
       case 'порожні':
         res = await fetch(API_URL);
@@ -268,7 +259,7 @@ client.on('interactionCreate', async interaction => {
         const lowStock = rows.filter(row => Number(row[3] || 0) <= 5);
 
         if (lowStock.length === 0) {
-          await interaction.reply({ content: '🟢 Усі товари в наявності.', flags: {} });
+          await interaction.reply({ content: '🟢 Усі товари в наявності.', flags: { ephemeral: false } });
           return;
         }
 
@@ -293,7 +284,7 @@ client.on('interactionCreate', async interaction => {
               .setStyle(ButtonStyle.Success)
           );
 
-        await interaction.reply({ embeds: [embedLowStock], components: [rowButtons], flags: {} });
+        await interaction.reply({ embeds: [embedLowStock], components: [rowButtons], flags: { ephemeral: false } });
         break;
 
       case 'пошук':
@@ -316,7 +307,7 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (colIndex === -1) {
-          await interaction.reply({ content: '❌ Невідоме поле для пошуку.', flags: {} });
+          await interaction.reply({ content: '❌ Невідоме поле для пошуку.', flags: { ephemeral: false } });
           return;
         }
 
@@ -328,7 +319,7 @@ client.on('interactionCreate', async interaction => {
         });
 
         if (results.length === 0) {
-          await interaction.reply({ content: '🔍 Нічого не знайдено.', flags: {} });
+          await interaction.reply({ content: '🔍 Нічого не знайдено.', flags: { ephemeral: false } });
           return;
         }
 
@@ -356,7 +347,7 @@ client.on('interactionCreate', async interaction => {
                 .setStyle(ButtonStyle.Primary)
             );
 
-          await interaction.reply({ embeds: [embedSearch], components: [rowButtons], flags: {} });
+          await interaction.reply({ embeds: [embedSearch], components: [rowButtons], flags: { ephemeral: false } });
         } else if (interaction.commandName === 'пошук-експортовано') {
           const exportData = [headers, ...results]; // додаємо заголовки + результати
           const worksheet = XLSX.utils.aoa_to_sheet(exportData);
@@ -369,8 +360,8 @@ client.on('interactionCreate', async interaction => {
           await interaction.reply({
             content: '📊 Експортуємо файл...',
             files: [filePath],
-            flags: {}
-          });
+            flags: { ephemeral: false
+        } });
         }
         break;
 
@@ -399,7 +390,7 @@ client.on('interactionCreate', async interaction => {
         });
 
         if (smartResults.length === 0) {
-          await interaction.reply({ content: '🔍 Нічого не знайдено.', flags: {} });
+          await interaction.reply({ content: '🔍 Нічого не знайдено.', flags: { ephemeral: false } });
           return;
         }
 
@@ -426,7 +417,7 @@ client.on('interactionCreate', async interaction => {
               .setStyle(ButtonStyle.Success)
           );
 
-        await interaction.reply({ embeds: [embedSmartSearch], components: [rowSmartExport], flags: {} });
+        await interaction.reply({ embeds: [embedSmartSearch], components: [rowSmartExport], flags: { ephemeral: false } });
         break;
 
       case 'експорт':
@@ -444,8 +435,8 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({
           content: '📎 Експортуємо всю таблицю...',
           files: [filePath],
-          flags: {}
-        });
+          flags: { ephemeral: false
+    } });
         break;
 
       case 'help':
@@ -473,12 +464,12 @@ client.on('interactionCreate', async interaction => {
               .setStyle(ButtonStyle.Link)
           );
 
-        await interaction.reply({ embeds: [helpEmbed], components: [row], flags: {} });
+        await interaction.reply({ embeds: [helpEmbed], components: [row], flags: { ephemeral: false} });
         break;
     }
   } catch (err) {
     console.error(err);
-    await interaction.reply({ content: '❌ Помилка при завантаженні даних.', flags: {} });
+    await interaction.reply({ content: '❌ Помилка при завантаженні даних.', flags: { ephemeral: false } });
   }
 });
 
@@ -555,42 +546,62 @@ client.on('messageCreate', async msg => {
 client.on('interactionCreate', async interaction => {
   if (!interaction.isButton()) return;
 
-  const res = await fetch(API_URL);
-  const data = await res.json();
-  const rows = data.values?.slice(1) || [];
-  const headers = data.values?.[0] || [];
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    const rows = data.values?.slice(1) || [];
+    const headers = data.values?.[0] || [];
 
-  let results = [...rows];
+    let results = [...rows];
 
-  if (interaction.customId === 'download_excel_low_stock') {
-    results = results.filter(row => Number(row[3] || 0) <= 5);
+    // Фільтруємо результати залежно від кнопки
+    if (interaction.customId === 'download_excel_low_stock') {
+      results = results.filter(row => Number(row[3] || 0) <= 5);
+    } else if (interaction.customId === 'download_excel_search') {
+      // Припускається, що пошукові дані зберігаються у `results`
+    } else if (interaction.customId === 'download_excel_smart') {
+      // Якщо потрібна обробка додаткових фільтрів
+    }
+
+    // Формуємо Excel файл
+    const exportData = [headers, ...results];
+    const worksheet = XLSX.utils.aoa_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Результати');
+
+    const filePath = './search_results.xlsx';
+    XLSX.writeFile(workbook, filePath);
+
+    // Оновлюємо кнопку і надсилаємо файл
+    await interaction.update({
+      content: '📊 Експортуємо файл...',
+      components: []
+    });
+
+    await interaction.followUp({
+      content: '📎 Ось ваша таблиця:',
+      files: [{ attachment: filePath }]
+    });
+  } catch (err) {
+    console.error('❌ Помилка при обробці кнопки:', err);
+    await interaction.followUp({
+      content: '⚠️ Не вдалося згенерувати файл.',
+      ephemeral: true
+    });
   }
-
-  if (interaction.customId === 'download_excel_search' || interaction.customId === 'download_excel_smart') {
-    results = rows;
-  }
-
-  const exportData = [headers, ...results];
-  const worksheet = XLSX.utils.aoa_to_sheet(exportData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Результати пошуку');
-
-  const filePath = './search_results.xlsx';
-  XLSX.writeFile(workbook, filePath);
-
-  await interaction.update({
-    content: '📊 Експортуємо файл...',
-    components: []
-  });
-
-  await interaction.followUp({
-    content: '📎 Ось ваша таблиця:',
-    files: [filePath],
-    ephemeral: false
-  });
 });
 
 // ────────────────
 // ⚙️ Логін бота
 // ────────────────
-client.login('MTM4MTI0MzAyOTEwNDQ5MjY3NQ.GlG0w_.1yZ1eu3tI0MQNkDClz9sUIxxgEK9KJUnIsPsZk');
+const BOT_TOKEN = 'MTM4MTI0MzAyOTEwNDQ5MjY3NQ.GwREGI.9_C6kSNKVpVaYMW6ep_rJeUueYO7u7pmw4VRKQ';
+
+if (!BOT_TOKEN || BOT_TOKEN.includes('YOUR_BOT_TOKEN')) {
+  console.warn('❌ Невірний або відсутній токен бота!');
+  process.exit(1);
+}
+
+client.login(BOT_TOKEN).catch(err => {
+  console.error('❌ Не вдалося увійти через недійсний токен:', err);
+});
+

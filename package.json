@@ -4,7 +4,21 @@
     "@discordjs/rest": "^2.5.0",
     "discord-api-types": "^0.38.11",
     "discord.js": "^14.19.3",
+    "dotenv": "^16.5.0",
+    "fs": "^0.0.1-security",
+    "google-auth-library": "^9.15.1",
+    "googleapis": "^107.0.0",
     "node-fetch": "^3.3.2",
     "xlsx": "^0.18.5"
-  }
+  },
+  "name": "discord-google-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }
