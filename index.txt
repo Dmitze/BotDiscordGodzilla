@@ -4,10 +4,10 @@ const XLSX = require('xlsx');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('@discordjs/builders');
 
 // ❗ Заміни на свої дані
-const SHEET_ID = '1U4dWhUOMr2szb1QrPB9OE2KHL5kRq4iBZS2gul9A7nQ';
-const SHEET_NAME = 'Аркуш1';
-const GOOGLE_API_KEY = 'AIzaSyA-8g4l9hciFcdui9d8QwTOeEU6vrvodNs';
-const APP_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec'; 
+const SHEET_ID = '';
+const SHEET_NAME = '';
+const GOOGLE_API_KEY = '';
+const APP_SCRIPT_URL = ''; 
 
 const API_URL = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}?key=${GOOGLE_API_KEY}`;
 const CELLS_URL = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/C964:E964?key=${GOOGLE_API_KEY}`;
