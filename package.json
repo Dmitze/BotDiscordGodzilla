@@ -20,5 +20,17 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+<<<<<<< HEAD
+=======
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dmitze/BotDiscordGodzilla.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Dmitze/BotDiscordGodzilla/issues"
+  },
+  "homepage": "https://github.com/Dmitze/BotDiscordGodzilla#readme",
+>>>>>>> master
   "description": ""
 }
