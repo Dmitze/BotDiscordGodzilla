@@ -9,6 +9,7 @@
     "google-auth-library": "^9.15.1",
     "googleapis": "^107.0.0",
     "node-fetch": "^3.3.2",
+    "winston": "^3.17.0",
     "xlsx": "^0.18.5"
   },
   "name": "discord-google-bot",
@@ -20,9 +21,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-<<<<<<< HEAD
-=======
-  "devDependencies": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Dmitze/BotDiscordGodzilla.git"
@@ -31,6 +29,5 @@
     "url": "https://github.com/Dmitze/BotDiscordGodzilla/issues"
   },
   "homepage": "https://github.com/Dmitze/BotDiscordGodzilla#readme",
->>>>>>> master
   "description": ""
 }
