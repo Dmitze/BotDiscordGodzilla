@@ -1,0 +1,47 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🚀 Запуск Discord Bot",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/index.js",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "restart": true,
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "🧪 Тестування AI функцій",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/test-ai.js",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "protocol": "inspector"
+    },
+    {
+      "name": "📊 Запуск метрик",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/stats.js",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "protocol": "inspector"
+    },
+    {
+      "name": "🔧 Deploy Commands",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/deploy-commands.js",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "protocol": "inspector"
+    }
+  ]
+}

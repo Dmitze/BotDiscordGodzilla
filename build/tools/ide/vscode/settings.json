@@ -1,0 +1,160 @@
+{
+  // === Cursor AI / Cody Налаштування (основні) ===
+  // Примітка: Деякі з цих налаштувань можуть бути специфічними для Cursor або Cody,
+  // і можуть встановлюватися через їхній власний UI або конфігураційний файл.
+  // Але деякі загальні налаштування VS Code можуть впливати на їх роботу.
+
+  // --- Контекст проєкту ---
+  // Допомагає Cursor краще розуміти ваш код.
+  "cody.codebase": "github.com/Dmitze/BotDiscordGodzilla", // Вкажіть ваш репозиторій
+
+  // --- Поведінка Cursor ---
+  // Автоматичні пропозиції під час друку. Може бути корисним, але іноді уповільнює.
+  // Краще почати з false і активувати вручну, коли потрібно.
+  "cody.autocomplete.enabled": false,
+  // Вимкнення експериментальних функцій для стабільності.
+  "cody.experimental.noodle": false,
+
+  // === CUSTOM INSTRUCTIONS для Cursor AI ===
+  // Ці інструкції можна скопіювати в налаштування Cursor AI або використовувати як коментарі в коді
+
+  // --- Основні Custom Instructions ---
+  // Ви - експерт з Node.js, Discord.js v14, Google Sheets API та інтеграції з LLM (Ollama/OpenAI).
+  // Допомагайте розробляти Discord-бота з AI-функціоналом для роботи з Google Sheets.
+
+  // --- Специфіка проекту ---
+  // ПРОЕКТ: Discord AI Assistant Bot з Google Sheets інтеграцією
+  // ТЕХНОЛОГІЇ: Discord.js v14, Google Sheets API, Ollama LLM, Redis кешування, Prometheus метрики
+  // АРХІТЕКТУРА: Модульна система з розділенням відповідальності
+  // МОВА: JavaScript (ES6+), Node.js 18+
+
+  // --- Стиль коду ---
+  // - Використовуйте async/await замість промісів
+  // - Додавайте JSDoc коментарі для функцій
+  // - Використовуйте try-catch для обробки помилок
+  // - Логування через Winston
+  // - Валідація вхідних даних
+  // - Rate limiting для API запитів
+
+  // --- Патерни проекту ---
+  // - Команди в папці /commands
+  // - Утиліти в папці /utils
+  // - Конфігурація в папці /config
+  // - Моніторинг в папці /metrics
+  // - Логи в папці /logs
+
+  // --- API Інтеграції ---
+  // - Google Sheets API: googleapis v107
+  // - Discord API: discord.js v14
+  // - LLM: OpenAI API або Ollama
+  // - Кешування: Redis (через node-redis)
+  // - Метрики: Prometheus (prom-client)
+
+  // --- Безпека ---
+  // - Валідація ролей Discord
+  // - Rate limiting
+  // - Сенситивні дані в .env
+  // - Валідація вхідних параметрів
+
+  // --- Приоритети при розробці ---
+  // 1. Надійність та обробка помилок
+  // 2. Продуктивність та кешування
+  // 3. Безпека та валідація
+  // 4. Модульність та масштабованість
+  // 5. Документація та логування
+
+  // === VS Code Загальні Налаштування для Продуктивності ===
+  "editor.renderWhitespace": "none", // Менше візуального "шуму"
+  "editor.renderControlCharacters": false,
+  "editor.minimap.enabled": false, // Звільняє місце на екрані
+  "breadcrumbs.enabled": true, // Допомагає орієнтуватися в структурі файлів
+  "editor.wordWrap": "on", // Для зручності читання довгих рядків
+  "editor.rulers": [100, 120], // Візуальні лінії для дотримання довжини рядка
+  "workbench.tree.indent": 16, // Бічна панель
+  "workbench.sideBar.location": "left", // Розташування бічної панелі
+  "workbench.statusBar.visible": true, // Рядок стану
+  "workbench.editor.enablePreview": false, // Відкривати файли в новій вкладці за замовчуванням
+
+  // === Налаштування для Node.js / JavaScript / TypeScript ===
+  "javascript.preferences.includePackageJsonAutoImports": "auto",
+  "typescript.preferences.includePackageJsonAutoImports": "auto",
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "javascript.suggest.autoImports": true,
+  "typescript.suggest.autoImports": true,
+  // Форматування (якщо використовуєте Prettier, це буде перевизначено)
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  // Валідація
+  "javascript.validate.enable": true,
+  "typescript.validate.enable": true,
+
+  // === Налаштування для Docker (якщо використовуєте) ===
+  "docker.commands.attach": "docker exec -it ${containerId} sh",
+  "docker.containers.label": "RepositoryNameAndTag", // Зручне відображення контейнерів
+
+  // === Налаштування для Git / GitLens (якщо встановлено) ===
+  // Допомагає краще бачити історію змін, що корисно AI при розумінні коду
+  "gitlens.hovers.currentLine.over": "line", // Або "annotation"
+  "gitlens.codeLens.enabled": false, // Може займати багато місця
+  "git.confirmSync": false, // Зменшує кількість підтверджень
+  "git.autofetch": true, // Автоматично отримувати зміни
+
+  // === Налаштування для файлів вашого проекту ===
+  // Ігнорування файлів/папок, які не повинні впливати на роботу Cursor
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/logs": true,
+    "**/tmp": true,
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/dist": true, // Якщо є збірка
+    "**/*.log": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/logs": true,
+    "**/tmp": true,
+    "**/dist": true
+  },
+
+  // === Експериментальні / Додаткові налаштування для продуктивності ===
+  // Ці налаштування можуть допомогти зробити роботу VS Code та Cursor більш плавною.
+  "editor.largeFileOptimizations": true, // Оптимізація для великих файлів
+  // Вимкнення анімацій для швидшого відгуку (опціонально)
+  "workbench.list.smoothScrolling": false,
+  "editor.cursorSmoothCaretAnimation": "off"
+  // Збільшення ліміту файлів для індексації (якщо проект великий)
+  // Це налаштування може бути в інших розширеннях або в самому Cursor.
+  // "search.followSymlinks": false, // Якщо є символічні посилання, які викликають проблеми
+
+  // === Рекомендації щодо розширень (якщо ще не встановлені) ===
+  // Додайте це в `.vscode/extensions.json` вашого проекту
+  // {
+  //   "recommendations": [
+  //     "sourcegraph.cody-ai", // або аналог Cursor
+  //     "ms-azuretools.vscode-docker",
+  //     "ms-vscode.vscode-typescript-next", // або стандартний js/ts
+  //     "esbenp.prettier-vscode",
+  //     "eamodio.gitlens",
+  //     "redhat.vscode-yaml", // для docker-compose.yml
+  //     "ms-vscode.vscode-json" // для .json файлів
+  //   ]
+  // }
+
+  // === Підказки для Cursor AI (вставте це як коментар у ваш код або використовуйте в чаті) ===
+  // Ви можете використовувати такі директиви в чаті Cursor або як коментарі в коді:
+  /*
+    @cody-context-filter-ignore-file // Вказує Cursor ігнорувати цей файл при пошуку контексту
+    @cody-chat-ignore // Вказує Cursor ігнорувати цей файл у чаті
+    // Також можна вказати конкретний контекст:
+    // @cody-context: {"include": ["src/services/llm.js", "src/commands/ai.js"]}
+    */
+
+  // === Потенційні налаштування для майбутнього (коли ви реалізуєте ці функції) ===
+  // Ці налаштування не активують функції, але показують, що ви про них думаєте.
+  // "redis.host": "localhost",
+  // "redis.port": 6379,
+  // "prometheus.port": 9090
+  // Але ці налаштування не є стандартними для VS Code і використовуються конкретними розширеннями.
+}
