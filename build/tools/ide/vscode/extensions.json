@@ -1,0 +1,48 @@
+{
+  "recommendations": [
+    // === AI Assistant ===
+    "sourcegraph.cody-ai",
+    "cursor.cursor",
+
+    // === JavaScript/Node.js ===
+    "ms-vscode.vscode-typescript-next",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-json",
+
+    // === Discord.js Development ===
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-eslint",
+
+    // === Docker ===
+    "ms-azuretools.vscode-docker",
+    "redhat.vscode-yaml",
+
+    // === Git ===
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+
+    // === Productivity ===
+    "ms-vscode.vscode-json",
+    "yzhang.markdown-all-in-one",
+    "shd101wyy.markdown-preview-enhanced",
+
+    // === Database/Redis ===
+    "cweijan.vscode-redis-client",
+
+    // === Monitoring ===
+    "ms-vscode.vscode-json",
+
+    // === Environment ===
+    "ms-vscode.vscode-json",
+    "formulahendry.auto-rename-tag",
+
+    // === Code Quality ===
+    "ms-vscode.vscode-eslint",
+    "ms-vscode.vscode-prettier",
+    "streetsidesoftware.code-spell-checker",
+
+    // === Theme (Optional) ===
+    "dracula-theme.theme-dracula",
+    "pkief.material-icon-theme"
+  ]
+}
