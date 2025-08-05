@@ -325,4 +325,50 @@ export interface PaginationOptions {
   timestamp?: Date;
 }
 
+// Command types
+export interface CommandOptions {
+  useCache?: boolean;
+  cacheTTL?: number;
+  timeout?: number;
+  retryAttempts?: number;
+  priority?: 'high' | 'normal' | 'low';
+}
+
+export interface CommandStats extends ServiceStats {
+  totalExecutions: number;
+  successfulExecutions: number;
+  failedExecutions: number;
+  averageExecutionTime: number;
+  totalExecutionTime: number;
+}
+
+export interface CommandContext {
+  userId: string;
+  guildId?: string;
+  channelId: string;
+  timestamp: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CommandExecuteOptions {
+  interaction: any;
+  context?: CommandContext;
+  options?: CommandOptions;
+}
+
+export interface CommandAutocompleteOptions {
+  interaction: any;
+  context?: CommandContext;
+}
+
+export interface SearchParams {
+  query: string;
+  documentType: string;
+  dateFrom?: string;
+  dateTo?: string;
+  unit?: string;
+  priority: string;
+  limit: number;
+}
+
 // Всі типи експортовані безпосередньо з цього файлу 

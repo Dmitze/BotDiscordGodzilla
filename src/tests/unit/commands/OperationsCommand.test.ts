@@ -1,0 +1,197 @@
+/**
+ * Unit тесты для OperationsCommand
+ */
+
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { OperationsCommand } from '../../../commands/OperationsCommand';
+import { createMockConfig, createMockInteraction } from '../../utils/testHelpers';
+
+describe('OperationsCommand', () => {
+  let operationsCommand: OperationsCommand;
+  let mockConfig: any;
+  let mockInteraction: any;
+
+  beforeEach(() => {
+    mockConfig = createMockConfig();
+    operationsCommand = new OperationsCommand(mockConfig);
+    mockInteraction = createMockInteraction();
+  });
+
+  describe('constructor', () => {
+    it('should create OperationsCommand instance', () => {
+      expect(operationsCommand).toBeInstanceOf(OperationsCommand);
+    });
+
+    it('should have correct name', () => {
+      expect(operationsCommand.getName()).toBe('операції');
+    });
+
+    it('should have correct description', () => {
+      expect(operationsCommand.getDescription()).toBe('Оперативне управління та координація');
+    });
+  });
+
+  describe('getData', () => {
+    it('should return SlashCommandBuilder', () => {
+      const data = operationsCommand.getData();
+      expect(data).toBeDefined();
+      expect(data.name).toBe('операції');
+    });
+  });
+
+  describe('execute', () => {
+    it('should handle situation subcommand', async () => {
+      // Настройка моков
+      const mockOperationsService = {
+        getSituation: jest.fn().mockResolvedValue({
+          status: 'active',
+          incidents: 2,
+          resources: 'available',
+        }),
+      };
+
+      mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
+      mockInteraction.options.getSubcommand.mockReturnValue('ситуація');
+      mockInteraction.options.getString.mockReturnValue('all');
+
+      // Выполнение
+      await operationsCommand.execute(mockInteraction);
+
+      // Проверки
+      expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
+      expect(mockInteraction.options.getString).toHaveBeenCalledWith('сектор');
+      expect(mockOperationsService.getSituation).toHaveBeenCalledWith('all');
+      expect(mockInteraction.reply).toHaveBeenCalled();
+    });
+
+    it('should handle tasks subcommand', async () => {
+      // Настройка моков
+      const mockOperationsService = {
+        getTasks: jest.fn().mockResolvedValue([
+          { id: '1', title: 'Task 1', status: 'in_progress' },
+          { id: '2', title: 'Task 2', status: 'completed' },
+        ]),
+      };
+
+      mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
+      mockInteraction.options.getSubcommand.mockReturnValue('завдання');
+      mockInteraction.options.getString.mockReturnValue('current');
+
+      // Выполнение
+      await operationsCommand.execute(mockInteraction);
+
+      // Проверки
+      expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
+      expect(mockInteraction.options.getString).toHaveBeenCalledWith('дія');
+      expect(mockOperationsService.getTasks).toHaveBeenCalledWith('current');
+      expect(mockInteraction.reply).toHaveBeenCalled();
+    });
+
+    it('should handle coordination subcommand', async () => {
+      // Настройка моков
+      const mockOperationsService = {
+        coordinate: jest.fn().mockResolvedValue({
+          success: true,
+          message: 'Coordination completed',
+        }),
+      };
+
+      mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
+      mockInteraction.options.getSubcommand.mockReturnValue('координація');
+      mockInteraction.options.getString.mockReturnValue('emergency');
+
+      // Выполнение
+      await operationsCommand.execute(mockInteraction);
+
+      // Проверки
+      expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
+      expect(mockInteraction.options.getString).toHaveBeenCalledWith('тип');
+      expect(mockOperationsService.coordinate).toHaveBeenCalledWith('emergency');
+      expect(mockInteraction.reply).toHaveBeenCalled();
+    });
+
+    it('should handle intelligence subcommand', async () => {
+      // Настройка моков
+      const mockOperationsService = {
+        getIntelligence: jest.fn().mockResolvedValue({
+          reports: 5,
+          alerts: 2,
+          analysis: 'Intelligence summary',
+        }),
+      };
+
+      mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
+      mockInteraction.options.getSubcommand.mockReturnValue('розвідка');
+      mockInteraction.options.getString.mockReturnValue('daily');
+
+      // Выполнение
+      await operationsCommand.execute(mockInteraction);
+
+      // Проверки
+      expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
+      expect(mockInteraction.options.getString).toHaveBeenCalledWith('період');
+      expect(mockOperationsService.getIntelligence).toHaveBeenCalledWith('daily');
+      expect(mockInteraction.reply).toHaveBeenCalled();
+    });
+
+    it('should handle invalid subcommand', async () => {
+      mockInteraction.options.getSubcommand.mockReturnValue('неіснуюча');
+
+      // Выполнение
+      await operationsCommand.execute(mockInteraction);
+
+      // Проверки
+      expect(mockInteraction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('Невідома підкоманда'),
+          ephemeral: true,
+        })
+      );
+    });
+
+    it('should handle service error', async () => {
+      // Настройка моков с ошибкой
+      const mockOperationsService = {
+        getSituation: jest.fn().mockRejectedValue(new Error('Service error')),
+      };
+
+      mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
+      mockInteraction.options.getSubcommand.mockReturnValue('ситуація');
+      mockInteraction.options.getString.mockReturnValue('all');
+
+      // Выполнение
+      await operationsCommand.execute(mockInteraction);
+
+      // Проверки
+      expect(mockInteraction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('Помилка'),
+          ephemeral: true,
+        })
+      );
+    });
+
+    it('should handle empty results', async () => {
+      // Настройка моков с пустыми результатами
+      const mockOperationsService = {
+        getTasks: jest.fn().mockResolvedValue([]),
+      };
+
+      mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
+      mockInteraction.options.getSubcommand.mockReturnValue('завдання');
+      mockInteraction.options.getString.mockReturnValue('completed');
+
+      // Выполнение
+      await operationsCommand.execute(mockInteraction);
+
+      // Проверки
+      expect(mockInteraction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('Завдань не знайдено'),
+          ephemeral: true,
+        })
+      );
+    });
+  });
+}); 
+
