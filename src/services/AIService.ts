@@ -1,26 +1,33 @@
 /**
  * AI Service для Discord бота
  * Централізоване управління AI функціоналом
+ * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
 import OpenAI from 'openai';
-import type { 
-  BaseService, 
-  BotConfig, 
-  HealthStatus, 
+import type {
+  BaseService,
+  BotConfig,
+  HealthStatus,
   ServiceStats,
   AIResponse,
   AIRequest,
   AIRequestOptions
 } from '@/types';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
-// TODO: Створити типизовані утиліти
-const logger = {
-  info: (message: string, ...args: unknown[]) => console.log(message, ...args),
-  error: (message: string, ...args: unknown[]) => console.error(message, ...args),
-  warn: (message: string, ...args: unknown[]) => console.warn(message, ...args),
-  debug: (message: string, ...args: unknown[]) => console.debug(message, ...args),
-};
+import logger from '@/utils/logger';
+
+// Константи для AI сервісу
+const AI_SERVICE_CONSTANTS = {
+  MAX_RETRY_ATTEMPTS: 3,
+  RETRY_DELAY: 1000, // 1 секунда
+  REQUEST_TIMEOUT: 30000, // 30 секунд
+  MEMORY_CLEANUP_INTERVAL: 300000, // 5 хвилин
+  MAX_CONTEXT_AGE: 3600000, // 1 година
+  MAX_CONTEXT_MESSAGES: 20,
+  MAX_PROMPT_LENGTH: 4000,
+  MIN_PROMPT_LENGTH: 1,
+} as const;
 
 const sanitizeInput = (input: string): string => {
   return input.trim().replace(/[<>]/g, '');
@@ -34,6 +41,8 @@ interface AIServiceStats extends ServiceStats {
   totalResponseTime: number;
   cacheHits: number;
   cacheMisses: number;
+  providerSwitches: number;
+  contextCleanups: number;
 }
 
 interface ConversationContext {
@@ -44,6 +53,7 @@ interface ConversationContext {
 
 interface AIProvider {
   generate(prompt: string, options?: AIRequestOptions): Promise<AIResponse>;
+  isHealthy(): Promise<boolean>;
 }
 
 interface OllamaProvider {
@@ -57,6 +67,7 @@ export class AIService extends BaseServiceClass {
   private conversationMemory = new Map<string, ConversationContext>();
   private stats: AIServiceStats;
   private memoryCleanupInterval: NodeJS.Timeout | null = null;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
 
   constructor(config: BotConfig) {
     super('AIService', config);
@@ -73,11 +84,13 @@ export class AIService extends BaseServiceClass {
       totalResponseTime: 0,
       cacheHits: 0,
       cacheMisses: 0,
+      providerSwitches: 0,
+      contextCleanups: 0,
     };
   }
 
   /**
-   * Ініціалізація AI сервісу
+   * Ініціалізація AI сервісу з детальним логуванням
    */
   protected async onInitialize(): Promise<void> {
     try {
@@ -92,6 +105,9 @@ export class AIService extends BaseServiceClass {
       // Запуск очищення пам'яті
       this.startMemoryCleanup();
 
+      // Запуск health check
+      this.startHealthCheck();
+
       logger.info('✅ AI сервіс ініціалізовано');
     } catch (error) {
       logger.error('❌ Помилка ініціалізації AI сервісу:', error);
@@ -100,42 +116,61 @@ export class AIService extends BaseServiceClass {
   }
 
   /**
-   * Створення AI провайдерів
+   * Створення AI провайдерів з детальним логуванням
    */
   private async createProviders(): Promise<void> {
-    // OpenAI провайдер
-    if (this.config.ai['openai'].apiKey) {
-      this.providers['openai'] = this.createOpenAIProvider();
-      logger.debug('✅ OpenAI провайдер створено');
-    }
+    try {
+      logger.info('🔧 Створення AI провайдерів...');
 
-    // Ollama провайдер
-    if (this.config.ai['ollama'].host) {
-      this.providers['ollama'] = this.createOllamaProvider();
-      logger.debug('✅ Ollama провайдер створено');
-    }
+      // OpenAI провайдер
+      if (this.config.ai['openai'].apiKey) {
+        this.providers['openai'] = this.createOpenAIProvider();
+        logger.debug('✅ OpenAI провайдер створено');
+      } else {
+        logger.warn('⚠️ OpenAI API ключ не налаштовано');
+      }
 
-    if (Object.keys(this.providers).length === 0) {
-      throw new Error('Жоден AI провайдер не налаштовано');
+      // Ollama провайдер
+      if (this.config.ai['ollama'].host) {
+        this.providers['ollama'] = this.createOllamaProvider();
+        logger.debug('✅ Ollama провайдер створено');
+      } else {
+        logger.warn('⚠️ Ollama хост не налаштовано');
+      }
+
+      if (Object.keys(this.providers).length === 0) {
+        throw new Error('Жоден AI провайдер не налаштовано');
+      }
+
+      logger.info(`✅ Створено ${Object.keys(this.providers).length} AI провайдерів`);
+    } catch (error) {
+      logger.error('❌ Помилка створення AI провайдерів:', error);
+      throw error;
     }
   }
 
   /**
-   * Створення OpenAI провайдера
+   * Створення OpenAI провайдера з покращеною обробкою помилок
    */
   private createOpenAIProvider(): AIProvider {
     try {
       const openai = new OpenAI({
         apiKey: this.config.ai.openai.apiKey,
-        maxRetries: 3,
-        timeout: 30000,
+        maxRetries: AI_SERVICE_CONSTANTS.MAX_RETRY_ATTEMPTS,
+        timeout: AI_SERVICE_CONSTANTS.REQUEST_TIMEOUT,
       });
 
       return {
         async generate(prompt: string, options: AIRequestOptions = {}): Promise<AIResponse> {
           const startTime = Date.now();
-          
+
           try {
+            logger.debug('🔄 OpenAI запит...', {
+              model: options.model || this.config.ai.openai.model,
+              maxTokens: options.maxTokens || this.config.ai.openai.maxTokens,
+              temperature: options.temperature || this.config.ai.openai.temperature,
+            });
+
             const response = await openai.chat.completions.create({
               model: options.model || this.config.ai.openai.model,
               messages: [{ role: 'user', content: prompt }],
@@ -144,7 +179,13 @@ export class AIService extends BaseServiceClass {
             });
 
             const duration = Date.now() - startTime;
-            
+
+            logger.debug('✅ OpenAI відповідь отримана', {
+              duration: `${duration}ms`,
+              tokens: response.usage?.total_tokens || 0,
+              model: response.model,
+            });
+
             return {
               content: response.choices[0]?.message?.content || '',
               provider: 'openai',
@@ -153,29 +194,49 @@ export class AIService extends BaseServiceClass {
               duration,
             };
           } catch (error) {
-            throw new Error(`OpenAI error: ${error}`);
+            const duration = Date.now() - startTime;
+            logger.error('❌ Помилка OpenAI запиту:', {
+              error: error instanceof Error ? error.message : String(error),
+              duration: `${duration}ms`,
+            });
+            throw new Error(`OpenAI error: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        },
+        async isHealthy(): Promise<boolean> {
+          try {
+            await openai.models.list();
+            return true;
+          } catch (error) {
+            logger.error('❌ OpenAI health check невдалий:', error);
+            return false;
           }
         },
       };
     } catch (error) {
-      logger.error('Помилка створення OpenAI провайдера:', error);
+      logger.error('❌ Помилка створення OpenAI провайдера:', error);
       throw error;
     }
   }
 
   /**
-   * Створення Ollama провайдера
+   * Створення Ollama провайдера з покращеною обробкою помилок
    */
   private createOllamaProvider(): AIProvider {
     const ollamaConfig = this.config.ai.ollama;
-    
+
     return {
       async generate(prompt: string, options: AIRequestOptions = {}): Promise<AIResponse> {
         const startTime = Date.now();
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const timeoutId = setTimeout(() => controller.abort(), AI_SERVICE_CONSTANTS.REQUEST_TIMEOUT);
 
         try {
+          logger.debug('🔄 Ollama запит...', {
+            host: ollamaConfig.host,
+            model: options.model || ollamaConfig.model,
+            temperature: options.temperature || 0.7,
+          });
+
           const response = await fetch(`${ollamaConfig.host}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -200,6 +261,11 @@ export class AIService extends BaseServiceClass {
           const data = await response.json();
           const duration = Date.now() - startTime;
 
+          logger.debug('✅ Ollama відповідь отримана', {
+            duration: `${duration}ms`,
+            model: data.model || ollamaConfig.model,
+          });
+
           return {
             content: data.response || '',
             provider: 'ollama',
@@ -209,25 +275,45 @@ export class AIService extends BaseServiceClass {
           };
         } catch (error) {
           clearTimeout(timeoutId);
-          throw new Error(`Ollama error: ${error}`);
+          const duration = Date.now() - startTime;
+          logger.error('❌ Помилка Ollama запиту:', {
+            error: error instanceof Error ? error.message : String(error),
+            duration: `${duration}ms`,
+          });
+          throw new Error(`Ollama error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      },
+      async isHealthy(): Promise<boolean> {
+        try {
+          const response = await fetch(`${ollamaConfig.host}/api/tags`);
+          return response.ok;
+        } catch (error) {
+          logger.error('❌ Ollama health check невдалий:', error);
+          return false;
         }
       },
     };
   }
 
   /**
-   * Валідація конфігурації
+   * Валідація конфігурації з детальним логуванням
    */
   private validateConfiguration(): void {
-    if (!this.providers[this.currentProvider]) {
-      throw new Error(`Поточний провайдер ${this.currentProvider} не налаштовано`);
-    }
+    try {
+      if (!this.providers[this.currentProvider]) {
+        throw new Error(`Поточний провайдер ${this.currentProvider} не налаштовано`);
+      }
 
-    logger.info(`✅ AI конфігурація валідна, активний провайдер: ${this.currentProvider}`);
+      logger.info(`✅ AI конфігурація валідна, активний провайдер: ${this.currentProvider}`);
+      logger.info(`📊 Доступні провайдери: ${Object.keys(this.providers).join(', ')}`);
+    } catch (error) {
+      logger.error('❌ Помилка валідації AI конфігурації:', error);
+      throw error;
+    }
   }
 
   /**
-   * Генерація відповіді
+   * Генерація відповіді з покращеною обробкою помилок
    */
   public async generateResponse(
     prompt: string,
@@ -237,42 +323,50 @@ export class AIService extends BaseServiceClass {
       useCache = true,
       cacheTTL = 3600,
       forceRefresh = false,
-      retryAttempts = 3,
-      timeout = 30000,
+      retryAttempts = AI_SERVICE_CONSTANTS.MAX_RETRY_ATTEMPTS,
+      timeout = AI_SERVICE_CONSTANTS.REQUEST_TIMEOUT,
       provider = this.currentProvider,
     } = options;
 
     try {
+      // Валідація промпту
+      const sanitizedPrompt = this.validateAndSanitizePrompt(prompt);
+
       // Перевірка кешу
       if (useCache && !forceRefresh) {
-        const cacheKey = this.hashPrompt(prompt);
+        const cacheKey = this.hashPrompt(sanitizedPrompt);
         // TODO: Реалізувати кешування через CacheService
         // const cached = await this.cacheService.get(cacheKey);
         // if (cached) {
         //   this.stats.cacheHits++;
+        //   logger.debug('✅ Використано кешовану відповідь');
         //   return cached;
         // }
       }
 
-      // Sanitize input
-      const sanitizedPrompt = sanitizeInput(prompt);
-      if (!sanitizedPrompt) {
-        throw new Error('Порожній або невалідний промпт');
-      }
-
-      // Retry logic
+      // Retry logic з fallback
       let lastError: Error | null = null;
+      let usedProvider = provider;
+
       for (let attempt = 0; attempt <= retryAttempts; attempt++) {
         try {
           const startTime = Date.now();
-          
+
           // Спробувати основний провайдер
           let response: AIResponse;
-          if (this.providers[provider]) {
-            response = await this.providers[provider].generate(sanitizedPrompt, options);
+          if (this.providers[usedProvider]) {
+            response = await this.providers[usedProvider].generate(sanitizedPrompt, options);
           } else {
-            // Fallback до Ollama
-            response = await this.providers.ollama.generate(sanitizedPrompt, options);
+            // Fallback до іншого провайдера
+            const fallbackProvider = Object.keys(this.providers).find(p => p !== usedProvider);
+            if (fallbackProvider) {
+              usedProvider = fallbackProvider;
+              this.stats.providerSwitches++;
+              logger.warn(`🔄 Переключення на провайдер ${usedProvider}`);
+              response = await this.providers[usedProvider].generate(sanitizedPrompt, options);
+            } else {
+              throw new Error('Немає доступних провайдерів');
+            }
           }
 
           const duration = Date.now() - startTime;
@@ -285,14 +379,23 @@ export class AIService extends BaseServiceClass {
             // await this.cacheService.set(cacheKey, response, cacheTTL);
           }
 
+          logger.info(`✅ AI відповідь згенерована за ${duration}ms`, {
+            provider: usedProvider,
+            tokens: response.tokens,
+            duration: `${duration}ms`,
+          });
+
           return response;
         } catch (error) {
           lastError = error as Error;
-          
+
           if (attempt < retryAttempts) {
-            const delay = 1000 * Math.pow(2, attempt);
+            const delay = AI_SERVICE_CONSTANTS.RETRY_DELAY * Math.pow(2, attempt);
+            logger.warn(`🔄 Спроба ${attempt + 1} невдала, повтор через ${delay}ms`, {
+              error: lastError.message,
+              provider: usedProvider,
+            });
             await new Promise(resolve => setTimeout(resolve, delay));
-            logger.warn(`Спроба ${attempt + 1} невдала, повтор через ${delay}ms`);
           }
         }
       }
@@ -300,51 +403,126 @@ export class AIService extends BaseServiceClass {
       throw lastError || new Error('Всі спроби генерації невдалі');
     } catch (error) {
       this.updateStats(false, 0);
-      logger.error('❌ Помилка генерації відповіді:', error);
+      logger.error('❌ Помилка генерації відповіді:', {
+        error: error instanceof Error ? error.message : String(error),
+        prompt: prompt.substring(0, 100) + '...',
+        provider,
+      });
       throw error;
     }
   }
 
   /**
-   * Аналіз даних
+   * Валідація та санітизація промпту
+   */
+  private validateAndSanitizePrompt(prompt: string): string {
+    const sanitized = sanitizeInput(prompt);
+
+    if (!sanitized || sanitized.length < AI_SERVICE_CONSTANTS.MIN_PROMPT_LENGTH) {
+      throw new Error('Порожній або занадто короткий промпт');
+    }
+
+    if (sanitized.length > AI_SERVICE_CONSTANTS.MAX_PROMPT_LENGTH) {
+      logger.warn('⚠️ Промпт занадто довгий, обрізаю...');
+      return sanitized.substring(0, AI_SERVICE_CONSTANTS.MAX_PROMPT_LENGTH);
+    }
+
+    return sanitized;
+  }
+
+  /**
+   * Аналіз даних з детальним логуванням
    */
   public async analyzeData(
     data: string,
     analysisType: 'summary' | 'sentiment' | 'keywords' = 'summary'
   ): Promise<AIResponse> {
-    const prompt = this.buildAnalysisPrompt(data, analysisType);
-    return this.generateResponse(prompt, { provider: this.currentProvider });
+    try {
+      logger.info(`📊 Аналіз даних: ${analysisType}`, {
+        dataLength: data.length,
+        analysisType,
+      });
+
+      const prompt = this.buildAnalysisPrompt(data, analysisType);
+      const response = await this.generateResponse(prompt, { provider: this.currentProvider });
+
+      logger.info(`✅ Аналіз даних завершено`, {
+        analysisType,
+        responseLength: response.content.length,
+        duration: `${response.duration}ms`,
+      });
+
+      return response;
+    } catch (error) {
+      logger.error('❌ Помилка аналізу даних:', error);
+      throw error;
+    }
   }
 
   /**
-   * Генерація звіту
+   * Генерація звіту з детальним логуванням
    */
   public async generateReport(
     data: string,
     options: { format?: string; length?: string } = {}
   ): Promise<AIResponse> {
-    const prompt = this.buildReportPrompt(data, options);
-    return this.generateResponse(prompt, { provider: this.currentProvider });
+    try {
+      logger.info('📋 Генерація звіту', {
+        dataLength: data.length,
+        format: options.format || 'text',
+        length: options.length || 'medium',
+      });
+
+      const prompt = this.buildReportPrompt(data, options);
+      const response = await this.generateResponse(prompt, { provider: this.currentProvider });
+
+      logger.info('✅ Звіт згенеровано', {
+        responseLength: response.content.length,
+        duration: `${response.duration}ms`,
+      });
+
+      return response;
+    } catch (error) {
+      logger.error('❌ Помилка генерації звіту:', error);
+      throw error;
+    }
   }
 
   /**
-   * Обробка природномовного запиту
+   * Обробка природномовного запиту з детальним логуванням
    */
   public async processNaturalLanguageQuery(
     userId: string,
     userInput: string,
     context: Record<string, unknown> = {}
   ): Promise<AIResponse> {
-    const conversationContext = this.getConversationContext(userId);
-    const prompt = this.buildConversationPrompt(userInput, conversationContext, context);
-    
-    const response = await this.generateResponse(prompt, { provider: this.currentProvider });
-    
-    // Збереження в контекст
-    this.saveToContext(userId, 'user', userInput);
-    this.saveToContext(userId, 'assistant', response.content);
-    
-    return response;
+    try {
+      logger.info('💬 Обробка природномовного запиту', {
+        userId,
+        inputLength: userInput.length,
+        contextKeys: Object.keys(context),
+      });
+
+      const conversationContext = this.getConversationContext(userId);
+      const prompt = this.buildConversationPrompt(userInput, conversationContext, context);
+
+      const response = await this.generateResponse(prompt, { provider: this.currentProvider });
+
+      // Збереження в контекст
+      this.saveToContext(userId, 'user', userInput);
+      this.saveToContext(userId, 'assistant', response.content);
+
+      logger.info('✅ Природномовний запит оброблено', {
+        userId,
+        responseLength: response.content.length,
+        duration: `${response.duration}ms`,
+      });
+
+      return response;
+    } catch (error) {
+      logger.error('❌ Помилка обробки природномовного запиту:', error);
+      throw error;
+    }
   }
 
   /**
@@ -363,36 +541,59 @@ export class AIService extends BaseServiceClass {
   }
 
   /**
-   * Збереження в контекст
+   * Збереження в контекст з валідацією
    */
   public saveToContext(userId: string, role: 'user' | 'assistant' | 'system', content: string): void {
-    let context = this.conversationMemory.get(userId);
-    
-    if (!context) {
-      context = {
-        messages: [],
-        timestamp: Date.now(),
-        requestCount: 0,
-      };
+    try {
+      let context = this.conversationMemory.get(userId);
+
+      if (!context) {
+        context = {
+          messages: [],
+          timestamp: Date.now(),
+          requestCount: 0,
+        };
+      }
+
+      // Валідація контенту
+      const sanitizedContent = sanitizeInput(content);
+      if (!sanitizedContent) {
+        logger.warn('⚠️ Спроба зберегти порожній контент в контекст');
+        return;
+      }
+
+      context.messages.push({ role, content: sanitizedContent });
+      context.timestamp = Date.now();
+      context.requestCount++;
+
+      // Обмеження розміру контексту
+      if (context.messages.length > AI_SERVICE_CONSTANTS.MAX_CONTEXT_MESSAGES) {
+        context.messages = context.messages.slice(-10);
+        logger.debug('🧹 Контекст обрізано до останніх 10 повідомлень');
+      }
+
+      this.conversationMemory.set(userId, context);
+
+      logger.debug('💾 Контекст збережено', {
+        userId,
+        role,
+        messageCount: context.messages.length,
+      });
+    } catch (error) {
+      logger.error('❌ Помилка збереження контексту:', error);
     }
-
-    context.messages.push({ role, content });
-    context.timestamp = Date.now();
-    context.requestCount++;
-
-    // Обмеження розміру контексту
-    if (context.messages.length > 20) {
-      context.messages = context.messages.slice(-10);
-    }
-
-    this.conversationMemory.set(userId, context);
   }
 
   /**
    * Очищення контексту
    */
   public clearContext(userId: string): void {
-    this.conversationMemory.delete(userId);
+    try {
+      this.conversationMemory.delete(userId);
+      logger.info('🧹 Контекст очищено', { userId });
+    } catch (error) {
+      logger.error('❌ Помилка очищення контексту:', error);
+    }
   }
 
   /**
@@ -414,7 +615,7 @@ export class AIService extends BaseServiceClass {
   private buildReportPrompt(data: string, options: { format?: string; length?: string }): string {
     const format = options.format || 'text';
     const length = options.length || 'medium';
-    
+
     return `Створи ${length} звіт у форматі ${format} на основі наступних даних:\n\n${data}`;
   }
 
@@ -447,7 +648,7 @@ export class AIService extends BaseServiceClass {
     }
 
     prompt += `Користувач: ${userInput}\nАсистент:`;
-    
+
     return prompt;
   }
 
@@ -457,7 +658,7 @@ export class AIService extends BaseServiceClass {
   private updateStats(success: boolean, responseTime: number): void {
     this.stats.totalRequests++;
     this.stats.totalResponseTime += responseTime;
-    
+
     if (success) {
       this.stats.successfulRequests++;
     } else {
@@ -473,27 +674,55 @@ export class AIService extends BaseServiceClass {
   private startMemoryCleanup(): void {
     this.memoryCleanupInterval = setInterval(() => {
       this.cleanupMemory();
-    }, 300000); // Кожні 5 хвилин
+    }, AI_SERVICE_CONSTANTS.MEMORY_CLEANUP_INTERVAL);
+
+    logger.info('🧹 Запущено очищення пам'яті AI сервісу');
   }
 
   /**
-   * Очищення пам'яті
+   * Запуск health check
+   */
+  private startHealthCheck(): void {
+    this.healthCheckInterval = setInterval(async () => {
+      try {
+        const health = await this.onHealthCheck();
+        if (!health.healthy) {
+          logger.warn('⚠️ AI сервіс health check виявив проблеми:', health);
+        }
+      } catch (error) {
+        logger.error('❌ Помилка AI сервіс health check:', error);
+      }
+    }, 60000); // Кожну хвилину
+
+    logger.info('🏥 Запущено health check AI сервісу');
+  }
+
+  /**
+   * Очищення пам'яті з детальним логуванням
    */
   private cleanupMemory(): void {
-    const now = Date.now();
-    const maxAge = 3600000; // 1 година
+    try {
+      const now = Date.now();
+      let cleanedCount = 0;
 
-    for (const [userId, context] of this.conversationMemory.entries()) {
-      if (now - context.timestamp > maxAge) {
-        this.conversationMemory.delete(userId);
+      for (const [userId, context] of this.conversationMemory.entries()) {
+        if (now - context.timestamp > AI_SERVICE_CONSTANTS.MAX_CONTEXT_AGE) {
+          this.conversationMemory.delete(userId);
+          cleanedCount++;
+        }
       }
-    }
 
-    logger.debug(`🧹 Очищено ${this.conversationMemory.size} контекстів розмов`);
+      if (cleanedCount > 0) {
+        this.stats.contextCleanups++;
+        logger.info(`🧹 Очищено ${cleanedCount} застарілих контекстів розмов`);
+      }
+    } catch (error) {
+      logger.error('❌ Помилка очищення пам'яті AI сервісу: ', error);
+    }
   }
 
   /**
-   * Health check
+   * Health check з детальним логуванням
    */
   protected async onHealthCheck(): Promise<HealthStatus> {
     try {
@@ -505,6 +734,16 @@ export class AIService extends BaseServiceClass {
         };
       }
 
+      // Перевірка здоров'я активного провайдера
+      const isHealthy = await this.providers[this.currentProvider].isHealthy();
+      if (!isHealthy) {
+        return {
+          healthy: false,
+          service: this.name,
+          error: 'Активний провайдер нездоровий',
+        };
+      }
+
       // Тестовий запит
       try {
         await this.generateResponse('Тест', { useCache: false });
@@ -512,7 +751,7 @@ export class AIService extends BaseServiceClass {
         return {
           healthy: false,
           service: this.name,
-          error: `Тестовий запит невдалий: ${error}`,
+          error: `Тестовий запит невдалий: ${error instanceof Error ? error.message : String(error)}`,
         };
       }
 
@@ -524,28 +763,40 @@ export class AIService extends BaseServiceClass {
           availableProviders: Object.keys(this.providers),
           conversationContexts: this.conversationMemory.size,
           totalRequests: this.stats.totalRequests,
-          successRate: this.stats.successfulRequests / this.stats.totalRequests,
+          successRate: this.stats.totalRequests > 0
+            ? (this.stats.successfulRequests / this.stats.totalRequests) * 100
+            : 0,
+          averageResponseTime: this.stats.averageResponseTime,
         },
       };
     } catch (error) {
       return {
         healthy: false,
         service: this.name,
-        error: `Health check failed: ${error}`,
+        error: `Health check failed: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }
 
   /**
-   * Завершення роботи
+   * Завершення роботи з детальним логуванням
    */
   protected async onShutdown(): Promise<void> {
     try {
+      logger.info('🛑 Завершення роботи AI сервісу...');
+
+      // Зупинка інтервалів
       if (this.memoryCleanupInterval) {
         clearInterval(this.memoryCleanupInterval);
         this.memoryCleanupInterval = null;
       }
 
+      if (this.healthCheckInterval) {
+        clearInterval(this.healthCheckInterval);
+        this.healthCheckInterval = null;
+      }
+
+      // Очищення пам'яті
       this.conversationMemory.clear();
       this.providers = {};
 
@@ -557,10 +808,15 @@ export class AIService extends BaseServiceClass {
   }
 
   /**
-   * Отримання статистики
+   * Отримання статистики з детальним логуванням
    */
   protected onGetStats(): Partial<AIServiceStats> {
-    return this.stats;
+    return {
+      ...this.stats,
+      successRate: this.stats.totalRequests > 0
+        ? (this.stats.successfulRequests / this.stats.totalRequests) * 100
+        : 0,
+    };
   }
 
   /**

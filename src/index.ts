@@ -19,7 +19,46 @@ const APP_CONFIG = {
   STARTUP_TIMEOUT: 30000, // 30 секунд
   SHUTDOWN_TIMEOUT: 10000, // 10 секунд
   RESTART_DELAY: 5000, // 5 секунд
+  MAX_MEMORY_USAGE: 1024 * 1024 * 1024, // 1GB
+  HEALTH_CHECK_INTERVAL: 30000, // 30 секунд
 } as const;
+
+// Глобальні обробники помилок
+process.on('uncaughtException', (error) => {
+  logger.error('💥 Необроблена помилка:', {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString(),
+    memory: process.memoryUsage(),
+    uptime: process.uptime(),
+  });
+  
+  // Логування в файл для аналізу
+  logger.error('Критична помилка додатку', {
+    error: error.message,
+    stack: error.stack,
+    type: 'uncaught_exception',
+  });
+  
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('💥 Необроблений rejection:', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    promise: promise.toString(),
+    timestamp: new Date().toISOString(),
+    memory: process.memoryUsage(),
+    uptime: process.uptime(),
+  });
+  
+  // Логування в файл для аналізу
+  logger.error('Критичний rejection додатку', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    type: 'unhandled_rejection',
+  });
+});
 
 // Завантаження змінних середовища
 try {
@@ -44,6 +83,8 @@ class Application {
   private startupTime: number = 0;
   private restartCount: number = 0;
   private readonly maxRestarts: number = 5;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
+  private memoryCheckInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     try {
@@ -79,12 +120,18 @@ class Application {
       // Валідація конфігурації
       await this.validateConfiguration();
       
+      // Перевірка системних ресурсів
+      await this.checkSystemResources();
+      
       // Створення та ініціалізація бота
       logger.info('🤖 Створення екземпляру бота...');
       this.bot = new Bot(this.config);
       
       logger.info('⚙️ Ініціалізація бота...');
       await this.bot.initialize();
+      
+      // Запуск моніторингу
+      this.startMonitoring();
       
       const startupDuration = Date.now() - this.startupTime;
       logger.info(`✅ Додаток успішно запущено за ${startupDuration}ms`);
@@ -125,6 +172,9 @@ class Application {
 
     try {
       logger.info('🛑 Початок зупинки додатку...');
+      
+      // Зупинка моніторингу
+      this.stopMonitoring();
       
       if (this.bot) {
         logger.info('🤖 Зупинка бота...');
@@ -177,6 +227,8 @@ class Application {
         version: APP_CONFIG.VERSION,
         restartCount: this.restartCount,
         startupTime: this.startupTime,
+        isStarting: this.isStarting,
+        isShuttingDown: this.isShuttingDown,
       };
     } catch (error) {
       logger.error('❌ Помилка отримання статистики:', error);
@@ -257,6 +309,95 @@ class Application {
   }
 
   /**
+   * Перевірка системних ресурсів
+   */
+  private async checkSystemResources(): Promise<void> {
+    try {
+      logger.info('🔍 Перевірка системних ресурсів...');
+      
+      const memoryUsage = process.memoryUsage();
+      const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
+      
+      if (heapUsedMB > 500) {
+        logger.warn(`⚠️ Високе використання пам'яті: ${Math.round(heapUsedMB)}MB`);
+      }
+      
+      // Перевірка доступності файлової системи
+      const testPath = join(process.cwd(), 'test_write');
+      try {
+        require('fs').writeFileSync(testPath, 'test');
+        require('fs').unlinkSync(testPath);
+      } catch (fsError) {
+        logger.warn('⚠️ Проблеми з файловою системою:', fsError);
+      }
+      
+      logger.info('✅ Системні ресурси перевірено');
+    } catch (error) {
+      logger.error('❌ Помилка перевірки системних ресурсів:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Запуск моніторингу
+   */
+  private startMonitoring(): void {
+    // Health check
+    this.healthCheckInterval = setInterval(async () => {
+      try {
+        if (this.bot) {
+          const health = await this.bot.onHealthCheck();
+          if (!health.healthy) {
+            logger.warn('⚠️ Health check виявив проблеми:', health);
+          }
+        }
+      } catch (error) {
+        logger.error('❌ Помилка health check:', error);
+      }
+    }, APP_CONFIG.HEALTH_CHECK_INTERVAL);
+
+    // Memory monitoring
+    this.memoryCheckInterval = setInterval(() => {
+      try {
+        const memoryUsage = process.memoryUsage();
+        const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
+        
+        if (heapUsedMB > 800) {
+          logger.warn(`⚠️ Критичне використання пам'яті: ${Math.round(heapUsedMB)}MB`);
+        }
+        
+        if (memoryUsage.heapUsed > APP_CONFIG.MAX_MEMORY_USAGE) {
+          logger.error('💥 Перевищено ліміт пам'яті, перезапуск...');
+          this.restart().catch(error => {
+            logger.error('❌ Помилка перезапуску через перевищення пам'яті:', error);
+          });
+        }
+      } catch (error) {
+        logger.error('❌ Помилка моніторингу пам'яті:', error);
+      }
+    }, 60000); // Кожну хвилину
+
+    logger.info('📊 Моніторинг запущено');
+  }
+
+  /**
+   * Зупинка моніторингу
+   */
+  private stopMonitoring(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+    
+    if (this.memoryCheckInterval) {
+      clearInterval(this.memoryCheckInterval);
+      this.memoryCheckInterval = null;
+    }
+    
+    logger.info('📊 Моніторинг зупинено');
+  }
+
+  /**
    * Отримання вкладених значень об'єкта
    */
   private getNestedValue(obj: any, path: string): any {
@@ -269,6 +410,8 @@ class Application {
   private async cleanupOnError(): Promise<void> {
     try {
       logger.info('🧹 Очищення ресурсів при помилці...');
+      
+      this.stopMonitoring();
       
       if (this.bot) {
         try {
@@ -332,49 +475,7 @@ class Application {
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGQUIT', () => shutdown('SIGQUIT'));
 
-    // Обробка необроблених помилок
-    process.on('uncaughtException', (error) => {
-      logger.error('💥 Необроблена помилка:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString(),
-      });
-      
-      this.handleCriticalError(error);
-    });
-
-    process.on('unhandledRejection', (reason, promise) => {
-      logger.error('💥 Необроблений rejection:', {
-        reason: reason instanceof Error ? reason.message : String(reason),
-        promise: promise.toString(),
-        timestamp: new Date().toISOString(),
-      });
-      
-      this.handleCriticalError(reason instanceof Error ? reason : new Error(String(reason)));
-    });
-
     logger.info('🛡️ Graceful shutdown налаштовано');
-  }
-
-  /**
-   * Обробка критичних помилок
-   */
-  private async handleCriticalError(error: Error): Promise<void> {
-    try {
-      logger.error('🚨 Обробка критичної помилки...');
-      
-      // Спроба graceful shutdown
-      await this.stop();
-    } catch (shutdownError) {
-      logger.error('❌ Помилка при обробці критичної помилки:', shutdownError);
-    } finally {
-      // Примусова зупинка через 5 секунд
-      setTimeout(() => {
-        logger.error('⏰ Примусова зупинка через критичну помилку');
-        process.exit(1);
-      }, 5000);
-    }
   }
 }
 
