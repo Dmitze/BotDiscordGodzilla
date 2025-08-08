@@ -1,4 +1,5 @@
 // Основні типи для Discord AI Assistant Bot
+// Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
 
 // Конфігурація
 export interface BotConfig {
@@ -7,6 +8,9 @@ export interface BotConfig {
   ai: AIConfig;
   redis: RedisConfig;
   metrics: MetricsConfig;
+  security: SecurityConfig;
+  performance: PerformanceConfig;
+  logging: LoggingConfig;
 }
 
 export interface DiscordConfig {
@@ -66,6 +70,28 @@ export interface MetricsConfig {
   path: string;
 }
 
+export interface SecurityConfig {
+  rateLimitWindow: number;
+  rateLimitMax: number;
+  adminRole: string;
+  botUserRole: string;
+}
+
+export interface PerformanceConfig {
+  cacheTTL: number;
+  maxSearchResults: number;
+  maxAnalysisRows: number;
+  requestTimeout: number;
+  maxRetries: number;
+}
+
+export interface LoggingConfig {
+  level: string;
+  maxFiles: number;
+  maxSize: string;
+  directory: string;
+}
+
 // Сервіси
 export interface BaseService {
   name: string;
@@ -88,6 +114,9 @@ export interface ServiceStats {
   uptime: number;
   requests: number;
   errors: number;
+  isInitialized?: boolean;
+  isShuttingDown?: boolean;
+  retryCount?: number;
   [key: string]: unknown;
 }
 
@@ -306,14 +335,88 @@ export interface ClusterStats {
   restartCounts: Record<string, number>;
 }
 
-// Утиліти
-export interface Logger {
-  info(message: string, ...args: unknown[]): void;
-  warn(message: string, ...args: unknown[]): void;
-  error(message: string, ...args: unknown[]): void;
-  debug(message: string, ...args: unknown[]): void;
+// Логування типи
+export interface LogMeta {
+  [key: string]: any;
+  timestamp?: string;
+  level?: string;
+  service?: string;
+  userId?: string;
+  guildId?: string;
+  channelId?: string;
+  requestId?: string;
+  correlationId?: string;
+  type?: 'command' | 'api_request' | 'performance' | 'security' | 'system';
+  duration?: string;
+  performance?: 'fast' | 'medium' | 'slow';
+  severity?: 'low' | 'medium' | 'high' | 'critical';
+  component?: string;
+  category?: string;
 }
 
+export interface LoggerStats {
+  totalLogs: number;
+  errors: number;
+  commands: number;
+  apiRequests: number;
+  performance: number;
+  security: number;
+  system: number;
+  debug: number;
+  warnings: number;
+  lastLogTime: Date;
+  averageLogSize: number;
+  logBufferSize: number;
+}
+
+export interface LogEntry {
+  timestamp: Date;
+  level: string;
+  message: string;
+  meta: LogMeta;
+  size: number;
+}
+
+export interface Logger {
+  info(message: string, meta?: LogMeta): void;
+  warn(message: string, meta?: LogMeta): void;
+  error(message: string, meta?: LogMeta): void;
+  debug(message: string, meta?: LogMeta): void;
+  command(command: string, user: string, duration: number, success?: boolean, meta?: LogMeta): void;
+  commandError(command: string, user: string, error: Error, duration: number, meta?: LogMeta): void;
+  apiRequest(service: string, endpoint: string, duration: number, success?: boolean, meta?: LogMeta): void;
+  apiError(service: string, endpoint: string, error: Error, duration: number, meta?: LogMeta): void;
+  security(event: string, user: string, details?: LogMeta): void;
+  performance(operation: string, duration: number, details?: LogMeta): void;
+  system(event: string, details?: LogMeta): void;
+  getStats(): LoggerStats;
+  getLogBuffer(): LogEntry[];
+  cleanup(): Promise<void>;
+  isHealthy(): boolean;
+}
+
+// Безпека типи
+export interface SecurityValidationResult {
+  isValid: boolean;
+  sanitizedValue: string;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface RateLimitInfo {
+  count: number;
+  resetTime: number;
+}
+
+export interface SecurityEvent {
+  type: 'rate_limit' | 'invalid_input' | 'unauthorized_access' | 'suspicious_activity';
+  userId: string;
+  details: Record<string, unknown>;
+  timestamp: Date;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
+
+// Утиліти
 export interface PaginationOptions {
   itemsPerPage?: number;
   maxPages?: number;
@@ -340,6 +443,9 @@ export interface CommandStats extends ServiceStats {
   failedExecutions: number;
   averageExecutionTime: number;
   totalExecutionTime: number;
+  cacheHits: number;
+  cacheMisses: number;
+  retries: number;
 }
 
 export interface CommandContext {
@@ -354,11 +460,27 @@ export interface CommandExecuteOptions {
   interaction: any;
   context?: CommandContext;
   options?: CommandOptions;
+  startTime?: number;
+  retryCount?: number;
 }
 
 export interface CommandAutocompleteOptions {
   interaction: any;
   context?: CommandContext;
+  query?: string;
+}
+
+export interface CommandComponentOptions {
+  interaction: any;
+  context?: CommandContext;
+  componentType?: 'button' | 'select' | 'modal';
+}
+
+export interface CommandValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  sanitizedOptions?: any;
 }
 
 export interface SearchParams {
@@ -369,6 +491,37 @@ export interface SearchParams {
   unit?: string;
   priority: string;
   limit: number;
+}
+
+// Моніторинг та метрики
+export interface MonitoringConfig {
+  healthCheckInterval: number;
+  memoryThreshold: number;
+  cpuThreshold: number;
+  maxRestarts: number;
+  restartDelay: number;
+}
+
+export interface SystemMetrics {
+  memory: {
+    rss: number;
+    heapUsed: number;
+    heapTotal: number;
+    external: number;
+  };
+  cpu: {
+    usage: number;
+    load: number;
+  };
+  uptime: number;
+  processId: number;
+}
+
+export interface PerformanceMetrics {
+  operation: string;
+  duration: number;
+  category: string;
+  metadata?: Record<string, unknown>;
 }
 
 // Всі типи експортовані безпосередньо з цього файлу 

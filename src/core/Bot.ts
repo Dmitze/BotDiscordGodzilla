@@ -21,6 +21,9 @@ const BOT_CONSTANTS = {
   MAX_RECONNECT_ATTEMPTS: 5,
   RECONNECT_DELAY: 5000, // 5 секунд
   HEALTH_CHECK_INTERVAL: 60000, // 1 хвилина
+  MAX_MEMORY_USAGE: 512 * 1024 * 1024, // 512MB
+  COMMAND_RATE_LIMIT: 10, // команд за хвилину
+  INTERACTION_RATE_LIMIT: 50, // interactions за хвилину
 } as const;
 
 interface BotStats {
@@ -31,6 +34,13 @@ interface BotStats {
   reconnects: number;
   lastActivity: Date;
   memory: NodeJS.MemoryUsage;
+  rateLimitHits: number;
+  slowCommands: number;
+}
+
+interface RateLimitInfo {
+  count: number;
+  resetTime: number;
 }
 
 export class Bot extends BaseServiceClass {
@@ -48,6 +58,8 @@ export class Bot extends BaseServiceClass {
   private stats: BotStats;
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private lastInteractionTime: Date = new Date();
+  private rateLimitMap = new Map<string, RateLimitInfo>();
+  private slowCommandThreshold = 3000; // 3 секунди
 
   constructor(config: BotConfig) {
     super('DiscordBot', config);
@@ -61,6 +73,8 @@ export class Bot extends BaseServiceClass {
       reconnects: 0,
       lastActivity: new Date(),
       memory: process.memoryUsage(),
+      rateLimitHits: 0,
+      slowCommands: 0,
     };
 
     // Створення Discord клієнта з розширеними intents
@@ -75,6 +89,11 @@ export class Bot extends BaseServiceClass {
       ],
       failIfNotExists: false,
       retryLimit: 3,
+      ws: {
+        properties: {
+          browser: 'Discord AI Assistant Bot',
+        },
+      },
     });
 
     // Ініціалізація менеджерів та сервісів
@@ -98,6 +117,9 @@ export class Bot extends BaseServiceClass {
     
     try {
       logger.info('🚀 Початок ініціалізації Discord бота...');
+      
+      // Перевірка системних ресурсів
+      await this.checkSystemResources();
       
       // Ініціалізація обробника помилок
       logger.info('🛡️ Ініціалізація обробника помилок...');
@@ -224,6 +246,8 @@ export class Bot extends BaseServiceClass {
           uptime: this.getStats().uptime,
           memory: process.memoryUsage(),
           lastActivity: this.lastInteractionTime,
+          rateLimitHits: this.stats.rateLimitHits,
+          slowCommands: this.stats.slowCommands,
         },
       };
     } catch (error) {
@@ -243,6 +267,38 @@ export class Bot extends BaseServiceClass {
     this.stats.uptime = Date.now() - this.startTime;
     this.stats.memory = process.memoryUsage();
     return { ...this.stats };
+  }
+
+  /**
+   * Перевірка системних ресурсів
+   */
+  private async checkSystemResources(): Promise<void> {
+    try {
+      logger.info('🔍 Перевірка системних ресурсів бота...');
+      
+      const memoryUsage = process.memoryUsage();
+      const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
+      
+      if (heapUsedMB > 200) {
+        logger.warn(`⚠️ Високе використання пам'яті бота: ${Math.round(heapUsedMB)}MB`);
+      }
+      
+      // Перевірка доступності мережі
+      try {
+        const testUrl = 'https://discord.com/api/v10/gateway';
+        const response = await fetch(testUrl, { method: 'HEAD' });
+        if (!response.ok) {
+          logger.warn('⚠️ Проблеми з підключенням до Discord API');
+        }
+      } catch (networkError) {
+        logger.warn('⚠️ Проблеми з мережевим підключенням:', networkError);
+      }
+      
+      logger.info('✅ Системні ресурси бота перевірено');
+    } catch (error) {
+      logger.error('❌ Помилка перевірки системних ресурсів бота:', error);
+      throw error;
+    }
   }
 
   /**
@@ -304,6 +360,13 @@ export class Bot extends BaseServiceClass {
       this.lastInteractionTime = new Date();
       
       try {
+        // Перевірка rate limit
+        if (this.isRateLimited(interaction.user?.id || 'unknown')) {
+          logger.warn(`⚠️ Rate limit для користувача ${interaction.user?.id}`);
+          await this.handleRateLimit(interaction);
+          return;
+        }
+        
         if (interaction.isCommand()) {
           await this.handleCommand(interaction as CommandInteraction);
         } else if (interaction.isButton()) {
@@ -389,6 +452,13 @@ export class Bot extends BaseServiceClass {
       this.stats.commands++;
       
       const duration = Date.now() - startTime;
+      
+      // Логування повільних команд
+      if (duration > this.slowCommandThreshold) {
+        this.stats.slowCommands++;
+        logger.warn(`🐌 Повільна команда ${commandName}: ${duration}ms`);
+      }
+      
       logger.info(`✅ Команда ${commandName} виконана за ${duration}ms`);
       
     } catch (error) {
@@ -435,6 +505,48 @@ export class Bot extends BaseServiceClass {
       }
     } catch (replyError) {
       logger.error('❌ Помилка відповіді на помилку interaction:', replyError);
+    }
+  }
+
+  /**
+   * Перевірка rate limit
+   */
+  private isRateLimited(userId: string): boolean {
+    const now = Date.now();
+    const userLimit = this.rateLimitMap.get(userId);
+    
+    if (!userLimit) {
+      this.rateLimitMap.set(userId, { count: 1, resetTime: now + 60000 });
+      return false;
+    }
+    
+    if (now > userLimit.resetTime) {
+      this.rateLimitMap.set(userId, { count: 1, resetTime: now + 60000 });
+      return false;
+    }
+    
+    if (userLimit.count >= BOT_CONSTANTS.COMMAND_RATE_LIMIT) {
+      this.stats.rateLimitHits++;
+      return true;
+    }
+    
+    userLimit.count++;
+    return false;
+  }
+
+  /**
+   * Обробка rate limit
+   */
+  private async handleRateLimit(interaction: Interaction): Promise<void> {
+    try {
+      if (interaction.isRepliable()) {
+        await interaction.reply({
+          content: '⚠️ Забагато запитів. Спробуйте пізніше.',
+          ephemeral: true
+        });
+      }
+    } catch (error) {
+      logger.error('❌ Помилка обробки rate limit:', error);
     }
   }
 
@@ -557,6 +669,8 @@ export class Bot extends BaseServiceClass {
           rss: `${Math.round(stats.memory.rss / 1024 / 1024)}MB`,
           heapUsed: `${Math.round(stats.memory.heapUsed / 1024 / 1024)}MB`,
         },
+        rateLimitHits: stats.rateLimitHits,
+        slowCommands: stats.slowCommands,
       });
     } catch (error) {
       logger.error('❌ Помилка логування статистики запуску:', error);

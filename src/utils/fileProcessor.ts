@@ -1,553 +1,627 @@
 /**
- * Модуль для роботи з Google Drive та різними форматами файлів
- * Включає читання PDF, Word, Google Docs та створення звітів
- * TypeScript версія
+ * Розширена система обробки файлів для Discord AI Assistant Bot
+ * Безпечна робота з файлами та документами
+ * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
+import type { LogMeta } from '@/types';
+import { existsSync, mkdirSync, statSync } from 'fs';
+import { access, constants, readFile, unlink, writeFile } from 'fs/promises';
+import { basename, dirname, extname, join } from 'path';
+import { handleError } from './errorHandler';
 import logger from './logger';
-import fs from 'fs/promises';
-import path from 'path';
-import { google } from 'googleapis';
+import { validateInput } from './security';
 
-// Конфігурація
-const FILE_CONFIG = {
-  SUPPORTED_FORMATS: ['pdf', 'docx', 'doc', 'txt', 'gdoc'] as const,
-  MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
-  TEMP_DIR: './data/tmp',
-  DOWNLOAD_TIMEOUT: 30000, // 30 секунд
-  MAX_RETRIES: 3,
-  RETRY_DELAY: 1000, // 1 секунда
-};
+// Константи для обробки файлів
+const FILE_PROCESSOR_CONSTANTS = {
+  MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
+  MAX_FILENAME_LENGTH: 255,
+  ALLOWED_EXTENSIONS: ['.txt', '.md', '.json', '.csv', '.xlsx', '.xls', '.pdf', '.doc', '.docx'],
+  ALLOWED_MIME_TYPES: [
+    'text/plain',
+    'text/markdown',
+    'application/json',
+    'text/csv',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ],
+  TEMP_DIR: 'data/tmp',
+  BACKUP_DIR: 'data/backup',
+  CLEANUP_INTERVAL: 24 * 60 * 60 * 1000, // 24 години
+  MAX_TEMP_AGE: 7 * 24 * 60 * 60 * 1000, // 7 днів
+  CHUNK_SIZE: 1024 * 1024, // 1MB
+  MAX_CONCURRENT_OPERATIONS: 5,
+} as const;
 
-interface FileStats {
-  filesProcessed: number;
-  filesDownloaded: number;
-  filesAnalyzed: number;
-  errors: number;
-}
-
-interface FileMetadata {
-  id: string;
+export interface FileInfo {
   name: string;
+  path: string;
+  size: number;
+  extension: string;
   mimeType: string;
-  size: string;
-  modifiedTime: string;
-  webViewLink: string;
-  createdTime?: string;
-  description?: string;
+  lastModified: Date;
+  isReadable: boolean;
+  isWritable: boolean;
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
 }
 
-interface FileContent {
-  metadata: FileMetadata;
-  content: string;
-  fileType: string;
+export interface FileOperationResult {
+  success: boolean;
+  fileInfo?: FileInfo;
+  content?: string | Buffer;
+  error?: string;
+  warnings: string[];
+  duration: number;
+  bytesProcessed: number;
 }
 
-interface ReportData {
-  title?: string;
-  summary?: string;
-  data?: any;
-  conclusions?: string;
+export interface FileProcessorStats {
+  totalOperations: number;
+  successfulOperations: number;
+  failedOperations: number;
+  bytesProcessed: number;
+  averageOperationTime: number;
+  totalOperationTime: number;
+  filesProcessed: number;
+  cleanupOperations: number;
+  lastOperation?: {
+    type: string;
+    filename: string;
+    duration: number;
+    success: boolean;
+  };
 }
 
-/**
- * Клас для роботи з файлами
- */
-class FileProcessor {
-  private drive: any;
-  private docs: any;
-  private stats: FileStats;
+export class FileProcessor {
+  private static instance: FileProcessor | null = null;
+  private stats: FileProcessorStats;
+  private activeOperations = new Set<string>();
+  private cleanupInterval: NodeJS.Timeout | null = null;
+  private isInitialized = false;
 
   constructor() {
-    this.drive = null;
-    this.docs = null;
+    if (FileProcessor.instance) {
+      return FileProcessor.instance;
+    }
+    FileProcessor.instance = this;
+
     this.stats = {
+      totalOperations: 0,
+      successfulOperations: 0,
+      failedOperations: 0,
+      bytesProcessed: 0,
+      averageOperationTime: 0,
+      totalOperationTime: 0,
       filesProcessed: 0,
-      filesDownloaded: 0,
-      filesAnalyzed: 0,
-      errors: 0,
+      cleanupOperations: 0,
     };
-    this.initializeGoogleAPIs();
+
+    this.initialize();
   }
 
   /**
-   * Ініціалізація Google APIs
+   * Ініціалізація обробника файлів
    */
-  private async initializeGoogleAPIs(): Promise<void> {
+  private initialize(): void {
     try {
-      if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        logger.warn('Google Application Credentials not found');
-        return;
-      }
+      logger.info('📁 Ініціалізація FileProcessor...');
 
-      const auth = new google.auth.GoogleAuth({
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-        scopes: [
-          'https://www.googleapis.com/auth/drive.readonly',
-          'https://www.googleapis.com/auth/documents.readonly',
-        ],
-      });
+      // Створення необхідних директорій
+      this.ensureDirectories();
 
-      this.drive = google.drive({ version: 'v3', auth });
-      this.docs = google.docs({ version: 'v1', auth });
+      // Запуск періодичного очищення
+      this.startCleanupInterval();
 
-      logger.info('Google APIs initialized successfully');
+      this.isInitialized = true;
+      logger.info('✅ FileProcessor успішно ініціалізовано');
     } catch (error) {
-      logger.error('Failed to initialize Google APIs:', error);
+      handleError(error, {
+        serviceName: 'FileProcessor',
+        additionalContext: { operation: 'initialize' },
+      });
+      throw new Error('Помилка ініціалізації FileProcessor');
     }
   }
 
   /**
-   * Пошук файлів у Google Drive
+   * Створення необхідних директорій
    */
-  async searchFiles(query: string, folderId?: string): Promise<FileMetadata[]> {
+  private ensureDirectories(): void {
     try {
-      if (!this.drive) {
-        throw new Error('Google Drive API not initialized');
-      }
+      const directories = [
+        FILE_PROCESSOR_CONSTANTS.TEMP_DIR,
+        FILE_PROCESSOR_CONSTANTS.BACKUP_DIR,
+      ];
 
-      let searchQuery = `name contains '${this.sanitizeQuery(query)}'`;
-
-      if (folderId) {
-        searchQuery += ` and '${folderId}' in parents`;
-      }
-
-      const response = await this.drive.files.list({
-        q: searchQuery,
-        fields: 'files(id,name,mimeType,size,modifiedTime,webViewLink)',
-        pageSize: 20,
-      });
-
-      const files = response.data.files || [];
-      this.stats.filesProcessed += files.length;
-
-      logger.info(`Found ${files.length} files for query: ${query}`);
-      return files;
-    } catch (error) {
-      this.stats.errors++;
-      logger.error('File search error:', error);
-      throw new Error('Помилка пошуку файлів');
-    }
-  }
-
-  /**
-   * Отримання метаданих файлу
-   */
-  async getFileMetadata(fileId: string): Promise<FileMetadata> {
-    try {
-      if (!this.drive) {
-        throw new Error('Google Drive API not initialized');
-      }
-
-      const response = await this.drive.files.get({
-        fileId,
-        fields: 'id,name,mimeType,size,modifiedTime,createdTime,webViewLink,description',
-      });
-
-      return response.data;
-    } catch (error) {
-      this.stats.errors++;
-      logger.error('File metadata error:', error);
-      throw new Error('Помилка отримання метаданих файлу');
-    }
-  }
-
-  /**
-   * Завантаження файлу
-   */
-  async downloadFile(fileId: string, fileName: string): Promise<string> {
-    try {
-      if (!this.drive) {
-        throw new Error('Google Drive API not initialized');
-      }
-
-      await this.ensureTempDir();
-
-      const filePath = path.join(FILE_CONFIG.TEMP_DIR, fileName);
-
-      const response = await this.drive.files.get(
-        {
-          fileId,
-          alt: 'media',
-        },
-        {
-          responseType: 'stream',
+      for (const dir of directories) {
+        if (!existsSync(dir)) {
+          mkdirSync(dir, { recursive: true });
+          logger.debug(`📁 Створено директорію: ${dir}`);
         }
-      );
-
-      const writer = require('fs').createWriteStream(filePath);
-      response.data.pipe(writer);
-
-      return new Promise((resolve, reject) => {
-        writer.on('finish', () => {
-          this.stats.filesDownloaded++;
-          logger.info(`File downloaded: ${fileName}`);
-          resolve(filePath);
-        });
-        writer.on('error', reject);
-      });
+      }
     } catch (error) {
-      this.stats.errors++;
-      logger.error('File download error:', error);
-      throw new Error('Помилка завантаження файлу');
+      handleError(error, {
+        serviceName: 'FileProcessor',
+        additionalContext: { operation: 'ensureDirectories' },
+      });
     }
   }
 
   /**
-   * Читання Google Doc
+   * Запуск періодичного очищення
    */
-  async readGoogleDoc(documentId: string): Promise<string> {
+  private startCleanupInterval(): void {
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupTempFiles();
+    }, FILE_PROCESSOR_CONSTANTS.CLEANUP_INTERVAL);
+
+    logger.info('⏰ Періодичне очищення файлів запущено');
+  }
+
+  /**
+   * Безпечне читання файлу
+   */
+  public async readFile(filePath: string): Promise<FileOperationResult> {
+    const operationId = this.generateOperationId('read', filePath);
+    const startTime = performance.now();
+
     try {
-      if (!this.docs) {
-        throw new Error('Google Docs API not initialized');
+      // Перевірка обмежень
+      if (this.activeOperations.size >= FILE_PROCESSOR_CONSTANTS.MAX_CONCURRENT_OPERATIONS) {
+        throw new Error('Досягнуто ліміт одночасних операцій');
       }
 
-      const response = await this.docs.documents.get({
-        documentId,
-      });
+      this.activeOperations.add(operationId);
 
-      return this.extractTextFromGoogleDoc(response.data);
+      logger.debug('📖 Початок читання файлу...', {
+        filePath,
+        operationId,
+      } as LogMeta);
+
+      // Валідація файлу
+      const fileInfo = await this.validateFile(filePath);
+      if (!fileInfo.isValid) {
+        throw new Error(`Файл не валідний: ${fileInfo.errors.join(', ')}`);
+      }
+
+      // Читання файлу
+      const content = await this.readFileContent(filePath, fileInfo.size);
+
+      const duration = performance.now() - startTime;
+      const result: FileOperationResult = {
+        success: true,
+        fileInfo,
+        content,
+        warnings: fileInfo.warnings,
+        duration,
+        bytesProcessed: fileInfo.size,
+      };
+
+      this.updateStats(true, duration, fileInfo.size);
+      this.stats.filesProcessed++;
+
+      logger.info('✅ Файл успішно прочитано', {
+        filePath,
+        size: fileInfo.size,
+        duration: `${duration.toFixed(2)}ms`,
+        operationId,
+      } as LogMeta);
+
+      return result;
     } catch (error) {
-      this.stats.errors++;
-      logger.error('Google Doc reading error:', error);
-      throw new Error('Помилка читання Google Doc');
+      const duration = performance.now() - startTime;
+      this.updateStats(false, duration, 0);
+
+      const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
+
+      logger.error('❌ Помилка читання файлу', {
+        filePath,
+        error: errorMessage,
+        duration: `${duration.toFixed(2)}ms`,
+        operationId,
+      } as LogMeta);
+
+      return {
+        success: false,
+        error: errorMessage,
+        warnings: [],
+        duration,
+        bytesProcessed: 0,
+      };
+    } finally {
+      this.activeOperations.delete(operationId);
     }
   }
 
   /**
-   * Витяг тексту з Google Doc
+   * Безпечне записування файлу
    */
-  private extractTextFromGoogleDoc(document: any): string {
-    try {
-      let text = '';
+  public async writeFile(
+    filePath: string,
+    content: string | Buffer,
+    options: { backup?: boolean; validate?: boolean } = {}
+  ): Promise<FileOperationResult> {
+    const operationId = this.generateOperationId('write', filePath);
+    const startTime = performance.now();
 
-      if (document.body && document.body.content) {
-        for (const element of document.body.content) {
-          if (element.paragraph) {
-            for (const paragraphElement of element.paragraph.elements) {
-              if (paragraphElement.textRun) {
-                text += paragraphElement.textRun.content;
-              }
-            }
-            text += '\n';
+    try {
+      if (this.activeOperations.size >= FILE_PROCESSOR_CONSTANTS.MAX_CONCURRENT_OPERATIONS) {
+        throw new Error('Досягнуто ліміт одночасних операцій');
+      }
+
+      this.activeOperations.add(operationId);
+
+      logger.debug('📝 Початок запису файлу...', {
+        filePath,
+        contentSize: content.length,
+        operationId,
+      } as LogMeta);
+
+      // Валідація вмісту
+      if (options.validate) {
+        const validation = validateInput(content.toString(), { inputType: 'file' });
+        if (!validation.isValid) {
+          throw new Error(`Невалідний вміст: ${validation.errors.join(', ')}`);
+        }
+      }
+
+      // Створення резервної копії
+      if (options.backup && existsSync(filePath)) {
+        await this.createBackup(filePath);
+      }
+
+      // Запис файлу
+      await this.writeFileContent(filePath, content);
+
+      // Валідація записаного файлу
+      const fileInfo = await this.validateFile(filePath);
+
+      const duration = performance.now() - startTime;
+      const result: FileOperationResult = {
+        success: true,
+        fileInfo,
+        warnings: fileInfo.warnings,
+        duration,
+        bytesProcessed: content.length,
+      };
+
+      this.updateStats(true, duration, content.length);
+      this.stats.filesProcessed++;
+
+      logger.info('✅ Файл успішно записано', {
+        filePath,
+        size: content.length,
+        duration: `${duration.toFixed(2)}ms`,
+        operationId,
+      } as LogMeta);
+
+      return result;
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      this.updateStats(false, duration, 0);
+
+      const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
+
+      logger.error('❌ Помилка запису файлу', {
+        filePath,
+        error: errorMessage,
+        duration: `${duration.toFixed(2)}ms`,
+        operationId,
+      } as LogMeta);
+
+      return {
+        success: false,
+        error: errorMessage,
+        warnings: [],
+        duration,
+        bytesProcessed: 0,
+      };
+    } finally {
+      this.activeOperations.delete(operationId);
+    }
+  }
+
+  /**
+   * Валідація файлу
+   */
+  private async validateFile(filePath: string): Promise<FileInfo> {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    try {
+      // Перевірка існування
+      if (!existsSync(filePath)) {
+        errors.push('Файл не існує');
+        return this.createFileInfo(filePath, errors, warnings);
+      }
+
+      // Отримання статистики файлу
+      const stats = statSync(filePath);
+      const extension = extname(filePath).toLowerCase();
+      const name = basename(filePath);
+
+      // Перевірка розміру
+      if (stats.size > FILE_PROCESSOR_CONSTANTS.MAX_FILE_SIZE) {
+        errors.push(`Файл занадто великий (${stats.size} байт, максимум ${FILE_PROCESSOR_CONSTANTS.MAX_FILE_SIZE})`);
+      }
+
+      // Перевірка імені файлу
+      if (name.length > FILE_PROCESSOR_CONSTANTS.MAX_FILENAME_LENGTH) {
+        errors.push(`Ім'я файлу занадто довге (${name.length} символів, максимум ${FILE_PROCESSOR_CONSTANTS.MAX_FILENAME_LENGTH})`);
+      }
+
+      // Перевірка розширення
+      if (!FILE_PROCESSOR_CONSTANTS.ALLOWED_EXTENSIONS.includes(extension)) {
+        warnings.push(`Недозволене розширення файлу: ${extension}`);
+      }
+
+      // Перевірка прав доступу
+      try {
+        await access(filePath, constants.R_OK);
+      } catch {
+        errors.push('Файл недоступний для читання');
+      }
+
+      try {
+        await access(filePath, constants.W_OK);
+      } catch {
+        warnings.push('Файл недоступний для запису');
+      }
+
+      // Визначення MIME типу
+      const mimeType = this.getMimeType(extension);
+
+      return {
+        name,
+        path: filePath,
+        size: stats.size,
+        extension,
+        mimeType,
+        lastModified: stats.mtime,
+        isReadable: errors.length === 0,
+        isWritable: !warnings.some(w => w.includes('запису')),
+        isValid: errors.length === 0,
+        errors,
+        warnings,
+      };
+    } catch (error) {
+      errors.push(`Помилка валідації: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
+      return this.createFileInfo(filePath, errors, warnings);
+    }
+  }
+
+  /**
+   * Створення інформації про файл
+   */
+  private createFileInfo(filePath: string, errors: string[], warnings: string[]): FileInfo {
+    return {
+      name: basename(filePath),
+      path: filePath,
+      size: 0,
+      extension: extname(filePath).toLowerCase(),
+      mimeType: 'unknown',
+      lastModified: new Date(),
+      isReadable: false,
+      isWritable: false,
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  /**
+   * Читання вмісту файлу
+   */
+  private async readFileContent(filePath: string, fileSize: number): Promise<string | Buffer> {
+    if (fileSize > FILE_PROCESSOR_CONSTANTS.CHUNK_SIZE) {
+      // Читання великих файлів по частинах
+      return this.readFileInChunks(filePath);
+    } else {
+      // Читання малих файлів повністю
+      return await readFile(filePath, 'utf8');
+    }
+  }
+
+  /**
+   * Читання файлу по частинах
+   */
+  private async readFileInChunks(filePath: string): Promise<string> {
+    const chunks: string[] = [];
+    const fileHandle = await import('fs/promises').then(fs => fs.open(filePath, 'r'));
+
+    try {
+      const buffer = Buffer.alloc(FILE_PROCESSOR_CONSTANTS.CHUNK_SIZE);
+      let bytesRead: number;
+
+      while ((bytesRead = (await fileHandle.read(buffer, 0, buffer.length)).bytesRead) > 0) {
+        chunks.push(buffer.toString('utf8', 0, bytesRead));
+      }
+
+      return chunks.join('');
+    } finally {
+      await fileHandle.close();
+    }
+  }
+
+  /**
+   * Запис вмісту файлу
+   */
+  private async writeFileContent(filePath: string, content: string | Buffer): Promise<void> {
+    // Створення директорії якщо не існує
+    const dir = dirname(filePath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+
+    await writeFile(filePath, content);
+  }
+
+  /**
+   * Створення резервної копії
+   */
+  private async createBackup(filePath: string): Promise<void> {
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupName = `${basename(filePath)}.backup.${timestamp}`;
+      const backupPath = join(FILE_PROCESSOR_CONSTANTS.BACKUP_DIR, backupName);
+
+      const content = await readFile(filePath);
+      await writeFile(backupPath, content);
+
+      logger.debug('💾 Створено резервну копію', {
+        original: filePath,
+        backup: backupPath,
+      } as LogMeta);
+    } catch (error) {
+      handleError(error, {
+        serviceName: 'FileProcessor',
+        additionalContext: { operation: 'createBackup', filePath },
+      });
+    }
+  }
+
+  /**
+   * Визначення MIME типу
+   */
+  private getMimeType(extension: string): string {
+    const mimeTypes: Record<string, string> = {
+      '.txt': 'text/plain',
+      '.md': 'text/markdown',
+      '.json': 'application/json',
+      '.csv': 'text/csv',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.xls': 'application/vnd.ms-excel',
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+
+    return mimeTypes[extension] || 'application/octet-stream';
+  }
+
+  /**
+   * Генерація ID операції
+   */
+  private generateOperationId(type: string, filePath: string): string {
+    const timestamp = Date.now();
+    const hash = require('crypto').createHash('md5').update(`${type}:${filePath}:${timestamp}`).digest('hex');
+    return `${type}_${hash.substring(0, 8)}`;
+  }
+
+  /**
+   * Очищення тимчасових файлів
+   */
+  private async cleanupTempFiles(): void {
+    try {
+      const tempDir = FILE_PROCESSOR_CONSTANTS.TEMP_DIR;
+      if (!existsSync(tempDir)) return;
+
+      const fs = require('fs/promises');
+      const files = await fs.readdir(tempDir);
+      const now = Date.now();
+      let cleanedCount = 0;
+
+      for (const file of files) {
+        const filePath = join(tempDir, file);
+        const stats = statSync(filePath);
+        const age = now - stats.mtime.getTime();
+
+        if (age > FILE_PROCESSOR_CONSTANTS.MAX_TEMP_AGE) {
+          try {
+            await unlink(filePath);
+            cleanedCount++;
+          } catch (error) {
+            logger.warn('⚠️ Не вдалося видалити тимчасовий файл', {
+              filePath,
+              error: error instanceof Error ? error.message : 'Невідома помилка',
+            } as LogMeta);
           }
         }
       }
 
-      return text.trim();
-    } catch (error) {
-      logger.error('Text extraction error:', error);
-      return '';
-    }
-  }
-
-  /**
-   * Читання PDF файлу
-   */
-  async readPDF(filePath: string): Promise<string> {
-    try {
-      // Тут можна додати бібліотеку для читання PDF
-      // Наприклад, pdf-parse або pdf2pic
-      logger.warn('PDF reading not implemented yet');
-      return 'PDF reading not implemented';
-    } catch (error) {
-      logger.error('PDF reading error:', error);
-      throw new Error('Помилка читання PDF файлу');
-    }
-  }
-
-  /**
-   * Читання Word файлу
-   */
-  async readWord(filePath: string): Promise<string> {
-    try {
-      // Тут можна додати бібліотеку для читання Word
-      // Наприклад, mammoth або docx
-      logger.warn('Word reading not implemented yet');
-      return 'Word reading not implemented';
-    } catch (error) {
-      logger.error('Word reading error:', error);
-      throw new Error('Помилка читання Word файлу');
-    }
-  }
-
-  /**
-   * Читання текстового файлу
-   */
-  async readTextFile(filePath: string): Promise<string> {
-    try {
-      const content = await fs.readFile(filePath, 'utf8');
-      return content;
-    } catch (error) {
-      logger.error('Text file reading error:', error);
-      throw new Error('Помилка читання текстового файлу');
-    }
-  }
-
-  /**
-   * Читання змісту файлу
-   */
-  async readFileContent(fileId: string): Promise<FileContent> {
-    try {
-      const metadata = await this.getFileMetadata(fileId);
-      let content = '';
-
-      const fileType = this.getFileType(metadata.mimeType, metadata.name);
-
-      switch (fileType) {
-        case 'gdoc':
-          content = await this.readGoogleDoc(fileId);
-          break;
-
-        case 'pdf':
-          const pdfPath = await this.downloadFile(fileId, `${fileId}.pdf`);
-          content = await this.readPDF(pdfPath);
-          await this.cleanupTempFile(pdfPath);
-          break;
-
-        case 'docx':
-        case 'doc':
-          const wordPath = await this.downloadFile(fileId, `${fileId}.${fileType}`);
-          content = await this.readWord(wordPath);
-          await this.cleanupTempFile(wordPath);
-          break;
-
-        case 'txt':
-          const txtPath = await this.downloadFile(fileId, `${fileId}.txt`);
-          content = await this.readTextFile(txtPath);
-          await this.cleanupTempFile(txtPath);
-          break;
-
-        default:
-          throw new Error(`Непідтримуваний тип файлу: ${fileType}`);
+      if (cleanedCount > 0) {
+        this.stats.cleanupOperations++;
+        logger.info(`🧹 Очищено ${cleanedCount} тимчасових файлів`);
       }
-
-      this.stats.filesAnalyzed++;
-
-      return {
-        metadata,
-        content,
-        fileType,
-      };
-    } catch (error: any) {
-      this.stats.errors++;
-      logger.error('File content reading error:', error);
-      throw new Error(`Помилка читання файлу: ${error.message}`);
-    }
-  }
-
-  /**
-   * Визначення типу файлу
-   */
-  private getFileType(mimeType: string, fileName: string): string {
-    try {
-      const mimeTypes: Record<string, string> = {
-        'application/vnd.google-apps.document': 'gdoc',
-        'application/pdf': 'pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-        'application/msword': 'doc',
-        'text/plain': 'txt',
-      };
-
-      if (mimeType && mimeTypes[mimeType]) {
-        return mimeTypes[mimeType];
-      }
-
-      // Визначення за розширенням файлу
-      const extension = path.extname(fileName).toLowerCase();
-      const extensionMap: Record<string, string> = {
-        '.pdf': 'pdf',
-        '.docx': 'docx',
-        '.doc': 'doc',
-        '.txt': 'txt',
-      };
-
-      return extensionMap[extension] || 'unknown';
     } catch (error) {
-      logger.error('File type detection error:', error);
-      return 'unknown';
+      handleError(error, {
+        serviceName: 'FileProcessor',
+        additionalContext: { operation: 'cleanupTempFiles' },
+      });
     }
   }
 
   /**
-   * Створення звіту
+   * Оновлення статистики
    */
-  async createReport(reportData: ReportData, format = 'txt'): Promise<string> {
+  private updateStats(success: boolean, duration: number, bytesProcessed: number): void {
     try {
-      await this.ensureTempDir();
+      this.stats.totalOperations++;
+      this.stats.totalOperationTime += duration;
+      this.stats.averageOperationTime = this.stats.totalOperationTime / this.stats.totalOperations;
+      this.stats.bytesProcessed += bytesProcessed;
 
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `report_${timestamp}.${format}`;
-      const filePath = path.join(FILE_CONFIG.TEMP_DIR, fileName);
-
-      switch (format) {
-        case 'txt':
-          await this.createTextReport(reportData, filePath);
-          break;
-        case 'pdf':
-          await this.createPDFReport(reportData, filePath);
-          break;
-        case 'docx':
-          await this.createWordReport(reportData, filePath);
-          break;
-        default:
-          throw new Error(`Непідтримуваний формат звіту: ${format}`);
+      if (success) {
+        this.stats.successfulOperations++;
+      } else {
+        this.stats.failedOperations++;
       }
-
-      logger.info(`Report created: ${fileName}`);
-      return filePath;
-    } catch (error: any) {
-      this.stats.errors++;
-      logger.error('Report creation error:', error);
-      throw new Error(`Помилка створення звіту: ${error.message}`);
-    }
-  }
-
-  /**
-   * Створення текстового звіту
-   */
-  private async createTextReport(reportData: ReportData, filePath: string): Promise<void> {
-    try {
-      let content = '';
-
-      if (reportData.title) {
-        content += `ЗВІТ: ${reportData.title}\n`;
-        content += '='.repeat(50) + '\n\n';
-      }
-
-      if (reportData.summary) {
-        content += `Короткий зміст:\n${reportData.summary}\n\n`;
-      }
-
-      if (reportData.data) {
-        content += `Дані:\n${JSON.stringify(reportData.data, null, 2)}\n\n`;
-      }
-
-      if (reportData.conclusions) {
-        content += `Висновки:\n${reportData.conclusions}\n\n`;
-      }
-
-      content += `Створено: ${new Date().toLocaleString('uk-UA')}\n`;
-
-      await fs.writeFile(filePath, content, 'utf8');
     } catch (error) {
-      logger.error('Text report creation error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Створення PDF звіту
-   */
-  private async createPDFReport(reportData: ReportData, filePath: string): Promise<void> {
-    try {
-      // Тут можна додати бібліотеку для створення PDF
-      // Наприклад, puppeteer або jsPDF
-      logger.warn('PDF report creation not implemented yet');
-
-      // Тимчасова реалізація - створюємо текстовий файл
-      await this.createTextReport(reportData, filePath.replace('.pdf', '.txt'));
-    } catch (error) {
-      logger.error('PDF report creation error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Створення Word звіту
-   */
-  private async createWordReport(reportData: ReportData, filePath: string): Promise<void> {
-    try {
-      // Тут можна додати бібліотеку для створення Word
-      // Наприклад, docx
-      logger.warn('Word report creation not implemented yet');
-
-      // Тимчасова реалізація - створюємо текстовий файл
-      await this.createTextReport(reportData, filePath.replace('.docx', '.txt'));
-    } catch (error) {
-      logger.error('Word report creation error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Створення тимчасової директорії
-   */
-  private async ensureTempDir(): Promise<void> {
-    try {
-      await fs.mkdir(FILE_CONFIG.TEMP_DIR, { recursive: true });
-    } catch (error) {
-      logger.error('Temp directory creation error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Очищення тимчасового файлу
-   */
-  private async cleanupTempFile(filePath: string): Promise<void> {
-    try {
-      await fs.unlink(filePath);
-      logger.info(`Temp file cleaned up: ${filePath}`);
-    } catch (error) {
-      logger.warn(`Failed to cleanup temp file ${filePath}:`, error);
-    }
-  }
-
-  /**
-   * Очищення всіх тимчасових файлів
-   */
-  async cleanupAllTempFiles(): Promise<void> {
-    try {
-      const files = await fs.readdir(FILE_CONFIG.TEMP_DIR);
-
-      for (const file of files) {
-        const filePath = path.join(FILE_CONFIG.TEMP_DIR, file);
-        const stats = await fs.stat(filePath);
-
-        // Видалення файлів старіше 1 години
-        if (Date.now() - stats.mtime.getTime() > 60 * 60 * 1000) {
-          await this.cleanupTempFile(filePath);
-        }
-      }
-
-      logger.info('Temp files cleanup completed');
-    } catch (error) {
-      logger.error('Temp files cleanup error:', error);
-    }
-  }
-
-  /**
-   * Санітизація пошукового запиту
-   */
-  private sanitizeQuery(query: string): string {
-    try {
-      if (typeof query !== 'string') {
-        return '';
-      }
-
-      return query
-        .trim()
-        .slice(0, 100)
-        .replace(/[<>\"'&]/g, '');
-    } catch (error) {
-      logger.error('Query sanitization error:', error);
-      return '';
+      handleError(error, {
+        serviceName: 'FileProcessor',
+        additionalContext: { operation: 'updateStats' },
+      });
     }
   }
 
   /**
    * Отримання статистики
    */
-  getStats(): any {
-    return {
-      ...this.stats,
-      tempDir: FILE_CONFIG.TEMP_DIR,
-      supportedFormats: FILE_CONFIG.SUPPORTED_FORMATS,
-    };
+  public getStats(): FileProcessorStats {
+    return { ...this.stats };
+  }
+
+  /**
+   * Очищення ресурсів
+   */
+  public cleanup(): void {
+    try {
+      if (this.cleanupInterval) {
+        clearInterval(this.cleanupInterval);
+        this.cleanupInterval = null;
+      }
+
+      this.activeOperations.clear();
+
+      logger.info('🧹 Ресурси FileProcessor очищено');
+    } catch (error) {
+      handleError(error, {
+        serviceName: 'FileProcessor',
+        additionalContext: { operation: 'cleanup' },
+      });
+    }
+  }
+
+  /**
+   * Перевірка стану ініціалізації
+   */
+  public isInitialized(): boolean {
+    return this.isInitialized;
   }
 }
 
-// Експорт екземпляру класу
+// Експорт єдиного екземпляра
 export const fileProcessor = new FileProcessor();
+
+// Експорт функцій для зручності
+export const readFile = (filePath: string) => fileProcessor.readFile(filePath);
+export const writeFile = (filePath: string, content: string | Buffer, options?: { backup?: boolean; validate?: boolean }) =>
+  fileProcessor.writeFile(filePath, content, options);
+export const getFileProcessorStats = () => fileProcessor.getStats();
+export const cleanupFileProcessor = () => fileProcessor.cleanup();
 export default fileProcessor; 

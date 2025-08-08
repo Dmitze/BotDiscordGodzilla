@@ -2,6 +2,11 @@
 
 **Потужний Discord бот з AI функціоналом для Збройних Сил України**
 
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/Dmitze/BotDiscordGodzilla)
+[![License](https://img.shields.io/badge/license-Godzilla%20Bot%20License%20v3.0-green.svg)](LICENSE.md)
+[![Node.js](https://img.shields.io/badge/node.js-18+-yellow.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/typescript-5.3+-blue.svg)](https://www.typescriptlang.org/)
+
 ---
 
 ## 🚀 **ШВИДКИЙ СТАРТ**
@@ -22,56 +27,56 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 ## 📚 **ДОКУМЕНТАЦІЯ**
 
 ### **🎓 Гайди та інструкції**
-- **[📖 Швидкий старт](guides/QUICK_START.md)** - як запустити бота за 5 хвилин
-- **[⚙️ Налаштування](guides/SETUP.md)** - детальне налаштування системи
-- **[🚀 Запуск](guides/LAUNCH_INSTRUCTIONS.md)** - інструкції запуску
-- **[📖 Гід користувача](guides/USAGE_GUIDE.md)** - повний посібник користувача
-- **[❓ FAQ](guides/FAQ_SUPPORT.md)** - часті питання та підтримка
-- **[🎓 Інтерактивне навчання](guides/INTERACTIVE_LEARNING_GUIDE.md)** - інтерактивний гід
-- **[🎥 Відео туторіали](guides/VIDEO_TUTORIAL_GUIDE.md)** - відео інструкції
-- **[🔧 Налаштування Cursor](guides/CURSOR_SETUP_GUIDE.md)** - налаштування розробки
-- **[📝 Кастомні інструкції](guides/CURSOR_CUSTOM_INSTRUCTIONS.md)** - для розробників
-- **[📊 Статистика](guides/STATISTICS_COMMAND_GUIDE.md)** - робота зі статистикою
-- **[🧪 Тестування](guides/TESTING_GUIDE.md)** - гід по тестуванню
-- **[🔄 Оновлення](guides/UPGRADE_GUIDE.md)** - як оновити бота
-- **[📘 TypeScript](guides/TYPESCRIPT_MIGRATION_GUIDE.md)** - міграція на TypeScript
+- **[📖 Швидкий старт](docs/guides/QUICK_START.md)** - як запустити бота за 5 хвилин
+- **[⚙️ Налаштування](docs/guides/SETUP.md)** - детальне налаштування системи
+- **[🚀 Запуск](docs/guides/LAUNCH_INSTRUCTIONS.md)** - інструкції запуску
+- **[📖 Гід користувача](docs/guides/USAGE_GUIDE.md)** - повний посібник користувача
+- **[❓ FAQ](docs/guides/FAQ_SUPPORT.md)** - часті питання та підтримка
+- **[🎓 Інтерактивне навчання](docs/guides/INTERACTIVE_LEARNING_GUIDE.md)** - інтерактивний гід
+- **[🎥 Відео туторіали](docs/guides/VIDEO_TUTORIAL_GUIDE.md)** - відео інструкції
+- **[🔧 Налаштування Cursor](docs/guides/CURSOR_SETUP_GUIDE.md)** - налаштування розробки
+- **[📝 Кастомні інструкції](docs/guides/CURSOR_CUSTOM_INSTRUCTIONS.md)** - для розробників
+- **[📊 Статистика](docs/guides/STATISTICS_COMMAND_GUIDE.md)** - робота зі статистикою
+- **[🧪 Тестування](docs/guides/TESTING_GUIDE.md)** - гід по тестуванню
+- **[🔄 Оновлення](docs/guides/UPGRADE_GUIDE.md)** - як оновити бота
+- **[📘 TypeScript](docs/guides/TYPESCRIPT_MIGRATION_GUIDE.md)** - міграція на TypeScript
 
 ### **🔌 API та технічна документація**
-- **[📋 API документація](api/API_DOCUMENTATION.md)** - повна API документація
-- **[📝 Довідник команд](api/COMMANDS_REFERENCE.md)** - всі команди бота
+- **[📋 API документація](docs/api/API_DOCUMENTATION.md)** - повна API документація
+- **[📝 Довідник команд](docs/api/COMMANDS_REFERENCE.md)** - всі команди бота
 
 ### **🏗️ Архітектура та розробка**
-- **[🏗️ Архітектура системи](architecture/ARCHITECTURE.md)** - технічна архітектура
-- **[🎯 Нова архітектура команд](architecture/NEW_COMMANDS_ARCHITECTURE.md)** - архітектура команд
-- **[🗺️ План розвитку](architecture/ROADMAP.md)** - майбутні оновлення
+- **[🏗️ Архітектура системи](docs/architecture/ARCHITECTURE.md)** - технічна архітектура
+- **[🎯 Нова архітектура команд](docs/architecture/NEW_COMMANDS_ARCHITECTURE.md)** - архітектура команд
+- **[🗺️ План розвитку](docs/architecture/ROADMAP.md)** - майбутні оновлення
 
 ### **📊 Звіти та аналізи**
-- **[📋 Фінальний звіт](documentation/FINAL_REPORT.md)** - підсумок розробки
-- **[✅ Фінальний чекліст](documentation/FINAL_CHECKLIST.md)** - контрольний список
-- **[🔄 Звіт рефакторингу](documentation/REFACTORING_REPORT.md)** - деталі рефакторингу
-- **[📈 Звіт оптимізації](documentation/OPTIMIZATION_REPORT.md)** - оптимізація продуктивності
-- **[🧪 Звіт тестування](documentation/TESTING_REPORT.md)** - результати тестування
-- **[🚀 Звіт розгортання](documentation/DEPLOYMENT_REPORT.md)** - процес розгортання
-- **[📊 Комплексний звіт](documentation/COMPREHENSIVE_REFACTORING_REPORT.md)** - повний аналіз
-- **[📋 Звіт команд](documentation/COMMANDS_REFACTORING_REPORT.md)** - рефакторинг команд
-- **[📈 Звіт покриття](documentation/COMPLETE_COVERAGE_REPORT.md)** - тестове покриття
-- **[🔄 Звіт міграції](documentation/FINAL_TYPESCRIPT_MIGRATION_REPORT.md)** - міграція на TypeScript
-- **[📊 Звіт тестування](documentation/FINAL_TESTING_REPORT.md)** - фінальне тестування
-- **[📈 Розширення покриття](documentation/COVERAGE_EXPANSION_REPORT.md)** - покращення тестів
-- **[📋 Аналіз структури](documentation/PROJECT_STRUCTURE_ANALYSIS.md)** - аналіз проекту
-- **[✅ Чекліст тестування](documentation/TESTING_CHECKLIST.md)** - контрольний список тестів
-- **[🔄 План рефакторингу](documentation/PHASE3_REFACTORING_PLAN.md)** - план робіт
-- **[📊 Звіт міграції сервісів](documentation/PHASE3_SERVICES_MIGRATION_REPORT.md)** - міграція сервісів
-- **[📋 Звіт міграції команд](documentation/PHASE3_COMMANDS_MIGRATION_REPORT.md)** - міграція команд
-- **[📈 Звіт прогресу](documentation/PHASE3_PROGRESS_REPORT.md)** - прогрес робіт
-- **[✅ Звіт завершення](documentation/PHASE2_COMPLETION_REPORT.md)** - завершення етапу
-- **[📈 Звіт оптимізації](documentation/PHASE2_OPTIMIZATION_REPORT.md)** - оптимізація
+- **[📋 Фінальний звіт](docs/documentation/FINAL_REPORT.md)** - підсумок розробки
+- **[✅ Фінальний чекліст](docs/documentation/FINAL_CHECKLIST.md)** - контрольний список
+- **[🔄 Звіт рефакторингу](docs/documentation/REFACTORING_REPORT.md)** - деталі рефакторингу
+- **[📈 Звіт оптимізації](docs/documentation/OPTIMIZATION_REPORT.md)** - оптимізація продуктивності
+- **[🧪 Звіт тестування](docs/documentation/TESTING_REPORT.md)** - результати тестування
+- **[🚀 Звіт розгортання](docs/documentation/DEPLOYMENT_REPORT.md)** - процес розгортання
+- **[📊 Комплексний звіт](docs/documentation/COMPREHENSIVE_REFACTORING_REPORT.md)** - повний аналіз
+- **[📋 Звіт команд](docs/documentation/COMMANDS_REFACTORING_REPORT.md)** - рефакторинг команд
+- **[📈 Звіт покриття](docs/documentation/COMPLETE_COVERAGE_REPORT.md)** - тестове покриття
+- **[🔄 Звіт міграції](docs/documentation/FINAL_TYPESCRIPT_MIGRATION_REPORT.md)** - міграція на TypeScript
+- **[📊 Звіт тестування](docs/documentation/FINAL_TESTING_REPORT.md)** - фінальне тестування
+- **[📈 Розширення покриття](docs/documentation/COVERAGE_EXPANSION_REPORT.md)** - покращення тестів
+- **[📋 Аналіз структури](docs/documentation/PROJECT_STRUCTURE_ANALYSIS.md)** - аналіз проекту
+- **[✅ Чекліст тестування](docs/documentation/TESTING_CHECKLIST.md)** - контрольний список тестів
+- **[🔄 План рефакторингу](docs/documentation/PHASE3_REFACTORING_PLAN.md)** - план робіт
+- **[📊 Звіт міграції сервісів](docs/documentation/PHASE3_SERVICES_MIGRATION_REPORT.md)** - міграція сервісів
+- **[📋 Звіт міграції команд](docs/documentation/PHASE3_COMMANDS_MIGRATION_REPORT.md)** - міграція команд
+- **[📈 Звіт прогресу](docs/documentation/PHASE3_PROGRESS_REPORT.md)** - прогрес робіт
+- **[✅ Звіт завершення](docs/documentation/PHASE2_COMPLETION_REPORT.md)** - завершення етапу
+- **[📈 Звіт оптимізації](docs/documentation/PHASE2_OPTIMIZATION_REPORT.md)** - оптимізація
 
 ### **🔒 Безпека**
-- **[🛡️ Гід безпеки](security/SECURITY_GUIDE.md)** - безпека та конфіденційність
+- **[🛡️ Гід безпеки](docs/security/SECURITY_GUIDE.md)** - безпека та конфіденційність
 
 ### **📝 Історія змін**
-- **[📋 Changelog](changelog/CHANGELOG.md)** - історія оновлень
+- **[📋 Changelog](docs/changelog/CHANGELOG.md)** - історія оновлень
 
 ---
 
@@ -210,8 +215,8 @@ OPENAI_API_KEY=your_openai_api_key
 ## 🛡️ **БЕЗПЕКА**
 
 ### **🔐 Рівні безпеки**
-1. **Шифрування** - всі дані передаються зашифровано
-2. **Аутентифікація** - обов'язкова авторизація
+1. **Шифрування** - всі дані передаються в зашифрованому вигляді
+2. **Аутентифікація** - обов'язкова авторизація користувачів
 3. **Авторизація** - ролі та права доступу
 4. **Логування** - детальне логування всіх операцій
 5. **Моніторинг** - постійний контроль системи
@@ -281,7 +286,7 @@ OPENAI_API_KEY=your_openai_api_key
 - **Освітні заклади** - БЕЗКОШТОВНО
 - **Комерційне використання** - від $50/місяць
 
-**[📋 Повна ліцензія](../LICENSE.md)**
+**[📋 Повна ліцензія](LICENSE.md)**
 
 ---
 
@@ -318,4 +323,4 @@ OPENAI_API_KEY=your_openai_api_key
 
 **🦖 Godzilla Bot - Потужний, Надійний, Український!**
 
-**© 2025 Dmitry Shivachov (Dmitze). Всі права захищені.**
+**© 2025 Dmitry Shivachov (Dmitze). Всі права захищені.** 
