@@ -16,7 +16,6 @@
 - `FAQ_SUPPORT.md` - Часті питання та підтримка
 - `INTERACTIVE_LEARNING_GUIDE.md` - Інтерактивний гід навчання
 - `VIDEO_TUTORIAL_GUIDE.md` - Відео туторіали
-- `CURSOR_SETUP_GUIDE.md` - Налаштування Cursor AI
 - `CURSOR_CUSTOM_INSTRUCTIONS.md` - Кастомні інструкції для Cursor
 
 ### **🔌 api/** - API документація
