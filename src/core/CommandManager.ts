@@ -5,9 +5,10 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { Collection, ChatInputCommandInteraction } from 'discord.js';
-import type { BotConfig } from '@/types';
+import { Collection, ChatInputCommandInteraction, GuildMember, EmbedBuilder } from 'discord.js';
+import type { BotConfig, LogMeta } from '@/types';
 import { BaseCommand } from '@/commands/BaseCommand';
+import logger from '@/utils/logger';
 
 // Імпорт всіх команд
 import { SearchCommand } from '@/commands/SearchCommand';
@@ -220,9 +221,79 @@ export class CommandManager {
    * Перевірка прав доступу
    */
   private async checkPermissions(interaction: ChatInputCommandInteraction, command: BaseCommand): Promise<boolean> {
-    // TODO: Реалізувати перевірку прав доступу
-    // Тимчасова реалізація - дозволяємо всім
-    return true;
+    try {
+      // Імпорт PermissionManager
+      const { PermissionManager } = await import('./PermissionManager');
+      const permissionManager = new PermissionManager(this.config);
+      
+      // Перевірка прав доступу
+      const result = await permissionManager.checkPermission(
+        interaction.user,
+        interaction.member as GuildMember | null,
+        interaction.commandName,
+        interaction.channelId
+      );
+      
+      // Якщо доступ заборонено, відправляємо повідомлення користувачу
+      if (!result.allowed) {
+        const embed = this.createPermissionDeniedEmbed(result);
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        
+        logger.security('command_access_denied', interaction.user.id, {
+          command: interaction.commandName,
+          reason: result.reason,
+          userLevel: result.userLevel,
+          guildId: interaction.guildId,
+          channelId: interaction.channelId
+        } as LogMeta);
+        
+        return false;
+      }
+      
+      // Логування успішного доступу
+      logger.info('✅ Команда дозволена', {
+        userId: interaction.user.id,
+        command: interaction.commandName,
+        userLevel: result.userLevel,
+        remainingUses: result.remainingUses
+      } as LogMeta);
+      
+      return true;
+    } catch (error) {
+      logger.error('❌ Помилка перевірки прав доступу:', error);
+      // У разі помилки дозволяємо виконання для базових команд
+      const allowedCommands = ['пошук', 'довідка', 'статус'];
+      return allowedCommands.includes(interaction.commandName);
+    }
+  }
+
+  /**
+   * Створення embed повідомлення про відмову доступу
+   */
+  private createPermissionDeniedEmbed(result: any): EmbedBuilder {
+    return new EmbedBuilder()
+      .setColor(0xFF0000)
+      .setTitle('🚫 Доступ заборонено')
+      .setDescription(`Вам заборонено використовувати цю команду.\n\n**Причина:** ${result.reason}`)
+      .addFields([
+        {
+          name: '📊 Ваш рівень доступу',
+          value: `${result.userLevel} (${['Заборонений', 'Користувач', 'Довірений', 'Модератор', 'Адміністратор', 'Власник'][result.userLevel]})`,
+          inline: true
+        },
+        {
+          name: '🔄 Використання за день',
+          value: result.remainingUses ? `Залишилось: ${result.remainingUses}` : 'Інформація недоступна',
+          inline: true
+        },
+        {
+          name: '📞 Зв\'яжіться з адміністратором',
+          value: 'Якщо вважаєте, що це помилка, зверніться до адміністрації сервера.',
+          inline: false
+        }
+      ])
+      .setFooter({ text: 'Discord AI Assistant Bot - Security System' })
+      .setTimestamp();
   }
 
   /**

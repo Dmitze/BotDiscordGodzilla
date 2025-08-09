@@ -14,6 +14,7 @@ import type {
   GoogleApiResponse
 } from '@/types';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
+import { CacheService } from './CacheService';
 import { logger } from '@/utils/logger';
 
 interface GoogleServiceStats extends ServiceStats {
@@ -53,9 +54,11 @@ export class GoogleService extends BaseServiceClass {
   private readonly retryAttempts = 3;
   private readonly retryDelay = 1000;
   private stats: GoogleServiceStats;
+  private cacheService: CacheService;
 
   constructor(config: BotConfig) {
     super('GoogleService', config);
+    this.cacheService = new CacheService(config);
     this.stats = {
       service: 'GoogleService',
       uptime: 0,
@@ -74,6 +77,9 @@ export class GoogleService extends BaseServiceClass {
   protected async onInitialize(): Promise<void> {
     try {
       logger.info('🔧 Ініціалізація Google Service...');
+
+      // Ініціалізація кешу
+      await this.cacheService.initialize();
 
       // Створення автентифікації
       await this.initializeAuth();
@@ -248,7 +254,23 @@ export class GoogleService extends BaseServiceClass {
       // Перевірка кешу
       if (useCache && !forceRefresh) {
         const cacheKey = `sheets:${spreadsheetId}:${range}`;
-        // TODO: Реалізувати кешування через CacheService
+        try {
+          const cached = await this.cacheService.get<SheetData>(cacheKey);
+          if (cached) {
+            this.stats.cacheHits++;
+            logger.debug('✅ Використано кешовані дані Sheets', {
+              spreadsheetId: spreadsheetId.substring(0, 10) + '...',
+              range,
+              rowsCount: cached.values.length
+            });
+            return cached;
+          } else {
+            this.stats.cacheMisses++;
+          }
+        } catch (cacheError) {
+          logger.warn('⚠️ Помилка читання з кешу Sheets:', cacheError);
+          this.stats.cacheMisses++;
+        }
       }
 
       const result = await this.executeWithRetry(
@@ -272,7 +294,17 @@ export class GoogleService extends BaseServiceClass {
       // Збереження в кеш
       if (useCache) {
         const cacheKey = `sheets:${spreadsheetId}:${range}`;
-        // TODO: Зберегти в кеш
+        try {
+          await this.cacheService.set(cacheKey, result, { ttl: cacheTTL * 1000 });
+          logger.debug('💾 Дані Sheets збережено в кеш', {
+            spreadsheetId: spreadsheetId.substring(0, 10) + '...',
+            range,
+            rowsCount: result.values.length,
+            ttl: `${cacheTTL}s`
+          });
+        } catch (cacheError) {
+          logger.warn('⚠️ Помилка збереження в кеш Sheets:', cacheError);
+        }
       }
 
       return result;
@@ -313,7 +345,15 @@ export class GoogleService extends BaseServiceClass {
       // Очищення кешу
       if (clearCache) {
         const cacheKey = `sheets:${spreadsheetId}:${range}`;
-        // TODO: Очистити кеш
+        try {
+          await this.cacheService.delete(cacheKey);
+          logger.debug('🗑️ Кеш Sheets очищено', {
+            spreadsheetId: spreadsheetId.substring(0, 10) + '...',
+            range
+          });
+        } catch (cacheError) {
+          logger.warn('⚠️ Помилка очищення кешу Sheets:', cacheError);
+        }
       }
     } catch (error) {
       logger.error('❌ Помилка запису в Sheets:', error);
@@ -653,6 +693,9 @@ export class GoogleService extends BaseServiceClass {
    */
   protected async onShutdown(): Promise<void> {
     try {
+      // Зупинка кеш сервісу
+      await this.cacheService.shutdown();
+
       // Очищення connection pool
       this.connectionPool.clear();
 
