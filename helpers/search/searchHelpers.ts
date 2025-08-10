@@ -5,6 +5,34 @@
 
 import { EmbedBuilder } from 'discord.js';
 
+// --- Utilities ---
+function parseLocaleNumber(v: string): number {
+  const s = String(v || '').replace(/\s+/g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return Number.isNaN(n) ? NaN : n;
+}
+
+function truncateEmbed(text: string, max = 3800): string {
+  return text.length > max ? text.slice(0, max - 10) + '\n…[truncated]' : text;
+}
+
+async function fetchWithTimeout(url: string, ms = 10000, init?: RequestInit, retries = 0): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (retries > 0) {
+      const backoff = Math.min(1200, 200 * Math.pow(2, (2 - retries)));
+      await new Promise((r) => setTimeout(r, backoff));
+      return fetchWithTimeout(url, ms, init, retries - 1);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface SearchCache {
   [userId: string]: {
     results: any[][];
@@ -64,10 +92,10 @@ function getColumnIndex(headers: string[], field: string): number {
   return -1;
 }
 
-async function getSheetData(range: string = process.env.SHEET_NAME || 'Аркуш1'): Promise<any[][]> {
-  const SHEET_ID = process.env.SHEET_ID;
-  const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-  
+async function getSheetData(range: string = process.env['SHEET_NAME'] || 'Аркуш1'): Promise<any[][]> {
+  const SHEET_ID = process.env['SHEET_ID'];
+  const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'];
+
   if (!SHEET_ID || !GOOGLE_API_KEY) {
     console.error('❌ Відсутні необхідні змінні середовища SHEET_ID або GOOGLE_API_KEY');
     return [];
@@ -76,10 +104,10 @@ async function getSheetData(range: string = process.env.SHEET_NAME || 'Арку�
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?key=${GOOGLE_API_KEY}`;
   
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, 10000);
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    const data = await res.json();
-    return data.values || [];
+    const data: any = await res.json();
+    return (data && Array.isArray(data.values)) ? data.values : [];
   } catch (err) {
     console.error('⚠️ Не вдалося отримати дані:', err instanceof Error ? err.message : 'Unknown error');
     return [];
@@ -90,6 +118,15 @@ async function getSheetData(range: string = process.env.SHEET_NAME || 'Арку�
 const searchCache: SearchCache = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 хвилин
 const itemsPerPage = 10;
+const MAX_CACHE_ENTRIES = 100;
+
+function evictIfNeeded() {
+  const keys = Object.keys(searchCache);
+  if (keys.length > MAX_CACHE_ENTRIES) {
+    const first = keys[0] as string;
+    if (first) delete searchCache[first];
+  }
+}
 
 function cacheSearchResults(userId: string, results: any[][], headers: string[]): void {
   searchCache[userId] = {
@@ -97,6 +134,7 @@ function cacheSearchResults(userId: string, results: any[][], headers: string[])
     headers,
     timestamp: Date.now()
   };
+  evictIfNeeded();
 }
 
 function getCachedResults(userId: string): { results: any[][]; headers: string[] } | null {
@@ -114,16 +152,16 @@ function generatePageEmbed(results: any[][], page: number, headers: string[]): E
   let output = '| Найм. номенклатури | Кількість | Ціна |\n|---------------------|-----------|--------|\n';
   
   for (let i = 0; i < paginatedResults.length && i < itemsPerPage; i++) {
-    const row = paginatedResults[i];
-    const name = row[getColumnIndex(headers, 'назва')] || '—';
-    const quantity = row[getColumnIndex(headers, 'кількість')] || '—';
-    const price = row[getColumnIndex(headers, 'ціна')] || '—';
-    output += `| ${name.padEnd(19).slice(0, 19)} | ${quantity} | ${price} |\n`;
+    const row = paginatedResults[i] || [];
+    const name = row[getColumnIndex(headers, 'назва')] ?? '—';
+    const quantity = row[getColumnIndex(headers, 'кількість')] ?? '—';
+    const price = row[getColumnIndex(headers, 'ціна')] ?? '—';
+    output += `| ${String(name).padEnd(19).slice(0, 19)} | ${String(quantity)} | ${String(price)} |\n`;
   }
-  
+
   return new EmbedBuilder()
     .setTitle(`🔍 Результати пошуку (${results.length})`)
-    .setDescription(`\`\`\`md\n${output}\`\`\``)
+    .setDescription(truncateEmbed(`\`\`\`md\n${output}\`\`\``))
     .setFooter({ text: `Сторінка ${page + 1}/${totalPages}` })
     .setColor(3066993);
 }
@@ -207,8 +245,8 @@ function sortResults(
     const bValue = b[columnIndex] || '';
 
     // Спроба числового сортування
-    const aNum = parseFloat(aValue);
-    const bNum = parseFloat(bValue);
+    const aNum = parseLocaleNumber(String(aValue));
+    const bNum = parseLocaleNumber(String(bValue));
 
     if (!isNaN(aNum) && !isNaN(bNum)) {
       return order === 'asc' ? aNum - bNum : bNum - aNum;
