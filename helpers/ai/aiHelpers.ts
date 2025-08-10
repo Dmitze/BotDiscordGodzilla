@@ -4,12 +4,29 @@
  */
 
 import OpenAI from 'openai';
-import { EmbedBuilder } from 'discord.js';
 
-// Ініціалізація OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Конфіг: офлайн за замовчуванням (динамічна перевірка)
+function isAIEnabled(): boolean {
+  return Boolean(process.env['OPENAI_API_KEY']) && process.env['AI_PROVIDER'] !== 'disabled';
+}
+
+// Лінива ініціалізація OpenAI при першому зверненні
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] as string });
+  }
+  return _openai;
+}
+
+// Утиліти
+function extractJson(text: string): any | null {
+  const fenced = text.match(/```json\s*([\s\S]*?)```/i);
+  const raw = fenced?.[1] || text.match(/\{[\s\S]*\}/)?.[0];
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
 
 interface DataSummary {
   totalRows: number;
@@ -66,14 +83,17 @@ ${dataSummary.sampleData.map((row, i) => `Рядок ${i + 1}: ${row.join(' | ')
 Будь лаконічним та корисним.
 `;
 
-    const completion = await openai.chat.completions.create({
+    if (!isAIEnabled()) {
+      return '⚠️ AI вимкнено (офлайн режим). Доступний лише базовий аналіз.';
+    }
+    const completion = await getOpenAI().chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 500,
       temperature: 0.3
     });
 
-    return completion.choices[0].message.content || '❌ Помилка при аналізі даних';
+    return completion.choices?.[0]?.message?.content || '❌ Помилка при аналізі даних';
   } catch (error) {
     console.error('Помилка AI-аналізу:', error);
     return '❌ Помилка при аналізі даних';
@@ -108,27 +128,28 @@ ${data.slice(0, 10).map((row, i) => `Рядок ${i + 1}: ${row.join(' | ')}`).j
 }
 `;
 
-    const completion = await openai.chat.completions.create({
+    if (!isAIEnabled()) {
+      return { results: [], explanation: 'AI вимкнено (офлайн режим). Використовуйте простий пошук.' };
+    }
+    const completion = await getOpenAI().chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 300,
       temperature: 0.2
     });
 
-    const aiResponse = completion.choices[0].message.content || '';
+    const aiResponse = completion.choices?.[0]?.message?.content || '';
     let searchConfig: SearchConfig;
-    
+
     try {
-      // Спробуємо парсити JSON
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        searchConfig = JSON.parse(jsonMatch[0]);
+      const parsed = extractJson(aiResponse);
+      if (parsed) {
+        searchConfig = parsed as SearchConfig;
       } else {
         throw new Error('Invalid JSON response');
       }
     } catch (parseError) {
       console.error('Помилка парсингу AI відповіді:', parseError);
-      // Fallback до простого пошуку
       searchConfig = {
         searchFields: headers,
         searchConditions: [query.toLowerCase()],
@@ -204,14 +225,17 @@ ${data.slice(0, 10).map((row, i) => `Рядок ${i + 1}: ${row.join(' | ')}`).j
 Будь конкретним та практичним.
 `;
 
-    const completion = await openai.chat.completions.create({
+    if (!isAIEnabled()) {
+      return ['AI вимкнено (офлайн режим). Доступні лише базові рекомендації.'];
+    }
+    const completion = await getOpenAI().chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 400,
       temperature: 0.4
     });
 
-    const response = completion.choices[0].message.content || '';
+    const response = completion.choices?.[0]?.message?.content || '';
     const recommendations = response
       .split('\n')
       .filter(line => line.trim().match(/^\d+\./))
@@ -245,7 +269,7 @@ async function generateSmartReport(data: any[][], headers: string[], reportType:
     };
 
     const prompt = `
-${reportPrompts[reportType] || reportPrompts.general}:
+${reportPrompts[reportType] || reportPrompts['general']}:
 
 Колонки: ${headers.join(', ')}
 Кількість рядків: ${data.length}
@@ -256,18 +280,25 @@ ${data.slice(0, 15).map((row, i) => `Рядок ${i + 1}: ${row.join(' | ')}`).j
 Надай аналіз українською мовою з оцінкою впевненості (0-100%).
 `;
 
-    const completion = await openai.chat.completions.create({
+    if (!isAIEnabled()) {
+      return {
+        analysis: 'AI вимкнено (офлайн режим). Повертаю базовий звіт.',
+        confidence: 0,
+        suggestions: []
+      };
+    }
+    const completion = await getOpenAI().chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 600,
       temperature: 0.3
     });
 
-    const response = completion.choices[0].message.content || '';
-    
+    const response = completion.choices?.[0]?.message?.content || '';
+
     // Спроба витягти confidence score
     const confidenceMatch = response.match(/впевненість[:\s]*(\d+)%/i);
-    const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 70;
+    const confidence = confidenceMatch ? parseInt(confidenceMatch[1] || '0', 10) : 70;
 
     return {
       analysis: response,
