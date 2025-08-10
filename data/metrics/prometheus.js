@@ -1,6 +1,11 @@
 const prometheus = require('prom-client');
 const express = require('express');
-const config = require('../../src/config/Config');
+const os = require('os');
+
+// Read config from env to avoid TS import in JS
+const METRICS_ENABLED = process.env.METRICS_ENABLED !== 'false';
+const METRICS_PORT = parseInt(process.env.METRICS_PORT || '9091', 10);
+const METRICS_PATH = process.env.METRICS_PATH || '/metrics';
 
 class MetricsCollector {
   constructor() {
@@ -12,6 +17,7 @@ class MetricsCollector {
    * Ініціалізація метрик
    */
   initializeMetrics() {
+    this.initializeSystemGauges();
     // Метрики команд
     this.commandCounter = new prometheus.Counter({
       name: 'discord_bot_commands_total',
@@ -128,53 +134,68 @@ class MetricsCollector {
     });
   }
 
+  initializeSystemGauges() {
+    this.cpuUsage = new prometheus.Gauge({
+      name: 'discord_bot_cpu_usage_microseconds',
+      help: 'CPU usage user/system in microseconds',
+      labelNames: ['type'],
+      registers: [this.registry]
+    });
+    this.diskSpace = new prometheus.Gauge({
+      name: 'discord_bot_disk_space_bytes',
+      help: 'Disk space info',
+      labelNames: ['type'],
+      registers: [this.registry]
+    });
+  }
+
   /**
    * Запис метрики команди
    */
   recordCommand(command, status, userId) {
-    this.commandCounter.inc({ command, status, user_id: userId });
+    try { this.commandCounter.inc({ command, status, user_id: userId }); } catch {}
   }
 
   /**
    * Запис часу виконання команди
    */
   recordCommandDuration(command, duration) {
-    this.commandDuration.observe({ command }, duration);
+    try { this.commandDuration.observe({ command }, duration); } catch {}
   }
 
   /**
    * Запис API запиту
    */
   recordApiRequest(service, method, status) {
-    this.apiRequestCounter.inc({ service, method, status });
+    try { this.apiRequestCounter.inc({ service, method, status }); } catch {}
   }
 
   /**
    * Запис часу API запиту
    */
   recordApiRequestDuration(service, duration) {
-    this.apiRequestDuration.observe({ service }, duration);
+    try { this.apiRequestDuration.observe({ service }, duration); } catch {}
   }
 
   /**
    * Запис попадання в кеш
    */
   recordCacheHit(cacheType) {
-    this.cacheHits.inc({ cache_type: cacheType });
+    try { this.cacheHits.inc({ cache_type: cacheType }); } catch {}
   }
 
   /**
    * Запис промаху кешу
    */
   recordCacheMiss(cacheType) {
-    this.cacheMisses.inc({ cache_type: cacheType });
+    try { this.cacheMisses.inc({ cache_type: cacheType }); } catch {}
   }
 
   /**
    * Запис помилки
    */
   recordError(type, command) {
-    this.errorCounter.inc({ type, command });
+    try { this.errorCounter.inc({ type, command }); } catch {}
   }
 
   /**
@@ -262,21 +283,54 @@ class MetricsCollector {
    * Запуск HTTP сервера для метрик
    */
   startMetricsServer() {
-    if (!config.isMetricsEnabled()) {
-      console.log('📊 Метрики вимкнені в конфігурації');
+    if (!METRICS_ENABLED) {
+      console.log('📊 Метрики вимкнені (ENV)');
       return;
     }
 
     const app = express();
-    const port = config.metrics.port;
+    const port = METRICS_PORT;
+    const path = METRICS_PATH;
+
+    // простейший rate-limit
+    const windowMs = 10_000; // 10s
+    const max = 5; // запросов
+    const hits = new Map();
 
     // Ендпоінт для метрик
-    app.get(config.metrics.path, async (req, res) => {
+    app.get(path, async (req, res) => {
+      const ip = req.ip;
+      const now = Date.now();
+
+    // Периодичне оновлення системних метрик
+    setInterval(() => {
+      try {
+        const { user, system } = process.cpuUsage();
+        this.cpuUsage.set({ type: 'user' }, user);
+        this.cpuUsage.set({ type: 'system' }, system);
+        const free = os.freemem();
+        const total = os.totalmem();
+        this.diskSpace.set({ type: 'mem_free' }, free);
+        this.diskSpace.set({ type: 'mem_total' }, total);
+      } catch {}
+    }, 5000);
+
+      const arr = hits.get(ip) || [];
+      const pruned = arr.filter((t) => now - t < windowMs);
+      pruned.push(now);
+      hits.set(ip, pruned);
+      if (pruned.length > max) {
+        return res.status(429).end('Rate limited');
+      }
       try {
         res.set('Content-Type', this.registry.contentType);
         res.end(await this.registry.metrics());
       } catch (error) {
         console.error('Помилка отримання метрик:', error);
+        res.status(500).end('Помилка отримання метрик');
+        return;
+      }
+
         res.status(500).end('Помилка отримання метрик');
       }
     });
@@ -292,7 +346,7 @@ class MetricsCollector {
 
     // Запуск сервера
     app.listen(port, () => {
-      console.log(`📊 Метрики доступні на http://localhost:${port}${config.metrics.path}`);
+      console.log(`📊 Метрики доступні на http://localhost:${port}${path}`);
       console.log(`🏥 Health check доступний на http://localhost:${port}/health`);
     });
   }
@@ -310,7 +364,7 @@ class MetricsCollector {
    */
   async generateMetricsReport() {
     const metrics = await this.registry.getMetricsAsJSON();
-    
+
     const report = {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
@@ -330,4 +384,4 @@ class MetricsCollector {
   }
 }
 
-module.exports = MetricsCollector; 
+module.exports = MetricsCollector;
