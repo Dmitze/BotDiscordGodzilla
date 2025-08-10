@@ -9,29 +9,31 @@
 
 ---
 
-## 🚀 **ШВИДКИЙ СТАРТ**
+## 🚀 Key Features
 
-### 🧰 Технологічний стек (2025)
+### 🤖 AI Assistant
+- Natural language document search and analysis
+- Context-aware responses with conversation history
+- Multi-model support (OpenAI, Ollama)
+- RAG-enhanced document retrieval
 
-- **Runtime/Language:** Node.js 18+, TypeScript 5.3+
-- **Discord:** discord.js v14, Slash-команди, компоненти з підписом (`signComponentId` HMAC+TTL)
-- **Пошук/Індекс:** SQLite FTS, гібридний пошук (FTS + cosine)
-- **RAG:** `EmbeddingsService`, `RagService`, гібридний retriever
-- **AI:** локально через Ollama (за замовчуванням) або зовнішні провайдери (опційно)
-- **Логи/Метрики:** централізований логер, Prometheus-метрики
-- **i18n:** локаль за замовчуванням — `uk`
+### 📄 Document Management
+- Google Drive integration with real-time indexing
+- Advanced search with hybrid vector/text retrieval
+- Document analysis and summarization
+- Compliance and audit tracking
 
-### **📋 Що це за бот?**
-Discord AI Assistant Bot (Godzilla) - це інноваційний бот, розроблений для автоматизації роботи з документами, аналізу даних та підтримки операційної діяльності. Спеціально адаптований для потреб ЗСУ та критично важливих організацій.
+### 🎨 Enhanced Discord Experience
+- Rich markdown rendering with syntax highlighting
+- Interactive buttons and menus for document navigation
+- Thread-based conversations with context preservation
+- Multi-language support (primarily Ukrainian)
 
-### **🎯 Основні можливості:**
-- 🤖 **AI асистент** - природномовний аналіз даних
-- 📊 **Розумний пошук** - гнучкий пошук по всіх документах
-- 📄 **Управління документами** - робота з різними типами файлів
-- 📈 **Аналітика** - звіти та статистика
-- ⚡ **Операції** - управління військовими операціями
-- 🔒 **Безпека** - максимальний рівень захисту даних
-- 📋 **Аналіз документів** - комплексний аналіз Google Docs
+### 🔧 Automation & Integration
+- n8n workflow automation for document processing
+- Scheduled tasks and notifications
+- External API integrations (Jira, Trello, Notion)
+- Real-time document change monitoring
 
 ---
 
@@ -93,7 +95,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 ### **📁 Структура проекту**
 
-```text
+```
 src/
 ├── commands/          # Команди бота
 ├── services/          # Бізнес-логіка
@@ -170,7 +172,7 @@ npm run dev
 
 ### **🐳 Docker запуск**
 
-```bash
+```
 # Збірка образу
 docker build -t godzilla-bot .
 
@@ -184,7 +186,7 @@ docker run -d --name godzilla-bot godzilla-bot
 
 ### **📋 Обов'язкові змінні середовища**
 
-```env
+```
 # Discord
 DISCORD_TOKEN=your_discord_token
 DISCORD_CLIENT_ID=your_client_id
