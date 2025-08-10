@@ -6,7 +6,9 @@ const config: Config.InitialOptions = {
   roots: ['<rootDir>/src', '<rootDir>/helpers'],
   testMatch: [
     '**/__tests__/**/*.ts',
-    '**/?(*.)+(spec|test).ts'
+    '**/?(*.)+(spec|test).ts',
+    '**/__tests__/**/*.js',
+    '**/?(*.)+(spec|test).js'
   ],
   transform: {
     '^.+\\.ts$': 'ts-jest',
