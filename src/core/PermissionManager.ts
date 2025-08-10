@@ -4,8 +4,8 @@
  * Версія 1.0.0 - Нова реалізація
  */
 
-import { GuildMember, Role, User, PermissionResolvable, PermissionFlagsBits } from 'discord.js';
-import type { BotConfig, LogMeta } from '@/types';
+import { GuildMember, User, PermissionResolvable, PermissionFlagsBits } from 'discord.js';
+import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 
 // Константи для системи прав
@@ -66,18 +66,16 @@ interface CommandUsage {
 
 export class PermissionManager {
   private static instance: PermissionManager | null = null;
-  private config: BotConfig;
   private permissionConfigs = new Map<string, PermissionConfig>();
   private userCache = new Map<string, UserPermissionCache>();
   private commandUsage = new Map<string, CommandUsage>();
   private isInitialized = false;
 
-  constructor(config: BotConfig) {
+  constructor(_config: BotConfig) {
     if (PermissionManager.instance) {
       return PermissionManager.instance;
     }
     
-    this.config = config;
     PermissionManager.instance = this;
     this.initialize();
   }
@@ -98,7 +96,7 @@ export class PermissionManager {
       this.isInitialized = true;
       logger.info('✅ Система прав доступу ініціалізована');
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації системи прав:', error);
+      logger.error(`❌ Помилка ініціалізації системи прав: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }
@@ -209,8 +207,7 @@ export class PermissionManager {
       
       // Перевірка рівня користувача
       if (userInfo.userLevel < permConfig.minUserLevel) {
-        this.logSecurityEvent('insufficient_user_level', {
-          userId: user.id,
+        this.logSecurityEvent('insufficient_user_level', user.id, {
           command: commandName,
           userLevel: userInfo.userLevel,
           requiredLevel: permConfig.minUserLevel
@@ -244,48 +241,52 @@ export class PermissionManager {
                      canUseInChannel && 
                      usageCheck.allowed;
 
-      const result: PermissionCheckResult = {
+      const resultBase = {
         allowed,
-        reason: allowed ? undefined : this.buildDenialReason({
-          hasRequiredRoles,
-          hasRequiredPermissions,
-          canUseInChannel,
-          usageAllowed: usageCheck.allowed,
-          usageReason: usageCheck.reason
-        }),
         userLevel: userInfo.userLevel,
         hasRequiredRoles,
         hasRequiredPermissions,
         canUseInChannel,
         remainingUses: usageCheck.remainingUses
-      };
+      } as PermissionCheckResult;
+      if (!allowed) {
+        const denialObj: {
+          hasRequiredRoles: boolean;
+          hasRequiredPermissions: boolean;
+          canUseInChannel: boolean;
+          usageAllowed: boolean;
+          // do not include usageReason key when undefined (exactOptionalPropertyTypes)
+          usageReason?: string;
+        } = {
+          hasRequiredRoles,
+          hasRequiredPermissions,
+          canUseInChannel,
+          usageAllowed: usageCheck.allowed
+        };
+        if (usageCheck.reason !== undefined) {
+          denialObj.usageReason = usageCheck.reason;
+        }
+        const reasonStr = this.buildDenialReason(denialObj);
+        (resultBase as any).reason = reasonStr;
+      }
+      const result: PermissionCheckResult = resultBase;
 
       // Логування результату
       const duration = Date.now() - startTime;
       if (allowed) {
         this.recordCommandUsage(user.id, commandName);
-        logger.debug('✅ Доступ дозволено', {
-          userId: user.id,
-          command: commandName,
-          duration: `${duration}ms`,
-          userLevel: UserLevel[userInfo.userLevel]
-        } as LogMeta);
+        logger.debug(`✅ Доступ дозволено user=${user.id} command=${commandName} duration=${duration}ms level=${UserLevel[userInfo.userLevel]}`);
       } else {
-        this.logSecurityEvent('access_denied', {
-          userId: user.id,
+        this.logSecurityEvent('access_denied', user.id, {
           command: commandName,
-          reason: result.reason,
+          reason: result.reason ?? '',
           duration: `${duration}ms`
         });
       }
 
       return result;
     } catch (error) {
-      logger.error('❌ Помилка перевірки прав доступу:', {
-        userId: user.id,
-        command: commandName,
-        error: error instanceof Error ? error.message : String(error)
-      } as LogMeta);
+      logger.error(`❌ Помилка перевірки прав доступу: user=${user.id} command=${commandName} error=${error instanceof Error ? error.message : String(error)}`);
       
       // У разі помилки дозволяємо доступ для базових команд
       return {
@@ -428,7 +429,7 @@ export class PermissionManager {
   } {
     const usageKey = `${userId}:${command}`;
     const now = Date.now();
-    const today = new Date().toISOString().split('T')[0];
+    const [today = ''] = new Date().toISOString().split('T');
 
     // Перевірка cooldown
     const lastUsage = this.commandUsage.get(usageKey);
@@ -465,7 +466,7 @@ export class PermissionManager {
   private recordCommandUsage(userId: string, command: string): void {
     const usageKey = `${userId}:${command}`;
     const now = Date.now();
-    const today = new Date().toISOString().split('T')[0];
+    const [today = ''] = new Date().toISOString().split('T');
     
     const existing = this.commandUsage.get(usageKey);
     
@@ -517,12 +518,13 @@ export class PermissionManager {
   /**
    * Логування подій безпеки
    */
-  private logSecurityEvent(eventType: string, data: Record<string, unknown>): void {
-    logger.security(eventType, data.userId as string, {
-      ...data,
-      type: 'permission_check',
-      timestamp: new Date().toISOString()
-    } as LogMeta);
+  private logSecurityEvent(eventType: string, userId: string, data: Record<string, unknown>): void {
+    const details = JSON.stringify({ ...data, timestamp: new Date().toISOString() });
+    if (typeof (logger as any).security === 'function') {
+      (logger as any).security(`🔒 ${eventType} user=${userId} details=${details}`);
+    } else {
+      logger.warn(`🔒 ${eventType} user=${userId} details=${details}`);
+    }
   }
 
   /**
@@ -555,7 +557,7 @@ export class PermissionManager {
       }
       
       // Очищення використання команд (тільки старі дні)
-      const today = new Date().toISOString().split('T')[0];
+      const [today = ''] = new Date().toISOString().split('T');
       for (const [key, usage] of this.commandUsage.entries()) {
         if (usage.date !== today && now - usage.lastUse > 24 * 60 * 60 * 1000) {
           this.commandUsage.delete(key);
@@ -585,7 +587,7 @@ export class PermissionManager {
     dailyUsage: number;
     isInitialized: boolean;
   } {
-    const today = new Date().toISOString().split('T')[0];
+    const [today = ''] = new Date().toISOString().split('T');
     const dailyUsage = Array.from(this.commandUsage.values())
       .filter(usage => usage.date === today)
       .reduce((sum, usage) => sum + usage.uses, 0);
