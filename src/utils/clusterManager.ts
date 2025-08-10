@@ -5,6 +5,7 @@
  */
 
 import cluster from 'cluster';
+import type { Worker } from 'cluster';
 import os from 'os';
 import logger from './logger';
 
@@ -45,6 +46,15 @@ class ClusterManager {
   private isMaster: boolean;
   private isActive: boolean;
   private stats: ClusterStats;
+  
+  private static formatError(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    try { return JSON.stringify(error); } catch { return String(error); }
+  }
+  private static formatAny(value: unknown): string {
+    if (typeof value === 'string') return value;
+    try { return JSON.stringify(value); } catch { return String(value); }
+  }
 
   constructor(config: Partial<ClusterConfig> = {}) {
     this.config = {
@@ -56,7 +66,8 @@ class ClusterManager {
     
     this.workers = new Map();
     this.restartCounts = new Map();
-    this.isMaster = cluster.isPrimary;
+    const isPrimary: boolean = (cluster as any).isPrimary ?? (cluster as any).isMaster ?? false;
+    this.isMaster = isPrimary;
     this.isActive = false;
     
     this.stats = {
@@ -91,7 +102,7 @@ class ClusterManager {
       this.isActive = true;
       logger.info(`✅ Кластер запущено: ${this.workers.size} workers`);
     } catch (error) {
-      logger.error('❌ Помилка запуску кластера:', error);
+      logger.error(`❌ Помилка запуску кластера: ${ClusterManager.formatError(error)}`);
       throw error;
     }
   }
@@ -99,13 +110,13 @@ class ClusterManager {
   /**
    * Створення worker процесу
    */
-  private async createWorker(): Promise<cluster.Worker> {
+  private async createWorker(): Promise<Worker> {
     try {
-      const worker = cluster.fork();
+      const worker: Worker = (cluster as any).fork();
       
       this.workers.set(worker.id, {
         id: worker.id,
-        pid: worker.process.pid,
+        pid: worker.process.pid ?? 0,
         status: 'starting',
         startTime: Date.now(),
         restarts: 0,
@@ -117,7 +128,7 @@ class ClusterManager {
       logger.info(`🔧 Worker ${worker.id} створено (PID: ${worker.process.pid})`);
       return worker;
     } catch (error) {
-      logger.error('❌ Помилка створення worker:', error);
+      logger.error(`❌ Помилка створення worker: ${ClusterManager.formatError(error)}`);
       throw error;
     }
   }
@@ -127,7 +138,7 @@ class ClusterManager {
    */
   private setupEventHandlers(): void {
     // Worker online
-    cluster.on('online', (worker) => {
+    (cluster as any).on('online', (worker: Worker) => {
       const workerInfo = this.workers.get(worker.id);
       if (workerInfo) {
         workerInfo.status = 'online';
@@ -136,17 +147,17 @@ class ClusterManager {
     });
 
     // Worker message
-    cluster.on('message', (worker, message) => {
+    (cluster as any).on('message', (worker: Worker, message: any) => {
       this.handleWorkerMessage(worker, message);
     });
 
     // Worker exit
-    cluster.on('exit', (worker, code, signal) => {
+    (cluster as any).on('exit', (worker: Worker, code: number, signal: string) => {
       this.handleWorkerExit(worker, code, signal);
     });
 
     // Worker disconnect
-    cluster.on('disconnect', (worker) => {
+    (cluster as any).on('disconnect', (worker: Worker) => {
       const workerInfo = this.workers.get(worker.id);
       if (workerInfo) {
         workerInfo.status = 'offline';
@@ -158,7 +169,7 @@ class ClusterManager {
   /**
    * Обробка повідомлень від workers
    */
-  private handleWorkerMessage(worker: cluster.Worker, message: any): void {
+  private handleWorkerMessage(worker: Worker, message: any): void {
     try {
       const workerInfo = this.workers.get(worker.id);
       if (!workerInfo) return;
@@ -168,23 +179,23 @@ class ClusterManager {
           this.updateWorkerStats(worker.id, message.data);
           break;
         case 'error':
-          logger.error(`❌ Worker ${worker.id} помилка:`, message.data);
+          logger.error(`❌ Worker ${worker.id} помилка: ${ClusterManager.formatAny(message.data)}`);
           break;
         case 'ready':
           logger.info(`✅ Worker ${worker.id} готовий`);
           break;
         default:
-          logger.debug(`📨 Повідомлення від worker ${worker.id}:`, message);
+          logger.debug(`📨 Повідомлення від worker ${worker.id}: ${ClusterManager.formatAny(message)}`);
       }
     } catch (error) {
-      logger.error('❌ Помилка обробки повідомлення worker:', error);
+      logger.error(`❌ Помилка обробки повідомлення worker: ${ClusterManager.formatError(error)}`);
     }
   }
 
   /**
    * Обробка виходу worker
    */
-  private async handleWorkerExit(worker: cluster.Worker, code: number, signal: string): Promise<void> {
+  private async handleWorkerExit(worker: Worker, code: number, signal: string): Promise<void> {
     try {
       const workerInfo = this.workers.get(worker.id);
       if (!workerInfo) return;
@@ -199,7 +210,7 @@ class ClusterManager {
         await this.restartWorker(worker.id);
       }
     } catch (error) {
-      logger.error('❌ Помилка обробки виходу worker:', error);
+      logger.error(`❌ Помилка обробки виходу worker: ${ClusterManager.formatError(error)}`);
     }
   }
 
@@ -233,7 +244,7 @@ class ClusterManager {
 
       logger.info(`✅ Worker ${workerId} перезапущено як ${newWorker.id}`);
     } catch (error) {
-      logger.error(`❌ Помилка перезапуску worker ${workerId}:`, error);
+      logger.error(`❌ Помилка перезапуску worker ${workerId}: ${ClusterManager.formatError(error)}`);
     }
   }
 
@@ -273,7 +284,10 @@ class ClusterManager {
    * Відправка повідомлення конкретному worker
    */
   sendToWorker(workerId: number, message: WorkerMessage): boolean {
-    const worker = cluster.workers?.[workerId];
+    // cluster.workers має string keys; знаходимо по id без порушення індекс-підписів
+    const workersRec = (cluster as any).workers as Record<string, Worker | undefined> | undefined;
+    const workerList = Object.values(workersRec ?? {});
+    const worker = workerList.find(w => w && w.id === workerId);
     if (!worker) {
       logger.warn(`⚠️ Worker ${workerId} не знайдено`);
       return false;
@@ -283,7 +297,7 @@ class ClusterManager {
       worker.send(message);
       return true;
     } catch (error) {
-      logger.error(`❌ Помилка відправки повідомлення worker ${workerId}:`, error);
+      logger.error(`❌ Помилка відправки повідомлення worker ${workerId}: ${ClusterManager.formatError(error)}`);
       return false;
     }
   }
@@ -298,7 +312,7 @@ class ClusterManager {
       }
       logger.debug(`📢 Розіслано повідомлення ${this.workers.size} workers`);
     } catch (error) {
-      logger.error('❌ Помилка розсилки повідомлень:', error);
+      logger.error(`❌ Помилка розсилки повідомлень: ${ClusterManager.formatError(error)}`);
     }
   }
 
@@ -322,10 +336,9 @@ class ClusterManager {
 
       // Зупинка всіх workers
       for (const [workerId] of this.workers.entries()) {
-        const worker = cluster.workers?.[workerId];
-        if (worker) {
-          worker.kill();
-        }
+        const workersRec = (cluster as any).workers as Record<string, Worker | undefined> | undefined;
+        const worker = Object.values(workersRec ?? {}).find(w => w && w.id === workerId);
+        if (worker) worker.kill();
       }
 
       // Очищення
@@ -334,7 +347,7 @@ class ClusterManager {
 
       logger.info('✅ Кластер зупинено');
     } catch (error) {
-      logger.error('❌ Помилка зупинки кластера:', error);
+      logger.error(`❌ Помилка зупинки кластера: ${ClusterManager.formatError(error)}`);
       throw error;
     }
   }
@@ -349,7 +362,7 @@ class ClusterManager {
       await this.start();
       logger.info('✅ Кластер перезапущено');
     } catch (error) {
-      logger.error('❌ Помилка перезапуску кластера:', error);
+      logger.error(`❌ Помилка перезапуску кластера: ${ClusterManager.formatError(error)}`);
       throw error;
     }
   }
@@ -370,4 +383,4 @@ class ClusterManager {
 }
 
 export default ClusterManager;
-export { ClusterManager }; 
+export { ClusterManager };

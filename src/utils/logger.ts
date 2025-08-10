@@ -31,6 +31,14 @@ interface LogMeta {
   channelId?: string;
   requestId?: string;
   correlationId?: string;
+  // Явно оголошені поля, що часто використовуються
+  type?: string;
+  severity?: string;
+  category?: string;
+  component?: string;
+  logLevel?: string;
+  processId?: number;
+  memory?: NodeJS.MemoryUsage;
 }
 
 interface LoggerStats {
@@ -83,6 +91,45 @@ class Logger {
     };
     
     this.initialize();
+  }
+
+  /**
+   * Санітізація метаданих логів: маскує секрети, обрізає великі значення, прибирає цикли
+   */
+  private sanitizeMeta(meta: LogMeta): LogMeta {
+    const SECRET_KEYS = new Set([
+      'token', 'apiKey', 'apikey', 'api_key', 'password', 'pass', 'secret', 'clientSecret', 'authorization', 'auth', 'bearer', 'session', 'cookie', 'cookies'
+    ]);
+
+    const MAX_STRING_LEN = 2000; // захист від гігантських полів
+
+    const seen = new WeakSet();
+
+    const redact = (key: string, value: unknown): unknown => {
+      if (value == null) return value;
+      if (SECRET_KEYS.has(key.toLowerCase())) return '[REDACTED]';
+      if (typeof value === 'string') {
+        return value.length > MAX_STRING_LEN ? value.slice(0, MAX_STRING_LEN) + '…' : value;
+      }
+      if (typeof value === 'object') {
+        if (seen.has(value as object)) return '[CIRCULAR]';
+        seen.add(value as object);
+        if (Array.isArray(value)) return value.map((v) => redact(key, v));
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+          out[k] = redact(k, v);
+        }
+        return out;
+      }
+      return value;
+    };
+
+    // Глибоке копіювання з санітізацією
+    const safe: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(meta || {})) {
+      safe[k] = redact(k, v);
+    }
+    return safe as LogMeta;
   }
 
   /**
@@ -322,7 +369,6 @@ class Logger {
       console.log(`[${level.toUpperCase()}]: ${message}`, meta);
       return;
     }
-
     try {
       const startTime = performance.now();
 
@@ -336,22 +382,8 @@ class Logger {
         memory: process.memoryUsage(),
       };
 
-      // Редакція чутливих полів перед будь-якими операціями
-      const redactMeta = (input: any): any => {
-        const SENSITIVE_KEY = /token|password|api[_-]?key|secret|authorization|client[_-]?secret|private[_-]?key/i;
-        const walk = (obj: any): any => {
-          if (!obj || typeof obj !== 'object') return obj;
-          if (Array.isArray(obj)) return obj.map(walk);
-          const out: any = {};
-          for (const k of Object.keys(obj)) {
-            const val = (obj as any)[k];
-            out[k] = SENSITIVE_KEY.test(k) ? '***' : walk(val);
-          }
-          return out;
-        };
-        return walk(input);
-      };
-      const safeMeta = redactMeta(enhancedMeta);
+      // Санитизация секретів і циклів
+      const safeMeta = this.sanitizeMeta(enhancedMeta);
 
       // Оновлення статистики
       this.updateStats(level, message, safeMeta);
