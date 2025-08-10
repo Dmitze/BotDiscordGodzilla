@@ -19,8 +19,8 @@ const FORMULA_PROCESSOR_CONSTANTS = {
     'sqrt', 'pow', 'exp', 'log', 'ln', 'abs',
     'floor', 'ceil', 'round', 'min', 'max',
     'sum', 'avg', 'count', 'if', 'case',
-  ],
-  ALLOWED_OPERATORS: ['+', '-', '*', '/', '^', '(', ')', '=', '<', '>', '<=', '>=', '!=', '=='],
+  ] as readonly string[],
+  ALLOWED_OPERATORS: ['+', '-', '*', '/', '^', '(', ')', '=', '<', '>', '<=', '>=', '!=', '=='] as readonly string[],
   ALLOWED_VARIABLES: /^[a-zA-Z_][a-zA-Z0-9_]*$/,
   MAX_VARIABLES: 50,
   PRECISION: 10,
@@ -65,10 +65,10 @@ export interface FormulaProcessorStats {
 
 export class FormulaProcessor {
   private static instance: FormulaProcessor | null = null;
-  private stats: FormulaProcessorStats;
+  private stats!: FormulaProcessorStats;
   private variableCache = new Map<string, number>();
   private functionCache = new Map<string, Function>();
-  private isInitialized = false;
+  private _isInitialized = false;
 
   constructor() {
     if (FormulaProcessor.instance) {
@@ -102,7 +102,7 @@ export class FormulaProcessor {
       // Ініціалізація кешу змінних
       this.initializeVariableCache();
 
-      this.isInitialized = true;
+      this._isInitialized = true;
       logger.info('✅ FormulaProcessor успішно ініціалізовано');
     } catch (error) {
       handleError(error, {
@@ -287,8 +287,6 @@ export class FormulaProcessor {
 
       return result;
     } catch (error) {
-      const duration = performance.now() - startTime;
-
       handleError(error, {
         serviceName: 'FormulaProcessor',
         additionalContext: { operation: 'validateFormula', formula: formula.substring(0, 100) },
@@ -330,10 +328,13 @@ export class FormulaProcessor {
       }
 
       // Об'єднання змінних
-      const allVariables = { ...this.variableCache, ...variables };
+      const allVariables: Record<string, number> = {
+        ...Object.fromEntries(this.variableCache),
+        ...variables,
+      };
 
       // Створення безпечного контексту виконання
-      const result = await this.executeFormula(formula, allVariables, operationId);
+      const result = await this.executeFormula(formula, allVariables);
 
       const duration = performance.now() - startTime;
       const complexity = validation.complexity;
@@ -394,7 +395,6 @@ export class FormulaProcessor {
   private async executeFormula(
     formula: string,
     variables: Record<string, number>,
-    operationId: string
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       try {
@@ -633,7 +633,7 @@ export class FormulaProcessor {
    * Перевірка стану ініціалізації
    */
   public isInitialized(): boolean {
-    return this.isInitialized;
+    return this._isInitialized;
   }
 }
 

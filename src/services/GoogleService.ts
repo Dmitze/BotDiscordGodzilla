@@ -15,7 +15,7 @@ import type {
 } from '@/types';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
-import { logger } from '@/utils/logger';
+import logger from '@/utils/logger';
 
 interface GoogleServiceStats extends ServiceStats {
   requests: number;
@@ -38,6 +38,7 @@ interface GoogleServiceOptions {
   forceRefresh?: boolean;
   batchSize?: number;
   retryFailed?: boolean;
+  cacheResults?: boolean;
   maxRetries?: number;
   valueInputOption?: string;
   clearCache?: boolean;

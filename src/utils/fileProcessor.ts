@@ -6,7 +6,14 @@
 
 import type { LogMeta } from '@/types';
 import { existsSync, mkdirSync, statSync } from 'fs';
-import { access, constants, readFile, unlink, writeFile } from 'fs/promises';
+import {
+  access as fsAccess,
+  constants as fsConstants,
+  readFile as fsReadFile,
+  unlink as fsUnlink,
+  writeFile as fsWriteFile,
+} from 'fs/promises';
+
 import { basename, dirname, extname, join } from 'path';
 import { handleError } from './errorHandler';
 import logger from './logger';
@@ -79,10 +86,10 @@ export interface FileProcessorStats {
 
 export class FileProcessor {
   private static instance: FileProcessor | null = null;
-  private stats: FileProcessorStats;
+  private stats!: FileProcessorStats;
   private activeOperations = new Set<string>();
   private cleanupInterval: NodeJS.Timeout | null = null;
-  private isInitialized = false;
+  private _isInitialized = false;
 
   constructor() {
     if (FileProcessor.instance) {
@@ -117,7 +124,7 @@ export class FileProcessor {
       // Запуск періодичного очищення
       this.startCleanupInterval();
 
-      this.isInitialized = true;
+      this._isInitialized = true;
       logger.info('✅ FileProcessor успішно ініціалізовано');
     } catch (error) {
       handleError(error, {
@@ -356,19 +363,20 @@ export class FileProcessor {
       }
 
       // Перевірка розширення
-      if (!FILE_PROCESSOR_CONSTANTS.ALLOWED_EXTENSIONS.includes(extension)) {
+      const allowedExts = FILE_PROCESSOR_CONSTANTS.ALLOWED_EXTENSIONS as readonly string[];
+      if (!allowedExts.includes(extension)) {
         warnings.push(`Недозволене розширення файлу: ${extension}`);
       }
 
       // Перевірка прав доступу
       try {
-        await access(filePath, constants.R_OK);
+        await fsAccess(filePath, fsConstants.R_OK);
       } catch {
         errors.push('Файл недоступний для читання');
       }
 
       try {
-        await access(filePath, constants.W_OK);
+        await fsAccess(filePath, fsConstants.W_OK);
       } catch {
         warnings.push('Файл недоступний для запису');
       }
@@ -423,7 +431,7 @@ export class FileProcessor {
       return this.readFileInChunks(filePath);
     } else {
       // Читання малих файлів повністю
-      return await readFile(filePath, 'utf8');
+      return await fsReadFile(filePath, 'utf8');
     }
   }
 
@@ -458,7 +466,7 @@ export class FileProcessor {
       mkdirSync(dir, { recursive: true });
     }
 
-    await writeFile(filePath, content);
+    await fsWriteFile(filePath, content);
   }
 
   /**
@@ -470,8 +478,8 @@ export class FileProcessor {
       const backupName = `${basename(filePath)}.backup.${timestamp}`;
       const backupPath = join(FILE_PROCESSOR_CONSTANTS.BACKUP_DIR, backupName);
 
-      const content = await readFile(filePath);
-      await writeFile(backupPath, content);
+      const content = await fsReadFile(filePath);
+      await fsWriteFile(backupPath, content);
 
       logger.debug('💾 Створено резервну копію', {
         original: filePath,
@@ -516,7 +524,7 @@ export class FileProcessor {
   /**
    * Очищення тимчасових файлів
    */
-  private async cleanupTempFiles(): void {
+  private async cleanupTempFiles(): Promise<void> {
     try {
       const tempDir = FILE_PROCESSOR_CONSTANTS.TEMP_DIR;
       if (!existsSync(tempDir)) return;
@@ -533,7 +541,7 @@ export class FileProcessor {
 
         if (age > FILE_PROCESSOR_CONSTANTS.MAX_TEMP_AGE) {
           try {
-            await unlink(filePath);
+            await fsUnlink(filePath);
             cleanedCount++;
           } catch (error) {
             logger.warn('⚠️ Не вдалося видалити тимчасовий файл', {
@@ -611,7 +619,7 @@ export class FileProcessor {
    * Перевірка стану ініціалізації
    */
   public isInitialized(): boolean {
-    return this.isInitialized;
+    return this._isInitialized;
   }
 }
 

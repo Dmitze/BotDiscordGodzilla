@@ -65,13 +65,13 @@ try {
   const envPath = join(process.cwd(), '.env');
   if (existsSync(envPath)) {
     config({ path: envPath });
-    logger.info('✅ Змінні середовища завантажено з .env файлу');
+    logger.info('✅ Змінні середовища завантажено з .env файлу', {});
   } else {
     config();
-    logger.warn('⚠️ .env файл не знайдено, використовую системні змінні');
+    logger.warn('⚠️ .env файл не знайдено, використовую системні змінні', {});
   }
 } catch (error) {
-  logger.error('❌ Помилка завантаження змінних середовища:', error);
+  logger.error('❌ Помилка завантаження змінних середовища:', { error });
   throw new Error('Неможливо завантажити змінні середовища');
 }
 
@@ -88,11 +88,11 @@ class Application {
 
   constructor() {
     try {
-      logger.info(`🚀 Ініціалізація ${APP_CONFIG.NAME} v${APP_CONFIG.VERSION}`);
+      logger.info(`🚀 Ініціалізація ${APP_CONFIG.NAME} v${APP_CONFIG.VERSION}`, {});
       this.config = Config.load();
-      logger.info('✅ Конфігурація завантажена успішно');
+      logger.info('✅ Конфігурація завантажена успішно', {});
     } catch (error) {
-      logger.error('❌ Критична помилка ініціалізації додатку:', error);
+      logger.error('❌ Критична помилка ініціалізації додатку:', { error });
       throw new Error(`Помилка ініціалізації: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
     }
   }
@@ -102,12 +102,12 @@ class Application {
    */
   public async start(): Promise<void> {
     if (this.isStarting) {
-      logger.warn('⚠️ Додаток вже запускається');
+      logger.warn('⚠️ Додаток вже запускається', {});
       return;
     }
 
     if (this.isShuttingDown) {
-      logger.warn('⚠️ Неможливо запустити додаток під час зупинки');
+      logger.warn('⚠️ Неможливо запустити додаток під час зупинки', {});
       return;
     }
 
@@ -115,7 +115,7 @@ class Application {
     this.startupTime = Date.now();
 
     try {
-      logger.info('🔄 Початок запуску додатку...');
+      logger.info('🔄 Початок запуску додатку...', {});
       
       // Валідація конфігурації
       await this.validateConfiguration();
@@ -124,17 +124,17 @@ class Application {
       await this.checkSystemResources();
       
       // Створення та ініціалізація бота
-      logger.info('🤖 Створення екземпляру бота...');
+      logger.info('🤖 Створення екземпляру бота...', {});
       this.bot = new Bot(this.config);
       
-      logger.info('⚙️ Ініціалізація бота...');
+      logger.info('⚙️ Ініціалізація бота...', {});
       await this.bot.initialize();
       
       // Запуск моніторингу
       this.startMonitoring();
       
       const startupDuration = Date.now() - this.startupTime;
-      logger.info(`✅ Додаток успішно запущено за ${startupDuration}ms`);
+      logger.info(`✅ Додаток успішно запущено за ${startupDuration}ms`, {});
       
       // Скидання лічильника перезапусків при успішному запуску
       this.restartCount = 0;
@@ -147,7 +147,7 @@ class Application {
       
     } catch (error) {
       const startupDuration = Date.now() - this.startupTime;
-      logger.error(`❌ Помилка запуску додатку після ${startupDuration}ms:`, error);
+      logger.error(`❌ Помилка запуску додатку після ${startupDuration}ms:`, { error });
       
       // Спроба очищення ресурсів
       await this.cleanupOnError();
@@ -163,7 +163,7 @@ class Application {
    */
   public async stop(): Promise<void> {
     if (this.isShuttingDown) {
-      logger.warn('⚠️ Додаток вже зупиняється');
+      logger.warn('⚠️ Додаток вже зупиняється', {});
       return;
     }
 
@@ -171,26 +171,26 @@ class Application {
     const shutdownStartTime = Date.now();
 
     try {
-      logger.info('🛑 Початок зупинки додатку...');
+      logger.info('🛑 Початок зупинки додатку...', {});
       
       // Зупинка моніторингу
       this.stopMonitoring();
       
       if (this.bot) {
-        logger.info('🤖 Зупинка бота...');
+        logger.info('🤖 Зупинка бота...', {});
         await this.bot.shutdown();
         this.bot = null;
       }
       
       const shutdownDuration = Date.now() - shutdownStartTime;
-      logger.info(`✅ Додаток успішно зупинено за ${shutdownDuration}ms`);
+      logger.info(`✅ Додаток успішно зупинено за ${shutdownDuration}ms`, {});
       
     } catch (error) {
       const shutdownDuration = Date.now() - shutdownStartTime;
-      logger.error(`❌ Помилка зупинки додатку після ${shutdownDuration}ms:`, error);
+      logger.error(`❌ Помилка зупинки додатку після ${shutdownDuration}ms:`, { error });
       
       // Примусова зупинка при помилці
-      logger.warn('🔄 Примусова зупинка процесу...');
+      logger.warn('🔄 Примусова зупинка процесу...', {});
       process.exit(1);
     } finally {
       this.isShuttingDown = false;
@@ -231,7 +231,7 @@ class Application {
         isShuttingDown: this.isShuttingDown,
       };
     } catch (error) {
-      logger.error('❌ Помилка отримання статистики:', error);
+      logger.error('❌ Помилка отримання статистики:', { error });
       return {
         status: 'error',
         error: error instanceof Error ? error.message : 'Невідома помилка',
@@ -247,32 +247,32 @@ class Application {
   public async restart(): Promise<void> {
     if (this.restartCount >= this.maxRestarts) {
       const error = `Досягнуто максимальну кількість перезапусків (${this.maxRestarts})`;
-      logger.error(`❌ ${error}`);
+      logger.error(`❌ ${error}`, {});
       throw new Error(error);
     }
 
     this.restartCount++;
-    logger.info(`🔄 Перезапуск додатку (спроба ${this.restartCount}/${this.maxRestarts})...`);
+    logger.info(`🔄 Перезапуск додатку (спроба ${this.restartCount}/${this.maxRestarts})...`, {});
 
     try {
       // Зупинка поточного екземпляру
       if (this.bot) {
-        logger.info('🛑 Зупинка поточного екземпляру...');
+        logger.info('🛑 Зупинка поточного екземпляру...', {});
         await this.bot.shutdown();
         this.bot = null;
       }
 
       // Затримка перед перезапуском
-      logger.info(`⏳ Затримка ${APP_CONFIG.RESTART_DELAY}ms перед перезапуском...`);
+      logger.info(`⏳ Затримка ${APP_CONFIG.RESTART_DELAY}ms перед перезапуском...`, {});
       await new Promise(resolve => setTimeout(resolve, APP_CONFIG.RESTART_DELAY));
 
       // Запуск нового екземпляру
-      logger.info('🚀 Запуск нового екземпляру...');
+      logger.info('🚀 Запуск нового екземпляру...', {});
       await this.start();
       
-      logger.info('✅ Додаток успішно перезапущено');
+      logger.info('✅ Додаток успішно перезапущено', {});
     } catch (error) {
-      logger.error('❌ Помилка при перезапуску:', error);
+      logger.error('❌ Помилка при перезапуску:', { error });
       throw error;
     }
   }
@@ -282,7 +282,7 @@ class Application {
    */
   private async validateConfiguration(): Promise<void> {
     try {
-      logger.info('🔍 Валідація конфігурації...');
+      logger.info('🔍 Валідація конфігурації...', {});
       
       // Перевірка обов'язкових полів
       const requiredFields = [
@@ -301,9 +301,9 @@ class Application {
         }
       }
 
-      logger.info('✅ Конфігурація валідна');
+      logger.info('✅ Конфігурація валідна', {});
     } catch (error) {
-      logger.error('❌ Помилка валідації конфігурації:', error);
+      logger.error('❌ Помилка валідації конфігурації:', { error });
       throw error;
     }
   }
@@ -313,13 +313,13 @@ class Application {
    */
   private async checkSystemResources(): Promise<void> {
     try {
-      logger.info('🔍 Перевірка системних ресурсів...');
+      logger.info('🔍 Перевірка системних ресурсів...', {});
       
       const memoryUsage = process.memoryUsage();
       const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
       
       if (heapUsedMB > 500) {
-        logger.warn(`⚠️ Високе використання пам'яті: ${Math.round(heapUsedMB)}MB`);
+        logger.warn(`⚠️ Високе використання пам'яті: ${Math.round(heapUsedMB)}MB`, {});
       }
       
       // Перевірка доступності файлової системи
@@ -328,12 +328,12 @@ class Application {
         require('fs').writeFileSync(testPath, 'test');
         require('fs').unlinkSync(testPath);
       } catch (fsError) {
-        logger.warn('⚠️ Проблеми з файловою системою:', fsError);
+        logger.warn('⚠️ Проблеми з файловою системою:', { error: fsError });
       }
       
-      logger.info('✅ Системні ресурси перевірено');
+      logger.info('✅ Системні ресурси перевірено', {});
     } catch (error) {
-      logger.error('❌ Помилка перевірки системних ресурсів:', error);
+      logger.error('❌ Помилка перевірки системних ресурсів:', { error });
       throw error;
     }
   }
@@ -346,13 +346,13 @@ class Application {
     this.healthCheckInterval = setInterval(async () => {
       try {
         if (this.bot) {
-          const health = await this.bot.onHealthCheck();
+          const health = await this.bot.healthCheck();
           if (!health.healthy) {
             logger.warn('⚠️ Health check виявив проблеми:', health);
           }
         }
       } catch (error) {
-        logger.error('❌ Помилка health check:', error);
+        logger.error('❌ Помилка health check:', { error });
       }
     }, APP_CONFIG.HEALTH_CHECK_INTERVAL);
 
@@ -363,21 +363,21 @@ class Application {
         const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
         
         if (heapUsedMB > 800) {
-          logger.warn(`⚠️ Критичне використання пам'яті: ${Math.round(heapUsedMB)}MB`);
+          logger.warn(`⚠️ Критичне використання пам'яті: ${Math.round(heapUsedMB)}MB`, {});
         }
         
         if (memoryUsage.heapUsed > APP_CONFIG.MAX_MEMORY_USAGE) {
-          logger.error('💥 Перевищено ліміт пам'яті, перезапуск...');
+          logger.error("💥 Перевищено ліміт пам'яті, перезапуск...", {});
           this.restart().catch(error => {
-            logger.error('❌ Помилка перезапуску через перевищення пам'яті:', error);
+            logger.error("❌ Помилка перезапуску через перевищення пам'яті:", { error });
           });
         }
       } catch (error) {
-        logger.error('❌ Помилка моніторингу пам'яті:', error);
+        logger.error("❌ Помилка моніторингу пам'яті:", { error });
       }
     }, 60000); // Кожну хвилину
 
-    logger.info('📊 Моніторинг запущено');
+    logger.info('📊 Моніторинг запущено', {});
   }
 
   /**
@@ -394,7 +394,7 @@ class Application {
       this.memoryCheckInterval = null;
     }
     
-    logger.info('📊 Моніторинг зупинено');
+    logger.info('📊 Моніторинг зупинено', {});
   }
 
   /**
@@ -409,7 +409,7 @@ class Application {
    */
   private async cleanupOnError(): Promise<void> {
     try {
-      logger.info('🧹 Очищення ресурсів при помилці...');
+      logger.info('🧹 Очищення ресурсів при помилці...', {});
       
       this.stopMonitoring();
       
@@ -417,14 +417,14 @@ class Application {
         try {
           await this.bot.shutdown();
         } catch (shutdownError) {
-          logger.error('❌ Помилка при очищенні бота:', shutdownError);
+          logger.error('❌ Помилка при очищенні бота:', { error: shutdownError });
         }
         this.bot = null;
       }
       
-      logger.info('✅ Ресурси очищено');
+      logger.info('✅ Ресурси очищено', {});
     } catch (error) {
-      logger.error('❌ Помилка очищення ресурсів:', error);
+      logger.error('❌ Помилка очищення ресурсів:', { error });
     }
   }
 
@@ -441,7 +441,7 @@ class Application {
         restartCount: stats.restartCount,
       });
     } catch (error) {
-      logger.error('❌ Помилка логування статистики запуску:', error);
+      logger.error('❌ Помилка логування статистики запуску:', { error });
     }
   }
 
@@ -450,22 +450,22 @@ class Application {
    */
   private setupGracefulShutdown(): void {
     const shutdown = async (signal: string) => {
-      logger.info(`📡 Отримано сигнал ${signal}, початок graceful shutdown...`);
+      logger.info(`📡 Отримано сигнал ${signal}, початок graceful shutdown...`, {});
       
       try {
         // Встановлення таймауту для shutdown
         const shutdownTimeout = setTimeout(() => {
-          logger.error('⏰ Таймаут graceful shutdown, примусова зупинка');
+          logger.error('⏰ Таймаут graceful shutdown, примусова зупинка', {});
           process.exit(1);
         }, APP_CONFIG.SHUTDOWN_TIMEOUT);
 
         await this.stop();
         clearTimeout(shutdownTimeout);
         
-        logger.info('✅ Graceful shutdown завершено успішно');
+        logger.info('✅ Graceful shutdown завершено успішно', {});
         process.exit(0);
       } catch (error) {
-        logger.error('❌ Помилка graceful shutdown:', error);
+        logger.error('❌ Помилка graceful shutdown:', { error });
         process.exit(1);
       }
     };
@@ -475,7 +475,7 @@ class Application {
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGQUIT', () => shutdown('SIGQUIT'));
 
-    logger.info('🛡️ Graceful shutdown налаштовано');
+    logger.info('🛡️ Graceful shutdown налаштовано', {});
   }
 }
 
@@ -489,17 +489,17 @@ async function main(): Promise<void> {
   const startTime = Date.now();
   
   try {
-    logger.info(`🎯 Запуск ${APP_CONFIG.NAME} v${APP_CONFIG.VERSION}`);
+    logger.info(`🎯 Запуск ${APP_CONFIG.NAME} v${APP_CONFIG.VERSION}`, {});
     
     app = new Application();
     await app.start();
     
     const totalStartupTime = Date.now() - startTime;
-    logger.info(`🎉 Додаток повністю запущено за ${totalStartupTime}ms`);
+    logger.info(`🎉 Додаток повністю запущено за ${totalStartupTime}ms`, {});
     
   } catch (error) {
     const totalStartupTime = Date.now() - startTime;
-    logger.error(`💥 Критична помилка при запуску після ${totalStartupTime}ms:`, error);
+    logger.error(`💥 Критична помилка при запуску після ${totalStartupTime}ms:`, { error });
     
     // Детальне логування помилки
     if (error instanceof Error) {
@@ -517,47 +517,50 @@ async function main(): Promise<void> {
 /**
  * Функції для зовнішнього використання з покращеною обробкою помилок
  */
-export {
-  main,
-  getStats: () => {
-    try {
-      return app?.getStats() || { status: 'not_initialized' };
-    } catch (error) {
-      logger.error('❌ Помилка отримання статистики:', error);
-      return { status: 'error', error: error instanceof Error ? error.message : 'Невідома помилка' };
+export function getStats() {
+  try {
+    return app?.getStats() || { status: 'not_initialized' };
+  } catch (error) {
+    logger.error('❌ Помилка отримання статистики:', { error });
+    return { status: 'error', error: error instanceof Error ? error.message : 'Невідома помилка' };
+  }
+}
+
+export async function restart() {
+  try {
+    if (!app) {
+      throw new Error('Додаток не ініціалізовано');
     }
-  },
-  restart: async () => {
-    try {
-      if (!app) {
-        throw new Error('Додаток не ініціалізовано');
-      }
-      return await app.restart();
-    } catch (error) {
-      logger.error('❌ Помилка перезапуску:', error);
-      throw error;
+    return await app.restart();
+  } catch (error) {
+    logger.error('❌ Помилка перезапуску:', { error });
+    throw error;
+  }
+}
+
+export async function shutdown() {
+  try {
+    if (!app) {
+      logger.warn('⚠️ Додаток не ініціалізовано для зупинки', {});
+      return;
     }
-  },
-  shutdown: async () => {
-    try {
-      if (!app) {
-        logger.warn('⚠️ Додаток не ініціалізовано для зупинки');
-        return;
-      }
-      return await app.stop();
-    } catch (error) {
-      logger.error('❌ Помилка зупинки:', error);
-      throw error;
-    }
-  },
-  getApp: () => app,
-  APP_CONFIG,
-};
+    return await app.stop();
+  } catch (error) {
+    logger.error('❌ Помилка зупинки:', { error });
+    throw error;
+  }
+}
+
+export function getApp() {
+  return app;
+}
+
+export { main, APP_CONFIG };
 
 // Запуск додатку, якщо файл виконано напряму
 if (require.main === module) {
   main().catch((error) => {
-    logger.error('💥 Фатальна помилка в головній функції:', error);
+    logger.error('💥 Фатальна помилка в головній функції:', { error });
     process.exit(1);
   });
-} 
+}

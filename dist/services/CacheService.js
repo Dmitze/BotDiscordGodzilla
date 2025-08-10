@@ -1,0 +1,484 @@
+"use strict";
+/**
+ * Redis Cache Service
+ * Оптимізоване кешування з підтримкою різних стратегій
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CacheService = void 0;
+const redis_1 = require("redis");
+const BaseService_1 = require("@/core/BaseService");
+// TODO: Створити типизовані утиліти
+const logger = {
+    info: (message, ...args) => console.log(message, ...args),
+    error: (message, ...args) => console.error(message, ...args),
+    warn: (message, ...args) => console.warn(message, ...args),
+    debug: (message, ...args) => console.debug(message, ...args),
+};
+class CacheService extends BaseService_1.BaseService {
+    constructor(config) {
+        super('CacheService', config);
+        this.client = null;
+        this.isConnected = false;
+        this.defaultTTL = 3600; // 1 година
+        this.maxRetries = 3;
+        this.retryDelay = 1000; // 1 секунда
+        this.stats = {
+            service: 'CacheService',
+            uptime: 0,
+            requests: 0,
+            errors: 0,
+            hits: 0,
+            misses: 0,
+            sets: 0,
+            deletes: 0,
+            hitRate: 0,
+            totalRequests: 0,
+        };
+    }
+    /**
+     * Ініціалізація Redis клієнта
+     */
+    async onInitialize() {
+        try {
+            if (!this.config.redis.enabled) {
+                logger.info('Redis кешування вимкнено');
+                return;
+            }
+            // Створення Redis клієнта з оптимізацією
+            this.client = (0, redis_1.createClient)({
+                url: this.config.redis.url,
+                socket: {
+                    connectTimeout: 10000,
+                    lazyConnect: true,
+                    reconnectStrategy: (retries) => {
+                        if (retries > this.maxRetries) {
+                            logger.error('Redis: Максимальна кількість спроб підключення досягнута');
+                            return false;
+                        }
+                        return Math.min(retries * this.retryDelay, 30000);
+                    },
+                },
+            });
+            // Обробники подій
+            this.setupEventHandlers();
+            // Підключення до Redis
+            await this.connect();
+            // Валідація підключення
+            await this.validateConnection();
+            logger.info('✅ Redis Cache Service ініціалізовано');
+        }
+        catch (error) {
+            logger.error('❌ Помилка ініціалізації Redis:', error);
+            throw error;
+        }
+    }
+    /**
+     * Налаштування обробників подій Redis
+     */
+    setupEventHandlers() {
+        if (!this.client)
+            return;
+        this.client.on('connect', () => {
+            logger.info('🔗 Redis: Підключено');
+            this.isConnected = true;
+        });
+        this.client.on('ready', () => {
+            logger.info('✅ Redis: Готовий до роботи');
+        });
+        this.client.on('error', (error) => {
+            logger.error('❌ Redis помилка:', error);
+            this.isConnected = false;
+            this.stats.errors++;
+        });
+        this.client.on('end', () => {
+            logger.warn('🔌 Redis: З\'єднання закрито');
+            this.isConnected = false;
+        });
+        this.client.on('reconnecting', () => {
+            logger.info('🔄 Redis: Перепідключення...');
+        });
+    }
+    /**
+     * Підключення до Redis
+     */
+    async connect() {
+        if (!this.client) {
+            throw new Error('Redis клієнт не ініціалізовано');
+        }
+        try {
+            await this.client.connect();
+            logger.info('✅ Підключення до Redis успішне');
+        }
+        catch (error) {
+            logger.error('❌ Помилка підключення до Redis:', error);
+            throw error;
+        }
+    }
+    /**
+     * Валідація підключення
+     */
+    async validateConnection() {
+        if (!this.client) {
+            throw new Error('Redis клієнт не ініціалізовано');
+        }
+        try {
+            await this.client.ping();
+            logger.info('✅ Redis підключення валідне');
+        }
+        catch (error) {
+            logger.error('❌ Помилка валідації Redis підключення:', error);
+            throw error;
+        }
+    }
+    /**
+     * Отримання значення з кешу
+     */
+    async get(key, options = {}) {
+        if (!this.client || !this.isConnected) {
+            this.stats.misses++;
+            return null;
+        }
+        try {
+            const value = await this.client.get(key);
+            if (value === null) {
+                this.stats.misses++;
+                this.updateStats();
+                return null;
+            }
+            this.stats.hits++;
+            this.updateStats();
+            // Десеріалізація
+            if (options.serialize !== false) {
+                try {
+                    return JSON.parse(value);
+                }
+                catch {
+                    return value;
+                }
+            }
+            return value;
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.stats.misses++;
+            this.updateStats();
+            logger.error('❌ Помилка отримання з кешу:', error);
+            return null;
+        }
+    }
+    /**
+     * Збереження значення в кеш
+     */
+    async set(key, value, ttl = this.defaultTTL, options = {}) {
+        if (!this.client || !this.isConnected) {
+            return false;
+        }
+        try {
+            let serializedValue;
+            // Серіалізація
+            if (options.serialize !== false) {
+                serializedValue = JSON.stringify(value);
+            }
+            else {
+                serializedValue = String(value);
+            }
+            await this.client.setEx(key, ttl, serializedValue);
+            this.stats.sets++;
+            this.updateStats();
+            return true;
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.updateStats();
+            logger.error('❌ Помилка збереження в кеш:', error);
+            return false;
+        }
+    }
+    /**
+     * Видалення ключа з кешу
+     */
+    async delete(key) {
+        if (!this.client || !this.isConnected) {
+            return false;
+        }
+        try {
+            const result = await this.client.del(key);
+            this.stats.deletes++;
+            this.updateStats();
+            return result > 0;
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.updateStats();
+            logger.error('❌ Помилка видалення з кешу:', error);
+            return false;
+        }
+    }
+    /**
+     * Видалення ключів за патерном
+     */
+    async deletePattern(pattern) {
+        if (!this.client || !this.isConnected) {
+            return 0;
+        }
+        try {
+            const keys = await this.client.keys(pattern);
+            if (keys.length === 0) {
+                return 0;
+            }
+            const result = await this.client.del(keys);
+            this.stats.deletes += result;
+            this.updateStats();
+            return result;
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.updateStats();
+            logger.error('❌ Помилка видалення за патерном:', error);
+            return 0;
+        }
+    }
+    /**
+     * Перевірка існування ключа
+     */
+    async exists(key) {
+        if (!this.client || !this.isConnected) {
+            return false;
+        }
+        try {
+            const result = await this.client.exists(key);
+            return result > 0;
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.updateStats();
+            logger.error('❌ Помилка перевірки існування ключа:', error);
+            return false;
+        }
+    }
+    /**
+     * Встановлення TTL для ключа
+     */
+    async expire(key, ttl) {
+        if (!this.client || !this.isConnected) {
+            return false;
+        }
+        try {
+            const result = await this.client.expire(key, ttl);
+            return result;
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.updateStats();
+            logger.error('❌ Помилка встановлення TTL:', error);
+            return false;
+        }
+    }
+    /**
+     * Отримання TTL ключа
+     */
+    async ttl(key) {
+        if (!this.client || !this.isConnected) {
+            return -2; // Ключ не існує
+        }
+        try {
+            const result = await this.client.ttl(key);
+            return result;
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.updateStats();
+            logger.error('❌ Помилка отримання TTL:', error);
+            return -2;
+        }
+    }
+    /**
+     * Отримання або встановлення значення
+     */
+    async getOrSet(key, fallbackFn, ttl = this.defaultTTL, options = {}) {
+        // Спробувати отримати з кешу
+        const cached = await this.get(key, options);
+        if (cached !== null) {
+            return cached;
+        }
+        // Виконати fallback функцію
+        const value = await fallbackFn();
+        // Зберегти в кеш
+        await this.set(key, value, ttl, options);
+        return value;
+    }
+    /**
+     * Отримання множинних значень
+     */
+    async mget(keys, options = {}) {
+        if (!this.client || !this.isConnected) {
+            return keys.map(() => null);
+        }
+        try {
+            const values = await this.client.mGet(keys);
+            return values.map(value => {
+                if (value === null) {
+                    this.stats.misses++;
+                    return null;
+                }
+                this.stats.hits++;
+                // Десеріалізація
+                if (options.serialize !== false) {
+                    try {
+                        return JSON.parse(value);
+                    }
+                    catch {
+                        return value;
+                    }
+                }
+                return value;
+            });
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.stats.misses += keys.length;
+            this.updateStats();
+            logger.error('❌ Помилка множинного отримання:', error);
+            return keys.map(() => null);
+        }
+    }
+    /**
+     * Збереження множинних значень
+     */
+    async mset(keyValuePairs, defaultTTL = this.defaultTTL) {
+        if (!this.client || !this.isConnected) {
+            return false;
+        }
+        try {
+            const pipeline = this.client.multi();
+            for (const { key, value, ttl } of keyValuePairs) {
+                const serializedValue = JSON.stringify(value);
+                const finalTTL = ttl || defaultTTL;
+                pipeline.setEx(key, finalTTL, serializedValue);
+            }
+            await pipeline.exec();
+            this.stats.sets += keyValuePairs.length;
+            this.updateStats();
+            return true;
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.updateStats();
+            logger.error('❌ Помилка множинного збереження:', error);
+            return false;
+        }
+    }
+    /**
+     * Очищення всього кешу
+     */
+    async clear() {
+        if (!this.client || !this.isConnected) {
+            return false;
+        }
+        try {
+            await this.client.flushDb();
+            logger.info('🧹 Кеш очищено');
+            return true;
+        }
+        catch (error) {
+            this.stats.errors++;
+            this.updateStats();
+            logger.error('❌ Помилка очищення кешу:', error);
+            return false;
+        }
+    }
+    /**
+     * Отримання статистики кешу
+     */
+    getCacheStats() {
+        return {
+            hits: this.stats.hits,
+            misses: this.stats.misses,
+            sets: this.stats.sets,
+            deletes: this.stats.deletes,
+            errors: this.stats.errors,
+        };
+    }
+    /**
+     * Оновлення статистики
+     */
+    updateStats() {
+        this.stats.totalRequests = this.stats.hits + this.stats.misses;
+        this.stats.hitRate = this.stats.totalRequests > 0
+            ? (this.stats.hits / this.stats.totalRequests) * 100
+            : 0;
+    }
+    /**
+     * Health check
+     */
+    async onHealthCheck() {
+        try {
+            if (!this.config.redis.enabled) {
+                return {
+                    healthy: true,
+                    service: this.name,
+                    details: { enabled: false },
+                };
+            }
+            if (!this.client || !this.isConnected) {
+                return {
+                    healthy: false,
+                    service: this.name,
+                    error: 'Redis клієнт не підключено',
+                };
+            }
+            // Тестовий запит
+            try {
+                await this.client.ping();
+            }
+            catch (error) {
+                return {
+                    healthy: false,
+                    service: this.name,
+                    error: `Redis ping failed: ${error}`,
+                };
+            }
+            return {
+                healthy: true,
+                service: this.name,
+                details: {
+                    connected: this.isConnected,
+                    hitRate: this.stats.hitRate,
+                    totalRequests: this.stats.totalRequests,
+                    errors: this.stats.errors,
+                },
+            };
+        }
+        catch (error) {
+            return {
+                healthy: false,
+                service: this.name,
+                error: `Health check failed: ${error}`,
+            };
+        }
+    }
+    /**
+     * Завершення роботи
+     */
+    async onShutdown() {
+        try {
+            if (this.client && this.isConnected) {
+                await this.client.quit();
+                this.isConnected = false;
+            }
+            logger.info('✅ Cache Service зупинено');
+        }
+        catch (error) {
+            logger.error('❌ Помилка зупинки Cache Service:', error);
+            throw error;
+        }
+    }
+    /**
+     * Отримання статистики
+     */
+    onGetStats() {
+        return this.stats;
+    }
+}
+exports.CacheService = CacheService;
+//# sourceMappingURL=CacheService.js.map

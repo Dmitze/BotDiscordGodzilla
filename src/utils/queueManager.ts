@@ -224,6 +224,37 @@ class QueueManager extends EventEmitter {
   }
 
   /**
+   * Отримання статистики черг
+   */
+  getQueueStats(): QueueStatsResult {
+    return {
+      queues: {
+        high: {
+          pending: this.queues.high.length,
+          active: this.activeJobs.high,
+          maxConcurrent: this.maxConcurrent.high,
+        },
+        normal: {
+          pending: this.queues.normal.length,
+          active: this.activeJobs.normal,
+          maxConcurrent: this.maxConcurrent.normal,
+        },
+        low: {
+          pending: this.queues.low.length,
+          active: this.activeJobs.low,
+          maxConcurrent: this.maxConcurrent.low,
+        },
+      },
+      stats: {
+        ...this.stats,
+        averageProcessingTime: Math.round(this.stats.averageProcessingTime),
+      },
+      totalPending: this.queues.high.length + this.queues.normal.length + this.queues.low.length,
+      totalActive: this.activeJobs.high + this.activeJobs.normal + this.activeJobs.low,
+    };
+  }
+
+  /**
    * Виконання завдання
    */
   private async executeJob(jobData: JobData): Promise<any> {
@@ -260,7 +291,7 @@ class QueueManager extends EventEmitter {
    * Виконання запиту до Google Sheets
    */
   private async executeSheetsQuery(job: TypedJob): Promise<any> {
-    const { query, range, options = {} } = job.data;
+    const { query, range, options: _options = {} } = job.data;
 
     // Імітація запиту до Google Sheets
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
@@ -277,7 +308,7 @@ class QueueManager extends EventEmitter {
    * Виконання AI запиту
    */
   private async executeAIRequest(job: TypedJob): Promise<any> {
-    const { prompt, context, options = {} } = job.data;
+    const { prompt, context, options: _options = {} } = job.data;
 
     // Імітація AI запиту
     await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
@@ -294,7 +325,7 @@ class QueueManager extends EventEmitter {
    * Виконання файлової операції
    */
   private async executeFileOperation(job: TypedJob): Promise<any> {
-    const { operation, filePath, options = {} } = job.data;
+    const { operation, filePath, options: _options = {} } = job.data;
 
     // Імітація файлової операції
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
@@ -312,7 +343,7 @@ class QueueManager extends EventEmitter {
    * Виконання експорту даних
    */
   private async executeExportData(job: TypedJob): Promise<any> {
-    const { data, format, options = {} } = job.data;
+    const { data: _data, format, options: _options = {} } = job.data;
 
     // Імітація експорту
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2500));
@@ -340,55 +371,6 @@ class QueueManager extends EventEmitter {
   }
 
   /**
-   * Отримання статистики черг
-   */
-  getQueueStats(): QueueStatsResult {
-    return {
-      queues: {
-        high: {
-          pending: this.queues.high.length,
-          active: this.activeJobs.high,
-          maxConcurrent: this.maxConcurrent.high,
-        },
-        normal: {
-          pending: this.queues.normal.length,
-          active: this.activeJobs.normal,
-          maxConcurrent: this.maxConcurrent.normal,
-        },
-        low: {
-          pending: this.queues.low.length,
-          active: this.activeJobs.low,
-          maxConcurrent: this.maxConcurrent.low,
-        },
-      },
-      stats: {
-        ...this.stats,
-        averageProcessingTime: Math.round(this.stats.averageProcessingTime),
-      },
-      totalPending: this.queues.high.length + this.queues.normal.length + this.queues.low.length,
-      totalActive: this.activeJobs.high + this.activeJobs.normal + this.activeJobs.low,
-    };
-  }
-
-  /**
-   * Очищення черг
-   */
-  clearQueue(priority?: 'high' | 'normal' | 'low'): void {
-    if (priority) {
-      this.queues[priority] = [];
-      console.log(`🧹 Очищено чергу ${priority}`);
-    } else {
-      this.queues.high = [];
-      this.queues.normal = [];
-      this.queues.low = [];
-      console.log('🧹 Очищено всі черги');
-    }
-
-    this.stats.pending =
-      this.queues.high.length + this.queues.normal.length + this.queues.low.length;
-  }
-
-  /**
    * Зміна пріоритету завдання
    */
   changeJobPriority(jobId: string, newPriority: 'high' | 'normal' | 'low'): boolean {
@@ -396,9 +378,12 @@ class QueueManager extends EventEmitter {
       const jobIndex = this.queues[priority].findIndex(job => job.id === jobId);
 
       if (jobIndex !== -1) {
-        const job = this.queues[priority].splice(jobIndex, 1)[0];
-        job.priority = newPriority;
-        this.queues[newPriority].push(job);
+        const [moved] = this.queues[priority].splice(jobIndex, 1);
+        if (!moved) {
+          return false;
+        }
+        moved.priority = newPriority;
+        this.queues[newPriority].push(moved);
 
         console.log(`🔄 Змінено пріоритет завдання ${jobId} з ${priority} на ${newPriority}`);
         return true;
