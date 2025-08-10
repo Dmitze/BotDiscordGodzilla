@@ -2,7 +2,11 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import DataFormatters from './formatters';
-import config from '../config/Config';
+
+// Локальні дефолти для експорту (уникаємо залежності від глобальної Config)
+const DEFAULT_INCLUDE_METADATA = true;
+const DEFAULT_TEMP_FILE_TTL_MS = 60 * 60 * 1000; // 1 година
+const DEFAULT_MAX_EXPORT_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 interface ExportOptions {
   filename?: string;
@@ -51,7 +55,7 @@ class ExportHelpers {
     const {
       filename = 'export',
       sheetName = 'Дані',
-      includeMetadata = config.export.includeMetadata,
+      includeMetadata = DEFAULT_INCLUDE_METADATA,
       metadata = {}
     } = options;
 
@@ -98,7 +102,7 @@ class ExportHelpers {
   async exportToCSV(data: any[][], headers: string[], options: ExportOptions = {}): Promise<ExportResult> {
     const {
       filename = 'export',
-      includeMetadata = config.export.includeMetadata,
+      includeMetadata = DEFAULT_INCLUDE_METADATA,
       metadata = {}
     } = options;
 
@@ -238,7 +242,7 @@ class ExportHelpers {
   /**
    * Створення звіту з аналізом даних
    */
-  async exportAnalysisReport(data: any[][], headers: string[], analysis: AnalysisData, options: ExportOptions = {}): Promise<ExportResult> {
+  async exportAnalysisReport(data: any[][], _headers: string[], analysis: AnalysisData, options: ExportOptions = {}): Promise<ExportResult> {
     const metadata = {
       'Тип експорту': 'Звіт аналізу',
       'Кількість рядків': data.length,
@@ -286,7 +290,7 @@ class ExportHelpers {
     try {
       const files = fs.readdirSync(this.tmpDir);
       const now = Date.now();
-      const maxAge = config.export.tempFileTtl;
+      const maxAge = DEFAULT_TEMP_FILE_TTL_MS;
 
       for (const file of files) {
         const filePath = path.join(this.tmpDir, file);
@@ -345,7 +349,7 @@ class ExportHelpers {
    * Валідація розміру файлу
    */
   validateFileSize(fileSize: number): boolean {
-    const maxSize = config.export.maxFileSize;
+    const maxSize = DEFAULT_MAX_EXPORT_FILE_SIZE;
     if (fileSize > maxSize) {
       throw new Error(`Файл занадто великий: ${DataFormatters.formatFileSize(fileSize)} > ${DataFormatters.formatFileSize(maxSize)}`);
     }
@@ -353,4 +357,4 @@ class ExportHelpers {
   }
 }
 
-export default ExportHelpers; 
+export default ExportHelpers;

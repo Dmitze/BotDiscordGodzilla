@@ -78,7 +78,7 @@ class RetryManager {
 
         // Остання спроба
         if (attempt === config.maxAttempts) {
-          logger.error(`❌ Операція невдала після ${attempt} спроб:`, lastError);
+          logger.error(`❌ Операція невдала після ${attempt} спроб: ${lastError.message || String(lastError)}`);
           return {
             success: false,
             error: lastError,
@@ -93,8 +93,8 @@ class RetryManager {
         // Розраховуємо затримку
         const delay = this.calculateDelay(attempt, config);
         
-        logger.warn(`⚠️ Спроба ${attempt} невдала, повтор через ${delay}мс:`, lastError.message);
-        
+        logger.warn(`⚠️ Спроба ${attempt} невдала, повтор через ${delay}мс: ${lastError.message}`);
+
         // Чекаємо перед наступною спробою
         await this.sleep(delay);
       }

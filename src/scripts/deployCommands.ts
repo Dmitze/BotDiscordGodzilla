@@ -18,14 +18,17 @@ interface DeployOptions {
 }
 
 function parseArgs(argv: string[]): DeployOptions {
-  const opts: DeployOptions = { dry: false, mode: 'both' };
+  const opts: DeployOptions = { dry: true, mode: 'both' };
   for (const arg of argv) {
     if (arg === '--dry') opts.dry = true;
+    else if (arg === '--execute' || arg === '--no-dry') opts.dry = false;
     else if (arg.startsWith('--mode=')) {
       const m = arg.split('=')[1] as Mode;
       if (m === 'global' || m === 'guild' || m === 'both') opts.mode = m;
     } else if (arg.startsWith('--guild=')) {
-      opts.guildId = arg.split('=')[1];
+      const parts = arg.split('=');
+      const v = parts.length > 1 ? parts[1] : undefined;
+      if (v && v.length > 0) opts.guildId = v;
     }
   }
   return opts;
@@ -40,7 +43,7 @@ function maskId(id?: string): string {
 
 async function deployCommands(options: DeployOptions = parseArgs(process.argv.slice(2))) {
   try {
-    const { dry = false } = options;
+    const { dry = true } = options;
     console.log(`🚀 Початок реєстрації команд в Discord... (dry=${dry}, mode=${options.mode || 'both'})`);
 
     // Завантаження конфігурації
@@ -55,7 +58,6 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
     const { OperationsCommand } = await import('@/commands/OperationsCommand');
     const { AnalyticsCommand } = await import('@/commands/AnalyticsCommand');
     const { EnhancedSearchCommand } = await import('@/commands/EnhancedSearchCommand');
-    const { WeatherCommand } = await import('@/commands/WeatherCommand');
 
     const commands = [
       new SearchCommand(botConfig),
@@ -65,8 +67,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
       new FileManagerCommand(botConfig),
       new OperationsCommand(botConfig),
       new AnalyticsCommand(botConfig),
-      new EnhancedSearchCommand(botConfig),
-      new WeatherCommand(botConfig)
+      new EnhancedSearchCommand(botConfig)
     ];
 
     // Підготовка даних команд
@@ -88,36 +89,14 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
       return;
     }
 
+    // Валідація режиму/цілей
+    if (mode === 'guild' && !guildId) {
+      console.error('❌ Помилка: для режиму "guild" необхідно вказати --guild=<ID> або налаштувати discord.guildId у конфігурації');
+      process.exit(2);
+    }
+
     // Створення REST клієнта
     const rest = new REST({ version: '10' }).setToken(botConfig.discord.token);
-
-    // Створення екземплярів команд
-    const { SearchCommand } = await import('@/commands/SearchCommand');
-    const { PerformanceCommand } = await import('@/commands/PerformanceCommand');
-    const { AIAssistantCommand } = await import('@/commands/AIAssistantCommand');
-    const { DocumentsCommand } = await import('@/commands/DocumentsCommand');
-    const { FileManagerCommand } = await import('@/commands/FileManagerCommand');
-    const { OperationsCommand } = await import('@/commands/OperationsCommand');
-    const { AnalyticsCommand } = await import('@/commands/AnalyticsCommand');
-    const { EnhancedSearchCommand } = await import('@/commands/EnhancedSearchCommand');
-    const { WeatherCommand } = await import('@/commands/WeatherCommand');
-
-    const commands = [
-      new SearchCommand(botConfig),
-      new PerformanceCommand(botConfig),
-      new AIAssistantCommand(botConfig),
-      new DocumentsCommand(botConfig),
-      new FileManagerCommand(botConfig),
-      new OperationsCommand(botConfig),
-      new AnalyticsCommand(botConfig),
-      new EnhancedSearchCommand(botConfig),
-      new WeatherCommand(botConfig)
-    ];
-
-    // Підготовка даних команд
-    const commandsData = commands.map(command => command.getData().toJSON());
-
-    console.log(`📋 Підготовлено ${commandsData.length} команд для реєстрації`);
 
     // Реєстрація команд глобально (за режимом)
     if (mode === 'global' || mode === 'both') {

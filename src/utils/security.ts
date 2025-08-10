@@ -71,11 +71,11 @@ export interface RateLimitInfo {
 
 export class SecurityManager {
   private static instance: SecurityManager | null = null;
-  private stats: SecurityStats;
+  private stats!: SecurityStats;
   private rateLimitMap = new Map<string, RateLimitInfo>();
   private blacklistCache = new Set<string>();
   private suspiciousActivities: SecurityEvent[] = [];
-  private isInitialized = false;
+  private _isInitialized = false;
 
   constructor() {
     if (SecurityManager.instance) {
@@ -112,7 +112,7 @@ export class SecurityManager {
       // Запуск періодичних завдань
       this.startPeriodicTasks();
 
-      this.isInitialized = true;
+      this._isInitialized = true;
       logger.info('✅ Система безпеки успішно ініціалізована');
     } catch (error) {
       handleError(error, {
@@ -196,7 +196,8 @@ export class SecurityManager {
       const xssResult = this.checkForXSS(input);
       if (xssResult.found) {
         errors.push('Виявлено потенційну XSS атаку');
-        this.recordSecurityEvent('xss_attempt', context.userId || 'unknown', {
+        this.recordSecurityEvent('suspicious_activity', context.userId || 'unknown', {
+          subtype: 'xss_attempt',
           pattern: xssResult.pattern,
           input: input.substring(0, 100),
         });
@@ -207,7 +208,8 @@ export class SecurityManager {
       const sqlResult = this.checkForSQLInjection(input);
       if (sqlResult.found) {
         errors.push('Виявлено потенційну SQL ін\'єкцію');
-        this.recordSecurityEvent('sql_injection_attempt', context.userId || 'unknown', {
+        this.recordSecurityEvent('suspicious_activity', context.userId || 'unknown', {
+          subtype: 'sql_injection_attempt',
           pattern: sqlResult.pattern,
           input: input.substring(0, 100),
         });
@@ -265,7 +267,7 @@ export class SecurityManager {
 
       handleError(error, {
         serviceName: 'SecurityManager',
-        userId: context.userId,
+        ...(context.userId ? { userId: context.userId } : {}),
         additionalContext: { operation: 'validateInput', input: input.substring(0, 100) },
       });
 
@@ -378,7 +380,7 @@ export class SecurityManager {
 
       if (userLimit.count >= SECURITY_CONSTANTS.RATE_LIMIT_MAX) {
         this.stats.rateLimitHits++;
-        this.recordSecurityEvent('rate_limit_exceeded', userId, {
+        this.recordSecurityEvent('rate_limit', userId, {
           count: userLimit.count,
           resetTime: userLimit.resetTime,
         });
@@ -515,15 +517,14 @@ export class SecurityManager {
    */
   private determineEventSeverity(type: SecurityEvent['type']): SecurityEvent['severity'] {
     switch (type) {
-      case 'xss_attempt':
-      case 'sql_injection_attempt':
+      case 'unauthorized_access':
         return 'high';
       case 'rate_limit':
         return 'medium';
+      case 'invalid_input':
       case 'suspicious_activity':
-        return 'low';
       default:
-        return 'medium';
+        return 'low';
     }
   }
 
@@ -630,7 +631,7 @@ export class SecurityManager {
    * Перевірка стану ініціалізації
    */
   public isInitialized(): boolean {
-    return this.isInitialized;
+    return this._isInitialized;
   }
 }
 

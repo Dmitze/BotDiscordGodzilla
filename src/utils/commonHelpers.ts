@@ -4,14 +4,14 @@
  * Версія 1.0.0 - Створено для рефакторингу
  */
 
-import { 
-  EmbedBuilder, 
-  ChatInputCommandInteraction, 
-  User, 
+import {
+  EmbedBuilder,
+  ChatInputCommandInteraction,
+  User,
   Guild,
   ButtonBuilder,
   ButtonStyle,
-  ActionRowBuilder
+  ActionRowBuilder,
 } from 'discord.js';
 import type { LogMeta } from '@/types';
 import logger from './logger';
@@ -140,7 +140,7 @@ export class EmbedFactory {
     description: string,
     currentPage: number,
     totalPages: number,
-    data?: any
+    _data?: any
   ): EmbedBuilder {
     const embed = this.createBase(title, description);
     
@@ -420,7 +420,7 @@ export class DiscordUtils {
       }
       return true;
     } catch (error) {
-      logger.error('❌ Помилка відправлення відповіді Discord:', error);
+      logger.error(`❌ Помилка відправлення відповіді Discord: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
@@ -621,27 +621,3 @@ export class RetryUtils {
     throw lastError;
   }
 }
-
-// Експорт всіх утілітарних класів
-export {
-  EmbedFactory,
-  TimeUtils,
-  ValidationUtils,
-  DataUtils,
-  DiscordUtils,
-  ErrorUtils,
-  RetryUtils
-};
-
-export default {
-  EmbedFactory,
-  TimeUtils,
-  ValidationUtils,
-  DataUtils,
-  DiscordUtils,
-  ErrorUtils,
-  RetryUtils,
-  EMBED_COLORS,
-  EMBED_LIMITS,
-  TIME_CONSTANTS
-};

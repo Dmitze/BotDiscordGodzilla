@@ -67,7 +67,7 @@ class SchedulerService {
     jobsFailed: number;
     activeJobs: number;
   };
-  private isActive: boolean;
+  private _isActive: boolean;
 
   constructor(bot: Bot) {
     this.bot = bot;
@@ -79,7 +79,7 @@ class SchedulerService {
       jobsFailed: 0,
       activeJobs: 0,
     };
-    this.isActive = false;
+    this._isActive = false;
   }
 
   /**
@@ -95,10 +95,10 @@ class SchedulerService {
       // Реєстрація стандартних завдань
       await this.registerDefaultJobs();
 
-      this.isActive = true;
+      this._isActive = true;
       logger.info('✅ Scheduler сервіс ініціалізовано');
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації Scheduler сервісу:', error);
+      logger.error(`❌ Помилка ініціалізації Scheduler сервісу: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }
@@ -114,7 +114,7 @@ class SchedulerService {
 
       logger.debug('✅ Планувальник створено');
     } catch (error) {
-      logger.error('Помилка створення планувальника:', error);
+      logger.error(`Помилка створення планувальника: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }
@@ -146,7 +146,7 @@ class SchedulerService {
 
       logger.debug('✅ Стандартні завдання зареєстровано');
     } catch (error) {
-      logger.error('Помилка реєстрації стандартних завдань:', error);
+      logger.error(`Помилка реєстрації стандартних завдань: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -190,7 +190,7 @@ class SchedulerService {
       logger.debug(`✅ Завдання "${name}" заплановано: ${schedule}`);
       return job;
     } catch (error) {
-      logger.error(`Помилка планування завдання "${name}":`, error);
+      logger.error(`Помилка планування завдання "${name}": ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }
@@ -225,7 +225,7 @@ class SchedulerService {
       jobInfo.errors++;
       this.stats.jobsFailed++;
 
-      logger.error(`❌ Помилка виконання завдання "${name}":`, error);
+      logger.error(`❌ Помилка виконання завдання "${name}": ${error instanceof Error ? error.message : String(error)}`);
 
       // Сповіщення про помилку
       await this.notifyJobError(name, error);
@@ -246,7 +246,7 @@ class SchedulerService {
         logger.debug(`🛑 Завдання "${name}" зупинено`);
       }
     } catch (error) {
-      logger.error(`Помилка зупинки завдання "${name}":`, error);
+      logger.error(`Помилка зупинки завдання "${name}": ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -288,7 +288,7 @@ class SchedulerService {
         logger.info('🧹 Кеш очищено');
       }
     } catch (error) {
-      logger.error('Помилка очищення кешу:', error);
+      logger.error(`Помилка очищення кешу: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -307,10 +307,10 @@ class SchedulerService {
       const serviceManager = this.bot.serviceManager;
       if (serviceManager) {
         const servicesStats = serviceManager.getStats();
-        logger.debug('📊 Статистика сервісів оновлена', servicesStats);
+        logger.debug(`📊 Статистика сервісів оновлена: ${JSON.stringify(servicesStats)}`);
       }
     } catch (error) {
-      logger.error('Помилка оновлення статистики:', error);
+      logger.error(`Помилка оновлення статистики: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -328,15 +328,16 @@ class SchedulerService {
       // Перевірка сервісів
       const serviceManager = this.bot.serviceManager;
       if (serviceManager) {
-        const servicesStatus = serviceManager.getServicesStatus();
+        const servicesStatus = serviceManager.getServicesStatus() as Record<string, { isActive?: boolean; stats?: unknown }>;
 
-        for (const [name, status] of Object.entries(servicesStatus)) {
+        for (const [name, s] of Object.entries(servicesStatus)) {
+          const active = !!s.isActive;
           healthStatus.services[name] = {
-            isActive: status.isActive,
-            hasStats: !!status.stats,
+            isActive: active,
+            hasStats: typeof s.stats !== 'undefined' && s.stats !== null,
           };
 
-          if (!status.isActive) {
+          if (!active) {
             healthStatus.overall = 'degraded';
           }
         }
@@ -351,14 +352,14 @@ class SchedulerService {
         };
       }
 
-      logger.debug("🏥 Перевірка здоров'я завершена", healthStatus);
+      logger.debug(`🏥 Перевірка здоров'я завершена: ${JSON.stringify(healthStatus)}`);
 
       // Сповіщення про проблеми
       if (healthStatus.overall !== 'healthy') {
         await this.notifyHealthIssue(healthStatus);
       }
     } catch (error) {
-      logger.error("Помилка перевірки здоров'я:", error);
+      logger.error(`Помилка перевірки здоров'я: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -374,7 +375,7 @@ class SchedulerService {
 
       logger.info('✅ Резервна копія створена');
     } catch (error) {
-      logger.error('Помилка створення резервної копії:', error);
+      logger.error(`Помилка створення резервної копії: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -386,9 +387,9 @@ class SchedulerService {
       // Тут можна додати логіку сповіщення
       // Наприклад, відправка повідомлення в Discord канал
 
-      logger.warn(`⚠️ Сповіщення про помилку завдання "${jobName}": ${error.message}`);
+      logger.warn(`⚠️ Сповіщення про помилку завдання "${jobName}": ${error instanceof Error ? error.message : String(error)}`);
     } catch (notifyError) {
-      logger.error('Помилка сповіщення про помилку завдання:', notifyError);
+      logger.error(`Помилка сповіщення про помилку завдання: ${notifyError instanceof Error ? notifyError.message : String(notifyError)}`);
     }
   }
 
@@ -401,7 +402,7 @@ class SchedulerService {
 
       logger.warn(`⚠️ Проблеми здоров'я системи: ${healthStatus.overall}`);
     } catch (notifyError) {
-      logger.error("Помилка сповіщення про проблеми здоров'я:", notifyError);
+      logger.error(`Помилка сповіщення про проблеми здоров'я: ${notifyError instanceof Error ? notifyError.message : String(notifyError)}`);
     }
   }
 
@@ -412,7 +413,7 @@ class SchedulerService {
     return {
       ...this.stats,
       jobs: this.getAllJobs(),
-      isActive: this.isActive,
+      isActive: this.isActive(),
     };
   }
 
@@ -420,7 +421,7 @@ class SchedulerService {
    * Перевірка активності
    */
   isActive(): boolean {
-    return this.isActive;
+    return this._isActive;
   }
 
   /**
@@ -435,12 +436,12 @@ class SchedulerService {
         this.stopJob(name);
       }
 
-      this.isActive = false;
+      this._isActive = false;
       logger.info('✅ Scheduler сервіс завершено');
     } catch (error) {
-      logger.error('❌ Помилка завершення Scheduler сервісу:', error);
+      logger.error(`❌ Помилка завершення Scheduler сервісу: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
 
-export default SchedulerService; 
+export default SchedulerService;

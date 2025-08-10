@@ -5,19 +5,18 @@
  */
 
 import logger from '../utils/logger';
-import AIService from '../services/AIService';
-import GoogleService from '../services/GoogleService';
-import CacheService from '../services/CacheService';
-import MetricsService from '../services/MetricsService';
+import { AIService } from '../services/AIService';
+import { GoogleService } from '../services/GoogleService';
+import { CacheService } from '../services/CacheService';
+import { MetricsService } from '../services/MetricsService';
 import SchedulerService from '../services/SchedulerService';
+import type { BotConfig } from '@/types';
 
 interface Bot {
-  config: {
-    redis: {
-      enabled: boolean;
-    };
-    isMetricsEnabled(): boolean;
-  };
+  config: BotConfig;
+  getService: (name: string) => any;
+  serviceManager?: any;
+  client?: any;
 }
 
 interface Service {
@@ -45,12 +44,12 @@ interface ServiceManagerStats {
 class ServiceManager {
   private bot: Bot;
   private services: Map<string, Service>;
-  private isInitialized: boolean;
+  //
 
   constructor(bot: Bot) {
     this.bot = bot;
     this.services = new Map();
-    this.isInitialized = false;
+    //
   }
 
   /**
@@ -66,10 +65,11 @@ class ServiceManager {
       // Ініціалізація сервісів
       await this.initializeServices();
 
-      this.isInitialized = true;
       logger.info('✅ Менеджер сервісів ініціалізовано');
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації менеджера сервісів:', error);
+      logger.error('❌ Помилка ініціалізації менеджера сервісів:', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }
@@ -79,19 +79,20 @@ class ServiceManager {
    */
   private async createServices(): Promise<void> {
     // AI Service
-    this.services.set('ai', new AIService(this.bot));
+    this.services.set('ai', new AIService(this.bot.config));
 
     // Google Service
-    this.services.set('google', new GoogleService(this.bot));
+    this.services.set('google', new GoogleService(this.bot.config));
 
     // Cache Service (якщо Redis увімкнено)
-    if (this.bot.config.redis.enabled) {
-      this.services.set('cache', new CacheService(this.bot));
+    if ((this.bot.config as any).redis?.enabled) {
+      this.services.set('cache', new CacheService(this.bot.config));
     }
 
     // Metrics Service (якщо метрики увімкнені)
-    if (this.bot.config.isMetricsEnabled()) {
-      this.services.set('metrics', new MetricsService(this.bot));
+    const metricsEnabled = Boolean((this.bot.config as any).metrics?.enabled);
+    if (metricsEnabled) {
+      this.services.set('metrics', new MetricsService(this.bot.config));
     }
 
     // Scheduler Service
@@ -109,7 +110,10 @@ class ServiceManager {
           logger.debug(`✅ Сервіс ${name} ініціалізовано`);
         }
       } catch (error) {
-        logger.error(`❌ Помилка ініціалізації сервісу ${name}:`, error);
+        logger.error(`❌ Помилка ініціалізації сервісу ${name}:`, {
+          service: name,
+          error: error instanceof Error ? error.message : String(error),
+        });
         // Видаляємо сервіс, який не вдалося ініціалізувати
         this.services.delete(name);
       }
@@ -188,7 +192,10 @@ class ServiceManager {
         try {
           return await service[methodName](...args);
         } catch (error) {
-          logger.error(`Помилка виконання ${methodName} на сервісі:`, error);
+          logger.error(`Помилка виконання ${methodName} на сервісі:`, {
+            method: methodName,
+            error: error instanceof Error ? error.message : String(error),
+          });
           return null;
         }
       }
@@ -225,7 +232,9 @@ class ServiceManager {
       await this.executeOnAllServices('shutdown');
       logger.info('✅ Сервіси успішно завершено');
     } catch (error) {
-      logger.error('❌ Помилка при завершенні сервісів:', error);
+      logger.error('❌ Помилка при завершенні сервісів:', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

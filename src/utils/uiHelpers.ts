@@ -9,9 +9,9 @@ import {
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle,
-  ComponentType,
-  AttachmentBuilder
+  ComponentType
 } from 'discord.js';
+
 import logger from './logger';
 
 // Кольори для різних типів повідомлень
@@ -273,7 +273,7 @@ class UIHelper {
     // Кнопка "Попередня"
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(customIds.prev || 'prev_page')
+        .setCustomId(customIds['prev'] ?? 'prev_page')
         .setLabel('◀️ Попередня')
         .setStyle(ButtonStyle.Primary)
         .setDisabled(currentPage === 0)
@@ -282,7 +282,7 @@ class UIHelper {
     // Кнопка "Наступна"
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(customIds.next || 'next_page')
+        .setCustomId(customIds['next'] ?? 'next_page')
         .setLabel('Наступна ▶️')
         .setStyle(ButtonStyle.Primary)
         .setDisabled(currentPage >= totalPages - 1)
@@ -291,7 +291,7 @@ class UIHelper {
     // Кнопка "Закрити"
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(customIds.close || 'close')
+        .setCustomId(customIds['close'] ?? 'close')
         .setLabel('❌ Закрити')
         .setStyle(ButtonStyle.Danger)
     );
@@ -403,7 +403,11 @@ class UIHelper {
       }
     };
 
-    const data = helpData[category] || helpData.general;
+    const data = (helpData[category] ?? helpData['general']) as {
+      title: string;
+      description: string;
+      fields: Array<{ name: string; value: string; inline?: boolean }>;
+    };
     const embed = this.createBaseEmbed(data.title, data.description, COLORS.INFO);
 
     data.fields.forEach(field => {
@@ -518,7 +522,7 @@ class UIHelper {
 
       return response;
     } catch (error) {
-      logger.error('Interaction timeout or error:', error);
+      logger.error(`Interaction timeout or error: ${(error instanceof Error) ? error.message : String(error)}`);
       return null;
     }
   }
