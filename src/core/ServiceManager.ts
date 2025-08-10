@@ -4,6 +4,7 @@
  * TypeScript версія
  */
 
+<<<<<<< HEAD
 import logger from '@/utils/logger';
 import type { ServiceKey, ServiceRegistry } from '@/core/ServiceRegistry';
 
@@ -32,6 +33,15 @@ import { ResponseCacheService } from '@/services/ResponseCacheService';
 import { KnowledgeBaseService } from '@/services/KnowledgeBaseService';
 import { EnhancedRagService } from '@/services/EnhancedRagService';
 import { DocumentAnalysisService } from '@/services/DocumentAnalysisService';
+=======
+import logger from '../utils/logger';
+import { AIService } from '../services/AIService';
+import { GoogleService } from '../services/GoogleService';
+import { CacheService } from '../services/CacheService';
+import { MetricsService } from '../services/MetricsService';
+import SchedulerService from '../services/SchedulerService';
+import type { BotConfig } from '@/types';
+>>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
 
 interface Bot {
   config: BotConfig;
@@ -57,7 +67,11 @@ interface ServiceManagerStats {
 
 class ServiceManager {
   private bot: Bot;
+<<<<<<< HEAD
   private services: Map<ServiceKey, NonNullable<ServiceRegistry[ServiceKey]>>;
+=======
+  private services: Map<string, Service>;
+>>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
   //
 
   constructor(bot: Bot) {
@@ -83,6 +97,7 @@ class ServiceManager {
       // Ініціалізація сервісів
       await this.initializeServices();
 
+<<<<<<< HEAD
       logger.info('✅ Менеджер сервісів ініціалізовано', {
         type: 'service_manager',
         event: 'init_success',
@@ -98,6 +113,13 @@ class ServiceManager {
         stack: error instanceof Error ? error.stack : undefined,
       });
 
+=======
+      logger.info('✅ Менеджер сервісів ініціалізовано');
+    } catch (error) {
+      logger.error('❌ Помилка ініціалізації менеджера сервісів:', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+>>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
       throw error;
     }
   }
@@ -112,6 +134,7 @@ class ServiceManager {
     // Google Service
     this.services.set('google', new GoogleService(this.bot.config));
 
+<<<<<<< HEAD
     // Cache Service: завжди доступний у контейнері
     // - Якщо Redis увімкнено — використовуємо Redis CacheService
     // - Інакше або у тестах — легкий MemoryCacheService
@@ -120,6 +143,11 @@ class ServiceManager {
       this.services.set('cache', new CacheService(this.bot.config) as unknown as NonNullable<ServiceRegistry['cache']>);
     } else {
       this.services.set('cache', new MemoryCacheService(this.bot.config) as unknown as NonNullable<ServiceRegistry['cache']>);
+=======
+    // Cache Service (якщо Redis увімкнено)
+    if ((this.bot.config as any).redis?.enabled) {
+      this.services.set('cache', new CacheService(this.bot.config));
+>>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
     }
 
     // Metrics Service (якщо метрики увімкнені)
@@ -702,6 +730,7 @@ class ServiceManager {
           service: name,
         });
       } catch (error) {
+<<<<<<< HEAD
         logger.error('❌ Помилка ініціалізації сервісу', {
           type: 'service_manager',
           event: 'service_init_failed',
@@ -712,6 +741,12 @@ class ServiceManager {
           stack: error instanceof Error ? error.stack : undefined,
         });
 
+=======
+        logger.error(`❌ Помилка ініціалізації сервісу ${name}:`, {
+          service: name,
+          error: error instanceof Error ? error.message : String(error),
+        });
+>>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
         // Видаляємо сервіс, який не вдалося ініціалізувати
         this.services.delete(name);
       }
@@ -811,6 +846,7 @@ class ServiceManager {
         try {
           return await fn.apply(service, args);
         } catch (error) {
+<<<<<<< HEAD
           logger.error('Помилка виконання методу на сервісі', {
             type: 'service_manager',
             event: 'method_execution_failed',
@@ -819,6 +855,11 @@ class ServiceManager {
             errorName: error instanceof Error ? error.name : undefined,
             errorMessage: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
+=======
+          logger.error(`Помилка виконання ${methodName} на сервісі:`, {
+            method: methodName,
+            error: error instanceof Error ? error.message : String(error),
+>>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
           });
           return null;
         }
@@ -864,6 +905,7 @@ class ServiceManager {
         component: 'ServiceManager',
       });
     } catch (error) {
+<<<<<<< HEAD
       logger.error('❌ Помилка при завершенні сервісів', {
         type: 'service_manager',
         event: 'shutdown_failed',
@@ -871,6 +913,10 @@ class ServiceManager {
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
+=======
+      logger.error('❌ Помилка при завершенні сервісів:', {
+        error: error instanceof Error ? error.message : String(error),
+>>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
       });
     }
   }
