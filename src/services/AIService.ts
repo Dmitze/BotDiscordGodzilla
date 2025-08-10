@@ -6,14 +6,13 @@
 
 import OpenAI from 'openai';
 import type {
-  BaseService,
   BotConfig,
   HealthStatus,
   ServiceStats,
   AIResponse,
-  AIRequest,
   AIRequestOptions
 } from '@/types';
+
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
 import logger from '@/utils/logger';
@@ -57,10 +56,7 @@ interface AIProvider {
   isHealthy(): Promise<boolean>;
 }
 
-interface OllamaProvider {
-  host: string;
-  model: string;
-}
+// (видалено невикористаний інтерфейс OllamaProvider)
 
 export class AIService extends BaseServiceClass {
   private providers: Record<string, AIProvider> = {};
@@ -116,7 +112,7 @@ export class AIService extends BaseServiceClass {
 
       logger.info('✅ AI сервіс ініціалізовано');
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації AI сервісу:', error);
+      logger.error('❌ Помилка ініціалізації AI сервісу:', { error });
       throw error;
     }
   }
@@ -150,7 +146,7 @@ export class AIService extends BaseServiceClass {
 
       logger.info(`✅ Створено ${Object.keys(this.providers).length} AI провайдерів`);
     } catch (error) {
-      logger.error('❌ Помилка створення AI провайдерів:', error);
+      logger.error('❌ Помилка створення AI провайдерів:', { error });
       throw error;
     }
   }
@@ -160,8 +156,9 @@ export class AIService extends BaseServiceClass {
    */
   private createOpenAIProvider(): AIProvider {
     try {
+      const openaiCfg = this.config.ai.openai;
       const openai = new OpenAI({
-        apiKey: this.config.ai.openai.apiKey,
+        apiKey: openaiCfg.apiKey,
         maxRetries: AI_SERVICE_CONSTANTS.MAX_RETRY_ATTEMPTS,
         timeout: AI_SERVICE_CONSTANTS.REQUEST_TIMEOUT,
       });
@@ -172,24 +169,24 @@ export class AIService extends BaseServiceClass {
 
           try {
             logger.debug('🔄 OpenAI запит...', {
-              model: options.model || this.config.ai.openai.model,
-              maxTokens: options.maxTokens || this.config.ai.openai.maxTokens,
-              temperature: options.temperature || this.config.ai.openai.temperature,
+              model: options.model || openaiCfg.model,
+              maxTokens: options.maxTokens || openaiCfg.maxTokens,
+              temperature: options.temperature || openaiCfg.temperature,
             });
 
             const response = await openai.chat.completions.create({
-              model: options.model || this.config.ai.openai.model,
+              model: options.model || openaiCfg.model,
               messages: [{ role: 'user', content: prompt }],
-              max_tokens: options.maxTokens || this.config.ai.openai.maxTokens,
-              temperature: options.temperature || this.config.ai.openai.temperature,
+              max_tokens: options.maxTokens || openaiCfg.maxTokens,
+              temperature: options.temperature || openaiCfg.temperature,
             });
 
             const duration = Date.now() - startTime;
 
             logger.debug('✅ OpenAI відповідь отримана', {
               duration: `${duration}ms`,
-              tokens: response.usage?.total_tokens || 0,
               model: response.model,
+              tokens: response.usage?.total_tokens || 0,
             });
 
             return {
@@ -213,13 +210,13 @@ export class AIService extends BaseServiceClass {
             await openai.models.list();
             return true;
           } catch (error) {
-            logger.error('❌ OpenAI health check невдалий:', error);
+            logger.error('❌ OpenAI health check невдалий:', { error });
             return false;
           }
         },
       };
     } catch (error) {
-      logger.error('❌ Помилка створення OpenAI провайдера:', error);
+      logger.error('❌ Помилка створення OpenAI провайдера:', { error });
       throw error;
     }
   }
@@ -264,7 +261,8 @@ export class AIService extends BaseServiceClass {
             throw new Error(`Ollama API error: ${response.statusText}`);
           }
 
-          const data = await response.json();
+          const data: any = await response.json();
+
           const duration = Date.now() - startTime;
 
           logger.debug('✅ Ollama відповідь отримана', {
@@ -294,7 +292,7 @@ export class AIService extends BaseServiceClass {
           const response = await fetch(`${ollamaConfig.host}/api/tags`);
           return response.ok;
         } catch (error) {
-          logger.error('❌ Ollama health check невдалий:', error);
+          logger.error('❌ Ollama health check невдалий:', { error });
           return false;
         }
       },
@@ -313,7 +311,7 @@ export class AIService extends BaseServiceClass {
       logger.info(`✅ AI конфігурація валідна, активний провайдер: ${this.currentProvider}`);
       logger.info(`📊 Доступні провайдери: ${Object.keys(this.providers).join(', ')}`);
     } catch (error) {
-      logger.error('❌ Помилка валідації AI конфігурації:', error);
+      logger.error('❌ Помилка валідації AI конфігурації:', { error });
       throw error;
     }
   }
@@ -330,7 +328,6 @@ export class AIService extends BaseServiceClass {
       cacheTTL = 3600,
       forceRefresh = false,
       retryAttempts = AI_SERVICE_CONSTANTS.MAX_RETRY_ATTEMPTS,
-      timeout = AI_SERVICE_CONSTANTS.REQUEST_TIMEOUT,
       provider = this.currentProvider,
     } = options;
 
@@ -348,21 +345,21 @@ export class AIService extends BaseServiceClass {
             logger.debug('✅ Використано кешовану відповідь', {
               cacheKey: cacheKey.substring(0, 20) + '...',
               provider: cached.provider,
-              tokens: cached.tokens
+              tokens: cached.tokens,
             });
             return cached;
           } else {
             this.stats.cacheMisses++;
           }
         } catch (cacheError) {
-          logger.warn('⚠️ Помилка читання з кешу:', cacheError);
+          logger.warn('⚠️ Помилка читання з кешу:', { error: cacheError });
           this.stats.cacheMisses++;
         }
       }
 
       // Retry logic з fallback
       let lastError: Error | null = null;
-      let usedProvider = provider;
+      let usedProvider: string = provider;
 
       for (let attempt = 0; attempt <= retryAttempts; attempt++) {
         try {
@@ -370,8 +367,9 @@ export class AIService extends BaseServiceClass {
 
           // Спробувати основний провайдер
           let response: AIResponse;
-          if (this.providers[usedProvider]) {
-            response = await this.providers[usedProvider].generate(sanitizedPrompt, options);
+          const primary = this.providers[usedProvider];
+          if (primary) {
+            response = await primary.generate(sanitizedPrompt, options);
           } else {
             // Fallback до іншого провайдера
             const fallbackProvider = Object.keys(this.providers).find(p => p !== usedProvider);
@@ -379,27 +377,32 @@ export class AIService extends BaseServiceClass {
               usedProvider = fallbackProvider;
               this.stats.providerSwitches++;
               logger.warn(`🔄 Переключення на провайдер ${usedProvider}`);
-              response = await this.providers[usedProvider].generate(sanitizedPrompt, options);
+              const fallbackImpl = this.providers[usedProvider];
+              if (!fallbackImpl) {
+                throw new Error('Немає доступних провайдерів');
+              }
+              response = await fallbackImpl.generate(sanitizedPrompt, options);
             } else {
               throw new Error('Немає доступних провайдерів');
             }
           }
 
           const duration = Date.now() - startTime;
+
           this.updateStats(true, duration);
 
           // Збереження в кеш
           if (useCache) {
             const cacheKey = this.buildCacheKey(sanitizedPrompt, options);
             try {
-              await this.cacheService.set(cacheKey, response, { ttl: cacheTTL * 1000 });
+              await this.cacheService.set(cacheKey, response, cacheTTL);
               logger.debug('💾 Відповідь збережена в кеш', {
                 cacheKey: cacheKey.substring(0, 20) + '...',
                 ttl: `${cacheTTL}s`,
-                provider: response.provider
+                provider: response.provider,
               });
             } catch (cacheError) {
-              logger.warn('⚠️ Помилка збереження в кеш:', cacheError);
+              logger.warn('⚠️ Помилка збереження в кеш:', { error: cacheError });
             }
           }
 
@@ -430,7 +433,7 @@ export class AIService extends BaseServiceClass {
       logger.error('❌ Помилка генерації відповіді:', {
         error: error instanceof Error ? error.message : String(error),
         prompt: prompt.substring(0, 100) + '...',
-        provider,
+        provider: provider,
       });
       throw error;
     }
@@ -478,7 +481,7 @@ export class AIService extends BaseServiceClass {
 
       return response;
     } catch (error) {
-      logger.error('❌ Помилка аналізу даних:', error);
+      logger.error('❌ Помилка аналізу даних:', { error });
       throw error;
     }
   }
@@ -507,7 +510,7 @@ export class AIService extends BaseServiceClass {
 
       return response;
     } catch (error) {
-      logger.error('❌ Помилка генерації звіту:', error);
+      logger.error('❌ Помилка генерації звіту:', { error });
       throw error;
     }
   }
@@ -544,7 +547,7 @@ export class AIService extends BaseServiceClass {
 
       return response;
     } catch (error) {
-      logger.error('❌ Помилка обробки природномовного запиту:', error);
+      logger.error('❌ Помилка обробки природномовного запиту:', { error });
       throw error;
     }
   }
@@ -604,7 +607,7 @@ export class AIService extends BaseServiceClass {
         messageCount: context.messages.length,
       });
     } catch (error) {
-      logger.error('❌ Помилка збереження контексту:', error);
+      logger.error('❌ Помилка збереження контексту:', { error });
     }
   }
 
@@ -616,7 +619,7 @@ export class AIService extends BaseServiceClass {
       this.conversationMemory.delete(userId);
       logger.info('🧹 Контекст очищено', { userId });
     } catch (error) {
-      logger.error('❌ Помилка очищення контексту:', error);
+      logger.error('❌ Помилка очищення контексту:', { error });
     }
   }
 
@@ -693,6 +696,24 @@ export class AIService extends BaseServiceClass {
   }
 
   /**
+   * Створення ключа кешу
+   */
+  private buildCacheKey(prompt: string, options: AIRequestOptions): string {
+    const keyData = {
+      prompt: prompt.substring(0, 500),
+      provider: options.provider || this.currentProvider,
+      model: options.model,
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+    };
+    // Використання Node.js crypto для стабільного ключа
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const crypto = require('crypto');
+    const keyString = JSON.stringify(keyData);
+    return `ai:${crypto.createHash('sha256').update(keyString).digest('hex').substring(0, 32)}`;
+  }
+
+  /**
    * Запуск очищення пам'яті
    */
   private startMemoryCleanup(): void {
@@ -700,7 +721,7 @@ export class AIService extends BaseServiceClass {
       this.cleanupMemory();
     }, AI_SERVICE_CONSTANTS.MEMORY_CLEANUP_INTERVAL);
 
-    logger.info('🧹 Запущено очищення пам'яті AI сервісу');
+    logger.info("🧹 Запущено очищення пам'яті AI сервісу");
   }
 
   /**
@@ -714,7 +735,7 @@ export class AIService extends BaseServiceClass {
           logger.warn('⚠️ AI сервіс health check виявив проблеми:', health);
         }
       } catch (error) {
-        logger.error('❌ Помилка AI сервіс health check:', error);
+        logger.error('❌ Помилка AI сервіс health check:', { error });
       }
     }, 60000); // Кожну хвилину
 
@@ -741,7 +762,7 @@ export class AIService extends BaseServiceClass {
         logger.info(`🧹 Очищено ${cleanedCount} застарілих контекстів розмов`);
       }
     } catch (error) {
-      logger.error('❌ Помилка очищення пам'яті AI сервісу: ', error);
+      logger.error("❌ Помилка очищення пам'яті AI сервісу: ", { error });
     }
   }
 
@@ -759,7 +780,15 @@ export class AIService extends BaseServiceClass {
       }
 
       // Перевірка здоров'я активного провайдера
-      const isHealthy = await this.providers[this.currentProvider].isHealthy();
+      const active = this.providers[this.currentProvider];
+      if (!active) {
+        return {
+          healthy: false,
+          service: this.name,
+          error: 'Активний провайдер не налаштовано',
+        };
+      }
+      const isHealthy = await active.isHealthy();
       if (!isHealthy) {
         return {
           healthy: false,
@@ -829,7 +858,7 @@ export class AIService extends BaseServiceClass {
 
       logger.info('✅ AI Service зупинено');
     } catch (error) {
-      logger.error('❌ Помилка зупинки AI Service:', error);
+      logger.error('❌ Помилка зупинки AI Service:', { error });
       throw error;
     }
   }
@@ -845,29 +874,5 @@ export class AIService extends BaseServiceClass {
         : 0,
     };
   }
-
-  /**
-   * Створення ключа кешу
-   */
-  private buildCacheKey(prompt: string, options: AIRequestOptions): string {
-    const keyData = {
-      prompt: prompt.substring(0, 500), // Обрізаємо для розумного розміру ключа
-      provider: options.provider || this.currentProvider,
-      model: options.model,
-      temperature: options.temperature,
-      maxTokens: options.maxTokens
-    };
-    
-    const crypto = require('crypto');
-    const keyString = JSON.stringify(keyData);
-    return `ai:${crypto.createHash('sha256').update(keyString).digest('hex').substring(0, 32)}`;
-  }
-
-  /**
-   * Хешування промпту для кешування (deprecated - використовуйте buildCacheKey)
-   */
-  private hashPrompt(prompt: string): string {
-    const crypto = require('crypto');
-    return crypto.createHash('md5').update(prompt).digest('hex');
-  }
-} 
+}
+ 
