@@ -3,3 +3,6 @@ node_modules
         modified:   data/logs/commands.log
         modified:   data/logs/performance.log
         modified:   data/logs/security.log
+
+dist/
+
