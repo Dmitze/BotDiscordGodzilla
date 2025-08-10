@@ -48,7 +48,7 @@ class ErrorHandler {
   private serviceContainer: ServiceContainer;
   private errorTypes: Map<string, ErrorType>;
   private errorCounts: Map<string, number>;
-  private isActive: boolean;
+  private active: boolean;
   private notificationQueue: Notification[];
   private maxQueueSize: number;
 
@@ -56,7 +56,8 @@ class ErrorHandler {
     this.serviceContainer = serviceContainer;
     this.errorTypes = new Map();
     this.errorCounts = new Map();
-    this.isActive = false;
+    this.active = false;
+
     this.notificationQueue = [];
     this.maxQueueSize = 100;
   }
@@ -74,10 +75,27 @@ class ErrorHandler {
       // Запуск обробки черги сповіщень
       this.startNotificationProcessor();
 
-      this.isActive = true;
+      this.active = true;
+
       logger.info('✅ Обробник помилок ініціалізовано');
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації обробника помилок:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка ініціалізації обробника помилок', {
+          type: 'system',
+          event: 'error_handler_init_failed',
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+          severity: 'critical',
+        });
+      } else {
+        logger.error('❌ Помилка ініціалізації обробника помилок', {
+          type: 'system',
+          event: 'error_handler_init_failed',
+          severity: 'critical',
+          errorMessage: String(error),
+        });
+      }
       throw error;
     }
   }
@@ -194,7 +212,23 @@ class ErrorHandler {
         maxRetries: errorInfo.maxRetries,
       };
     } catch (handleError: any) {
-      logger.error('❌ Помилка в обробнику помилок:', handleError);
+      if (handleError instanceof Error) {
+        logger.error('❌ Помилка в обробнику помилок', {
+          type: 'system',
+          event: 'error_handler_runtime_error',
+          errorName: handleError.name,
+          errorMessage: handleError.message,
+          stack: handleError.stack,
+          severity: 'high',
+        });
+      } else {
+        logger.error('❌ Помилка в обробнику помилок', {
+          type: 'system',
+          event: 'error_handler_runtime_error',
+          severity: 'high',
+          errorMessage: String(handleError),
+        });
+      }
       return {
         handled: false,
         error: handleError,
@@ -206,7 +240,14 @@ class ErrorHandler {
    * Обробка необроблених помилок
    */
   handleUncaughtException(error: Error): void {
-    logger.error('🚨 КРИТИЧНА ПОМИЛКА - Uncaught Exception:', error);
+    logger.error('🚨 КРИТИЧНА ПОМИЛКА - Uncaught Exception', {
+      type: 'system',
+      event: 'uncaught_exception',
+      errorName: error.name,
+      errorMessage: error.message,
+      stack: error.stack,
+      severity: 'critical',
+    });
 
     const errorInfo: ErrorInfo = {
       type: 'UncaughtException',
@@ -231,7 +272,19 @@ class ErrorHandler {
    * Обробка необроблених rejections
    */
   handleUnhandledRejection(reason: any, promise: Promise<any>): void {
-    logger.error('🚨 КРИТИЧНА ПОМИЛКА - Unhandled Rejection:', reason);
+    const meta = reason instanceof Error
+      ? {
+          errorName: reason.name,
+          errorMessage: reason.message,
+          stack: reason.stack,
+        }
+      : { errorMessage: String(reason) };
+    logger.error('🚨 КРИТИЧНА ПОМИЛКА - Unhandled Rejection', {
+      type: 'system',
+      event: 'unhandled_rejection',
+      severity: 'critical',
+      ...meta,
+    });
 
     const errorInfo: ErrorInfo = {
       type: 'UnhandledRejection',
@@ -242,11 +295,12 @@ class ErrorHandler {
       notificationThreshold: 0,
     };
 
-    this.logError(reason, errorInfo, { type: 'unhandledRejection', promise });
+    const errorObj: Error = reason instanceof Error ? reason : new Error(String(reason));
+    this.logError(errorObj, errorInfo, { type: 'unhandledRejection', promise });
     this.incrementErrorCount('UnhandledRejection');
 
     // Критичні помилки завжди потребують сповіщення
-    this.queueNotification(reason, errorInfo, { type: 'unhandledRejection', promise });
+    this.queueNotification(errorObj, errorInfo, { type: 'unhandledRejection', promise });
 
     // Спроба graceful shutdown
     this.attemptGracefulShutdown();
@@ -258,7 +312,7 @@ class ErrorHandler {
   private async attemptGracefulShutdown(): Promise<void> {
     try {
       logger.warn('🛑 Спроба graceful shutdown через критичну помилку...');
-      
+
       if (this.serviceContainer) {
         await this.serviceContainer.shutdown();
       }
@@ -266,7 +320,23 @@ class ErrorHandler {
       logger.info('✅ Graceful shutdown завершено');
       process.exit(1);
     } catch (error) {
-      logger.error('❌ Помилка при graceful shutdown:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка при graceful shutdown', {
+          type: 'system',
+          event: 'graceful_shutdown_failed',
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+          severity: 'high',
+        });
+      } else {
+        logger.error('❌ Помилка при graceful shutdown', {
+          type: 'system',
+          event: 'graceful_shutdown_failed',
+          severity: 'high',
+          errorMessage: String(error),
+        });
+      }
       process.exit(1);
     }
   }
@@ -378,7 +448,23 @@ class ErrorHandler {
 
       // Можна додати інші канали сповіщень (email, Slack, etc.)
     } catch (notificationError) {
-      logger.error('❌ Помилка відправки сповіщення:', notificationError);
+      if (notificationError instanceof Error) {
+        logger.error('❌ Помилка відправки сповіщення', {
+          type: 'system',
+          event: 'notification_send_failed',
+          errorName: notificationError.name,
+          errorMessage: notificationError.message,
+          stack: notificationError.stack,
+          severity: 'medium',
+        });
+      } else {
+        logger.error('❌ Помилка відправки сповіщення', {
+          type: 'system',
+          event: 'notification_send_failed',
+          severity: 'medium',
+          errorMessage: String(notificationError),
+        });
+      }
     }
   }
 
@@ -441,7 +527,21 @@ class ErrorHandler {
       await channel.send({ embeds: [embed] });
       logger.info('✅ Discord сповіщення відправлено');
     } catch (error) {
-      logger.error('❌ Помилка відправки Discord сповіщення:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка відправки Discord сповіщення', {
+          type: 'system',
+          event: 'discord_notification_failed',
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+        });
+      } else {
+        logger.error('❌ Помилка відправки Discord сповіщення', {
+          type: 'system',
+          event: 'discord_notification_failed',
+          errorMessage: String(error),
+        });
+      }
     }
   }
 
@@ -469,11 +569,11 @@ class ErrorHandler {
       // Пошук каналу з назвою "errors" або "logs"
       for (const guild of client.guilds.cache.values()) {
         const errorChannel = guild.channels.cache.find(
-          (channel: any) => 
+          (channel: any) =>
             channel.type === 0 && // Text channel
-            (channel.name.includes('error') || 
-             channel.name.includes('log') || 
-             channel.name.includes('admin'))
+            (channel.name.includes('error') ||
+              channel.name.includes('log') ||
+              channel.name.includes('admin'))
         );
 
         if (errorChannel) {
@@ -483,7 +583,21 @@ class ErrorHandler {
 
       return null;
     } catch (error) {
-      logger.error('Помилка пошуку каналу сповіщень:', error);
+      if (error instanceof Error) {
+        logger.error('Помилка пошуку каналу сповіщень', {
+          type: 'system',
+          event: 'find_notification_channel_failed',
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+        });
+      } else {
+        logger.error('Помилка пошуку каналу сповіщень', {
+          type: 'system',
+          event: 'find_notification_channel_failed',
+          errorMessage: String(error),
+        });
+      }
       return null;
     }
   }
@@ -524,7 +638,7 @@ class ErrorHandler {
       totalErrors: Array.from(this.errorCounts.values()).reduce((a, b) => a + b, 0),
       errorCounts: Object.fromEntries(this.errorCounts),
       notificationQueueSize: this.notificationQueue.length,
-      isActive: this.isActive,
+      isActive: this.active,
     };
   }
 
@@ -541,7 +655,7 @@ class ErrorHandler {
    * Перевірка активності
    */
   isActive(): boolean {
-    return this.isActive;
+    return this.active;
   }
 
   /**
@@ -550,7 +664,7 @@ class ErrorHandler {
   async shutdown(): Promise<void> {
     logger.info('🛑 Завершення роботи Error Handler...');
 
-    this.isActive = false;
+    this.active = false;
 
     // Обробка залишкових сповіщень
     while (this.notificationQueue.length > 0) {

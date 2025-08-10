@@ -4,8 +4,7 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import type { LogMeta } from '@/types';
-import logger from './logger';
+import logger, { type LogMeta } from './logger';
 
 // Константи для обробки помилок
 const ERROR_HANDLER_CONSTANTS = {
@@ -149,14 +148,15 @@ export class ErrorHandler {
     this.logError(errorDetails);
 
     // Логування критичної помилки
-    logger.error('💥 Критична необроблена помилка:', {
-      name: error.name,
-      message: error.message,
-      stack: this.truncateStackTrace(error.stack),
+    logger.error('💥 Критична необроблена помилка', {
       type: 'system',
-      eventType: 'uncaught_exception',
+      event: 'uncaught_exception',
       severity: 'critical',
-    } as LogMeta);
+      errorName: error.name,
+      errorMessage: error.message,
+      stack: this.truncateStackTrace(error.stack),
+      processId: process.pid,
+    });
 
     // Зупинка процесу при критичній помилці
     logger.error('🛑 Зупинка процесу через критичну помилку');
@@ -184,13 +184,16 @@ export class ErrorHandler {
 
     this.logError(errorDetails);
 
-    logger.error('💥 Необроблений rejection:', {
-      reason: reason instanceof Error ? reason.message : String(reason),
-      promise: promise.toString(),
+    logger.error('💥 Необроблений rejection', {
       type: 'system',
-      eventType: 'unhandled_rejection',
+      event: 'unhandled_rejection',
       severity: 'high',
-    } as LogMeta);
+      reason: reason instanceof Error ? reason.message : String(reason),
+      errorName: reason instanceof Error ? reason.name : undefined,
+      errorType: reason instanceof Error ? reason.constructor.name : typeof reason,
+      promise: promise.toString(),
+      processId: process.pid,
+    });
   }
 
   /**
@@ -213,13 +216,14 @@ export class ErrorHandler {
 
     this.logError(errorDetails);
 
-    logger.warn('⚠️ Попередження системи:', {
-      name: warning.name,
-      message: warning.message,
+    logger.warn('⚠️ Попередження системи', {
       type: 'system',
-      eventType: 'warning',
+      event: 'warning',
       severity: 'low',
-    } as LogMeta);
+      errorName: warning.name,
+      errorMessage: warning.message,
+      processId: process.pid,
+    });
   }
 
   /**
@@ -372,33 +376,36 @@ export class ErrorHandler {
         ...(errorDetails.correlationId ? { correlationId: errorDetails.correlationId } : {}),
         timestamp: errorDetails.timestamp.toISOString(),
         type: 'system',
-        severity: errorDetails.severity as any,
+        event: 'error',
+        severity: errorDetails.severity,
       };
 
       // Логування в залежності від серйозності
       switch (errorDetails.severity) {
         case ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.CRITICAL:
-          logger.error(`💥 Критична помилка: ${errorDetails.message}`, logMeta);
+          logger.error('💥 Критична помилка', logMeta);
           break;
         case ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.HIGH:
-          logger.error(`❌ Серйозна помилка: ${errorDetails.message}`, logMeta);
+          logger.error('❌ Серйозна помилка', logMeta);
           break;
         case ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.MEDIUM:
-          logger.warn(`⚠️ Помилка: ${errorDetails.message}`, logMeta);
+          logger.warn('⚠️ Помилка', logMeta);
           break;
         case ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.LOW:
-          logger.debug(`ℹ️ Попередження: ${errorDetails.message}`, logMeta);
+          logger.debug('ℹ️ Попередження', logMeta);
           break;
         default:
-          logger.error(`❌ Помилка: ${errorDetails.message}`, logMeta);
+          logger.error('❌ Помилка', logMeta);
       }
 
       // Логування stack trace для серйозних помилок
       if (errorDetails.severity !== ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.LOW && errorDetails.stack) {
-        logger.debug('📋 Stack trace:', {
-          stack: this.truncateStackTrace(errorDetails.stack),
+        logger.debug('📋 Stack trace', {
+          type: 'system',
+          event: 'stack_trace',
           errorName: errorDetails.name,
-        } as LogMeta);
+          stack: this.truncateStackTrace(errorDetails.stack),
+        });
       }
     } catch (logError) {
       console.error('❌ Помилка логування помилки:', logError);

@@ -5,13 +5,11 @@
 
 import { google, sheets_v4, drive_v3, docs_v1 } from 'googleapis';
 import type { 
-  BaseService, 
   BotConfig, 
   HealthStatus, 
   ServiceStats,
   SheetData,
-  BatchSheetData,
-  GoogleApiResponse
+  BatchSheetData
 } from '@/types';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
@@ -50,8 +48,6 @@ export class GoogleService extends BaseServiceClass {
   private drive: drive_v3.Drive | null = null;
   private docs: docs_v1.Docs | null = null;
   private connectionPool = new Map<string, ConnectionInfo>();
-  private readonly maxConnections = 10;
-  private readonly connectionTimeout = 30000; // 30 секунд
   private readonly retryAttempts = 3;
   private readonly retryDelay = 1000;
   private stats: GoogleServiceStats;
@@ -77,7 +73,7 @@ export class GoogleService extends BaseServiceClass {
    */
   protected async onInitialize(): Promise<void> {
     try {
-      logger.info('🔧 Ініціалізація Google Service...');
+      logger.info('🔧 Ініціалізація Google Service...', { type: 'system', event: 'google_service_init' });
 
       // Ініціалізація кешу
       await this.cacheService.initialize();
@@ -91,9 +87,17 @@ export class GoogleService extends BaseServiceClass {
       // Створення connection pool
       await this.initializeConnectionPool();
 
-      logger.info('✅ Google Service ініціалізовано');
+      logger.info('✅ Google Service ініціалізовано', { type: 'system', event: 'google_service_init_success' });
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації Google Service:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка ініціалізації Google Service', {
+          type: 'system', event: 'google_service_init_failed',
+          errorName: error.name, errorMessage: error.message, stack: error.stack,
+          severity: 'critical',
+        });
+      } else {
+        logger.error('❌ Помилка ініціалізації Google Service', { type: 'system', event: 'google_service_init_failed', errorMessage: String(error), severity: 'critical' });
+      }
       throw error;
     }
   }
@@ -111,7 +115,7 @@ export class GoogleService extends BaseServiceClass {
       // Створення JWT автентифікації
       this.auth = new google.auth.JWT(
         this.config.google.credentials.client_email,
-        null,
+        undefined,
         this.config.google.credentials.private_key,
         [
           'https://www.googleapis.com/auth/spreadsheets',
@@ -122,9 +126,13 @@ export class GoogleService extends BaseServiceClass {
 
       // Авторизація
       await this.auth.authorize();
-      logger.info('✅ Google автентифікація успішна');
+      logger.info('✅ Google автентифікація успішна', { type: 'system', event: 'google_auth_success' });
     } catch (error) {
-      logger.error('❌ Помилка Google автентифікації:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка Google автентифікації', { type: 'api_error', event: 'google_auth_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'google' });
+      } else {
+        logger.error('❌ Помилка Google автентифікації', { type: 'api_error', event: 'google_auth_failed', service: 'google', errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -143,9 +151,13 @@ export class GoogleService extends BaseServiceClass {
       // Google Docs API
       this.docs = google.docs({ version: 'v1', auth: this.auth });
 
-      logger.info('✅ Google API клієнти ініціалізовано');
+      logger.info('✅ Google API клієнти ініціалізовано', { type: 'system', event: 'google_api_init_success' });
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації Google API:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка ініціалізації Google API', { type: 'api_error', event: 'google_api_init_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'google' });
+      } else {
+        logger.error('❌ Помилка ініціалізації Google API', { type: 'api_error', event: 'google_api_init_failed', service: 'google', errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -165,9 +177,13 @@ export class GoogleService extends BaseServiceClass {
         });
       }
 
-      logger.info('✅ Connection Pool ініціалізовано');
+      logger.info('✅ Connection Pool ініціалізовано', { type: 'system', event: 'connection_pool_init_success' });
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації Connection Pool:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка ініціалізації Connection Pool', { type: 'system', event: 'connection_pool_init_failed', errorName: error.name, errorMessage: error.message, stack: error.stack });
+      } else {
+        logger.error('❌ Помилка ініціалізації Connection Pool', { type: 'system', event: 'connection_pool_init_failed', errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -260,6 +276,7 @@ export class GoogleService extends BaseServiceClass {
           if (cached) {
             this.stats.cacheHits++;
             logger.debug('✅ Використано кешовані дані Sheets', {
+              type: 'system', event: 'cache_hit',
               spreadsheetId: spreadsheetId.substring(0, 10) + '...',
               range,
               rowsCount: cached.values.length
@@ -269,7 +286,11 @@ export class GoogleService extends BaseServiceClass {
             this.stats.cacheMisses++;
           }
         } catch (cacheError) {
-          logger.warn('⚠️ Помилка читання з кешу Sheets:', cacheError);
+          if (cacheError instanceof Error) {
+            logger.warn('⚠️ Помилка читання з кешу Sheets', { type: 'system', event: 'cache_read_failed', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack, component: 'CacheService' });
+          } else {
+            logger.warn('⚠️ Помилка читання з кешу Sheets', { type: 'system', event: 'cache_read_failed', component: 'CacheService', errorMessage: String(cacheError) });
+          }
           this.stats.cacheMisses++;
         }
       }
@@ -296,21 +317,30 @@ export class GoogleService extends BaseServiceClass {
       if (useCache) {
         const cacheKey = `sheets:${spreadsheetId}:${range}`;
         try {
-          await this.cacheService.set(cacheKey, result, { ttl: cacheTTL * 1000 });
+          await this.cacheService.set(cacheKey, result, cacheTTL * 1000);
           logger.debug('💾 Дані Sheets збережено в кеш', {
+            type: 'system', event: 'cache_write',
             spreadsheetId: spreadsheetId.substring(0, 10) + '...',
             range,
             rowsCount: result.values.length,
             ttl: `${cacheTTL}s`
           });
         } catch (cacheError) {
-          logger.warn('⚠️ Помилка збереження в кеш Sheets:', cacheError);
+          if (cacheError instanceof Error) {
+            logger.warn('⚠️ Помилка збереження в кеш Sheets', { type: 'system', event: 'cache_write_failed', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack, component: 'CacheService' });
+          } else {
+            logger.warn('⚠️ Помилка збереження в кеш Sheets', { type: 'system', event: 'cache_write_failed', component: 'CacheService', errorMessage: String(cacheError) });
+          }
         }
       }
 
       return result;
     } catch (error) {
-      logger.error('❌ Помилка отримання даних з Sheets:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка отримання даних з Sheets', { type: 'api_error', event: 'sheets_get_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range });
+      } else {
+        logger.error('❌ Помилка отримання даних з Sheets', { type: 'api_error', event: 'sheets_get_failed', service: 'sheets', spreadsheetId, range, errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -349,15 +379,24 @@ export class GoogleService extends BaseServiceClass {
         try {
           await this.cacheService.delete(cacheKey);
           logger.debug('🗑️ Кеш Sheets очищено', {
+            type: 'system', event: 'cache_delete',
             spreadsheetId: spreadsheetId.substring(0, 10) + '...',
             range
           });
         } catch (cacheError) {
-          logger.warn('⚠️ Помилка очищення кешу Sheets:', cacheError);
+          if (cacheError instanceof Error) {
+            logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack, component: 'CacheService' });
+          } else {
+            logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', component: 'CacheService', errorMessage: String(cacheError) });
+          }
         }
       }
     } catch (error) {
-      logger.error('❌ Помилка запису в Sheets:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка запису в Sheets', { type: 'api_error', event: 'sheets_write_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range });
+      } else {
+        logger.error('❌ Помилка запису в Sheets', { type: 'api_error', event: 'sheets_write_failed', service: 'sheets', spreadsheetId, range, errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -372,8 +411,6 @@ export class GoogleService extends BaseServiceClass {
   ): Promise<BatchSheetData> {
     const { 
       batchSize = 10, 
-      cacheResults = true, 
-      cacheTTL = 300,
       retryFailed = true,
       maxRetries = 3
     } = options;
@@ -400,9 +437,19 @@ export class GoogleService extends BaseServiceClass {
             maxRetries
           );
 
-          results.push(...result);
+          results.push(
+            ...result.map(vr => ({
+              range: vr.range ?? '',
+              majorDimension: vr.majorDimension ?? 'ROWS',
+              values: vr.values ?? [],
+            }))
+          );
         } catch (error) {
-          logger.error('❌ Помилка batch запиту:', error);
+          if (error instanceof Error) {
+            logger.error('❌ Помилка batch запиту', { type: 'api_error', event: 'sheets_batch_get_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, ranges: chunk });
+          } else {
+            logger.error('❌ Помилка batch запиту', { type: 'api_error', event: 'sheets_batch_get_failed', service: 'sheets', spreadsheetId, ranges: chunk, errorMessage: String(error) });
+          }
           if (retryFailed) {
             failedRanges.push(...chunk);
           }
@@ -416,7 +463,11 @@ export class GoogleService extends BaseServiceClass {
             const result = await this.getSheetData(spreadsheetId, range, { useCache: false });
             results.push(result);
           } catch (error) {
-            logger.error(`❌ Повторна спроба невдала для range: ${range}`, error);
+            if (error instanceof Error) {
+              logger.error(`❌ Повторна спроба невдала для range: ${range}`, { type: 'api_error', event: 'sheets_retry_get_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range });
+            } else {
+              logger.error(`❌ Повторна спроба невдала для range: ${range}`, { type: 'api_error', event: 'sheets_retry_get_failed', service: 'sheets', spreadsheetId, range, errorMessage: String(error) });
+            }
           }
         }
       }
@@ -426,7 +477,11 @@ export class GoogleService extends BaseServiceClass {
         spreadsheetId,
       };
     } catch (error) {
-      logger.error('❌ Помилка batch отримання даних:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка batch отримання даних', { type: 'api_error', event: 'sheets_batch_get_failed_final', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId });
+      } else {
+        logger.error('❌ Помилка batch отримання даних', { type: 'api_error', event: 'sheets_batch_get_failed_final', service: 'sheets', spreadsheetId, errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -441,7 +496,6 @@ export class GoogleService extends BaseServiceClass {
   ): Promise<void> {
     const { 
       batchSize = 10, 
-      valueInputOption = 'RAW',
       retryFailed = true,
       maxRetries = 3,
       clearCache = true
@@ -486,11 +540,28 @@ export class GoogleService extends BaseServiceClass {
           if (clearCache) {
             for (const item of chunk) {
               const cacheKey = `sheets:${spreadsheetId}:${item.range}`;
-              // TODO: Очистити кеш
+              try {
+                await this.cacheService.delete(cacheKey);
+                logger.debug('🗑️ Кеш Sheets очищено', {
+                  type: 'system', event: 'cache_delete',
+                  spreadsheetId: spreadsheetId.substring(0, 10) + '...',
+                  range: item.range
+                });
+              } catch (cacheError) {
+                if (cacheError instanceof Error) {
+                  logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack, component: 'CacheService' });
+                } else {
+                  logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', component: 'CacheService', errorMessage: String(cacheError) });
+                }
+              }
             }
           }
         } catch (error) {
-          logger.error('❌ Помилка batch запису:', error);
+          if (error instanceof Error) {
+            logger.error('❌ Помилка batch запису', { type: 'api_error', event: 'sheets_batch_write_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId });
+          } else {
+            logger.error('❌ Помилка batch запису', { type: 'api_error', event: 'sheets_batch_write_failed', service: 'sheets', spreadsheetId, errorMessage: String(error) });
+          }
           if (retryFailed) {
             failedBatches.push(...chunk);
           }
@@ -503,12 +574,20 @@ export class GoogleService extends BaseServiceClass {
           try {
             await this.writeSheetData(spreadsheetId, item.range, item.values, { useCache: false });
           } catch (error) {
-            logger.error(`❌ Повторна спроба невдала для range: ${item.range}`, error);
+            if (error instanceof Error) {
+              logger.error(`❌ Повторна спроба невдала для range: ${item.range}`, { type: 'api_error', event: 'sheets_retry_write_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range: item.range });
+            } else {
+              logger.error(`❌ Повторна спроба невдала для range: ${item.range}`, { type: 'api_error', event: 'sheets_retry_write_failed', service: 'sheets', spreadsheetId, range: item.range, errorMessage: String(error) });
+            }
           }
         }
       }
     } catch (error) {
-      logger.error('❌ Помилка batch запису даних:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка batch запису даних', { type: 'api_error', event: 'sheets_batch_write_failed_final', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId });
+      } else {
+        logger.error('❌ Помилка batch запису даних', { type: 'api_error', event: 'sheets_batch_write_failed_final', service: 'sheets', spreadsheetId, errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -518,7 +597,7 @@ export class GoogleService extends BaseServiceClass {
    */
   public async searchFiles(
     query: string,
-    options: GoogleServiceOptions = {}
+    _options: GoogleServiceOptions = {}
   ): Promise<drive_v3.Schema$File[]> {
     try {
       const result = await this.executeWithRetry(
@@ -538,7 +617,11 @@ export class GoogleService extends BaseServiceClass {
 
       return result;
     } catch (error) {
-      logger.error('❌ Помилка пошуку файлів:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка пошуку файлів', { type: 'api_error', event: 'drive_search_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'drive', query });
+      } else {
+        logger.error('❌ Помилка пошуку файлів', { type: 'api_error', event: 'drive_search_failed', service: 'drive', query, errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -567,7 +650,11 @@ export class GoogleService extends BaseServiceClass {
 
       return result;
     } catch (error) {
-      logger.error('❌ Помилка отримання метаданих файлу:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка отримання метаданих файлу', { type: 'api_error', event: 'drive_metadata_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'drive', fileId });
+      } else {
+        logger.error('❌ Помилка отримання метаданих файлу', { type: 'api_error', event: 'drive_metadata_failed', service: 'drive', fileId, errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -594,7 +681,11 @@ export class GoogleService extends BaseServiceClass {
 
       return result;
     } catch (error) {
-      logger.error('❌ Помилка отримання контенту документа:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка отримання контенту документа', { type: 'api_error', event: 'docs_content_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'docs', documentId });
+      } else {
+        logger.error('❌ Помилка отримання контенту документа', { type: 'api_error', event: 'docs_content_failed', service: 'docs', documentId, errorMessage: String(error) });
+      }
       throw error;
     }
   }
@@ -666,7 +757,7 @@ export class GoogleService extends BaseServiceClass {
         return {
           healthy: false,
           service: this.name,
-          error: `Помилка тестового запиту: ${error}`,
+          error: `Помилка тестового запиту: ${String(error)}`,
         };
       }
 
@@ -684,7 +775,7 @@ export class GoogleService extends BaseServiceClass {
       return {
         healthy: false,
         service: this.name,
-        error: `Health check failed: ${error}`,
+        error: `Health check failed: ${String(error)}`,
       };
     }
   }
@@ -706,9 +797,13 @@ export class GoogleService extends BaseServiceClass {
       this.docs = null;
       this.auth = null;
 
-      logger.info('✅ Google Service зупинено');
+      logger.info('✅ Google Service зупинено', { type: 'system', event: 'google_service_shutdown_success' });
     } catch (error) {
-      logger.error('❌ Помилка зупинки Google Service:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка зупинки Google Service', { type: 'system', event: 'google_service_shutdown_failed', errorName: error.name, errorMessage: error.message, stack: error.stack });
+      } else {
+        logger.error('❌ Помилка зупинки Google Service', { type: 'system', event: 'google_service_shutdown_failed', errorMessage: String(error) });
+      }
       throw error;
     }
   }
