@@ -3,11 +3,8 @@
  * Централізоване управління всіма командами
  */
 
-import fs from 'fs/promises';
-import path from 'path';
 import { Collection, ChatInputCommandInteraction, GuildMember, EmbedBuilder } from 'discord.js';
-import type { BotConfig, LogMeta } from '@/types';
-import { BaseCommand } from '@/commands/BaseCommand';
+import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 
 // Імпорт всіх команд
@@ -27,10 +24,19 @@ interface CommandStats {
   lastUsed: Date;
 }
 
+// Мінімальний контракт команди, щоб уникнути конфлікту приватних полів TS між різними деклараціями класів
+interface ICommand {
+  getName(): string;
+  getDescription(): string;
+  getData(): any;
+  execute(args: { interaction: ChatInputCommandInteraction }): Promise<void> | void;
+}
+
 export class CommandManager {
   private bot: any;
   private config: BotConfig;
-  private commands: Collection<string, BaseCommand>;
+  private commands: Collection<string, ICommand>;
+
   private commandCategories: Map<string, string[]>;
   private stats: CommandStats;
 
@@ -112,7 +118,7 @@ export class CommandManager {
   /**
    * Валідація команди
    */
-  private validateCommand(command: BaseCommand): boolean {
+  private validateCommand(command: ICommand): boolean {
     if (!command.getName()) {
       console.warn('Команда не має назви');
       return false;
@@ -129,7 +135,7 @@ export class CommandManager {
   /**
    * Визначення категорії команди
    */
-  private getCommandCategory(command: BaseCommand): string {
+  private getCommandCategory(command: ICommand): string {
     const name = command.getName();
     
     if (name.includes('пошук') || name.includes('search')) {
@@ -188,7 +194,7 @@ export class CommandManager {
       this.stats.lastUsed = new Date();
 
       // Перевірка прав доступу
-      const hasPermission = await this.checkPermissions(interaction, command);
+      const hasPermission = await this.checkPermissions(interaction);
       if (!hasPermission) {
         await interaction.reply({
           content: '❌ Недостатньо прав для виконання цієї команди',
@@ -220,7 +226,7 @@ export class CommandManager {
   /**
    * Перевірка прав доступу
    */
-  private async checkPermissions(interaction: ChatInputCommandInteraction, command: BaseCommand): Promise<boolean> {
+  private async checkPermissions(interaction: ChatInputCommandInteraction): Promise<boolean> {
     try {
       // Імпорт PermissionManager
       const { PermissionManager } = await import('./PermissionManager');
@@ -240,27 +246,60 @@ export class CommandManager {
         await interaction.reply({ embeds: [embed], ephemeral: true });
         
         logger.security('command_access_denied', interaction.user.id, {
-          command: interaction.commandName,
+          type: 'security',
+          event: 'command_access_denied',
+          severity: 'medium',
+          commandName: interaction.commandName,
           reason: result.reason,
           userLevel: result.userLevel,
-          guildId: interaction.guildId,
-          channelId: interaction.channelId
-        } as LogMeta);
+          ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+          channelId: interaction.channelId,
+          userId: interaction.user.id,
+        });
         
         return false;
       }
       
       // Логування успішного доступу
       logger.info('✅ Команда дозволена', {
+        type: 'command',
+        event: 'permission_granted',
         userId: interaction.user.id,
-        command: interaction.commandName,
+        commandName: interaction.commandName,
         userLevel: result.userLevel,
-        remainingUses: result.remainingUses
-      } as LogMeta);
+        remainingUses: result.remainingUses,
+        ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+        channelId: interaction.channelId,
+      });
       
       return true;
     } catch (error) {
-      logger.error('❌ Помилка перевірки прав доступу:', error);
+      if (error instanceof Error) {
+        logger.error('❌ Помилка перевірки прав доступу', {
+          type: 'security',
+          event: 'permission_check_error',
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+          commandName: interaction.commandName,
+          userId: interaction.user.id,
+          ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+          channelId: interaction.channelId,
+          severity: 'high',
+        });
+      } else {
+        logger.error('❌ Помилка перевірки прав доступу', {
+          type: 'security',
+          event: 'permission_check_error',
+          commandName: interaction.commandName,
+          userId: interaction.user.id,
+          ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+          channelId: interaction.channelId,
+          severity: 'high',
+          errorMessage: String(error),
+        });
+      }
+      
       // У разі помилки дозволяємо виконання для базових команд
       const allowedCommands = ['пошук', 'довідка', 'статус'];
       return allowedCommands.includes(interaction.commandName);
@@ -299,14 +338,14 @@ export class CommandManager {
   /**
    * Отримання команди за назвою
    */
-  getCommand(name: string): BaseCommand | undefined {
+  getCommand(name: string): ICommand | undefined {
     return this.commands.get(name);
   }
 
   /**
    * Отримання всіх команд
    */
-  getAllCommands(): Collection<string, BaseCommand> {
+  getAllCommands(): Collection<string, ICommand> {
     return this.commands;
   }
 
