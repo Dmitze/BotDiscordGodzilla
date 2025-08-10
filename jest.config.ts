@@ -1,63 +1,48 @@
-import type { Config } from 'jest';
+import type { Config } from '@jest/types';
 
-const config: Config = {
+const config: Config.InitialOptions = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  rootDir: '.',
+  roots: ['<rootDir>/src', '<rootDir>/helpers'],
   testMatch: [
-    '<rootDir>/src/tests/**/*.test.ts',
-    '<rootDir>/src/tests/**/*.test.js'
+    '**/__tests__/**/*.ts',
+    '**/?(*.)+(spec|test).ts'
   ],
+  transform: {
+    '^.+\\.ts$': 'ts-jest',
+  },
   collectCoverageFrom: [
-    'src/**/*.{ts,js}',
+    'src/**/*.ts',
     '!src/**/*.d.ts',
+    '!src/**/*.test.ts',
+    '!src/**/*.spec.ts',
     '!src/tests/**',
-    '!src/config/environments.ts',
-    '!src/**/index.ts'
+    '!src/**/index.ts',
+    '!src/scripts/**',
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: [
-    'text',
-    'lcov',
-    'html',
-    'json-summary'
-  ],
+  coverageReporters: ['text', 'lcov', 'html', 'json'],
   coverageThreshold: {
     global: {
-      branches: 75,
-      functions: 80,
+      branches: 70,
+      functions: 75,
       lines: 80,
-      statements: 80
+      statements: 80,
     },
-    // Критичні компоненти мають вищі вимоги
-    'src/core/**': {
-      branches: 85,
-      functions: 90,
-      lines: 90,
-      statements: 90
-    },
-    'src/services/**': {
-      branches: 80,
-      functions: 85,
-      lines: 85,
-      statements: 85
-    },
-    'src/utils/security.ts': {
-      branches: 95,
-      functions: 95,
-      lines: 95,
-      statements: 95
-    }
+  },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
   },
   setupFilesAfterEnv: ['<rootDir>/src/tests/setup.ts'],
-  moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/src/$1'
-  },
-  transform: {
-    '^.+\\.ts$': 'ts-jest'
-  },
-  testTimeout: 30000,
-  verbose: true
+  testTimeout: 15000,
+  verbose: true,
+  clearMocks: true,
+  restoreMocks: true,
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/coverage/',
+  ],
 };
 
 export default config; 

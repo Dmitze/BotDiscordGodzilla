@@ -48,9 +48,10 @@ interface BotStatsData {
 class BotStats {
   private statsFile: string;
   private stats: BotStatsData;
+  private saveTimer: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.statsFile = './logs/stats.json';
+    this.statsFile = path.join('data', 'logs', 'stats.json');
     this.stats = this.loadStats();
   }
 
@@ -97,31 +98,38 @@ class BotStats {
       if (!fs.existsSync(statsDir)) {
         fs.mkdirSync(statsDir, { recursive: true });
       }
-      
-      // Конвертуємо Set в масиви для JSON
-      const statsToSave = JSON.parse(JSON.stringify(this.stats));
-      
-      for (const commandName in statsToSave.commands) {
-        if (statsToSave.commands[commandName].users instanceof Set) {
-          statsToSave.commands[commandName].users = Array.from(statsToSave.commands[commandName].users);
-        }
+
+      // Глубокая копия и конверсия Set → Array
+      const copy: any = JSON.parse(JSON.stringify(this.stats));
+      for (const name in copy.commands) {
+        const users = this.stats.commands[name]?.users;
+        if (users instanceof Set) copy.commands[name].users = Array.from(users);
       }
-      
-      for (const date in statsToSave.dailyStats) {
-        if (statsToSave.dailyStats[date].users instanceof Set) {
-          statsToSave.dailyStats[date].users = Array.from(statsToSave.dailyStats[date].users);
-        }
+      for (const date in copy.dailyStats) {
+        const users = this.stats.dailyStats[date]?.users;
+        if (users instanceof Set) copy.dailyStats[date].users = Array.from(users);
       }
-      
-      fs.writeFileSync(this.statsFile, JSON.stringify(statsToSave, null, 2));
+
+      // Атомарная запись
+      const tmp = this.statsFile + '.tmp';
+      fs.writeFileSync(tmp, JSON.stringify(copy, null, 2));
+      fs.renameSync(tmp, this.statsFile);
     } catch (error) {
       console.error('Помилка збереження статистики:', error);
     }
   }
 
-  trackCommand(commandName: string, userId: string, guildId?: string, success: boolean = true): void {
-    const today = new Date().toISOString().split('T')[0];
-    
+  private scheduleSave(): void {
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      this.saveStats();
+    }, 250);
+  }
+
+  trackCommand(commandName: string, userId: string, _guildId?: string, success: boolean = true): void {
+    const [today] = new Date().toISOString().split('T') as [string, string];
+
     // Оновлюємо статистику команд
     if (!this.stats.commands[commandName]) {
       this.stats.commands[commandName] = {
@@ -178,17 +186,17 @@ class BotStats {
     this.stats.dailyStats[today].users.add(userId);
 
     // Зберігаємо статистику
-    this.saveStats();
+    this.scheduleSave();
   }
 
   trackError(error: Error | string, commandName?: string, userId?: string): void {
-    const errorEntry: ErrorEntry = {
-      message: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined,
+    const errorEntry = {
+      message: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
-      commandName,
-      userId
-    };
+      ...(commandName ? { commandName } : {}),
+      ...(userId ? { userId } : {}),
+      ...(error instanceof Error && error.stack ? { stack: error.stack } : {}),
+    } satisfies ErrorEntry;
 
     this.stats.errors.push(errorEntry);
 
@@ -198,12 +206,13 @@ class BotStats {
     }
 
     // Оновлюємо денну статистику помилок
-    const today = new Date().toISOString().split('T')[0];
-    if (this.stats.dailyStats[today]) {
-      this.stats.dailyStats[today].errors++;
+    const [today] = new Date().toISOString().split('T') as [string, string];
+    if (!this.stats.dailyStats[today]) {
+      this.stats.dailyStats[today] = { commands: 0, users: new Set(), errors: 0 };
     }
+    this.stats.dailyStats[today].errors++;
 
-    this.saveStats();
+    this.scheduleSave();
   }
 
   getStats(): BotStatsData {
