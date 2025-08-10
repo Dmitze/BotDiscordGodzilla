@@ -78,7 +78,17 @@ class RetryManager {
 
         // Остання спроба
         if (attempt === config.maxAttempts) {
-          logger.error(`❌ Операція невдала після ${attempt} спроб: ${lastError.message || String(lastError)}`);
+          logger.error('❌ Операція невдала', {
+            type: 'retry',
+            event: 'final_failure',
+            attempt,
+            maxAttempts: config.maxAttempts,
+            totalTimeMs: Date.now() - startTime,
+            error: lastError.message,
+            errorType: lastError.constructor.name,
+            stack: lastError.stack,
+            backoff: config.backoff,
+          });
           return {
             success: false,
             error: lastError,
@@ -93,7 +103,16 @@ class RetryManager {
         // Розраховуємо затримку
         const delay = this.calculateDelay(attempt, config);
         
-        logger.warn(`⚠️ Спроба ${attempt} невдала, повтор через ${delay}мс: ${lastError.message}`);
+        logger.warn('⚠️ Планування повторної спроби', {
+          type: 'retry',
+          event: 'retry_scheduled',
+          attempt,
+          nextDelayMs: delay,
+          maxAttempts: config.maxAttempts,
+          error: lastError.message,
+          errorType: lastError.constructor.name,
+          backoff: config.backoff,
+        });
 
         // Чекаємо перед наступною спробою
         await this.sleep(delay);
@@ -160,8 +179,10 @@ class RetryManager {
     const httpOptions: RetryOptions = {
       shouldRetry: (error: Error) => {
         // Повторюємо для 5xx помилок та мережевих помилок
-        const statusCode = (error as any).status || (error as any).code;
-        return statusCode >= 500 || statusCode === 'ECONNRESET' || statusCode === 'ETIMEDOUT';
+        const anyErr = error as any;
+        const status = typeof anyErr?.status === 'number' ? anyErr.status : undefined;
+        const code = typeof anyErr?.code === 'string' ? anyErr.code : undefined;
+        return (typeof status === 'number' && status >= 500) || code === 'ECONNRESET' || code === 'ETIMEDOUT';
       },
       ...options,
     };
@@ -179,7 +200,7 @@ class RetryManager {
     const dbOptions: RetryOptions = {
       shouldRetry: (error: Error) => {
         // Повторюємо для тимчасових помилок БД
-        const errorMessage = error.message.toLowerCase();
+        const errorMessage = (error?.message ?? '').toLowerCase();
         return errorMessage.includes('connection') || 
                errorMessage.includes('timeout') ||
                errorMessage.includes('deadlock') ||
@@ -203,11 +224,12 @@ class RetryManager {
     const fileOptions: RetryOptions = {
       shouldRetry: (error: Error) => {
         // Повторюємо для тимчасових помилок файлової системи
-        const errorCode = (error as any).code;
-        return errorCode === 'EBUSY' || 
+        const errorCode = (error as any)?.code;
+        return typeof errorCode === 'string' && (
+               errorCode === 'EBUSY' || 
                errorCode === 'EACCES' || 
                errorCode === 'ENOENT' ||
-               errorCode === 'EAGAIN';
+               errorCode === 'EAGAIN');
       },
       maxAttempts: 3,
       delay: 1000,
@@ -227,8 +249,8 @@ class RetryManager {
     const discordOptions: RetryOptions = {
       shouldRetry: (error: Error) => {
         // Повторюємо для rate limits та тимчасових помилок Discord
-        const statusCode = (error as any).status;
-        return statusCode === 429 || statusCode >= 500;
+        const statusCode = (error as any)?.status;
+        return (typeof statusCode === 'number' && (statusCode === 429 || statusCode >= 500));
       },
       maxAttempts: 3,
       delay: 1000,
@@ -241,4 +263,4 @@ class RetryManager {
 }
 
 export default RetryManager;
-export { RetryManager }; 
+export { RetryManager };
