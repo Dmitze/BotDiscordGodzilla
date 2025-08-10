@@ -22,7 +22,7 @@ const CONFIG_CONSTANTS = {
   DEFAULT_REDIS_HOST: 'localhost',
   DEFAULT_REDIS_PORT: 6379,
   DEFAULT_REDIS_DATABASE: 0,
-  DEFAULT_METRICS_PORT: 9090,
+  DEFAULT_METRICS_PORT: 9091,
   DEFAULT_METRICS_PATH: '/metrics',
   MAX_OPENAI_TOKENS: 4000,
   MAX_TEMPERATURE: 2.0,
@@ -64,7 +64,7 @@ export class Config {
       
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження конфігурації:', error);
+      logger.error('❌ Помилка завантаження конфігурації:', error as any);
       throw new Error(`Помилка конфігурації: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
     }
   }
@@ -96,7 +96,7 @@ export class Config {
       logger.debug('✅ Discord конфігурація завантажена');
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження Discord конфігурації:', error);
+      logger.error('❌ Помилка завантаження Discord конфігурації:', error as any);
       throw error;
     }
   }
@@ -107,19 +107,20 @@ export class Config {
   private static parseIntents(intentsString: string): string[] {
     try {
       const intents = intentsString.split(',').map(intent => intent.trim());
-      const validIntents = intents.filter(intent => 
-        CONFIG_CONSTANTS.DEFAULT_INTENTS.includes(intent) || 
-        ['DirectMessages', 'GuildPresences', 'GuildVoiceStates'].includes(intent)
-      );
-      
+      const allowed = new Set<string>([
+        ...(CONFIG_CONSTANTS.DEFAULT_INTENTS as unknown as string[]),
+        'DirectMessages', 'GuildPresences', 'GuildVoiceStates'
+      ]);
+      const validIntents = intents.filter(intent => allowed.has(intent));
+
       if (validIntents.length !== intents.length) {
         logger.warn('⚠️ Деякі Discord intents некоректні:', intents.filter(intent => !validIntents.includes(intent)));
       }
-      
-      return validIntents.length > 0 ? validIntents : CONFIG_CONSTANTS.DEFAULT_INTENTS;
+
+      return validIntents.length > 0 ? validIntents : ([...CONFIG_CONSTANTS.DEFAULT_INTENTS] as unknown as string[]);
     } catch (error) {
-      logger.error('❌ Помилка парсингу Discord intents:', error);
-      return CONFIG_CONSTANTS.DEFAULT_INTENTS;
+      logger.error('❌ Помилка парсингу Discord intents:', error as any);
+      return [...(CONFIG_CONSTANTS.DEFAULT_INTENTS as unknown as string[])];
     }
   }
 
@@ -156,7 +157,7 @@ export class Config {
       logger.debug('✅ Google конфігурація завантажена');
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження Google конфігурації:', error);
+      logger.error('❌ Помилка завантаження Google конфігурації:', error as any);
       throw error;
     }
   }
@@ -182,7 +183,7 @@ export class Config {
             return credentials;
           }
         } catch (fileError) {
-          logger.warn('⚠️ Помилка читання Google credentials файлу:', fileError);
+          logger.warn('⚠️ Помилка читання Google credentials файлу:', fileError as any);
         }
       }
 
@@ -200,7 +201,7 @@ export class Config {
 
       return undefined;
     } catch (error) {
-      logger.error('❌ Помилка завантаження Google credentials:', error);
+      logger.error('❌ Помилка завантаження Google credentials:', error as any);
       return undefined;
     }
   }
@@ -217,7 +218,7 @@ export class Config {
       const config: AIConfig = {
         provider,
         openai: {
-          apiKey: this.getRequiredEnv('OPENAI_API_KEY'),
+          apiKey: provider === 'openai' ? this.getRequiredEnv('OPENAI_API_KEY') : this.getEnv('OPENAI_API_KEY', ''),
           model: this.getEnv('OPENAI_MODEL', CONFIG_CONSTANTS.DEFAULT_OPENAI_MODEL),
           maxTokens: this.validateNumber(
             this.getEnv('OPENAI_MAX_TOKENS', CONFIG_CONSTANTS.DEFAULT_OPENAI_MAX_TOKENS.toString()),
@@ -239,14 +240,14 @@ export class Config {
       };
 
       // Валідація OpenAI API ключа
-      if (!config.openai.apiKey.startsWith('sk-')) {
+      if (config.provider === 'openai' && !config.openai.apiKey.startsWith('sk-')) {
         logger.warn('⚠️ OpenAI API ключ може бути некоректним');
       }
 
       logger.debug('✅ AI конфігурація завантажена');
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження AI конфігурації:', error);
+      logger.error('❌ Помилка завантаження AI конфігурації:', error as any);
       throw error;
     }
   }
@@ -266,7 +267,7 @@ export class Config {
           1,
           65535
         ),
-        password: this.getEnv('REDIS_PASSWORD'),
+        password: this.getEnv('REDIS_PASSWORD', ''),
         database: this.validateNumber(
           this.getEnv('REDIS_DATABASE', CONFIG_CONSTANTS.DEFAULT_REDIS_DATABASE.toString()),
           CONFIG_CONSTANTS.DEFAULT_REDIS_DATABASE,
@@ -274,13 +275,13 @@ export class Config {
           15
         ),
         enabled: this.getEnv('REDIS_ENABLED', 'true').toLowerCase() === 'true',
-        url: this.getEnv('REDIS_URL'),
+        url: this.getEnv('REDIS_URL', ''),
       };
 
       logger.debug('✅ Redis конфігурація завантажена');
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження Redis конфігурації:', error);
+      logger.error('❌ Помилка завантаження Redis конфігурації:', error as any);
       throw error;
     }
   }
@@ -306,7 +307,7 @@ export class Config {
       logger.debug('✅ Metrics конфігурація завантажена');
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження Metrics конфігурації:', error);
+      logger.error('❌ Помилка завантаження Metrics конфігурації:', error as any);
       throw error;
     }
   }
@@ -335,7 +336,7 @@ export class Config {
         botUserRole: this.getEnv('BOT_USER_ROLE', 'Bot User'),
       };
     } catch (error) {
-      logger.error('❌ Помилка завантаження Security конфігурації:', error);
+      logger.error('❌ Помилка завантаження Security конфігурації:', error as any);
       throw error;
     }
   }
@@ -380,7 +381,7 @@ export class Config {
         ),
       };
     } catch (error) {
-      logger.error('❌ Помилка завантаження Performance конфігурації:', error);
+      logger.error('❌ Помилка завантаження Performance конфігурації:', error as any);
       throw error;
     }
   }
@@ -404,7 +405,7 @@ export class Config {
         directory: this.getEnv('LOG_DIRECTORY', join(process.cwd(), 'logs')),
       };
     } catch (error) {
-      logger.error('❌ Помилка завантаження Logging конфігурації:', error);
+      logger.error('❌ Помилка завантаження Logging конфігурації:', error as any);
       throw error;
     }
   }
@@ -465,8 +466,8 @@ export class Config {
     try {
       logger.info('📋 Підсумок конфігурації:', {
         discord: {
-          clientId: config.discord.clientId,
-          guildId: config.discord.guildId,
+          clientId: config.discord.clientId ? '***' : '',
+          guildId: config.discord.guildId ? '***' : '',
           prefix: config.discord.prefix,
           intents: config.discord.intents.length,
         },
@@ -490,7 +491,7 @@ export class Config {
         },
       });
     } catch (error) {
-      logger.error('❌ Помилка логування підсумку конфігурації:', error);
+      logger.error('❌ Помилка логування підсумку конфігурації:', error as any);
     }
   }
 

@@ -247,14 +247,14 @@ class Logger {
    * Отримання рівня логування
    */
   private getLogLevel(): string {
-    const level = process.env.LOG_LEVEL?.toLowerCase();
+    const level = process.env['LOG_LEVEL']?.toLowerCase();
     const validLevels = ['error', 'warn', 'info', 'debug'];
     
     if (level && validLevels.includes(level)) {
       return level;
     }
     
-    return process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+    return process.env['NODE_ENV'] === 'production' ? 'info' : 'debug';
   }
 
   /**
@@ -325,7 +325,7 @@ class Logger {
 
     try {
       const startTime = performance.now();
-      
+
       // Додавання додаткової інформації
       const enhancedMeta: LogMeta = {
         ...meta,
@@ -336,20 +336,37 @@ class Logger {
         memory: process.memoryUsage(),
       };
 
+      // Редакція чутливих полів перед будь-якими операціями
+      const redactMeta = (input: any): any => {
+        const SENSITIVE_KEY = /token|password|api[_-]?key|secret|authorization|client[_-]?secret|private[_-]?key/i;
+        const walk = (obj: any): any => {
+          if (!obj || typeof obj !== 'object') return obj;
+          if (Array.isArray(obj)) return obj.map(walk);
+          const out: any = {};
+          for (const k of Object.keys(obj)) {
+            const val = (obj as any)[k];
+            out[k] = SENSITIVE_KEY.test(k) ? '***' : walk(val);
+          }
+          return out;
+        };
+        return walk(input);
+      };
+      const safeMeta = redactMeta(enhancedMeta);
+
       // Оновлення статистики
-      this.updateStats(level, message, enhancedMeta);
-      
+      this.updateStats(level, message, safeMeta);
+
       // Додавання до буфера
-      this.addToBuffer(level, message, enhancedMeta);
-      
+      this.addToBuffer(level, message, safeMeta);
+
       // Логування через winston
-      this.logger.log(level, message, enhancedMeta);
-      
+      this.logger.log(level, message, safeMeta);
+
       const duration = performance.now() - startTime;
       if (duration > 100) {
         console.warn(`⚠️ Повільне логування: ${duration.toFixed(2)}ms`);
       }
-      
+
     } catch (error) {
       console.error('❌ Помилка логування:', error);
       console.log(`[${level.toUpperCase()}]: ${message}`, meta);
@@ -379,11 +396,11 @@ class Logger {
         break;
     }
     
-    if (meta.type === 'command') this.stats.commands++;
-    if (meta.type === 'api_request') this.stats.apiRequests++;
-    if (meta.type === 'performance') this.stats.performance++;
-    if (meta.type === 'security') this.stats.security++;
-    if (meta.type === 'system') this.stats.system++;
+    if ((meta as any)['type'] === 'command') this.stats.commands++;
+    if ((meta as any)['type'] === 'api_request') this.stats.apiRequests++;
+    if ((meta as any)['type'] === 'performance') this.stats.performance++;
+    if ((meta as any)['type'] === 'security') this.stats.security++;
+    if ((meta as any)['type'] === 'system') this.stats.system++;
   }
 
   /**
@@ -551,7 +568,7 @@ class Logger {
       event,
       user,
       type: 'security',
-      severity: details.severity || 'medium',
+      severity: (details as any)['severity'] || 'medium',
     });
   }
 
@@ -564,7 +581,7 @@ class Logger {
       operation,
       duration: `${duration}ms`,
       type: 'performance',
-      category: details.category || 'general',
+      category: (details as any)['category'] || 'general',
     });
   }
 
@@ -576,7 +593,7 @@ class Logger {
       ...details,
       event,
       type: 'system',
-      component: details.component || 'unknown',
+      component: (details as any)['component'] || 'unknown',
     });
   }
 
