@@ -53,6 +53,7 @@ export const SecurityConfigSchema = z.object({
     hmacKey: z.string().min(16),
     ttlMs: z.number().int().positive(),
   }),
+  documentEncryptionKey: z.string().optional(),
 });
 
 export type SecurityConfig = z.infer<typeof SecurityConfigSchema>;
@@ -81,6 +82,7 @@ const raw: SecurityConfig = {
     hmacKey: process.env['COMPONENT_HMAC_KEY'] || 'change_me_please_min16chars',
     ttlMs: num(process.env['COMPONENT_TTL_MS'], DEFAULT_COMPONENT_TTL),
   },
+  documentEncryptionKey: process.env['DOCUMENT_ENCRYPTION_KEY'] || undefined,
 };
 
 export const securityConfig: SecurityConfig = SecurityConfigSchema.parse(raw);
