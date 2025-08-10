@@ -63,10 +63,10 @@ export interface ErrorHandlerStats {
 
 export class ErrorHandler {
   private static instance: ErrorHandler | null = null;
-  private errorStats: ErrorHandlerStats;
+  private errorStats!: ErrorHandlerStats;
   private errorHistory: ErrorDetails[] = [];
   private readonly maxErrorHistory = 1000;
-  private isInitialized = false;
+  private _isInitialized = false;
 
   constructor() {
     if (ErrorHandler.instance) {
@@ -97,7 +97,7 @@ export class ErrorHandler {
       // Налаштування глобальних обробників помилок
       this.setupGlobalErrorHandlers();
 
-      this.isInitialized = true;
+      this._isInitialized = true;
       logger.info('✅ ErrorHandler успішно ініціалізовано');
     } catch (error) {
       console.error('❌ Помилка ініціалізації ErrorHandler:', error);
@@ -134,7 +134,7 @@ export class ErrorHandler {
     const errorDetails: ErrorDetails = {
       name: error.name,
       message: error.message,
-      stack: error.stack,
+      ...(error.stack ? { stack: error.stack } : {}),
       timestamp: new Date(),
       category: ERROR_HANDLER_CONSTANTS.ERROR_CATEGORIES.SYSTEM,
       severity: ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.CRITICAL,
@@ -153,7 +153,8 @@ export class ErrorHandler {
       name: error.name,
       message: error.message,
       stack: this.truncateStackTrace(error.stack),
-      type: 'uncaught_exception',
+      type: 'system',
+      eventType: 'uncaught_exception',
       severity: 'critical',
     } as LogMeta);
 
@@ -169,7 +170,7 @@ export class ErrorHandler {
     const errorDetails: ErrorDetails = {
       name: 'UnhandledRejection',
       message: reason instanceof Error ? reason.message : String(reason),
-      stack: reason instanceof Error ? reason.stack : undefined,
+      ...(reason instanceof Error && reason.stack ? { stack: reason.stack } : {}),
       timestamp: new Date(),
       category: ERROR_HANDLER_CONSTANTS.ERROR_CATEGORIES.SYSTEM,
       severity: ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.HIGH,
@@ -186,7 +187,8 @@ export class ErrorHandler {
     logger.error('💥 Необроблений rejection:', {
       reason: reason instanceof Error ? reason.message : String(reason),
       promise: promise.toString(),
-      type: 'unhandled_rejection',
+      type: 'system',
+      eventType: 'unhandled_rejection',
       severity: 'high',
     } as LogMeta);
   }
@@ -198,7 +200,7 @@ export class ErrorHandler {
     const errorDetails: ErrorDetails = {
       name: warning.name,
       message: warning.message,
-      stack: warning.stack,
+      ...(warning.stack ? { stack: warning.stack } : {}),
       timestamp: new Date(),
       category: ERROR_HANDLER_CONSTANTS.ERROR_CATEGORIES.SYSTEM,
       severity: ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.LOW,
@@ -214,7 +216,8 @@ export class ErrorHandler {
     logger.warn('⚠️ Попередження системи:', {
       name: warning.name,
       message: warning.message,
-      type: 'warning',
+      type: 'system',
+      eventType: 'warning',
       severity: 'low',
     } as LogMeta);
   }
@@ -268,9 +271,11 @@ export class ErrorHandler {
     return {
       name: errorObj.name,
       message: errorObj.message,
-      stack: errorObj.stack,
+      ...(errorObj.stack ? { stack: errorObj.stack } : {}),
       code: (error as any)?.code,
-      cause: errorObj.cause,
+      ...(('cause' in (errorObj as any)) && (errorObj as any).cause !== undefined
+        ? { cause: (errorObj as any).cause as Error }
+        : {}),
       timestamp: new Date(),
       category: this.categorizeError(errorObj),
       severity: this.determineSeverity(errorObj),
@@ -279,13 +284,13 @@ export class ErrorHandler {
         errorType: errorObj.constructor.name,
         hasStack: !!errorObj.stack,
       },
-      userId: context.userId,
-      guildId: context.guildId,
-      channelId: context.channelId,
-      commandName: context.commandName,
-      serviceName: context.serviceName,
-      requestId: context.requestId,
-      correlationId: context.correlationId,
+      ...(context.userId ? { userId: context.userId } : {}),
+      ...(context.guildId ? { guildId: context.guildId } : {}),
+      ...(context.channelId ? { channelId: context.channelId } : {}),
+      ...(context.commandName ? { commandName: context.commandName } : {}),
+      ...(context.serviceName ? { serviceName: context.serviceName } : {}),
+      ...(context.requestId ? { requestId: context.requestId } : {}),
+      ...(context.correlationId ? { correlationId: context.correlationId } : {}),
     };
   }
 
@@ -358,15 +363,15 @@ export class ErrorHandler {
         errorCategory: errorDetails.category,
         errorSeverity: errorDetails.severity,
         errorCode: errorDetails.code,
-        userId: errorDetails.userId,
-        guildId: errorDetails.guildId,
-        channelId: errorDetails.channelId,
-        commandName: errorDetails.commandName,
-        serviceName: errorDetails.serviceName,
-        requestId: errorDetails.requestId,
-        correlationId: errorDetails.correlationId,
+        ...(errorDetails.userId ? { userId: errorDetails.userId } : {}),
+        ...(errorDetails.guildId ? { guildId: errorDetails.guildId } : {}),
+        ...(errorDetails.channelId ? { channelId: errorDetails.channelId } : {}),
+        ...(errorDetails.commandName ? { commandName: errorDetails.commandName } : {}),
+        ...(errorDetails.serviceName ? { serviceName: errorDetails.serviceName } : {}),
+        ...(errorDetails.requestId ? { requestId: errorDetails.requestId } : {}),
+        ...(errorDetails.correlationId ? { correlationId: errorDetails.correlationId } : {}),
         timestamp: errorDetails.timestamp.toISOString(),
-        type: 'error',
+        type: 'system',
         severity: errorDetails.severity as any,
       };
 
@@ -445,7 +450,7 @@ export class ErrorHandler {
   /**
    * Обрізання stack trace
    */
-  private truncateStackTrace(stack: string): string {
+  private truncateStackTrace(stack?: string): string {
     if (!stack) return '';
 
     const lines = stack.split('\n');
@@ -513,7 +518,7 @@ export class ErrorHandler {
    * Перевірка стану ініціалізації
    */
   public isInitialized(): boolean {
-    return this.isInitialized;
+    return this._isInitialized;
   }
 }
 
