@@ -32,6 +32,28 @@ This workflow monitors a Google Drive folder for new documents and sends notific
    - The webhook URL of your Discord bot (typically `http://your-bot-server:3000/webhook/n8n/drive`)
    - Authentication if required
 
+### Document Processing Workflow
+
+**File:** `document-processing-workflow.json`
+
+This workflow processes documents from Google Drive, extracts text, splits it into chunks, creates embeddings, and sends the processed data to the Discord bot for RAG (Retrieval-Augmented Generation).
+
+### Automatic Document Indexing Pipeline
+
+**File:** `automatic-indexing-pipeline.json`
+
+This enhanced workflow provides a complete automatic indexing pipeline that monitors Google Drive for document changes, processes them through text extraction, chunking, and embedding creation, and sends the results to the Discord bot for indexing and RAG capabilities. It includes improved error handling and status reporting.
+
+#### Setup Instructions:
+
+1. Import the workflow into n8n
+2. Configure the Google Drive Trigger node with:
+   - Your Google Drive credentials
+   - The folder ID to monitor
+3. Configure the "Send to Discord Bot" nodes with:
+   - The webhook URL of your Discord bot (typically `http://your-bot-server:3000/webhook/n8n/drive`)
+   - Authentication if required
+
 ## Webhook Endpoint
 
 The Discord bot exposes a webhook endpoint at `/webhook/n8n/drive` that receives file update notifications from n8n.
@@ -47,7 +69,9 @@ The Discord bot exposes a webhook endpoint at `/webhook/n8n/drive` that receives
     "fileId": "Google Drive file ID",
     "fileName": "Name of the file",
     "fileContent": "Base64 encoded file content (optional)",
-    "mimeType": "MIME type of the file (optional)"
+    "mimeType": "MIME type of the file (optional)",
+    "chunks": "Array of text chunks (optional)",
+    "embeddings": "Array of embeddings (optional)"
   }
   ```
 
@@ -56,7 +80,7 @@ The Discord bot exposes a webhook endpoint at `/webhook/n8n/drive` that receives
 ```json
 {
   "success": true,
-  "message": "File update received and queued for processing",
+  "message": "File update received and processed",
   "fileId": "Google Drive file ID",
   "fileName": "Name of the file"
 }
