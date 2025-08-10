@@ -15,6 +15,7 @@ import type {
   AIRequestOptions
 } from '@/types';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
+import { CacheService } from './CacheService';
 import logger from '@/utils/logger';
 
 // Константи для AI сервісу
@@ -68,10 +69,12 @@ export class AIService extends BaseServiceClass {
   private stats: AIServiceStats;
   private memoryCleanupInterval: NodeJS.Timeout | null = null;
   private healthCheckInterval: NodeJS.Timeout | null = null;
+  private cacheService: CacheService;
 
   constructor(config: BotConfig) {
     super('AIService', config);
     this.currentProvider = config.ai.provider;
+    this.cacheService = new CacheService(config);
     this.stats = {
       service: 'AIService',
       uptime: 0,
@@ -95,6 +98,9 @@ export class AIService extends BaseServiceClass {
   protected async onInitialize(): Promise<void> {
     try {
       logger.info('🤖 Ініціалізація AI сервісу...');
+
+      // Ініціалізація кешу
+      await this.cacheService.initialize();
 
       // Створення провайдерів
       await this.createProviders();
@@ -334,14 +340,24 @@ export class AIService extends BaseServiceClass {
 
       // Перевірка кешу
       if (useCache && !forceRefresh) {
-        const cacheKey = this.hashPrompt(sanitizedPrompt);
-        // TODO: Реалізувати кешування через CacheService
-        // const cached = await this.cacheService.get(cacheKey);
-        // if (cached) {
-        //   this.stats.cacheHits++;
-        //   logger.debug('✅ Використано кешовану відповідь');
-        //   return cached;
-        // }
+        const cacheKey = this.buildCacheKey(sanitizedPrompt, options);
+        try {
+          const cached = await this.cacheService.get<AIResponse>(cacheKey);
+          if (cached) {
+            this.stats.cacheHits++;
+            logger.debug('✅ Використано кешовану відповідь', {
+              cacheKey: cacheKey.substring(0, 20) + '...',
+              provider: cached.provider,
+              tokens: cached.tokens
+            });
+            return cached;
+          } else {
+            this.stats.cacheMisses++;
+          }
+        } catch (cacheError) {
+          logger.warn('⚠️ Помилка читання з кешу:', cacheError);
+          this.stats.cacheMisses++;
+        }
       }
 
       // Retry logic з fallback
@@ -374,9 +390,17 @@ export class AIService extends BaseServiceClass {
 
           // Збереження в кеш
           if (useCache) {
-            const cacheKey = this.hashPrompt(prompt);
-            // TODO: Зберегти в кеш
-            // await this.cacheService.set(cacheKey, response, cacheTTL);
+            const cacheKey = this.buildCacheKey(sanitizedPrompt, options);
+            try {
+              await this.cacheService.set(cacheKey, response, { ttl: cacheTTL * 1000 });
+              logger.debug('💾 Відповідь збережена в кеш', {
+                cacheKey: cacheKey.substring(0, 20) + '...',
+                ttl: `${cacheTTL}s`,
+                provider: response.provider
+              });
+            } catch (cacheError) {
+              logger.warn('⚠️ Помилка збереження в кеш:', cacheError);
+            }
           }
 
           logger.info(`✅ AI відповідь згенерована за ${duration}ms`, {
@@ -796,6 +820,9 @@ export class AIService extends BaseServiceClass {
         this.healthCheckInterval = null;
       }
 
+      // Зупинка кеш сервісу
+      await this.cacheService.shutdown();
+
       // Очищення пам'яті
       this.conversationMemory.clear();
       this.providers = {};
@@ -820,7 +847,24 @@ export class AIService extends BaseServiceClass {
   }
 
   /**
-   * Хешування промпту для кешування
+   * Створення ключа кешу
+   */
+  private buildCacheKey(prompt: string, options: AIRequestOptions): string {
+    const keyData = {
+      prompt: prompt.substring(0, 500), // Обрізаємо для розумного розміру ключа
+      provider: options.provider || this.currentProvider,
+      model: options.model,
+      temperature: options.temperature,
+      maxTokens: options.maxTokens
+    };
+    
+    const crypto = require('crypto');
+    const keyString = JSON.stringify(keyData);
+    return `ai:${crypto.createHash('sha256').update(keyString).digest('hex').substring(0, 32)}`;
+  }
+
+  /**
+   * Хешування промпту для кешування (deprecated - використовуйте buildCacheKey)
    */
   private hashPrompt(prompt: string): string {
     const crypto = require('crypto');
