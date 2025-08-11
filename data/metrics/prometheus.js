@@ -157,6 +157,23 @@ class MetricsCollector {
   }
 
   /**
+   * Оновлення CPU та пам'яті (для тестів і ручного виклику)
+   */
+  updateCpuAndDisk() {
+    try {
+      const { user, system } = process.cpuUsage();
+      this.cpuUsage.set({ type: 'user' }, user);
+      this.cpuUsage.set({ type: 'system' }, system);
+      const free = os.freemem();
+      const total = os.totalmem();
+      this.diskSpace.set({ type: 'mem_free' }, free);
+      this.diskSpace.set({ type: 'mem_total' }, total);
+    } catch (error) {
+      log.warn('⚠️ Помилка updateCpuAndDisk', { type: 'metrics', event: 'update_cpu_disk_failed', error: String(error) });
+    }
+  }
+
+  /**
    * Запис метрики команди
    */
   recordCommand(command, status, userId) {
