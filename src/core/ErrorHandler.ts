@@ -4,7 +4,7 @@
  * TypeScript версія
  */
 
-import logger from '../utils/logger';
+import logger from '@/utils/logger';
 
 interface ErrorType {
   severity: 'critical' | 'error' | 'warn' | 'info';
@@ -67,7 +67,10 @@ class ErrorHandler {
    */
   async initialize(): Promise<void> {
     try {
-      logger.info('🛡️ Ініціалізація обробника помилок...');
+      logger.info('🛡️ Ініціалізація обробника помилок...', {
+        type: 'system',
+        event: 'error_handler_init',
+      });
 
       // Реєстрація типів помилок
       this.registerErrorTypes();
@@ -77,7 +80,10 @@ class ErrorHandler {
 
       this.active = true;
 
-      logger.info('✅ Обробник помилок ініціалізовано');
+      logger.info('✅ Обробник помилок ініціалізовано', {
+        type: 'system',
+        event: 'error_handler_init_success',
+      });
     } catch (error) {
       if (error instanceof Error) {
         logger.error('❌ Помилка ініціалізації обробника помилок', {
@@ -176,7 +182,10 @@ class ErrorHandler {
       notificationThreshold: 1,
     });
 
-    logger.debug('✅ Типи помилок зареєстровано');
+    logger.debug('✅ Типи помилок зареєстровано', {
+      type: 'system',
+      event: 'error_types_registered',
+    });
   }
 
   /**
@@ -360,7 +369,11 @@ class ErrorHandler {
       this.notificationQueue.shift();
     }
 
-    logger.debug(`📧 Сповіщення додано до черги: ${notification.id}`);
+    logger.debug('📧 Сповіщення додано до черги', {
+      type: 'system',
+      event: 'notification_queued',
+      notificationId: notification.id,
+    });
   }
 
   /**
@@ -487,13 +500,19 @@ class ErrorHandler {
       // Отримання Discord клієнта з Service Container
       const bot = this.serviceContainer?.get('bot');
       if (!bot || !bot.client) {
-        logger.warn('Discord клієнт недоступний для сповіщення');
+        logger.warn('Discord клієнт недоступний для сповіщення', {
+          type: 'system',
+          event: 'notification_client_unavailable',
+        });
         return;
       }
 
       const channel = this.findNotificationChannel(bot.client);
       if (!channel) {
-        logger.warn('Канал сповіщень не знайдено');
+        logger.warn('Канал сповіщень не знайдено', {
+          type: 'system',
+          event: 'notification_channel_not_found',
+        });
         return;
       }
 
@@ -525,7 +544,10 @@ class ErrorHandler {
       };
 
       await channel.send({ embeds: [embed] });
-      logger.info('✅ Discord сповіщення відправлено');
+      logger.info('✅ Discord сповіщення відправлено', {
+        type: 'system',
+        event: 'notification_sent',
+      });
     } catch (error) {
       if (error instanceof Error) {
         logger.error('❌ Помилка відправки Discord сповіщення', {
@@ -648,7 +670,10 @@ class ErrorHandler {
   clearErrorStats(): void {
     this.errorCounts.clear();
     this.notificationQueue.length = 0;
-    logger.info('✅ Статистика помилок очищена');
+    logger.info('✅ Статистика помилок очищена', {
+      type: 'system',
+      event: 'error_stats_cleared',
+    });
   }
 
   /**
@@ -662,7 +687,10 @@ class ErrorHandler {
    * Завершення роботи
    */
   async shutdown(): Promise<void> {
-    logger.info('🛑 Завершення роботи Error Handler...');
+    logger.info('🛑 Завершення роботи Error Handler...', {
+      type: 'system',
+      event: 'error_handler_shutdown',
+    });
 
     this.active = false;
 
@@ -672,7 +700,10 @@ class ErrorHandler {
       await this.sendNotification(notification.error, notification.errorInfo, notification.context);
     }
 
-    logger.info('✅ Error Handler завершено');
+    logger.info('✅ Error Handler завершено', {
+      type: 'system',
+      event: 'error_handler_shutdown_success',
+    });
   }
 }
 
