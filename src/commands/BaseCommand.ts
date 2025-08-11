@@ -6,18 +6,13 @@
 
 import { 
   SlashCommandBuilder, 
-  CommandInteraction, 
   EmbedBuilder,
   ChatInputCommandInteraction,
   AutocompleteInteraction,
-  ButtonInteraction,
-  SelectMenuInteraction,
-  ModalSubmitInteraction,
   MessageComponentInteraction,
-  PermissionFlagsBits
 } from 'discord.js';
+
 import type { 
-  BaseService, 
   BotConfig, 
   CommandOptions,
   CommandStats,
@@ -25,7 +20,7 @@ import type {
   HealthStatus
 } from '@/types';
 import logger from '@/utils/logger';
-import { sanitizeInput, validateCommandOptions } from '@/utils/security';
+import { sanitizeInput } from '@/utils/security';
 
 // Константи для конфігурації команд
 const COMMAND_CONFIG = {
@@ -88,6 +83,7 @@ export abstract class BaseCommand {
   public readonly examples: string[];
   public readonly permissions: string[];
   public readonly cooldown: number;
+  public readonly allowDM: boolean;
   
   protected stats: CommandStats;
   protected cooldowns: Map<string, number> = new Map();
@@ -112,6 +108,7 @@ export abstract class BaseCommand {
     this.examples = options.examples || [];
     this.permissions = options.permissions || [];
     this.cooldown = this.validateCooldown(options.cooldown || COMMAND_CONFIG.DEFAULT_COOLDOWN);
+    this.allowDM = options.dmPermission ?? true;
     
     // Створення SlashCommandBuilder
     this.data = new SlashCommandBuilder()
@@ -123,7 +120,7 @@ export abstract class BaseCommand {
       try {
         builder(this.data);
       } catch (error) {
-        logger.error(`Помилка створення builder для команди ${name}:`, error);
+        logger.error(`Помилка створення builder для команди ${name}:`, { error });
         throw new Error(`Помилка створення команди: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
       }
     }
@@ -168,7 +165,6 @@ export abstract class BaseCommand {
   public async execute(options: CommandExecuteOptions): Promise<void> {
     const startTime = performance.now();
     const userId = options.interaction.user.id;
-    const userTag = options.interaction.user.tag;
     
     try {
       // Перевірка стану команди
@@ -279,17 +275,17 @@ export abstract class BaseCommand {
       }
 
       // Перевірка сервера (якщо потрібно)
-      if (!options.interaction.guild && !this.data.dmPermission) {
+      if (!options.interaction.guild && !this.allowDM) {
         errors.push('Команда доступна тільки на сервері');
       }
 
       // Перевірка дозволів
       if (this.permissions.length > 0) {
-        const member = options.interaction.member;
-        if (member && 'permissions' in member) {
-          const hasPermission = this.permissions.some(permission => 
-            member.permissions.has(permission as any)
-          );
+        const member = options.interaction.member as Record<string, unknown> | null | undefined;
+        const perms: unknown = member && 'permissions' in (member as object) ? (member as any).permissions : undefined;
+        const hasFn = perms && typeof (perms as any).has === 'function' ? (perms as any).has.bind(perms) : undefined;
+        if (hasFn) {
+          const hasPermission = this.permissions.some((permission) => hasFn(permission as any));
           if (!hasPermission) {
             errors.push(`Необхідні дозволи: ${this.permissions.join(', ')}`);
           }
@@ -298,7 +294,7 @@ export abstract class BaseCommand {
 
       // Санітизація опцій
       if (options.options) {
-        const sanitizedOptions = {};
+        const sanitizedOptions: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(options.options)) {
           if (typeof value === 'string') {
             const sanitized = sanitizeInput(value, 'command');
@@ -311,7 +307,7 @@ export abstract class BaseCommand {
               errors.push(...sanitized.errors.map(e => `${key}: ${e}`));
             }
           } else {
-            sanitizedOptions[key] = value;
+            sanitizedOptions[key] = value as unknown;
           }
         }
         options.options = sanitizedOptions;
@@ -324,7 +320,7 @@ export abstract class BaseCommand {
         sanitizedOptions: options.options,
       };
     } catch (error) {
-      logger.error('Помилка валідації команди:', error);
+      logger.error('Помилка валідації команди:', { error });
       return {
         isValid: false,
         errors: ['Помилка валідації команди'],
@@ -351,7 +347,7 @@ export abstract class BaseCommand {
       logger.debug(`Автодоповнення ${this.name} завершено за ${duration.toFixed(2)}ms`);
       
     } catch (error) {
-      const duration = performance.now() - startTime;
+      // keep duration calculation if needed in future metrics
       this.logAutocompleteError(options.interaction, error);
       await this.handleAutocompleteError(options.interaction, error);
     }
@@ -376,7 +372,7 @@ export abstract class BaseCommand {
       logger.debug(`Компонент ${this.name} оброблено за ${duration.toFixed(2)}ms`);
       
     } catch (error) {
-      const duration = performance.now() - startTime;
+      // keep duration calculation if needed in future metrics
       this.logComponentError(options.interaction, error);
       await this.handleComponentError(options.interaction, error);
     }
@@ -390,14 +386,14 @@ export abstract class BaseCommand {
   /**
    * Обробка автодоповнення (опціонально)
    */
-  protected async onAutocomplete(options: CommandAutocompleteOptions): Promise<void> {
+  protected async onAutocomplete(_options: CommandAutocompleteOptions): Promise<void> {
     // Базова реалізація - нічого не робить
   }
 
   /**
    * Обробка компонентів (опціонально)
    */
-  protected async onComponent(options: CommandComponentOptions): Promise<void> {
+  protected async onComponent(_options: CommandComponentOptions): Promise<void> {
     // Базова реалізація - нічого не робить
   }
 
@@ -476,8 +472,10 @@ export abstract class BaseCommand {
 
     // Обмеження розміру кешу
     if (this.executionCache.size > COMMAND_CONFIG.CACHE_SIZE) {
-      const oldestKey = this.executionCache.keys().next().value;
-      this.executionCache.delete(oldestKey);
+      const oldestKey = this.executionCache.keys().next().value as unknown;
+      if (typeof oldestKey === 'string') {
+        this.executionCache.delete(oldestKey);
+      }
     }
   }
 
@@ -513,14 +511,14 @@ export abstract class BaseCommand {
         await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     } catch (error) {
-      logger.error('Помилка відправки cooldown повідомлення:', error);
+      logger.error('Помилка відправки cooldown повідомлення:', { error });
     }
   }
 
   /**
    * Обробка кешованого результату
    */
-  private async handleCachedResult(interaction: ChatInputCommandInteraction, result: any): Promise<void> {
+  private async handleCachedResult(interaction: ChatInputCommandInteraction, _result: any): Promise<void> {
     const embed = new EmbedBuilder()
       .setColor('#4CAF50')
       .setTitle('⚡ Кешований результат')
@@ -534,7 +532,7 @@ export abstract class BaseCommand {
         await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     } catch (error) {
-      logger.error('Помилка відправки кешованого результату:', error);
+      logger.error('Помилка відправки кешованого результату:', { error });
     }
   }
 
@@ -558,7 +556,7 @@ export abstract class BaseCommand {
         await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     } catch (error) {
-      logger.error('Помилка відправки повідомлення про валідацію:', error);
+      logger.error('Помилка відправки повідомлення про валідацію:', { error });
     }
   }
 
@@ -579,7 +577,7 @@ export abstract class BaseCommand {
         await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     } catch (error) {
-      logger.error('Помилка відправки повідомлення про зупинку:', error);
+      logger.error('Помилка відправки повідомлення про зупинку:', { error });
     }
   }
 
@@ -614,7 +612,7 @@ export abstract class BaseCommand {
         await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     } catch (replyError) {
-      logger.error('Помилка відправки повідомлення про помилку:', replyError);
+      logger.error('Помилка відправки повідомлення про помилку:', { error: replyError });
     }
   }
 
@@ -623,14 +621,14 @@ export abstract class BaseCommand {
    */
   protected async handleAutocompleteError(
     interaction: AutocompleteInteraction, 
-    error: unknown
+    _error: unknown
   ): Promise<void> {
     try {
       await interaction.respond([
         { name: 'Помилка завантаження', value: 'error' }
       ]);
     } catch (replyError) {
-      logger.error('Помилка відповіді автодоповнення:', replyError);
+      logger.error('Помилка відповіді автодоповнення:', { error: replyError });
     }
   }
 
@@ -660,7 +658,7 @@ export abstract class BaseCommand {
         await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     } catch (replyError) {
-      logger.error('Помилка відправки повідомлення про помилку компонента:', replyError);
+      logger.error('Помилка відправки повідомлення про помилку компонента:', { error: replyError });
     }
   }
 
@@ -668,13 +666,14 @@ export abstract class BaseCommand {
    * Логування початку команди
    */
   protected logCommandStart(interaction: ChatInputCommandInteraction): void {
-    logger.info(`🚀 Команда ${this.name} виконується`, {
+    const meta: Record<string, unknown> = {
       user: interaction.user.tag,
       userId: interaction.user.id,
-      guildId: interaction.guildId,
-      channelId: interaction.channelId,
       options: interaction.options.data,
-    });
+    };
+    if (interaction['guildId']) meta['guildId'] = interaction['guildId'];
+    if (interaction['channelId']) meta['channelId'] = interaction['channelId'];
+    logger.info(`🚀 Команда ${this.name} виконується`, meta);
   }
 
   /**
