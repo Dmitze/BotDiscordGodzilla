@@ -3,7 +3,7 @@
  * Централізоване управління всіма командами
  */
 
-import { Collection, ChatInputCommandInteraction, GuildMember, EmbedBuilder } from 'discord.js';
+import { Collection, ChatInputCommandInteraction, GuildMember, EmbedBuilder, Events } from 'discord.js';
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 
@@ -58,7 +58,10 @@ export class CommandManager {
    */
   async initialize(): Promise<void> {
     try {
-      console.log('📋 Ініціалізація менеджера команд...');
+      logger.info('📋 Ініціалізація менеджера команд...', {
+        type: 'command_manager',
+        event: 'init_start',
+      });
 
       // Завантаження команд
       await this.loadCommands();
@@ -66,9 +69,17 @@ export class CommandManager {
       // Реєстрація обробників подій
       this.registerEventHandlers();
 
-      console.log(`✅ Завантажено ${this.commands.size} команд`);
+      logger.info('✅ Завантажено команди', {
+        type: 'command_manager',
+        event: 'init_loaded',
+        count: this.commands.size,
+      });
     } catch (error) {
-      console.error('❌ Помилка ініціалізації менеджера команд:', error);
+      logger.error('❌ Помилка ініціалізації менеджера команд', {
+        type: 'command_manager',
+        event: 'init_error',
+        errorMessage: String(error),
+      });
       throw error;
     }
   }
@@ -103,14 +114,23 @@ export class CommandManager {
           }
           this.commandCategories.get(category)!.push(commandName);
 
-          console.log(`📝 Завантажено команду: ${commandName} (${category})`);
+          logger.info('📝 Завантажено команду', {
+            type: 'command_manager',
+            event: 'command_loaded',
+            commandName,
+            category,
+          });
         }
       }
 
       // Оновлюємо статистику
       this.updateStats();
     } catch (error) {
-      console.error('❌ Помилка завантаження команд:', error);
+      logger.error('❌ Помилка завантаження команд', {
+        type: 'command_manager',
+        event: 'load_error',
+        errorMessage: String(error),
+      });
       throw error;
     }
   }
@@ -120,12 +140,21 @@ export class CommandManager {
    */
   private validateCommand(command: ICommand): boolean {
     if (!command.getName()) {
-      console.warn('Команда не має назви');
+      logger.warn('Команда не має назви', {
+        type: 'command_manager',
+        event: 'validation_warn',
+        reason: 'empty_name',
+      });
       return false;
     }
 
     if (!command.getDescription()) {
-      console.warn(`Команда ${command.getName()} не має опису`);
+      logger.warn('Команда не має опису', {
+        type: 'command_manager',
+        event: 'validation_warn',
+        reason: 'empty_description',
+        commandName: command.getName(),
+      });
       return false;
     }
 
@@ -167,7 +196,7 @@ export class CommandManager {
    * Реєстрація обробників подій
    */
   private registerEventHandlers(): void {
-    this.bot.on('interactionCreate', async (interaction: any) => {
+    this.bot.on(Events.InteractionCreate, async (interaction: any) => {
       if (interaction.isChatInputCommand()) {
         await this.handleCommand(interaction);
       }
@@ -208,10 +237,25 @@ export class CommandManager {
         interaction
       });
 
-      console.log(`✅ Команда ${commandName} виконана користувачем ${interaction.user.tag}`);
+      logger.info('✅ Команда виконана', {
+        type: 'command',
+        event: 'executed',
+        commandName,
+        userId: interaction.user.id,
+        ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+        channelId: interaction.channelId,
+      });
 
     } catch (error) {
-      console.error(`❌ Помилка виконання команди ${interaction.commandName}:`, error);
+      logger.error('❌ Помилка виконання команди', {
+        type: 'command',
+        event: 'execute_error',
+        commandName: interaction.commandName,
+        userId: interaction.user.id,
+        ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+        channelId: interaction.channelId,
+        errorMessage: String(error),
+      });
       
       const errorMessage = '❌ Помилка при виконанні команди. Спробуйте ще раз або зверніться до адміністратора.';
       
@@ -394,13 +438,20 @@ export class CommandManager {
    * Перезавантаження команд
    */
   async reloadCommands(): Promise<void> {
-    console.log('🔄 Перезавантаження команд...');
+    logger.info('🔄 Перезавантаження команд...', {
+      type: 'command_manager',
+      event: 'reload_start',
+    });
     
     this.commands.clear();
     this.commandCategories.clear();
     
     await this.loadCommands();
     
-    console.log(`✅ Перезавантажено ${this.commands.size} команд`);
+    logger.info('✅ Перезавантажено команди', {
+      type: 'command_manager',
+      event: 'reload_done',
+      count: this.commands.size,
+    });
   }
 } 
