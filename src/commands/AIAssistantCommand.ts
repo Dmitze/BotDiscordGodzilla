@@ -3,9 +3,9 @@
  * Використовує розширений AI-модуль та систему безпеки
  */
 
-import { SlashCommandBuilder } from 'discord.js';
-import type { BotConfig, CommandExecuteOptions } from '@/types';
+import type { BotConfig, CommandExecuteOptions, LogMeta } from '@/types';
 import { BaseCommand } from './BaseCommand';
+import logger from '@/utils/logger';
 
 interface AIQueryResult {
   response: string;
@@ -37,6 +37,7 @@ export class AIAssistantCommand extends BaseCommand {
       'ai',
       '🤖 AI-асистент для роботи з Google Sheets',
       config,
+      {},
       (builder: any) => {
         return builder
           .addStringOption((option: any) =>
@@ -135,13 +136,14 @@ export class AIAssistantCommand extends BaseCommand {
       });
 
       // Логування успішного виконання
-      console.log(`AI command executed successfully for ${interaction.user.tag}`, {
+      logger.info('AI command executed successfully', {
+        userTag: interaction.user.tag,
         action: result.action,
         confidence: result.confidence,
         hasActionData: !!result.actionData,
-      });
+      } as LogMeta);
     } catch (error) {
-      console.error('AI Assistant command error:', error);
+      logger.error('AI Assistant command error', { error } as LogMeta);
 
       const errorMessage =
         '❌ Помилка при обробці AI-запиту. Спробуйте ще раз або зверніться до адміністратора.';
@@ -157,7 +159,7 @@ export class AIAssistantCommand extends BaseCommand {
   /**
    * Перевірка прав доступу
    */
-  private async checkPermission(interaction: any): Promise<boolean> {
+  private async checkPermission(_interaction: any): Promise<boolean> {
     // TODO: Реалізувати перевірку прав доступу
     // Тимчасова реалізація - дозволяємо всім
     return true;
@@ -212,14 +214,14 @@ export class AIAssistantCommand extends BaseCommand {
    * Логування події безпеки
    */
   private logSecurityEvent(eventType: string, data: Record<string, any>): void {
-    // TODO: Реалізувати логування подій безпеки
-    console.log(`Security event: ${eventType}`, data);
+    // TODO: Реалізувати логування подій безпеки (інтеграція з аудиторським журналом)
+    logger.info('Security event', { eventType, data } as LogMeta);
   }
 
   /**
    * Обробка AI запиту
    */
-  private async processAIQuery(userId: string, query: string, context?: string): Promise<AIQueryResult> {
+  private async processAIQuery(_userId: string, query: string, _context?: string): Promise<AIQueryResult> {
     // TODO: Інтеграція з AI сервісом
     // Тимчасова реалізація
     const response = `Це тимчасова відповідь AI на запит: "${query}"`;
