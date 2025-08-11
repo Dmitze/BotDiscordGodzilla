@@ -14,6 +14,13 @@ export class ServiceContainer {
   }
 
   /**
+   * Конфігурація бота (read-only)
+   */
+  public get config(): BotConfig {
+    return this._config;
+  }
+
+  /**
    * Реєстрація сервісу
    */
   public register<T extends BaseService>(name: string, service: T): void {
