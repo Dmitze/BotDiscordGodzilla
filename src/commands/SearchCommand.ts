@@ -86,7 +86,8 @@ export class SearchCommand extends BaseCommand {
         ],
       },
       (builder: SlashCommandBuilder) => {
-        return builder
+        return (
+          builder
           .addStringOption((option) =>
             option
               .setName('запит')
@@ -146,7 +147,8 @@ export class SearchCommand extends BaseCommand {
               .setDescription(`Кількість результатів (макс. ${SEARCH_CONFIG.MAX_RESULTS})`)
               .setMinValue(1)
               .setMaxValue(SEARCH_CONFIG.MAX_RESULTS)
-          );
+          )
+        ) as unknown as SlashCommandBuilder;
       }
     );
   }
@@ -226,7 +228,7 @@ export class SearchCommand extends BaseCommand {
     const limit = interaction.options.getInteger('ліміт') || SEARCH_CONFIG.DEFAULT_LIMIT;
 
     // Валідація запиту
-    const sanitizedQuery = sanitizeInput(query, 'search');
+    const sanitizedQuery = sanitizeInput(query, 'command');
     if (!sanitizedQuery.isValid) {
       throw new Error(`Некорректний запит: ${sanitizedQuery.errors.join(', ')}`);
     }
@@ -251,7 +253,7 @@ export class SearchCommand extends BaseCommand {
 
     // Валідація підрозділу
     if (unit) {
-      const sanitizedUnit = sanitizeInput(unit, 'search');
+      const sanitizedUnit = sanitizeInput(unit, 'command');
       if (!sanitizedUnit.isValid) {
         throw new Error(`Некорректний підрозділ: ${sanitizedUnit.errors.join(', ')}`);
       }
@@ -262,7 +264,7 @@ export class SearchCommand extends BaseCommand {
       documentType,
       dateFrom,
       dateTo,
-      unit: unit ? sanitizeInput(unit, 'search').sanitizedValue : undefined,
+      unit: unit ? sanitizeInput(unit, 'command').sanitizedValue : '',
       priority,
       limit,
     };
@@ -272,7 +274,7 @@ export class SearchCommand extends BaseCommand {
    * Виконання пошуку з кешуванням
    */
   private async performSearchWithCache(searchParams: SearchParams, userId: string): Promise<SearchResult> {
-    const cacheKey = this.generateCacheKey(searchParams);
+    const cacheKey = this.generateSearchCacheKey(searchParams);
     
     // Перевірка кешу
     const cached = this.searchCache.get(cacheKey);
@@ -635,13 +637,19 @@ export class SearchCommand extends BaseCommand {
   /**
    * Генерація ключа кешу
    */
-  private generateCacheKey(params: SearchParams): string {
+  private generateSearchCacheKey(params: SearchParams): string {
     const sortedParams = Object.keys(params)
       .sort()
       .map(key => `${key}:${params[key as keyof SearchParams]}`)
       .join('|');
     
     return `search:${Buffer.from(sortedParams).toString('base64')}`;
+  }
+
+  // Align with BaseCommand signature; use a conservative default key
+  protected override generateCacheKey(options: CommandExecuteOptions): string {
+    const user = (options as any)?.interaction?.user?.id ?? 'unknown';
+    return `search:user:${user}`;
   }
 
   /**
