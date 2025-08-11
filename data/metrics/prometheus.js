@@ -2,6 +2,13 @@ const prometheus = require('prom-client');
 const express = require('express');
 const os = require('os');
 
+// Lightweight local logger wrapper to avoid direct console usage
+const log = {
+  info: (msg, meta) => console.log(msg, meta ? JSON.stringify(meta) : ''),
+  warn: (msg, meta) => console.warn(msg, meta ? JSON.stringify(meta) : ''),
+  error: (msg, meta) => console.error(msg, meta ? JSON.stringify(meta) : ''),
+};
+
 // Read config from env to avoid TS import in JS
 const METRICS_ENABLED = process.env.METRICS_ENABLED !== 'false';
 const METRICS_PORT = parseInt(process.env.METRICS_PORT || '9091', 10);
@@ -284,7 +291,7 @@ class MetricsCollector {
    */
   startMetricsServer() {
     if (!METRICS_ENABLED) {
-      console.log('📊 Метрики вимкнені (ENV)');
+      log.info('📊 Метрики вимкнені (ENV)', { type: 'metrics', event: 'disabled_env' });
       return;
     }
 
@@ -297,23 +304,27 @@ class MetricsCollector {
     const max = 5; // запросов
     const hits = new Map();
 
+    // Периодичне оновлення системних метрик (поза хендлером)
+    if (!this._systemInterval) {
+      this._systemInterval = setInterval(() => {
+        try {
+          const { user, system } = process.cpuUsage();
+          this.cpuUsage.set({ type: 'user' }, user);
+          this.cpuUsage.set({ type: 'system' }, system);
+          const free = os.freemem();
+          const total = os.totalmem();
+          this.diskSpace.set({ type: 'mem_free' }, free);
+          this.diskSpace.set({ type: 'mem_total' }, total);
+        } catch (error) {
+          log.warn('⚠️ Помилка оновлення системних метрик', { type: 'metrics', event: 'system_metrics_update_failed', error: String(error) });
+        }
+      }, 5000);
+    }
+
     // Ендпоінт для метрик
     app.get(path, async (req, res) => {
       const ip = req.ip;
       const now = Date.now();
-
-    // Периодичне оновлення системних метрик
-    setInterval(() => {
-      try {
-        const { user, system } = process.cpuUsage();
-        this.cpuUsage.set({ type: 'user' }, user);
-        this.cpuUsage.set({ type: 'system' }, system);
-        const free = os.freemem();
-        const total = os.totalmem();
-        this.diskSpace.set({ type: 'mem_free' }, free);
-        this.diskSpace.set({ type: 'mem_total' }, total);
-      } catch {}
-    }, 5000);
 
       const arr = hits.get(ip) || [];
       const pruned = arr.filter((t) => now - t < windowMs);
@@ -326,12 +337,8 @@ class MetricsCollector {
         res.set('Content-Type', this.registry.contentType);
         res.end(await this.registry.metrics());
       } catch (error) {
-        console.error('Помилка отримання метрик:', error);
-        res.status(500).end('Помилка отримання метрик');
-        return;
-      }
-
-        res.status(500).end('Помилка отримання метрик');
+        log.error('Помилка отримання метрик', { type: 'metrics', event: 'render_failed', error: String(error) });
+        return res.status(500).end('Помилка отримання метрик');
       }
     });
 
@@ -345,10 +352,12 @@ class MetricsCollector {
     });
 
     // Запуск сервера
-    app.listen(port, () => {
-      console.log(`📊 Метрики доступні на http://localhost:${port}${path}`);
-      console.log(`🏥 Health check доступний на http://localhost:${port}/health`);
+    const server = app.listen(port, () => {
+      log.info(`📊 Метрики доступні на http://localhost:${port}${path}`, { type: 'metrics', event: 'server_started', port, path });
+      log.info(`🏥 Health check доступний на http://localhost:${port}/health`, { type: 'metrics', event: 'health_endpoint_ready', port });
     });
+
+    return server;
   }
 
   /**
