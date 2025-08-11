@@ -4,25 +4,26 @@
  */
 
 import { 
-  SlashCommandBuilder,
   EmbedBuilder, 
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle,
   StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder
+  StringSelectMenuOptionBuilder,
+  ChatInputCommandInteraction
 } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
+import logger from '@/utils/logger';
 
 interface SearchFilters {
-  name?: string;
-  client?: string;
-  series?: string;
-  priceFrom?: number;
-  priceTo?: number;
-  quantityFrom?: number;
-  quantityTo?: number;
+  name?: string | undefined;
+  client?: string | undefined;
+  series?: string | undefined;
+  priceFrom?: number | undefined;
+  priceTo?: number | undefined;
+  quantityFrom?: number | undefined;
+  quantityTo?: number | undefined;
   sortBy: string;
   sortOrder: string;
 }
@@ -38,6 +39,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       'розширений_пошук',
       '🔍 Покращений пошук з діапазонами та сортуванням',
       config,
+      {},
       (builder: any) => {
         return builder
           .addStringOption((option: any) =>
@@ -159,7 +161,10 @@ export class EnhancedSearchCommand extends BaseCommand {
       });
 
     } catch (error) {
-      console.error('Помилка покращеного пошуку:', error);
+      logger.error('Помилка покращеного пошуку', {
+        error: error instanceof Error ? error.message : String(error),
+        userId: interaction.user?.id,
+      });
       await interaction.editReply('❌ Помилка при виконанні пошуку');
     }
   }
@@ -181,7 +186,7 @@ export class EnhancedSearchCommand extends BaseCommand {
   /**
    * Витягування фільтрів з interaction
    */
-  private extractFilters(interaction: any): SearchFilters {
+  private extractFilters(interaction: ChatInputCommandInteraction): SearchFilters {
     const filters: SearchFilters = {
       name: interaction.options.getString('номенклатура') || undefined,
       client: interaction.options.getString('контрагент') || undefined,
@@ -353,7 +358,7 @@ export class EnhancedSearchCommand extends BaseCommand {
   /**
    * Створення компонентів навігації
    */
-  private createNavigationComponents(totalResults: number): ActionRowBuilder<ButtonBuilder>[] {
+  private createNavigationComponents(_totalResults: number): ActionRowBuilder<ButtonBuilder>[] {
     const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
     // Перший ряд кнопок
