@@ -1,8 +1,6 @@
 # 🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**
 
-<<<<<<< HEAD
 **Потужний Discord бот з AI функціоналом для Збройних Сил України**
-=======
 **Оновлено: 28.07.2025**
 
 Ця папка містить всю документацію проекту, організовану за категоріями.
@@ -239,19 +237,70 @@ docker run -d --name godzilla-bot godzilla-bot
 
 ## 🔧 **НАЛАШТУВАННЯ**
 
-### **📋 Обов'язкові змінні середовища**
+### **📋 Обов'язкові та рекомендовані змінні середовища**
 ```env
 # Discord
 DISCORD_TOKEN=your_discord_token
 DISCORD_CLIENT_ID=your_client_id
 DISCORD_GUILD_ID=your_guild_id
+DISCORD_PREFIX=!
+# Кома-сепарований список валідних intent-ів Discord.js v14
+DISCORD_INTENTS=Guilds,GuildMessages,MessageContent,GuildMembers
 
 # Google
+GOOGLE_SPREADSHEET_ID=your_spreadsheet_id
 GOOGLE_API_KEY=your_google_api_key
 GOOGLE_APP_SCRIPT_URL=your_app_script_url
+# Ім'я аркуша за замовчуванням
+GOOGLE_SHEET_NAME=Sheet1
+
+# Шлях до JSON credentials (service account) або використайте змінні нижче
+GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/credentials.json
+# Альтернатива без файлу (service account):
+GOOGLE_CLIENT_EMAIL=service-account@project.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+GOOGLE_PROJECT_ID=your_gcp_project_id
 
 # AI
-OPENAI_API_KEY=your_openai_api_key
+# Провайдер: openai | ollama
+AI_PROVIDER=openai
+
+# OpenAI
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-3.5-turbo
+OPENAI_MAX_TOKENS=1000
+OPENAI_TEMPERATURE=0.7
+
+# Ollama (локальна LLM)
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama2
+
+# Redis
+REDIS_ENABLED=true
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DATABASE=0
+# Повний URL (якщо задається, має пріоритет)
+REDIS_URL=
+
+# Metrics (Prometheus)
+METRICS_ENABLED=true
+METRICS_PORT=9091
+METRICS_PATH=/metrics
+
+# Security
+RATE_LIMIT_WINDOW=60000
+RATE_LIMIT_MAX=100
+ADMIN_ROLE=Admin
+BOT_USER_ROLE="Bot User"
+
+# Performance
+CACHE_TTL=300000
+MAX_SEARCH_RESULTS=100
+MAX_ANALYSIS_ROWS=1000
+REQUEST_TIMEOUT=30000
+MAX_RETRIES=3
 ```
 
 ### **🎯 Рекомендовані налаштування**
