@@ -13,7 +13,6 @@ import {
   ButtonStyle,
   ActionRowBuilder,
 } from 'discord.js';
-import type { LogMeta } from '@/types';
 import logger from './logger';
 
 // Константи для стандартних значень
@@ -523,12 +522,15 @@ export class ErrorUtils {
     const stack = error instanceof Error ? error.stack : undefined;
 
     logger.error(`❌ Помилка в операції: ${context.operation}`, {
+      type: 'utility',
+      component: 'ErrorUtils.logError',
+      operation: context.operation,
       error: errorMessage,
       stack,
-      userId: context.userId,
-      command: context.commandName,
-      ...context.additionalData
-    } as LogMeta);
+      ...(context.userId ? { userId: context.userId } : {}),
+      ...(context.commandName ? { command: context.commandName } : {}),
+      ...context.additionalData,
+    });
   }
 
   /**
