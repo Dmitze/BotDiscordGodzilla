@@ -4,8 +4,8 @@
  * Версія 1.0.0 - Виокремлено з BaseCommand
  */
 
-import type { ChatInputCommandInteraction } from 'discord.js';
-import type { CommandStats, LogMeta } from '@/types';
+import type { LogMeta } from '@/types';
+
 import logger from '@/utils/logger';
 
 export interface CommandMetrics {
@@ -48,21 +48,22 @@ export class CommandMetricsCollector {
   private metrics = new Map<string, CommandMetrics>();
   private executionHistory: ExecutionMetric[] = [];
   private readonly maxHistorySize = 10000;
-  private readonly thresholds: PerformanceThresholds;
+  private readonly thresholds: PerformanceThresholds = {
+    slowExecutionMs: 3000,
+    verySlowExecutionMs: 10000,
+    maxExecutionTime: 30000,
+    warningErrorRate: 10,
+    criticalErrorRate: 25,
+  };
 
   constructor(thresholds?: Partial<PerformanceThresholds>) {
     if (CommandMetricsCollector.instance) {
       return CommandMetricsCollector.instance;
     }
 
-    this.thresholds = {
-      slowExecutionMs: 3000,
-      verySlowExecutionMs: 10000,
-      maxExecutionTime: 30000,
-      warningErrorRate: 10,
-      criticalErrorRate: 25,
-      ...thresholds
-    };
+    if (thresholds) {
+      Object.assign(this.thresholds, thresholds);
+    }
 
     CommandMetricsCollector.instance = this;
     this.startPeriodicReporting();
@@ -99,11 +100,13 @@ export class CommandMetricsCollector {
         userId,
         executionTime,
         success,
-        error: options.error,
         timestamp: Date.now(),
-        fromCache: options.fromCache || false,
-        retryCount: options.retryCount || 0
+        fromCache: options.fromCache ?? false,
+        retryCount: options.retryCount ?? 0
       };
+      if (typeof options.error === 'string') {
+        executionMetric.error = options.error;
+      }
 
       this.addToHistory(executionMetric);
 
@@ -128,7 +131,7 @@ export class CommandMetricsCollector {
       }
 
     } catch (error) {
-      logger.error('❌ Помилка запису метрик команди:', error);
+      logger.error('❌ Помилка запису метрик команди:', { error } as LogMeta);
     }
   }
 
@@ -456,7 +459,7 @@ export class CommandMetricsCollector {
         } as LogMeta);
 
       } catch (error) {
-        logger.error('❌ Помилка періодичного звітування метрик:', error);
+        logger.error('❌ Помилка періодичного звітування метрик:', { error } as LogMeta);
       }
     }, 15 * 60 * 1000); // Кожні 15 хвилин
   }
