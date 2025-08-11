@@ -4,8 +4,6 @@
  * Версія 1.0.0 - Виокремлено з BaseCommand
  */
 
-import type { LogMeta } from '@/types';
-
 import logger from '@/utils/logger';
 
 export interface CommandMetrics {
@@ -113,25 +111,34 @@ export class CommandMetricsCollector {
       // Логування повільних виконань
       if (executionTime > this.thresholds.slowExecutionMs) {
         logger.warn('🐌 Повільне виконання команди', {
+          type: 'command_metrics',
+          component: 'CommandMetricsCollector.recordExecution',
           command: commandName,
           userId,
-          executionTime: `${executionTime}ms`,
-          threshold: `${this.thresholds.slowExecutionMs}ms`
-        } as LogMeta);
+          executionTimeMs: executionTime,
+          thresholdMs: this.thresholds.slowExecutionMs,
+        });
       }
 
       // Логування критично повільних виконань
       if (executionTime > this.thresholds.verySlowExecutionMs) {
         logger.error('🚨 Критично повільне виконання команди', {
+          type: 'command_metrics',
+          component: 'CommandMetricsCollector.recordExecution',
           command: commandName,
           userId,
-          executionTime: `${executionTime}ms`,
-          threshold: `${this.thresholds.verySlowExecutionMs}ms`
-        } as LogMeta);
+          executionTimeMs: executionTime,
+          thresholdMs: this.thresholds.verySlowExecutionMs,
+        });
       }
 
     } catch (error) {
-      logger.error('❌ Помилка запису метрик команди:', { error } as LogMeta);
+      logger.error('❌ Помилка запису метрик команди', {
+        type: 'command_metrics',
+        component: 'CommandMetricsCollector.recordExecution',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -445,21 +452,30 @@ export class CommandMetricsCollector {
         // Логування критичних алертів
         const criticalAlerts = report.alerts.filter(a => a.level === 'critical');
         if (criticalAlerts.length > 0) {
-          logger.error('🚨 Критичні проблеми продуктивності команд:', {
+          logger.error('🚨 Критичні проблеми продуктивності команд', {
+            type: 'command_metrics',
+            component: 'CommandMetricsCollector.startPeriodicReporting',
             alerts: criticalAlerts,
-            recommendations: report.recommendations
-          } as LogMeta);
+            recommendations: report.recommendations,
+          });
         }
 
         // Логування статистики
-        logger.info('📊 Періодичний звіт команд:', {
+        logger.info('📊 Періодичний звіт команд', {
+          type: 'command_metrics',
+          component: 'CommandMetricsCollector.startPeriodicReporting',
           summary: report.summary,
           alertsCount: report.alerts.length,
-          recommendationsCount: report.recommendations.length
-        } as LogMeta);
+          recommendationsCount: report.recommendations.length,
+        });
 
       } catch (error) {
-        logger.error('❌ Помилка періодичного звітування метрик:', { error } as LogMeta);
+        logger.error('❌ Помилка періодичного звітування метрик', {
+          type: 'command_metrics',
+          component: 'CommandMetricsCollector.startPeriodicReporting',
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
       }
     }, 15 * 60 * 1000); // Кожні 15 хвилин
   }
