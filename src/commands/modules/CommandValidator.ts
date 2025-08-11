@@ -5,7 +5,6 @@
  */
 
 import type { ChatInputCommandInteraction } from 'discord.js';
-import type { LogMeta } from '@/types';
 import { sanitizeInput } from '@/utils/security';
 
 import logger from '@/utils/logger';
@@ -78,9 +77,22 @@ export class CommandValidator {
 
       // Логування результату валідації
       if (!isValid) {
-        logger.warn('⚠️ Валідація команди невдала', { command: interaction.commandName, userId: interaction.user?.id, errors, warnings } as LogMeta);
+        logger.warn('⚠️ Валідація команди невдала', {
+          type: 'command_validation',
+          component: 'CommandValidator.validateCommand',
+          command: interaction.commandName,
+          userId: interaction.user?.id,
+          errors,
+          warnings,
+        });
       } else if (warnings.length > 0) {
-        logger.debug('ℹ️ Валідація команди з попередженнями', { command: interaction.commandName, userId: interaction.user?.id, warnings } as LogMeta);
+        logger.debug('ℹ️ Валідація команди з попередженнями', {
+          type: 'command_validation',
+          component: 'CommandValidator.validateCommand',
+          command: interaction.commandName,
+          userId: interaction.user?.id,
+          warnings,
+        });
       }
 
       return {
@@ -90,7 +102,14 @@ export class CommandValidator {
         sanitizedValues
       };
     } catch (error) {
-      logger.error('❌ Помилка валідації команди:', { error } as LogMeta);
+      logger.error('❌ Помилка валідації команди', {
+        type: 'command_validation',
+        component: 'CommandValidator.validateCommand',
+        command: interaction.commandName,
+        userId: interaction.user?.id,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return {
         isValid: false,
         errors: ['Внутрішня помилка валідації'],
