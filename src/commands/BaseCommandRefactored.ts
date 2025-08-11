@@ -9,15 +9,13 @@ import {
   ChatInputCommandInteraction, 
   EmbedBuilder,
   AutocompleteInteraction,
-  MessageComponentInteraction,
-  PermissionFlagsBits
+  MessageComponentInteraction
 } from 'discord.js';
 
 import type { 
   BotConfig, 
   CommandStats,
-  CommandContext,
-  LogMeta
+  CommandContext
 } from '@/types';
 
 import logger from '@/utils/logger';
@@ -67,6 +65,7 @@ export abstract class BaseCommand {
   protected cooldowns: Map<string, number> = new Map();
   protected readonly config: BotConfig;
   protected isShuttingDown = false;
+  protected readonly startedAt: number = Date.now();
   
   // Модульні компоненти
   protected validator: CommandValidator;
@@ -101,17 +100,20 @@ export abstract class BaseCommand {
       this.addOptions(commandData.options);
     }
 
-    // Ініціалізація статистики
+    // Ініціалізація статистики (узгоджено з CommandStats)
     this.stats = {
-      commandName: this.name,
-      executionCount: 0,
-      successCount: 0,
-      errorCount: 0,
+      totalExecutions: 0,
+      successfulExecutions: 0,
+      failedExecutions: 0,
       averageExecutionTime: 0,
       totalExecutionTime: 0,
-      lastExecuted: 0,
       cacheHits: 0,
-      cacheMisses: 0
+      cacheMisses: 0,
+      retries: 0,
+      service: this.name,
+      uptime: 0,
+      requests: 0,
+      errors: 0,
     };
 
     // Ініціалізація модулів
@@ -162,22 +164,20 @@ export abstract class BaseCommand {
       error = err instanceof Error ? err.message : String(err);
       logger.error(`❌ Помилка виконання команди "${this.name}":`, {
         userId: interaction.user.id,
-        error: error,
-        duration: Date.now() - startTime
-      } as LogMeta);
+        error,
+        duration: `${Date.now() - startTime}ms`,
+      });
 
       await this.handleExecutionError(interaction, err);
     } finally {
       // Запис метрик
       const duration = Date.now() - startTime;
       this.updateStats(duration, success);
-      this.metrics.recordExecution(
-        this.name,
-        interaction.user.id,
-        duration,
-        success,
-        { error }
-      );
+      if (error) {
+        this.metrics.recordExecution(this.name, interaction.user.id, duration, success, { error });
+      } else {
+        this.metrics.recordExecution(this.name, interaction.user.id, duration, success, {});
+      }
     }
   }
 
@@ -210,7 +210,7 @@ export abstract class BaseCommand {
       };
 
     } catch (error) {
-      logger.error('❌ Помилка валідації команди:', error);
+      logger.error('❌ Помилка валідації команди:', { error });
       return {
         isValid: false,
         errors: ['Внутрішня помилка валідації'],
@@ -222,7 +222,7 @@ export abstract class BaseCommand {
   /**
    * Кастомна валідація для конкретної команди
    */
-  protected async customValidation(interaction: ChatInputCommandInteraction): Promise<ValidationResult> {
+  protected async customValidation(_interaction: ChatInputCommandInteraction): Promise<ValidationResult> {
     // Базова реалізація - може бути перевизначена в дочірніх класах
     return {
       isValid: true,
@@ -235,7 +235,7 @@ export abstract class BaseCommand {
    * Виконання з повторними спробами
    */
   private async executeWithRetry(options: CommandExecuteOptions): Promise<void> {
-    const { interaction, retryCount = 0 } = options;
+    const { retryCount = 0 } = options;
     
     try {
       await this.execute(options);
@@ -347,7 +347,7 @@ export abstract class BaseCommand {
       .setTimestamp();
 
     // В development режимі показуємо деталі помилки
-    if (this.config.environment === 'development' && error instanceof Error) {
+    if (this.config.logging?.level === 'debug' && error instanceof Error) {
       embed.addFields({
         name: 'Деталі помилки',
         value: error.message.substring(0, 1000),
@@ -362,7 +362,7 @@ export abstract class BaseCommand {
         await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     } catch (replyError) {
-      logger.error('❌ Не вдалося відправити повідомлення про помилку:', replyError);
+      logger.error('❌ Не вдалося відправити повідомлення про помилку:', { error: replyError });
     }
   }
 
@@ -370,15 +370,16 @@ export abstract class BaseCommand {
    * Оновлення статистики
    */
   protected updateStats(executionTime: number, success: boolean): void {
-    this.stats.executionCount++;
-    this.stats.lastExecuted = Date.now();
+    this.stats.totalExecutions++;
+    this.stats.requests++;
     this.stats.totalExecutionTime += executionTime;
-    this.stats.averageExecutionTime = this.stats.totalExecutionTime / this.stats.executionCount;
+    this.stats.averageExecutionTime = this.stats.totalExecutionTime / this.stats.totalExecutions;
 
     if (success) {
-      this.stats.successCount++;
+      this.stats.successfulExecutions++;
     } else {
-      this.stats.errorCount++;
+      this.stats.failedExecutions++;
+      this.stats.errors++;
     }
   }
 
@@ -446,7 +447,7 @@ export abstract class BaseCommand {
    * Отримання статистики команди
    */
   public getStats(): CommandStats {
-    return { ...this.stats };
+    return { ...this.stats, uptime: Date.now() - this.startedAt } as CommandStats;
   }
 
   /**
@@ -454,15 +455,18 @@ export abstract class BaseCommand {
    */
   public resetStats(): void {
     this.stats = {
-      commandName: this.name,
-      executionCount: 0,
-      successCount: 0,
-      errorCount: 0,
+      totalExecutions: 0,
+      successfulExecutions: 0,
+      failedExecutions: 0,
       averageExecutionTime: 0,
       totalExecutionTime: 0,
-      lastExecuted: 0,
       cacheHits: 0,
-      cacheMisses: 0
+      cacheMisses: 0,
+      retries: 0,
+      service: this.name,
+      uptime: 0,
+      requests: 0,
+      errors: 0,
     };
   }
 
@@ -491,12 +495,9 @@ export abstract class BaseCommand {
   protected hasPermission(interaction: ChatInputCommandInteraction, permission: string): boolean {
     if (!interaction.guild || !interaction.member) return false;
     
-    const member = interaction.member;
-    if ('permissions' in member) {
-      return member.permissions.has(permission as any);
-    }
-    
-    return false;
+    const member: any = interaction.member as any;
+    const perms: any = member?.permissions as any;
+    return Boolean(perms && typeof perms.has === 'function' && perms.has(permission as any));
   }
 
   /**
