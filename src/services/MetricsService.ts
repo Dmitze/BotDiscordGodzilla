@@ -13,14 +13,9 @@ import type {
 } from '@/types';
 
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
+import logger from '@/utils/logger';
 
-// TODO: Створити типизовані утиліти
-const logger = {
-  info: (message: string, ...args: unknown[]) => console.log(message, ...args),
-  error: (message: string, ...args: unknown[]) => console.error(message, ...args),
-  warn: (message: string, ...args: unknown[]) => console.warn(message, ...args),
-  debug: (message: string, ...args: unknown[]) => console.debug(message, ...args),
-};
+// Стандартизований проектный логгер используется вместо console
 
 interface MetricsServiceStats extends ServiceStats {
   requests: number;
@@ -73,7 +68,7 @@ export class MetricsService extends BaseServiceClass {
    */
   protected async onInitialize(): Promise<void> {
     try {
-      logger.info('📊 Ініціалізація Metrics сервісу...');
+      logger.info('📊 Ініціалізація Metrics сервісу...', { type: 'metrics_service', event: 'init', component: 'MetricsService' });
 
       // Створення Prometheus реєстру
       await this.createRegistry();
@@ -87,9 +82,14 @@ export class MetricsService extends BaseServiceClass {
       // Запуск періодичних оновлень
       this.startPeriodicUpdates();
 
-      logger.info('✅ Metrics сервіс ініціалізовано');
+      logger.info('✅ Metrics сервіс ініціалізовано', { type: 'metrics_service', event: 'init_success', component: 'MetricsService' });
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації Metrics сервісу:', error);
+      logger.error('❌ Помилка ініціалізації Metrics сервісу:', {
+        type: 'metrics_service', event: 'init_failed', component: 'MetricsService',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -104,9 +104,14 @@ export class MetricsService extends BaseServiceClass {
       // Збір стандартних метрик Node.js
       collectDefaultMetrics({ register: this.registry });
 
-      logger.debug('✅ Prometheus реєстр створено');
+      logger.debug('✅ Prometheus реєстр створено', { type: 'metrics_service', event: 'registry_created', component: 'MetricsService' });
     } catch (error) {
-      logger.error('Помилка створення Prometheus реєстру:', error);
+      logger.error('Помилка створення Prometheus реєстру:', {
+        type: 'metrics_service', event: 'registry_create_failed', component: 'MetricsService',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -248,9 +253,14 @@ export class MetricsService extends BaseServiceClass {
       };
 
       this.stats.metricsCount = Object.keys(this.metrics).length;
-      logger.debug('✅ Метрики створено');
+      logger.debug('✅ Метрики створено', { type: 'metrics_service', event: 'metrics_created', component: 'MetricsService', metricsCount: this.stats.metricsCount });
     } catch (error) {
-      logger.error('Помилка створення метрик:', error);
+      logger.error('Помилка створення метрик:', {
+        type: 'metrics_service', event: 'metrics_create_failed', component: 'MetricsService',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -261,11 +271,15 @@ export class MetricsService extends BaseServiceClass {
   private async startServer(): Promise<void> {
     try {
       if (!this.config.metrics.enabled) {
-        logger.info('Metrics сервер вимкнено');
+        logger.info('Metrics сервер вимкнено', { type: 'metrics_service', event: 'disabled', component: 'MetricsService' });
         return;
       }
 
       const http = require('http');
+      if (this.server && this.server.listening) {
+        logger.warn('⚠️ Metrics сервер вже запущено', { type: 'metrics_service', event: 'already_running', component: 'MetricsService' });
+        return;
+      }
       
       this.server = http.createServer(async (req: any, res: any) => {
         try {
@@ -283,21 +297,36 @@ export class MetricsService extends BaseServiceClass {
             res.end('Not Found');
           }
         } catch (error) {
-          logger.error('Помилка обробки metrics запиту:', error);
+          logger.error('Помилка обробки metrics запиту:', {
+            type: 'metrics_service', event: 'request_failed', component: 'MetricsService',
+            errorName: error instanceof Error ? error.name : undefined,
+            errorMessage: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          });
           res.writeHead(500);
           res.end('Internal Server Error');
         }
       });
 
       this.server.listen(this.config.metrics.port, () => {
-        logger.info(`📊 Metrics сервер запущено на порту ${this.config.metrics.port}`);
+        logger.info(`📊 Metrics сервер запущено на порту ${this.config.metrics.port}`, { type: 'metrics_service', event: 'server_started', component: 'MetricsService', port: this.config.metrics.port, path: this.config.metrics.path });
       });
 
       this.server.on('error', (error: Error) => {
-        logger.error('Помилка metrics сервера:', error);
+        logger.error('Помилка metrics сервера:', {
+          type: 'metrics_service', event: 'server_error', component: 'MetricsService',
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+        });
       });
     } catch (error) {
-      logger.error('Помилка запуску metrics сервера:', error);
+      logger.error('Помилка запуску metrics сервера:', {
+        type: 'metrics_service', event: 'server_start_failed', component: 'MetricsService',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -460,7 +489,7 @@ export class MetricsService extends BaseServiceClass {
       // this.updateConnectionPoolMetrics(connectionStats);
       
     } catch (error) {
-      logger.error('Помилка оновлення метрик:', error);
+      logger.error('Помилка оновлення метрик:', { type: 'metrics_service', event: 'update_failed', component: 'MetricsService', errorName: error instanceof Error ? error.name : undefined, errorMessage: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
     }
   }
 
@@ -553,13 +582,13 @@ export class MetricsService extends BaseServiceClass {
       }
 
       if (this.server) {
-        this.server.close();
+        await new Promise<void>((resolve) => this.server.close(() => resolve()));
         this.server = null;
       }
 
-      logger.info('✅ Metrics Service зупинено');
+      logger.info('✅ Metrics Service зупинено', { type: 'metrics_service', event: 'shutdown_success', component: 'MetricsService' });
     } catch (error) {
-      logger.error('❌ Помилка зупинки Metrics Service:', error);
+      logger.error('❌ Помилка зупинки Metrics Service:', { type: 'metrics_service', event: 'shutdown_failed', component: 'MetricsService', errorName: error instanceof Error ? error.name : undefined, errorMessage: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
       throw error;
     }
   }
