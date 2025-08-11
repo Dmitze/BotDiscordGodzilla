@@ -3,19 +3,14 @@
  * Спеціалізовані функції для різних типів документів
  */
 
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import type { BotConfig, CommandExecuteOptions } from '@/types';
+import { EmbedBuilder } from 'discord.js';
+import type { BotConfig, CommandExecuteOptions, LogMeta } from '@/types';
 import { BaseCommand } from './BaseCommand';
+import logger from '@/utils/logger';
 
 interface DocumentAction {
   type: string;
   query?: string;
-}
-
-interface DocumentResult {
-  success: boolean;
-  message: string;
-  data?: any;
 }
 
 export class DocumentsCommand extends BaseCommand {
@@ -24,6 +19,7 @@ export class DocumentsCommand extends BaseCommand {
       'документи',
       '📄 Робота з військовими документами ЗСУ',
       config,
+      {},
       (builder: any) => {
         return builder
           .addSubcommand((subcommand: any) =>
@@ -171,7 +167,13 @@ export class DocumentsCommand extends BaseCommand {
           await interaction.reply('❌ Невідома підкоманда');
       }
     } catch (error) {
-      console.error('❌ Помилка команди документів:', error);
+      logger.error('❌ Помилка команди документів', {
+        command: 'документи',
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
+        userId: interaction.user?.id,
+        error,
+      } as LogMeta);
       await interaction.reply('❌ Помилка обробки документів');
     }
   }
@@ -184,8 +186,6 @@ export class DocumentsCommand extends BaseCommand {
       .setTitle('👥 Особовий склад')
       .setColor(0x0099ff)
       .setTimestamp();
-
-    const actionName = this.getActionName(action.type);
 
     switch (action.type) {
       case 'search':
@@ -236,7 +236,6 @@ export class DocumentsCommand extends BaseCommand {
       .setColor(0xff9900)
       .setTimestamp();
 
-    const actionName = this.getActionName(action.type);
 
     switch (action.type) {
       case 'search':
@@ -434,24 +433,6 @@ export class DocumentsCommand extends BaseCommand {
   }
 
   /**
-   * Отримання назви дії
+   * (кінець класу)
    */
-  private getActionName(action: string): string {
-    const actionNames: Record<string, string> = {
-      search: 'Пошук',
-      add: 'Додавання',
-      update: 'Оновлення',
-      report: 'Звіт',
-      check: 'Перевірка',
-      status: 'Статус',
-      maintenance: 'Обслуговування',
-      stock: 'Залишки',
-      replenish: 'Поповнення',
-      create: 'Створення',
-      planning: 'Планування',
-      archive: 'Архівування',
-    };
-
-    return actionNames[action] || action;
-  }
-} 
+}
