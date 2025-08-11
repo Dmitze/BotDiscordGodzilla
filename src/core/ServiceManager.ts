@@ -61,6 +61,7 @@ class ServiceManager {
       logger.info('🔧 Ініціалізація менеджера сервісів...', {
         type: 'service_manager',
         event: 'init',
+        component: 'ServiceManager',
       });
 
       // Створення сервісів
@@ -72,11 +73,13 @@ class ServiceManager {
       logger.info('✅ Менеджер сервісів ініціалізовано', {
         type: 'service_manager',
         event: 'init_success',
+        component: 'ServiceManager',
       });
     } catch (error) {
       logger.error('❌ Помилка ініціалізації менеджера сервісів', {
         type: 'service_manager',
         event: 'init_failed',
+        component: 'ServiceManager',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -122,6 +125,7 @@ class ServiceManager {
           logger.debug('✅ Сервіс ініціалізовано', {
             type: 'service_manager',
             event: 'service_initialized',
+            component: 'ServiceManager',
             service: name,
           });
         }
@@ -129,6 +133,7 @@ class ServiceManager {
         logger.error('❌ Помилка ініціалізації сервісу', {
           type: 'service_manager',
           event: 'service_init_failed',
+          component: 'ServiceManager',
           service: name,
           errorName: error instanceof Error ? error.name : undefined,
           errorMessage: error instanceof Error ? error.message : String(error),
@@ -153,6 +158,7 @@ class ServiceManager {
       logger.info('📊 Метрики запущено', {
         type: 'service_manager',
         event: 'metrics_started',
+        component: 'ServiceManager',
       });
     }
   }
@@ -167,6 +173,7 @@ class ServiceManager {
       logger.info('💾 Кеш запущено', {
         type: 'service_manager',
         event: 'cache_started',
+        component: 'ServiceManager',
       });
     }
   }
@@ -181,6 +188,7 @@ class ServiceManager {
       logger.info('⏰ Планувальник запущено', {
         type: 'service_manager',
         event: 'scheduler_started',
+        component: 'ServiceManager',
       });
     }
   }
@@ -225,6 +233,7 @@ class ServiceManager {
           logger.error('Помилка виконання методу на сервісі', {
             type: 'service_manager',
             event: 'method_execution_failed',
+            component: 'ServiceManager',
             methodName: methodName,
             errorName: error instanceof Error ? error.name : undefined,
             errorMessage: error instanceof Error ? error.message : String(error),
@@ -263,6 +272,7 @@ class ServiceManager {
     logger.info('🛑 Завершення роботи сервісів...', {
       type: 'service_manager',
       event: 'shutdown',
+      component: 'ServiceManager',
     });
 
     try {
@@ -270,11 +280,13 @@ class ServiceManager {
       logger.info('✅ Сервіси успішно завершено', {
         type: 'service_manager',
         event: 'shutdown_success',
+        component: 'ServiceManager',
       });
     } catch (error) {
       logger.error('❌ Помилка при завершенні сервісів', {
         type: 'service_manager',
         event: 'shutdown_failed',
+        component: 'ServiceManager',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
