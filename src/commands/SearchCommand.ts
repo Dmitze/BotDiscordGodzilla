@@ -4,16 +4,16 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction } from 'discord.js';
 import type { 
   BotConfig, 
-  CommandExecuteOptions,
   SheetData,
   SearchParams
 } from '@/types';
-import { BaseCommand } from './BaseCommand';
+import { BaseCommand, type CommandExecuteOptions } from './BaseCommand';
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
+import type { GoogleService } from '@/services/GoogleService';
 
 // Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
@@ -58,6 +58,7 @@ interface PaginationState {
 export class SearchCommand extends BaseCommand {
   private paginationStates = new Map<string, PaginationState>();
   private searchCache = new Map<string, { result: SearchResult; timestamp: number }>();
+  private readonly googleService: GoogleService | undefined;
   private searchStats = {
     totalSearches: 0,
     cacheHits: 0,
@@ -67,7 +68,7 @@ export class SearchCommand extends BaseCommand {
     errors: 0,
   };
 
-  constructor(config: BotConfig) {
+  constructor(config: BotConfig, googleService?: GoogleService) {
     super(
       'пошук',
       '🔍 Гнучкий пошук по документах ЗСУ',
@@ -149,6 +150,7 @@ export class SearchCommand extends BaseCommand {
         ) as unknown as SlashCommandBuilder;
       }
     );
+    if (googleService) this.googleService = googleService;
   }
 
   /**
@@ -166,11 +168,19 @@ export class SearchCommand extends BaseCommand {
       await interaction.deferReply();
 
       // Логування початку пошуку
-      logger.info('Початок пошуку', {
-        user: interaction.user.tag,
-        query: searchParams.query,
-        filters: searchParams,
-      });
+      {
+        const meta: Record<string, unknown> = {
+          type: 'command',
+          component: 'SearchCommand',
+          user: interaction.user.tag,
+          userId: interaction.user.id,
+          channelId: interaction.channelId,
+          query: searchParams.query,
+          filters: searchParams,
+        };
+        if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
+        logger.info('Початок пошуку', meta);
+      }
 
       // Виконання пошуку
       const searchResult = await this.performSearchWithCache(searchParams, interaction.user.id);
@@ -192,22 +202,38 @@ export class SearchCommand extends BaseCommand {
       this.updateSearchStats(true, duration, searchResult.cacheHit);
 
       // Логування успішного завершення
-      logger.info('Пошук успішно завершено', {
-        user: interaction.user.tag,
-        duration: `${duration.toFixed(2)}ms`,
-        results: searchResult.filteredCount,
-        cacheHit: searchResult.cacheHit,
-      });
+      {
+        const meta: Record<string, unknown> = {
+          type: 'command',
+          component: 'SearchCommand',
+          user: interaction.user.tag,
+          userId: interaction.user.id,
+          channelId: interaction.channelId,
+          duration: `${duration.toFixed(2)}ms`,
+          results: searchResult.filteredCount,
+          cacheHit: searchResult.cacheHit,
+        };
+        if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
+        logger.info('Пошук успішно завершено', meta);
+      }
 
     } catch (error) {
       const duration = performance.now() - startTime;
       this.updateSearchStats(false, duration, false);
 
-      logger.error('Помилка пошуку', {
-        user: interaction.user.tag,
-        error: error instanceof Error ? error.message : String(error),
-        duration: `${duration.toFixed(2)}ms`,
-      });
+      {
+        const meta: Record<string, unknown> = {
+          type: 'command',
+          component: 'SearchCommand',
+          user: interaction.user.tag,
+          userId: interaction.user.id,
+          channelId: interaction.channelId,
+          error: error instanceof Error ? error.message : String(error),
+          duration: `${duration.toFixed(2)}ms`,
+        };
+        if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
+        logger.error('Помилка пошуку', meta);
+      }
 
       await this.handleSearchError(interaction, error);
     }
@@ -216,12 +242,12 @@ export class SearchCommand extends BaseCommand {
   /**
    * Витяг та валідація параметрів
    */
-  private async extractAndValidateParams(interaction: any): Promise<SearchParams> {
+  private async extractAndValidateParams(interaction: ChatInputCommandInteraction): Promise<SearchParams> {
     const query = interaction.options.getString('запит', true);
     const documentType = interaction.options.getString('тип_документа') || 'all';
-    const dateFrom = interaction.options.getString('дата_від');
-    const dateTo = interaction.options.getString('дата_до');
-    const unit = interaction.options.getString('підрозділ');
+    const dateFrom = interaction.options.getString('дата_від') ?? undefined;
+    const dateTo = interaction.options.getString('дата_до') ?? undefined;
+    const unit = interaction.options.getString('підрозділ') ?? undefined;
     const priority = interaction.options.getString('пріоритет') || 'all';
     const limit = interaction.options.getInteger('ліміт') || SEARCH_CONFIG.DEFAULT_LIMIT;
 
@@ -257,15 +283,16 @@ export class SearchCommand extends BaseCommand {
       }
     }
 
-    return {
+    const result: SearchParams = {
       query: sanitizedQuery.sanitizedValue || query,
       documentType,
-      dateFrom,
-      dateTo,
-      unit: unit ? sanitizeInput(unit, 'command').sanitizedValue : '',
       priority,
       limit,
-    };
+    } as SearchParams;
+    if (dateFrom) result.dateFrom = dateFrom;
+    if (dateTo) result.dateTo = dateTo;
+    if (unit) result.unit = sanitizeInput(unit, 'command').sanitizedValue;
+    return result;
   }
 
   /**
@@ -278,7 +305,7 @@ export class SearchCommand extends BaseCommand {
     const cached = this.searchCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < SEARCH_CONFIG.CACHE_TTL * 1000) {
       this.searchStats.cacheHits++;
-      logger.debug('Результат знайдено в кеші', { cacheKey });
+      logger.debug('Результат знайдено в кеші', { type: 'performance', component: 'SearchCommand', cacheKey });
       return { ...cached.result, cacheHit: true };
     }
 
@@ -312,7 +339,7 @@ export class SearchCommand extends BaseCommand {
 
     try {
       // Отримання сервісів
-      const googleService = (this as any).config?.google;
+      const googleService = this.googleService;
       if (!googleService) {
         throw new Error('Google сервіс не налаштовано');
       }
@@ -346,6 +373,8 @@ export class SearchCommand extends BaseCommand {
     } catch (error) {
       const searchTime = performance.now() - startTime;
       logger.error('Помилка виконання пошуку', {
+        type: 'command',
+        component: 'SearchCommand',
         error: error instanceof Error ? error.message : String(error),
         searchTime: `${searchTime.toFixed(2)}ms`,
       });
@@ -356,8 +385,8 @@ export class SearchCommand extends BaseCommand {
   /**
    * Отримання даних з таймаутом
    */
-  private async getSheetDataWithTimeout(googleService: any): Promise<SheetData> {
-    const spreadsheetId: string | undefined = (this as any).config?.google?.spreadsheetId;
+  private async getSheetDataWithTimeout(googleService: GoogleService): Promise<SheetData> {
+    const spreadsheetId: string | undefined = this.config?.google?.spreadsheetId;
     if (!spreadsheetId) {
       throw new Error('Не вказано spreadsheetId в конфігурації');
     }
@@ -415,6 +444,8 @@ export class SearchCommand extends BaseCommand {
 
       const filterTime = performance.now() - startTime;
       logger.debug('Фільтрація завершена', {
+        type: 'performance',
+        component: 'SearchCommand',
         totalRows: rows.length,
         filteredRows: filteredRows.length,
         filterTime: `${filterTime.toFixed(2)}ms`,
@@ -423,6 +454,8 @@ export class SearchCommand extends BaseCommand {
       // Обмеження кількості результатів
       if (filteredRows.length > SEARCH_CONFIG.MAX_FILTERED_RESULTS) {
         logger.warn('Кількість результатів обмежена', {
+          type: 'performance',
+          component: 'SearchCommand',
           maxResults: SEARCH_CONFIG.MAX_FILTERED_RESULTS,
           actualResults: filteredRows.length,
         });
@@ -431,7 +464,7 @@ export class SearchCommand extends BaseCommand {
 
       return filteredRows;
     } catch (error) {
-      logger.error('Помилка фільтрації даних', { error });
+      logger.error('Помилка фільтрації даних', { component: 'SearchCommand', error });
       throw error;
     }
   }
@@ -571,7 +604,7 @@ export class SearchCommand extends BaseCommand {
         return `**${index + 1}.** ${formattedRow.slice(0, 3).join(' | ')}`;
       });
     } catch (error) {
-      logger.error('Помилка форматування результатів', { error });
+      logger.error('Помилка форматування результатів', { component: 'SearchCommand', error });
       return ['Помилка форматування результатів'];
     }
   }
@@ -620,7 +653,7 @@ export class SearchCommand extends BaseCommand {
   /**
    * Створення кнопок пагінації
    */
-  private createPaginationComponents(searchResult: SearchResult, currentPage: number): any[] {
+  private createPaginationComponents(searchResult: SearchResult, currentPage: number): ActionRowBuilder<ButtonBuilder>[] {
     const totalPages = Math.ceil(searchResult.filteredCount / SEARCH_CONFIG.DEFAULT_LIMIT);
     
     if (totalPages <= 1) return [];
@@ -695,7 +728,7 @@ export class SearchCommand extends BaseCommand {
   /**
    * Обробка помилки пошуку
    */
-  private async handleSearchError(interaction: any, error: unknown): Promise<void> {
+  private async handleSearchError(interaction: ChatInputCommandInteraction, error: unknown): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
     
     const errorEmbed = new EmbedBuilder()
@@ -715,16 +748,21 @@ export class SearchCommand extends BaseCommand {
         await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
       }
     } catch (replyError) {
-      logger.error('Помилка відправки повідомлення про помилку пошуку', { error: replyError });
+      logger.error('Помилка відправки повідомлення про помилку пошуку', { component: 'SearchCommand', error: replyError });
     }
   }
 
   /**
    * Отримання статистики пошуку
    */
-  public getSearchStats(): any {
+  public getSearchStats(): { totalSearches: number; cacheHits: number; cacheMisses: number; averageSearchTime: number; totalSearchTime: number; errors: number; cacheSize: number; paginationStates: number } {
     return {
-      ...this.searchStats,
+      totalSearches: this.searchStats.totalSearches,
+      cacheHits: this.searchStats.cacheHits,
+      cacheMisses: this.searchStats.cacheMisses,
+      averageSearchTime: this.searchStats.averageSearchTime,
+      totalSearchTime: this.searchStats.totalSearchTime,
+      errors: this.searchStats.errors,
       cacheSize: this.searchCache.size,
       paginationStates: this.paginationStates.size,
     };
