@@ -3,29 +3,10 @@
  * Спеціалізовані звіти та аналіз даних
  */
 
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import type { BotConfig, CommandExecuteOptions } from '@/types';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import type { BotConfig, CommandExecuteOptions, LogMeta } from '@/types';
 import { BaseCommand } from './BaseCommand';
-
-interface ReportOptions {
-  type: string;
-  format?: string;
-}
-
-interface StatisticsOptions {
-  category: string;
-}
-
-interface ForecastOptions {
-  type: string;
-  period?: number;
-}
-
-interface ComparisonOptions {
-  object: string;
-  metric: string;
-  period?: number;
-}
+import logger from '@/utils/logger';
 
 export class AnalyticsCommand extends BaseCommand {
   constructor(config: BotConfig) {
@@ -33,6 +14,7 @@ export class AnalyticsCommand extends BaseCommand {
       'аналітика',
       '📊 Аналітика та звітність ЗСУ',
       config,
+      {},
       (builder: any) => {
         return builder
           .addSubcommand((subcommand: any) =>
@@ -180,7 +162,7 @@ export class AnalyticsCommand extends BaseCommand {
           await interaction.reply('❌ Невідома підкоманда');
       }
     } catch (error) {
-      console.error('❌ Помилка команди аналітики:', error);
+      logger.error('❌ Помилка команди аналітики', { error } as LogMeta);
       await interaction.reply('❌ Помилка аналітики');
     }
   }
@@ -191,11 +173,6 @@ export class AnalyticsCommand extends BaseCommand {
   private async handleReport(interaction: any): Promise<void> {
     const type = interaction.options.getString('тип', true);
     const format = interaction.options.getString('формат') || 'text';
-
-    const reportOptions: ReportOptions = {
-      type,
-      format,
-    };
 
     const embed = new EmbedBuilder()
       .setTitle('📋 Генерація звітів')
@@ -229,10 +206,6 @@ export class AnalyticsCommand extends BaseCommand {
    */
   private async handleStatistics(interaction: any): Promise<void> {
     const category = interaction.options.getString('категорія', true);
-
-    const statisticsOptions: StatisticsOptions = {
-      category,
-    };
 
     const embed = new EmbedBuilder()
       .setTitle('📈 Статистика та метрики')
@@ -309,11 +282,6 @@ export class AnalyticsCommand extends BaseCommand {
     const type = interaction.options.getString('тип', true);
     const period = interaction.options.getInteger('період') || 30;
 
-    const forecastOptions: ForecastOptions = {
-      type,
-      period,
-    };
-
     const embed = new EmbedBuilder()
       .setTitle('🔮 Прогнозування та планування')
       .setColor(0x9932cc)
@@ -338,12 +306,6 @@ export class AnalyticsCommand extends BaseCommand {
     const object = interaction.options.getString('об\'єкт', true);
     const metric = interaction.options.getString('метрика', true);
     const period = interaction.options.getInteger('період') || 30;
-
-    const comparisonOptions: ComparisonOptions = {
-      object,
-      metric,
-      period,
-    };
 
     const embed = new EmbedBuilder()
       .setTitle('⚖️ Порівняльний аналіз')
