@@ -8,14 +8,12 @@ import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, But
 import type { 
   BotConfig, 
   CommandExecuteOptions,
-  CommandAutocompleteOptions,
   SheetData,
   SearchParams
 } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
-import { sanitizeInput, validateCommandOptions } from '@/utils/security';
-import { DataFormatters } from '@/utils/formatters';
+import { sanitizeInput } from '@/utils/security';
 
 // Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
@@ -273,7 +271,7 @@ export class SearchCommand extends BaseCommand {
   /**
    * Виконання пошуку з кешуванням
    */
-  private async performSearchWithCache(searchParams: SearchParams, userId: string): Promise<SearchResult> {
+  private async performSearchWithCache(searchParams: SearchParams, _userId: string): Promise<SearchResult> {
     const cacheKey = this.generateSearchCacheKey(searchParams);
     
     // Перевірка кешу
@@ -298,7 +296,9 @@ export class SearchCommand extends BaseCommand {
     // Обмеження розміру кешу
     if (this.searchCache.size > 100) {
       const oldestKey = this.searchCache.keys().next().value;
-      this.searchCache.delete(oldestKey);
+      if (typeof oldestKey === 'string') {
+        this.searchCache.delete(oldestKey);
+      }
     }
 
     return { ...searchResult, cacheHit: false };
@@ -324,8 +324,9 @@ export class SearchCommand extends BaseCommand {
         throw new Error('Немає даних для пошуку');
       }
 
-      const headers = sheetData.values[0];
-      const rows = sheetData.values.slice(1);
+      const values = sheetData.values as string[][];
+      const headers = values[0] as string[];
+      const rows = values.slice(1) as string[][];
 
       // Фільтрація даних
       const filteredRows = this.filterData(rows, headers, searchParams);
@@ -356,9 +357,13 @@ export class SearchCommand extends BaseCommand {
    * Отримання даних з таймаутом
    */
   private async getSheetDataWithTimeout(googleService: any): Promise<SheetData> {
+    const spreadsheetId: string | undefined = (this as any).config?.google?.spreadsheetId;
+    if (!spreadsheetId) {
+      throw new Error('Не вказано spreadsheetId в конфігурації');
+    }
     return Promise.race([
       googleService.getSheetData(
-        (this as any).config.google.spreadsheetId,
+        spreadsheetId,
         'A:Z',
         { useCache: true, cacheTTL: SEARCH_CONFIG.CACHE_TTL }
       ),
@@ -426,7 +431,7 @@ export class SearchCommand extends BaseCommand {
 
       return filteredRows;
     } catch (error) {
-      logger.error('Помилка фільтрації даних', error);
+      logger.error('Помилка фільтрації даних', { error });
       throw error;
     }
   }
@@ -434,11 +439,11 @@ export class SearchCommand extends BaseCommand {
   /**
    * Перевірка відповідності запиту з оптимізацією
    */
-  private matchesQuery(row: string[], headers: string[], query: string): boolean {
+  private matchesQuery(row: string[], _headers: string[], query: string): boolean {
     const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 0);
     if (searchTerms.length === 0) return true;
 
-    return row.some((cell, index) => {
+    return row.some((cell) => {
       const cellValue = cell.toLowerCase();
       return searchTerms.some(term => cellValue.includes(term));
     });
@@ -511,7 +516,7 @@ export class SearchCommand extends BaseCommand {
   /**
    * Парсинг дати з покращеною обробкою помилок
    */
-  private parseDate(dateString: string): Date | null {
+  private parseDate(dateString: string | undefined): Date | null {
     if (!dateString || typeof dateString !== 'string') return null;
 
     try {
@@ -525,13 +530,20 @@ export class SearchCommand extends BaseCommand {
       for (const format of formats) {
         const match = dateString.match(format);
         if (match) {
-          const [, day, month, year] = match;
-          const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          const day = match[1];
+          const month = match[2];
+          const year = match[3];
+          if (!day || !month || !year) continue;
+
+          const dNum = parseInt(day, 10);
+          const mNum = parseInt(month, 10);
+          const yNum = parseInt(year, 10);
+          const date = new Date(yNum, mNum - 1, dNum);
           
           // Перевірка валідності дати
-          if (date.getFullYear() === parseInt(year) && 
-              date.getMonth() === parseInt(month) - 1 && 
-              date.getDate() === parseInt(day)) {
+          if (date.getFullYear() === yNum && 
+              date.getMonth() === mNum - 1 && 
+              date.getDate() === dNum) {
             return date;
           }
         }
@@ -559,7 +571,7 @@ export class SearchCommand extends BaseCommand {
         return `**${index + 1}.** ${formattedRow.slice(0, 3).join(' | ')}`;
       });
     } catch (error) {
-      logger.error('Помилка форматування результатів', error);
+      logger.error('Помилка форматування результатів', { error });
       return ['Помилка форматування результатів'];
     }
   }
@@ -646,11 +658,7 @@ export class SearchCommand extends BaseCommand {
     return `search:${Buffer.from(sortedParams).toString('base64')}`;
   }
 
-  // Align with BaseCommand signature; use a conservative default key
-  protected override generateCacheKey(options: CommandExecuteOptions): string {
-    const user = (options as any)?.interaction?.user?.id ?? 'unknown';
-    return `search:user:${user}`;
-  }
+  // Приватний cacheKey базового класу не перевизначаємо
 
   /**
    * Отримання назви типу документа
@@ -674,7 +682,7 @@ export class SearchCommand extends BaseCommand {
   /**
    * Оновлення статистики пошуку
    */
-  private updateSearchStats(success: boolean, duration: number, cacheHit: boolean): void {
+  private updateSearchStats(success: boolean, duration: number, _cacheHit: boolean): void {
     this.searchStats.totalSearches++;
     this.searchStats.totalSearchTime += duration;
     this.searchStats.averageSearchTime = this.searchStats.totalSearchTime / this.searchStats.totalSearches;
@@ -707,7 +715,7 @@ export class SearchCommand extends BaseCommand {
         await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
       }
     } catch (replyError) {
-      logger.error('Помилка відправки повідомлення про помилку пошуку', replyError);
+      logger.error('Помилка відправки повідомлення про помилку пошуку', { error: replyError });
     }
   }
 
@@ -722,45 +730,5 @@ export class SearchCommand extends BaseCommand {
     };
   }
 
-  /**
-   * Очищення застарілих даних
-   */
-  public cleanupExpiredData(): void {
-    const now = Date.now();
-    let cleanedCache = 0;
-    let cleanedPagination = 0;
-
-    // Очищення кешу
-    for (const [key, cached] of this.searchCache.entries()) {
-      if (now - cached.timestamp > SEARCH_CONFIG.CACHE_TTL * 1000) {
-        this.searchCache.delete(key);
-        cleanedCache++;
-      }
-    }
-
-    // Очищення пагінації
-    for (const [userId, state] of this.paginationStates.entries()) {
-      if (now - state.timestamp > SEARCH_CONFIG.PAGINATION_TIMEOUT) {
-        this.paginationStates.delete(userId);
-        cleanedPagination++;
-      }
-    }
-
-    if (cleanedCache > 0 || cleanedPagination > 0) {
-      logger.debug('Очищено застарілі дані пошуку', {
-        cache: cleanedCache,
-        pagination: cleanedPagination,
-      });
-    }
-  }
-
-  /**
-   * Завершення роботи
-   */
-  public async shutdown(): Promise<void> {
-    await super.shutdown();
-    this.searchCache.clear();
-    this.paginationStates.clear();
-    logger.info('Команда пошуку зупинена');
-  }
+  // Примітка: керування очищенням/завершенням виконується базовим класом
 } 
