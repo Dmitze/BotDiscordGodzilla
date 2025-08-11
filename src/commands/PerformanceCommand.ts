@@ -3,9 +3,10 @@
  * Відстеження метрик та оптимізація системи
  */
 
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
+import logger from '@/utils/logger';
 
 interface QueueStats {
   high?: { length: number; processing: number };
@@ -38,6 +39,7 @@ export class PerformanceCommand extends BaseCommand {
       'продуктивність',
       '📊 Моніторинг продуктивності системи',
       config,
+      {},
       (builder: any) => {
         return builder
           .addSubcommand((subcommand: any) =>
@@ -98,7 +100,10 @@ export class PerformanceCommand extends BaseCommand {
           await interaction.reply('❌ Невідома підкоманда');
       }
     } catch (error) {
-      console.error('❌ Помилка команди продуктивності:', error);
+      logger.error('Помилка команди продуктивності', {
+        error: error instanceof Error ? error.message : String(error),
+        userId: interaction.user?.id,
+      });
       await interaction.reply('❌ Помилка отримання статистики продуктивності');
     }
   }
@@ -106,7 +111,7 @@ export class PerformanceCommand extends BaseCommand {
   /**
    * Показ загального статусу
    */
-  private async showGeneralStatus(interaction: any): Promise<void> {
+  private async showGeneralStatus(interaction: ChatInputCommandInteraction): Promise<void> {
     const bot = (interaction.client as any).bot;
     const embed = new EmbedBuilder()
       .setTitle('📊 Статус продуктивності системи')
@@ -172,7 +177,7 @@ export class PerformanceCommand extends BaseCommand {
   /**
    * Показ статистики кешу
    */
-  private async showCacheStats(interaction: any): Promise<void> {
+  private async showCacheStats(interaction: ChatInputCommandInteraction): Promise<void> {
     const bot = (interaction.client as any).bot;
     const embed = new EmbedBuilder()
       .setTitle('📋 Статистика кешування')
@@ -232,7 +237,7 @@ export class PerformanceCommand extends BaseCommand {
   /**
    * Показ статистики черг
    */
-  private async showQueueStats(interaction: any): Promise<void> {
+  private async showQueueStats(interaction: ChatInputCommandInteraction): Promise<void> {
     const bot = (interaction.client as any).bot;
     const embed = new EmbedBuilder()
       .setTitle('📋 Статистика черг завдань')
@@ -284,7 +289,7 @@ export class PerformanceCommand extends BaseCommand {
   /**
    * Показ статистики API
    */
-  private async showApiStats(interaction: any): Promise<void> {
+  private async showApiStats(interaction: ChatInputCommandInteraction): Promise<void> {
     const bot = (interaction.client as any).bot;
     const embed = new EmbedBuilder()
       .setTitle('🌐 Статистика API запитів')
@@ -321,7 +326,7 @@ export class PerformanceCommand extends BaseCommand {
   /**
    * Показ рекомендацій по оптимізації
    */
-  private async showOptimizationRecommendations(interaction: any): Promise<void> {
+  private async showOptimizationRecommendations(interaction: ChatInputCommandInteraction): Promise<void> {
     const bot = (interaction.client as any).bot;
     const embed = new EmbedBuilder()
       .setTitle('💡 Рекомендації по оптимізації')
