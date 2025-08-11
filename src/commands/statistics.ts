@@ -6,7 +6,6 @@
 
 import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
-import type { LogMeta } from '@/types';
 import { GoogleService } from '@/services/GoogleService';
 import { sanitizeInput, validateCommandOptions } from '@/utils/security';
 import logger from '@/utils/logger';
@@ -152,7 +151,14 @@ class StatisticsCommand {
 
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error(`Помилка команди statistics після ${duration.toFixed(2)}ms:`, error as unknown as LogMeta);
+      logger.error(`Помилка команди statistics після ${duration.toFixed(2)}ms:`, {
+        type: 'command', component: 'StatisticsCommand', event: 'execute_failed',
+        userId: interaction?.user?.id, guildId: interaction?.guildId,
+        durationMs: Number(duration.toFixed(2)),
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
 
       await this.handleError(interaction, error);
     }
@@ -266,7 +272,13 @@ class StatisticsCommand {
       };
 
     } catch (error) {
-      logger.error('Помилка отримання статистики:', error as unknown as LogMeta);
+      logger.error('Помилка отримання статистики:', {
+        type: 'command', component: 'StatisticsCommand', event: 'get_statistics_failed',
+        operation: config.operation, sheets: config.sheets, range: config.range,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -305,10 +317,15 @@ class StatisticsCommand {
           }
         }
 
-        logger.debug(`Оброблено аркуш ${sheetName}`, { total, isEven });
+        logger.debug(`Оброблено аркуш ${sheetName}`, { type: 'command', component: 'StatisticsCommand', event: 'sheet_processed', sheetName, total, isEven });
 
       } catch (error) {
-        logger.error(`Помилка обробки аркуша ${sheetName}:`, error as unknown as LogMeta);
+        logger.error(`Помилка обробки аркуша ${sheetName}:`, {
+          type: 'command', component: 'StatisticsCommand', event: 'sheet_process_failed', sheetName,
+          errorName: error instanceof Error ? error.name : undefined,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
       }
     }
 
@@ -323,7 +340,7 @@ class StatisticsCommand {
       throw new Error('Власна формула не надана');
     }
     // Функціонал складних формул наразі недоступний у сервісах. Лише валідуємо та відхиляємо.
-    logger.warn('Виконання складної формули наразі не підтримується');
+    logger.warn('Виконання складної формули наразі не підтримується', { type: 'command', component: 'StatisticsCommand', event: 'complex_formula_unsupported' });
     throw new Error('Складні формули тимчасово недоступні');
   }
 
@@ -368,7 +385,12 @@ class StatisticsCommand {
         }
 
       } catch (error) {
-        logger.error(`Помилка обробки аркуша ${sheetName}:`, error as unknown as LogMeta);
+        logger.error(`Помилка обробки аркуша ${sheetName}:`, {
+          type: 'command', component: 'StatisticsCommand', event: 'sheet_process_failed', sheetName,
+          errorName: error instanceof Error ? error.name : undefined,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
       }
     }
 
@@ -500,7 +522,13 @@ class StatisticsCommand {
         });
       }
     } catch (replyError) {
-      logger.error('Помилка відповіді на помилку:', replyError as unknown as LogMeta);
+      logger.error('Помилка відповіді на помилку', {
+        type: 'command',
+        command: this.name,
+        component: 'StatisticsCommand.handleError',
+        error: replyError instanceof Error ? replyError.message : String(replyError),
+        stack: replyError instanceof Error ? replyError.stack : undefined,
+      });
     }
   }
 
