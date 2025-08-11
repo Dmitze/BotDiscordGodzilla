@@ -120,7 +120,14 @@ export abstract class BaseCommand {
       try {
         builder(this.data);
       } catch (error) {
-        logger.error(`Помилка створення builder для команди ${name}:`, { error });
+        logger.error('Помилка створення builder для команди', {
+          type: 'command',
+          component: name,
+          event: 'builder_failed',
+          errorName: error instanceof Error ? error.name : undefined,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
         throw new Error(`Помилка створення команди: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
       }
     }
@@ -152,7 +159,10 @@ export abstract class BaseCommand {
     // Запуск періодичного очищення
     this.startCleanupInterval();
     
-    logger.info(`Команда ${name} ініціалізована`, {
+    logger.info('Команда ініціалізована', {
+      type: 'command',
+      component: name,
+      event: 'initialized',
       category: this.category,
       cooldown: this.cooldown,
       permissions: this.permissions,
@@ -247,8 +257,11 @@ export abstract class BaseCommand {
         lastError = error instanceof Error ? error : new Error(String(error));
         
         if (attempt < COMMAND_CONFIG.MAX_RETRIES) {
-          logger.warn(`Спроба ${attempt} команди ${this.name} невдала, повтор...`, {
-            error: lastError.message,
+          logger.warn('Спроба виконання невдала, повтор', {
+            type: 'command',
+            component: this.name,
+            event: 'retry',
+            errorMessage: lastError.message,
             attempt,
             maxRetries: COMMAND_CONFIG.MAX_RETRIES,
           });
@@ -320,7 +333,14 @@ export abstract class BaseCommand {
         sanitizedOptions: options.options,
       };
     } catch (error) {
-      logger.error('Помилка валідації команди:', { error });
+      logger.error('Помилка валідації команди', {
+        type: 'command',
+        component: this.name,
+        event: 'validation_error',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return {
         isValid: false,
         errors: ['Помилка валідації команди'],
@@ -336,15 +356,23 @@ export abstract class BaseCommand {
     const startTime = performance.now();
     
     try {
-      logger.debug(`Автодоповнення для команди ${this.name}`, {
-        user: options.interaction.user.tag,
+      logger.debug('Автодоповнення почато', {
+        type: 'command',
+        component: this.name,
+        event: 'autocomplete_start',
+        userTag: options.interaction.user.tag,
         query: options.query,
       });
 
       await this.onAutocomplete(options);
 
       const duration = performance.now() - startTime;
-      logger.debug(`Автодоповнення ${this.name} завершено за ${duration.toFixed(2)}ms`);
+      logger.debug('Автодоповнення завершено', {
+        type: 'command',
+        component: this.name,
+        event: 'autocomplete_finish',
+        durationMs: Number(duration.toFixed(2)),
+      });
       
     } catch (error) {
       // keep duration calculation if needed in future metrics
@@ -360,8 +388,11 @@ export abstract class BaseCommand {
     const startTime = performance.now();
     
     try {
-      logger.debug(`Обробка компонента для команди ${this.name}`, {
-        user: options.interaction.user.tag,
+      logger.debug('Обробка компонента почата', {
+        type: 'command',
+        component: this.name,
+        event: 'component_start',
+        userTag: options.interaction.user.tag,
         componentType: options.componentType,
         customId: options.interaction.customId,
       });
@@ -369,7 +400,12 @@ export abstract class BaseCommand {
       await this.onComponent(options);
 
       const duration = performance.now() - startTime;
-      logger.debug(`Компонент ${this.name} оброблено за ${duration.toFixed(2)}ms`);
+      logger.debug('Обробка компонента завершена', {
+        type: 'command',
+        component: this.name,
+        event: 'component_finish',
+        durationMs: Number(duration.toFixed(2)),
+      });
       
     } catch (error) {
       // keep duration calculation if needed in future metrics
