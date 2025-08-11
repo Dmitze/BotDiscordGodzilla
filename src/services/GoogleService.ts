@@ -73,7 +73,7 @@ export class GoogleService extends BaseServiceClass {
    */
   protected async onInitialize(): Promise<void> {
     try {
-      logger.info('🔧 Ініціалізація Google Service...', { type: 'system', event: 'google_service_init' });
+      logger.info('🔧 Ініціалізація Google Service...', { type: 'system', event: 'google_service_init', component: 'GoogleService' });
 
       // Ініціалізація кешу
       await this.cacheService.initialize();
@@ -87,16 +87,16 @@ export class GoogleService extends BaseServiceClass {
       // Створення connection pool
       await this.initializeConnectionPool();
 
-      logger.info('✅ Google Service ініціалізовано', { type: 'system', event: 'google_service_init_success' });
+      logger.info('✅ Google Service ініціалізовано', { type: 'system', event: 'google_service_init_success', component: 'GoogleService' });
     } catch (error) {
       if (error instanceof Error) {
         logger.error('❌ Помилка ініціалізації Google Service', {
-          type: 'system', event: 'google_service_init_failed',
+          type: 'system', event: 'google_service_init_failed', component: 'GoogleService',
           errorName: error.name, errorMessage: error.message, stack: error.stack,
           severity: 'critical',
         });
       } else {
-        logger.error('❌ Помилка ініціалізації Google Service', { type: 'system', event: 'google_service_init_failed', errorMessage: String(error), severity: 'critical' });
+        logger.error('❌ Помилка ініціалізації Google Service', { type: 'system', event: 'google_service_init_failed', component: 'GoogleService', errorMessage: String(error), severity: 'critical' });
       }
       throw error;
     }
@@ -126,12 +126,12 @@ export class GoogleService extends BaseServiceClass {
 
       // Авторизація
       await this.auth.authorize();
-      logger.info('✅ Google автентифікація успішна', { type: 'system', event: 'google_auth_success' });
+      logger.info('✅ Google автентифікація успішна', { type: 'system', event: 'google_auth_success', component: 'GoogleService' });
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка Google автентифікації', { type: 'api_error', event: 'google_auth_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'google' });
+        logger.error('❌ Помилка Google автентифікації', { type: 'api_error', event: 'google_auth_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'google' });
       } else {
-        logger.error('❌ Помилка Google автентифікації', { type: 'api_error', event: 'google_auth_failed', service: 'google', errorMessage: String(error) });
+        logger.error('❌ Помилка Google автентифікації', { type: 'api_error', event: 'google_auth_failed', component: 'GoogleService', service: 'google', errorMessage: String(error) });
       }
       throw error;
     }
@@ -151,12 +151,12 @@ export class GoogleService extends BaseServiceClass {
       // Google Docs API
       this.docs = google.docs({ version: 'v1', auth: this.auth });
 
-      logger.info('✅ Google API клієнти ініціалізовано', { type: 'system', event: 'google_api_init_success' });
+      logger.info('✅ Google API клієнти ініціалізовано', { type: 'system', event: 'google_api_init_success', component: 'GoogleService' });
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка ініціалізації Google API', { type: 'api_error', event: 'google_api_init_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'google' });
+        logger.error('❌ Помилка ініціалізації Google API', { type: 'api_error', event: 'google_api_init_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'google' });
       } else {
-        logger.error('❌ Помилка ініціалізації Google API', { type: 'api_error', event: 'google_api_init_failed', service: 'google', errorMessage: String(error) });
+        logger.error('❌ Помилка ініціалізації Google API', { type: 'api_error', event: 'google_api_init_failed', component: 'GoogleService', service: 'google', errorMessage: String(error) });
       }
       throw error;
     }
@@ -177,12 +177,12 @@ export class GoogleService extends BaseServiceClass {
         });
       }
 
-      logger.info('✅ Connection Pool ініціалізовано', { type: 'system', event: 'connection_pool_init_success' });
+      logger.info('✅ Connection Pool ініціалізовано', { type: 'system', event: 'connection_pool_init_success', component: 'GoogleService' });
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка ініціалізації Connection Pool', { type: 'system', event: 'connection_pool_init_failed', errorName: error.name, errorMessage: error.message, stack: error.stack });
+        logger.error('❌ Помилка ініціалізації Connection Pool', { type: 'system', event: 'connection_pool_init_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack });
       } else {
-        logger.error('❌ Помилка ініціалізації Connection Pool', { type: 'system', event: 'connection_pool_init_failed', errorMessage: String(error) });
+        logger.error('❌ Помилка ініціалізації Connection Pool', { type: 'system', event: 'connection_pool_init_failed', component: 'GoogleService', errorMessage: String(error) });
       }
       throw error;
     }
@@ -276,7 +276,7 @@ export class GoogleService extends BaseServiceClass {
           if (cached) {
             this.stats.cacheHits++;
             logger.debug('✅ Використано кешовані дані Sheets', {
-              type: 'system', event: 'cache_hit',
+              type: 'system', event: 'cache_hit', component: 'GoogleService',
               spreadsheetId: spreadsheetId.substring(0, 10) + '...',
               range,
               rowsCount: cached.values.length
@@ -287,7 +287,7 @@ export class GoogleService extends BaseServiceClass {
           }
         } catch (cacheError) {
           if (cacheError instanceof Error) {
-            logger.warn('⚠️ Помилка читання з кешу Sheets', { type: 'system', event: 'cache_read_failed', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack, component: 'CacheService' });
+            logger.warn('⚠️ Помилка читання з кешу Sheets', { type: 'system', event: 'cache_read_failed', component: 'CacheService', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack });
           } else {
             logger.warn('⚠️ Помилка читання з кешу Sheets', { type: 'system', event: 'cache_read_failed', component: 'CacheService', errorMessage: String(cacheError) });
           }
@@ -317,9 +317,10 @@ export class GoogleService extends BaseServiceClass {
       if (useCache) {
         const cacheKey = `sheets:${spreadsheetId}:${range}`;
         try {
-          await this.cacheService.set(cacheKey, result, cacheTTL * 1000);
+          // CacheService expects TTL in seconds; do not convert to ms
+          await this.cacheService.set(cacheKey, result, cacheTTL);
           logger.debug('💾 Дані Sheets збережено в кеш', {
-            type: 'system', event: 'cache_write',
+            type: 'system', event: 'cache_write', component: 'GoogleService',
             spreadsheetId: spreadsheetId.substring(0, 10) + '...',
             range,
             rowsCount: result.values.length,
@@ -327,7 +328,7 @@ export class GoogleService extends BaseServiceClass {
           });
         } catch (cacheError) {
           if (cacheError instanceof Error) {
-            logger.warn('⚠️ Помилка збереження в кеш Sheets', { type: 'system', event: 'cache_write_failed', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack, component: 'CacheService' });
+            logger.warn('⚠️ Помилка збереження в кеш Sheets', { type: 'system', event: 'cache_write_failed', component: 'CacheService', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack });
           } else {
             logger.warn('⚠️ Помилка збереження в кеш Sheets', { type: 'system', event: 'cache_write_failed', component: 'CacheService', errorMessage: String(cacheError) });
           }
@@ -337,9 +338,9 @@ export class GoogleService extends BaseServiceClass {
       return result;
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка отримання даних з Sheets', { type: 'api_error', event: 'sheets_get_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range });
+        logger.error('❌ Помилка отримання даних з Sheets', { type: 'api_error', event: 'sheets_get_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range });
       } else {
-        logger.error('❌ Помилка отримання даних з Sheets', { type: 'api_error', event: 'sheets_get_failed', service: 'sheets', spreadsheetId, range, errorMessage: String(error) });
+        logger.error('❌ Помилка отримання даних з Sheets', { type: 'api_error', event: 'sheets_get_failed', component: 'GoogleService', service: 'sheets', spreadsheetId, range, errorMessage: String(error) });
       }
       throw error;
     }
@@ -379,13 +380,13 @@ export class GoogleService extends BaseServiceClass {
         try {
           await this.cacheService.delete(cacheKey);
           logger.debug('🗑️ Кеш Sheets очищено', {
-            type: 'system', event: 'cache_delete',
+            type: 'system', event: 'cache_delete', component: 'GoogleService',
             spreadsheetId: spreadsheetId.substring(0, 10) + '...',
             range
           });
         } catch (cacheError) {
           if (cacheError instanceof Error) {
-            logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack, component: 'CacheService' });
+            logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', component: 'CacheService', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack });
           } else {
             logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', component: 'CacheService', errorMessage: String(cacheError) });
           }
@@ -393,9 +394,9 @@ export class GoogleService extends BaseServiceClass {
       }
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка запису в Sheets', { type: 'api_error', event: 'sheets_write_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range });
+        logger.error('❌ Помилка запису в Sheets', { type: 'api_error', event: 'sheets_write_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range });
       } else {
-        logger.error('❌ Помилка запису в Sheets', { type: 'api_error', event: 'sheets_write_failed', service: 'sheets', spreadsheetId, range, errorMessage: String(error) });
+        logger.error('❌ Помилка запису в Sheets', { type: 'api_error', event: 'sheets_write_failed', component: 'GoogleService', service: 'sheets', spreadsheetId, range, errorMessage: String(error) });
       }
       throw error;
     }
@@ -543,13 +544,13 @@ export class GoogleService extends BaseServiceClass {
               try {
                 await this.cacheService.delete(cacheKey);
                 logger.debug('🗑️ Кеш Sheets очищено', {
-                  type: 'system', event: 'cache_delete',
+                  type: 'system', event: 'cache_delete', component: 'GoogleService',
                   spreadsheetId: spreadsheetId.substring(0, 10) + '...',
                   range: item.range
                 });
               } catch (cacheError) {
                 if (cacheError instanceof Error) {
-                  logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack, component: 'CacheService' });
+                  logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', component: 'CacheService', errorName: cacheError.name, errorMessage: cacheError.message, stack: cacheError.stack });
                 } else {
                   logger.warn('⚠️ Помилка очищення кешу Sheets', { type: 'system', event: 'cache_delete_failed', component: 'CacheService', errorMessage: String(cacheError) });
                 }
@@ -558,9 +559,9 @@ export class GoogleService extends BaseServiceClass {
           }
         } catch (error) {
           if (error instanceof Error) {
-            logger.error('❌ Помилка batch запису', { type: 'api_error', event: 'sheets_batch_write_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId });
+            logger.error('❌ Помилка batch запису', { type: 'api_error', event: 'sheets_batch_write_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId });
           } else {
-            logger.error('❌ Помилка batch запису', { type: 'api_error', event: 'sheets_batch_write_failed', service: 'sheets', spreadsheetId, errorMessage: String(error) });
+            logger.error('❌ Помилка batch запису', { type: 'api_error', event: 'sheets_batch_write_failed', component: 'GoogleService', service: 'sheets', spreadsheetId, errorMessage: String(error) });
           }
           if (retryFailed) {
             failedBatches.push(...chunk);
@@ -575,18 +576,18 @@ export class GoogleService extends BaseServiceClass {
             await this.writeSheetData(spreadsheetId, item.range, item.values, { useCache: false });
           } catch (error) {
             if (error instanceof Error) {
-              logger.error(`❌ Повторна спроба невдала для range: ${item.range}`, { type: 'api_error', event: 'sheets_retry_write_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range: item.range });
+              logger.error(`❌ Повторна спроба невдала для range: ${item.range}`, { type: 'api_error', event: 'sheets_retry_write_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId, range: item.range });
             } else {
-              logger.error(`❌ Повторна спроба невдала для range: ${item.range}`, { type: 'api_error', event: 'sheets_retry_write_failed', service: 'sheets', spreadsheetId, range: item.range, errorMessage: String(error) });
+              logger.error(`❌ Повторна спроба невдала для range: ${item.range}`, { type: 'api_error', event: 'sheets_retry_write_failed', component: 'GoogleService', service: 'sheets', spreadsheetId, range: item.range, errorMessage: String(error) });
             }
           }
         }
       }
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка batch запису даних', { type: 'api_error', event: 'sheets_batch_write_failed_final', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId });
+        logger.error('❌ Помилка batch запису даних', { type: 'api_error', event: 'sheets_batch_write_failed_final', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'sheets', spreadsheetId });
       } else {
-        logger.error('❌ Помилка batch запису даних', { type: 'api_error', event: 'sheets_batch_write_failed_final', service: 'sheets', spreadsheetId, errorMessage: String(error) });
+        logger.error('❌ Помилка batch запису даних', { type: 'api_error', event: 'sheets_batch_write_failed_final', component: 'GoogleService', service: 'sheets', spreadsheetId, errorMessage: String(error) });
       }
       throw error;
     }
@@ -618,9 +619,9 @@ export class GoogleService extends BaseServiceClass {
       return result;
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка пошуку файлів', { type: 'api_error', event: 'drive_search_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'drive', query });
+        logger.error('❌ Помилка пошуку файлів', { type: 'api_error', event: 'drive_search_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'drive', query });
       } else {
-        logger.error('❌ Помилка пошуку файлів', { type: 'api_error', event: 'drive_search_failed', service: 'drive', query, errorMessage: String(error) });
+        logger.error('❌ Помилка пошуку файлів', { type: 'api_error', event: 'drive_search_failed', component: 'GoogleService', service: 'drive', query, errorMessage: String(error) });
       }
       throw error;
     }
@@ -651,9 +652,9 @@ export class GoogleService extends BaseServiceClass {
       return result;
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка отримання метаданих файлу', { type: 'api_error', event: 'drive_metadata_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'drive', fileId });
+        logger.error('❌ Помилка отримання метаданих файлу', { type: 'api_error', event: 'drive_metadata_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'drive', fileId });
       } else {
-        logger.error('❌ Помилка отримання метаданих файлу', { type: 'api_error', event: 'drive_metadata_failed', service: 'drive', fileId, errorMessage: String(error) });
+        logger.error('❌ Помилка отримання метаданих файлу', { type: 'api_error', event: 'drive_metadata_failed', component: 'GoogleService', service: 'drive', fileId, errorMessage: String(error) });
       }
       throw error;
     }
@@ -682,9 +683,9 @@ export class GoogleService extends BaseServiceClass {
       return result;
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка отримання контенту документа', { type: 'api_error', event: 'docs_content_failed', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'docs', documentId });
+        logger.error('❌ Помилка отримання контенту документа', { type: 'api_error', event: 'docs_content_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack, service: 'docs', documentId });
       } else {
-        logger.error('❌ Помилка отримання контенту документа', { type: 'api_error', event: 'docs_content_failed', service: 'docs', documentId, errorMessage: String(error) });
+        logger.error('❌ Помилка отримання контенту документа', { type: 'api_error', event: 'docs_content_failed', component: 'GoogleService', service: 'docs', documentId, errorMessage: String(error) });
       }
       throw error;
     }
@@ -797,12 +798,12 @@ export class GoogleService extends BaseServiceClass {
       this.docs = null;
       this.auth = null;
 
-      logger.info('✅ Google Service зупинено', { type: 'system', event: 'google_service_shutdown_success' });
+      logger.info('✅ Google Service зупинено', { type: 'system', event: 'google_service_shutdown_success', component: 'GoogleService' });
     } catch (error) {
       if (error instanceof Error) {
-        logger.error('❌ Помилка зупинки Google Service', { type: 'system', event: 'google_service_shutdown_failed', errorName: error.name, errorMessage: error.message, stack: error.stack });
+        logger.error('❌ Помилка зупинки Google Service', { type: 'system', event: 'google_service_shutdown_failed', component: 'GoogleService', errorName: error.name, errorMessage: error.message, stack: error.stack });
       } else {
-        logger.error('❌ Помилка зупинки Google Service', { type: 'system', event: 'google_service_shutdown_failed', errorMessage: String(error) });
+        logger.error('❌ Помилка зупинки Google Service', { type: 'system', event: 'google_service_shutdown_failed', component: 'GoogleService', errorMessage: String(error) });
       }
       throw error;
     }
