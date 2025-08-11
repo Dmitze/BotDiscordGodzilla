@@ -4,11 +4,10 @@
  * TypeScript версія 3.0.0
  */
 
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, type InteractionEditReplyOptions } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
-import type { BaseCommand } from '@/types';
+import type { LogMeta } from '@/types';
 import { GoogleService } from '@/services/GoogleService';
-import { AIService } from '@/services/AIService';
 import { sanitizeInput, validateCommandOptions } from '@/utils/security';
 import logger from '@/utils/logger';
 import { UIHelper } from '@/utils/uiHelpers';
@@ -32,24 +31,22 @@ interface StatisticsResult {
   processingTime: number;
 }
 
-class StatisticsCommand implements BaseCommand {
+class StatisticsCommand {
   public readonly name = 'statistics';
   public readonly description = 'Отримання статистики з Google Sheets з підтримкою складних формул';
   public readonly usage = '/statistics <операція> <аркуші> [опції]';
 
-  private readonly googleService: GoogleService;
-  private readonly aiService: AIService;
+  private readonly googleService: GoogleService | undefined;
 
-  constructor() {
-    this.googleService = new GoogleService();
-    this.aiService = new AIService();
+  constructor(googleService?: GoogleService) {
+    this.googleService = googleService;
   }
 
   /**
    * Створення команди
    */
   public getCommandData(): SlashCommandBuilder {
-    return new SlashCommandBuilder()
+    return (new SlashCommandBuilder()
       .setName(this.name)
       .setDescription(this.description)
       .addStringOption(option =>
@@ -101,13 +98,13 @@ class StatisticsCommand implements BaseCommand {
         option.setName('custom_formula')
           .setDescription('Власна формула для аналізу')
           .setRequired(false)
-      );
+      )) as unknown as SlashCommandBuilder;
   }
 
   /**
    * Виконання команди
    */
-  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+  public async execute(interaction: any): Promise<void> {
     const startTime = performance.now();
 
     try {
@@ -147,7 +144,7 @@ class StatisticsCommand implements BaseCommand {
         result: result.total,
       });
 
-      const edit: InteractionEditReplyOptions = { embeds: [embed] };
+      const edit: any = { embeds: [embed] };
       if (buttons) {
         edit.components = [buttons];
       }
@@ -164,7 +161,7 @@ class StatisticsCommand implements BaseCommand {
   /**
    * Витягування опцій з interaction
    */
-  private extractOptions(interaction: ChatInputCommandInteraction): StatisticsConfig {
+  private extractOptions(interaction: any): StatisticsConfig {
     const operation = interaction.options.getString('operation', true);
     const sheetsInput = interaction.options.getString('sheets', true);
     const range = interaction.options.getString('range') || 'H6:AB6';
@@ -182,15 +179,22 @@ class StatisticsCommand implements BaseCommand {
     const filtersSan = filtersInput ? sanitizeInput(filtersInput, 'command') : undefined;
     const filters = filtersSan ? JSON.parse(filtersSan.sanitizedValue || '{}') : {};
 
-    return {
+    const base: StatisticsConfig = {
       sheets,
       range,
       columnType,
       operation: operation as any,
       groupBy,
       filters,
-      customFormula: customFormula ? sanitizeInput(customFormula, 'command').sanitizedValue : undefined,
     };
+    if (customFormula) {
+      const cf = sanitizeInput(customFormula, 'command').sanitizedValue;
+      if (cf) {
+        // Only assign when non-empty to satisfy exactOptionalPropertyTypes
+        (base as any).customFormula = cf;
+      }
+    }
+    return base;
   }
 
   /**
@@ -275,6 +279,7 @@ class StatisticsCommand implements BaseCommand {
 
     for (const sheetName of config.sheets) {
       try {
+        if (!this.googleService) throw new Error('GoogleService не ініціалізовано');
         const data = await this.googleService.getSheetData(sheetName, config.range);
 
         if (!data || !data.values || data.values.length === 0) {
@@ -283,8 +288,11 @@ class StatisticsCommand implements BaseCommand {
         }
 
         const row: string[] = (data.values[0] ?? []) as string[]; // Перший рядок
-        const startCol = this.getColumnIndex(config.range.split(':')[0]);
-        const endCol = this.getColumnIndex(config.range.split(':')[1]);
+        const [startRef, endRef] = config.range.includes(':')
+          ? (config.range.split(':') as [string, string])
+          : ([config.range, config.range] as [string, string]);
+        const startCol = this.getColumnIndex(startRef);
+        const endCol = this.getColumnIndex(endRef);
 
         for (let col = startCol; col <= endCol; col++) {
           const isEvenColumn = col % 2 === 0;
@@ -328,6 +336,7 @@ class StatisticsCommand implements BaseCommand {
 
     for (const sheetName of config.sheets) {
       try {
+        if (!this.googleService) throw new Error('GoogleService не ініціалізовано');
         const data = await this.googleService.getSheetData(sheetName, config.range);
 
         if (!data || !data.values) continue;
@@ -371,9 +380,10 @@ class StatisticsCommand implements BaseCommand {
    * Отримання індексу стовпця
    */
   private getColumnIndex(column: string): number {
+    const letters = column.replace(/[^A-Za-z]/g, '').toUpperCase();
     let index = 0;
-    for (let i = 0; i < column.length; i++) {
-      index = index * 26 + (column.charCodeAt(i) - 64);
+    for (let i = 0; i < letters.length; i++) {
+      index = index * 26 + (letters.charCodeAt(i) - 64);
     }
     return index;
   }
@@ -400,8 +410,7 @@ class StatisticsCommand implements BaseCommand {
    * Створення embed для відповіді
    */
   private createStatisticsEmbed(result: StatisticsResult, config: StatisticsConfig): EmbedBuilder {
-    const embed = UIHelper.createBaseEmbed()
-      .setTitle('📊 Статистика Google Sheets')
+    const embed = UIHelper.createBaseEmbed('📊 Статистика Google Sheets', '')
       .setColor('#00ff00')
       .setTimestamp(result.timestamp);
 
@@ -429,7 +438,7 @@ class StatisticsCommand implements BaseCommand {
     );
 
     // Фільтри
-    if (Object.keys(config.filters).length > 0) {
+    if (config.filters && Object.keys(config.filters).length > 0) {
       const filtersText = Object.entries(config.filters)
         .map(([key, value]) => `**${key}**: ${value}`)
         .join('\n');
@@ -443,7 +452,7 @@ class StatisticsCommand implements BaseCommand {
   /**
    * Створення кнопок дій
    */
-  private createActionButtons(result: StatisticsResult, config: StatisticsConfig): ActionRowBuilder<ButtonBuilder> | null {
+  private createActionButtons(_result: StatisticsResult, _config: StatisticsConfig): ActionRowBuilder<ButtonBuilder> | null {
     const row = new ActionRowBuilder<ButtonBuilder>();
 
     // Кнопка експорту
@@ -476,7 +485,7 @@ class StatisticsCommand implements BaseCommand {
   /**
    * Обробка помилок
    */
-  private async handleError(interaction: ChatInputCommandInteraction, error: unknown): Promise<void> {
+  private async handleError(interaction: any, error: unknown): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
 
     try {
