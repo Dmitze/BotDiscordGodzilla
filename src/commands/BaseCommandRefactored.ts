@@ -120,7 +120,11 @@ export abstract class BaseCommand {
     this.validator = new CommandValidator();
     this.metrics = new CommandMetricsCollector();
 
-    logger.debug(`✅ Команда "${this.name}" ініціалізована`);
+    logger.debug('Команда ініціалізована', {
+      type: 'command',
+      component: this.name,
+      event: 'initialized',
+    });
   }
 
   /**
@@ -162,10 +166,15 @@ export abstract class BaseCommand {
 
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
-      logger.error(`❌ Помилка виконання команди "${this.name}":`, {
+      logger.error('Помилка виконання команди', {
+        type: 'command',
+        component: this.name,
+        event: 'execute_error',
         userId: interaction.user.id,
-        error,
-        duration: `${Date.now() - startTime}ms`,
+        errorMessage: error,
+        durationMs: Date.now() - startTime,
+        ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+        channelId: interaction.channelId,
       });
 
       await this.handleExecutionError(interaction, err);
@@ -210,7 +219,14 @@ export abstract class BaseCommand {
       };
 
     } catch (error) {
-      logger.error('❌ Помилка валідації команди:', { error });
+      logger.error('Помилка валідації команди', {
+        type: 'command',
+        component: this.name,
+        event: 'validation_error',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return {
         isValid: false,
         errors: ['Внутрішня помилка валідації'],
@@ -241,7 +257,13 @@ export abstract class BaseCommand {
       await this.execute(options);
     } catch (error) {
       if (retryCount < COMMAND_CONFIG.MAX_RETRIES && this.shouldRetry(error)) {
-        logger.warn(`🔄 Повторна спроба ${retryCount + 1}/${COMMAND_CONFIG.MAX_RETRIES} для команди "${this.name}"`);
+        logger.warn('Повторна спроба виконання команди', {
+          type: 'command',
+          component: this.name,
+          event: 'retry',
+          attempt: retryCount + 1,
+          maxAttempts: COMMAND_CONFIG.MAX_RETRIES,
+        });
         
         await new Promise(resolve => setTimeout(resolve, COMMAND_CONFIG.RETRY_DELAY * (retryCount + 1)));
         
@@ -362,7 +384,14 @@ export abstract class BaseCommand {
         await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     } catch (replyError) {
-      logger.error('❌ Не вдалося відправити повідомлення про помилку:', { error: replyError });
+      logger.error('Не вдалося відправити повідомлення про помилку', {
+        type: 'command',
+        component: this.name,
+        event: 'error_reply_failed',
+        errorName: replyError instanceof Error ? replyError.name : undefined,
+        errorMessage: replyError instanceof Error ? replyError.message : String(replyError),
+        stack: replyError instanceof Error ? replyError.stack : undefined,
+      });
     }
   }
 
