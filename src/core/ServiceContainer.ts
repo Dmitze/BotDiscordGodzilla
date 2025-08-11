@@ -66,13 +66,23 @@ export class ServiceContainer {
 
     for (const [name, service] of this.services.entries()) {
       try {
+        logger.info('🚀 Ініціалізація сервісу', { type: 'service_container', event: 'service_init_start', service: name });
         initPromises.push(service.initialize());
       } catch (error) {
-        throw new Error(`Помилка ініціалізації сервісу ${name}: ${error}`);
+        logger.error('❌ Помилка ініціалізації сервісу', {
+          type: 'service_container',
+          event: 'service_init_failed_sync',
+          service: name,
+          errorName: error instanceof Error ? error.name : undefined,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        throw new Error(`Помилка ініціалізації сервісу ${name}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
     await Promise.all(initPromises);
+    logger.info('✅ Ініціалізація всіх сервісів завершена', { type: 'service_container', event: 'all_services_initialized' });
   }
 
   /**
@@ -112,6 +122,12 @@ export class ServiceContainer {
           service: name,
           error: `Помилка health check: ${error}`,
         };
+        logger.warn('⚠️ Помилка health check сервісу', {
+          type: 'service_container',
+          event: 'healthcheck_failed',
+          service: name,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -131,6 +147,12 @@ export class ServiceContainer {
         stats[name] = {
           error: `Помилка отримання статистики: ${error}`,
         };
+        logger.warn('⚠️ Помилка отримання статистики сервісу', {
+          type: 'service_container',
+          event: 'get_stats_failed',
+          service: name,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
