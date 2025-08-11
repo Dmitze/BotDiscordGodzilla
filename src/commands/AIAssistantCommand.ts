@@ -3,7 +3,7 @@
  * Використовує розширений AI-модуль та систему безпеки
  */
 
-import type { BotConfig, CommandExecuteOptions, LogMeta } from '@/types';
+import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 
@@ -137,13 +137,22 @@ export class AIAssistantCommand extends BaseCommand {
 
       // Логування успішного виконання
       logger.info('AI command executed successfully', {
+        type: 'command',
+        command: this.name,
+        component: 'AIAssistantCommand.onExecute',
         userTag: interaction.user.tag,
         action: result.action,
         confidence: result.confidence,
         hasActionData: !!result.actionData,
-      } as LogMeta);
+      });
     } catch (error) {
-      logger.error('AI Assistant command error', { error } as LogMeta);
+      logger.error('AI Assistant command error', {
+        type: 'command',
+        command: this.name,
+        component: 'AIAssistantCommand.onExecute',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
 
       const errorMessage =
         '❌ Помилка при обробці AI-запиту. Спробуйте ще раз або зверніться до адміністратора.';
@@ -215,7 +224,13 @@ export class AIAssistantCommand extends BaseCommand {
    */
   private logSecurityEvent(eventType: string, data: Record<string, any>): void {
     // TODO: Реалізувати логування подій безпеки (інтеграція з аудиторським журналом)
-    logger.info('Security event', { eventType, data } as LogMeta);
+    logger.info('Security event', {
+      type: 'security',
+      component: 'AIAssistantCommand.logSecurityEvent',
+      command: this.name,
+      eventType,
+      data,
+    });
   }
 
   /**
