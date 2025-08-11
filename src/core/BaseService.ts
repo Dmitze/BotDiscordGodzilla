@@ -31,7 +31,7 @@ export abstract class BaseService implements IBaseService {
     this.config = config;
     this.startTime = Date.now();
     
-    logger.debug(`🔧 Створено базовий сервіс: ${this.name}`);
+    logger.debug(`🔧 Створено базовий сервіс: ${this.name}`, { type: 'service', event: 'created', service: this.name });
   }
 
   /**
@@ -39,7 +39,7 @@ export abstract class BaseService implements IBaseService {
    */
   public async initialize(): Promise<void> {
     if (this.isInitialized) {
-      logger.warn(`⚠️ Сервіс ${this.name} вже ініціалізовано`);
+      logger.warn(`⚠️ Сервіс ${this.name} вже ініціалізовано`, { type: 'service', event: 'already_initialized', service: this.name });
       return;
     }
 
@@ -50,11 +50,11 @@ export abstract class BaseService implements IBaseService {
     const startTime = Date.now();
     
     try {
-      logger.info(`🚀 Ініціалізація сервісу ${this.name}...`);
+      logger.info(`🚀 Ініціалізація сервісу ${this.name}...`, { type: 'service', event: 'initialize_start', service: this.name });
       
       // Встановлення таймауту для ініціалізації
       this.initializationTimeout = setTimeout(() => {
-        logger.error(`⏰ Таймаут ініціалізації сервісу ${this.name}`);
+        logger.error(`⏰ Таймаут ініціалізації сервісу ${this.name}`, { type: 'service', event: 'initialize_timeout', service: this.name });
         throw new Error(`Таймаут ініціалізації сервісу ${this.name}`);
       }, BASE_SERVICE_CONSTANTS.INITIALIZATION_TIMEOUT);
 
@@ -88,7 +88,7 @@ export abstract class BaseService implements IBaseService {
       // Спроба повторної ініціалізації
       if (this.retryCount < BASE_SERVICE_CONSTANTS.MAX_RETRY_ATTEMPTS) {
         this.retryCount++;
-        logger.info(`🔄 Спроба повторної ініціалізації ${this.retryCount}/${BASE_SERVICE_CONSTANTS.MAX_RETRY_ATTEMPTS} для сервісу ${this.name}...`);
+        logger.info(`🔄 Спроба повторної ініціалізації ${this.retryCount}/${BASE_SERVICE_CONSTANTS.MAX_RETRY_ATTEMPTS} для сервісу ${this.name}...`, { type: 'service', event: 'initialize_retry', service: this.name, attempt: this.retryCount });
         
         await new Promise(resolve => setTimeout(resolve, BASE_SERVICE_CONSTANTS.RETRY_DELAY));
         return this.initialize();
@@ -103,12 +103,12 @@ export abstract class BaseService implements IBaseService {
    */
   public async shutdown(): Promise<void> {
     if (!this.isInitialized) {
-      logger.debug(`ℹ️ Сервіс ${this.name} не ініціалізовано, пропускаю зупинку`);
+      logger.debug(`ℹ️ Сервіс ${this.name} не ініціалізовано, пропускаю зупинку`, { type: 'service', event: 'shutdown_skip_not_initialized', service: this.name });
       return;
     }
 
     if (this.isShuttingDown) {
-      logger.warn(`⚠️ Сервіс ${this.name} вже зупиняється`);
+      logger.warn(`⚠️ Сервіс ${this.name} вже зупиняється`, { type: 'service', event: 'shutdown_already_in_progress', service: this.name });
       return;
     }
 
@@ -116,11 +116,11 @@ export abstract class BaseService implements IBaseService {
     const shutdownStartTime = Date.now();
     
     try {
-      logger.info(`🛑 Завершення роботи сервісу ${this.name}...`);
+      logger.info(`🛑 Завершення роботи сервісу ${this.name}...`, { type: 'service', event: 'shutdown_start', service: this.name });
       
       // Встановлення таймауту для зупинки
       this.shutdownTimeout = setTimeout(() => {
-        logger.error(`⏰ Таймаут зупинки сервісу ${this.name}`);
+        logger.error(`⏰ Таймаут зупинки сервісу ${this.name}`, { type: 'service', event: 'shutdown_timeout', service: this.name });
         throw new Error(`Таймаут зупинки сервісу ${this.name}`);
       }, BASE_SERVICE_CONSTANTS.SHUTDOWN_TIMEOUT);
 
@@ -173,7 +173,7 @@ export abstract class BaseService implements IBaseService {
     const startTime = Date.now();
     
     try {
-      logger.debug(`🏥 Health check сервісу ${this.name}...`);
+      logger.debug(`🏥 Health check сервісу ${this.name}...`, { type: 'service', event: 'healthcheck_start', service: this.name });
       
       const health = await this.onHealthCheck();
       const duration = Date.now() - startTime;
@@ -181,7 +181,7 @@ export abstract class BaseService implements IBaseService {
       if (!health.healthy) {
         logger.warn(`⚠️ Health check сервісу ${this.name} виявив проблеми за ${duration}ms`, { type: 'service', event: 'healthcheck_unhealthy', service: this.name, durationMs: duration, details: health });
       } else {
-        logger.debug(`✅ Health check сервісу ${this.name} пройшов успішно за ${duration}ms`);
+        logger.debug(`✅ Health check сервісу ${this.name} пройшов успішно за ${duration}ms`, { type: 'service', event: 'healthcheck_ok', service: this.name, durationMs: duration });
       }
       
       return {
@@ -221,7 +221,7 @@ export abstract class BaseService implements IBaseService {
       };
 
       const serviceStats = this.onGetStats();
-      const combinedStats = { ...baseStats, ...serviceStats };
+      const combinedStats = { ...baseStats, ...serviceStats, type: 'service', event: 'get_stats', service: this.name };
       
       logger.debug(`📊 Статистика сервісу ${this.name}:`, combinedStats);
       
@@ -251,7 +251,7 @@ export abstract class BaseService implements IBaseService {
   protected checkInitialized(): void {
     if (!this.isInitialized) {
       const error = `Сервіс ${this.name} не ініціалізовано`;
-      logger.error(`❌ ${error}`);
+      logger.error(`❌ ${error}`, { type: 'service', event: 'check_initialized_failed', service: this.name });
       throw new Error(error);
     }
   }
@@ -262,7 +262,7 @@ export abstract class BaseService implements IBaseService {
   protected checkNotShuttingDown(): void {
     if (this.isShuttingDown) {
       const error = `Сервіс ${this.name} зупиняється`;
-      logger.warn(`⚠️ ${error}`);
+      logger.warn(`⚠️ ${error}`, { type: 'service', event: 'check_shutting_down', service: this.name });
       throw new Error(error);
     }
   }
@@ -278,12 +278,12 @@ export abstract class BaseService implements IBaseService {
     const startTime = Date.now();
     
     try {
-      logger.debug(`🔄 Виконання операції ${operationName} в сервісі ${this.name}...`);
+      logger.debug(`🔄 Виконання операції ${operationName} в сервісі ${this.name}...`, { type: 'service', event: 'operation_start', service: this.name, operation: operationName });
       
       const result = await operation();
       
       const duration = Date.now() - startTime;
-      logger.debug(`✅ Операція ${operationName} в сервісі ${this.name} завершена за ${duration}ms`);
+      logger.debug(`✅ Операція ${operationName} в сервісі ${this.name} завершена за ${duration}ms`, { type: 'service', event: 'operation_success', service: this.name, operation: operationName, durationMs: duration });
       
       return result;
     } catch (error) {
@@ -294,7 +294,7 @@ export abstract class BaseService implements IBaseService {
       logger.error(`❌ Помилка операції ${operationName} в сервісі ${this.name} після ${duration}ms`, meta);
       
       if (fallback !== undefined) {
-        logger.warn(`🔄 Використання fallback значення для операції ${operationName} в сервісі ${this.name}`);
+        logger.warn(`🔄 Використання fallback значення для операції ${operationName} в сервісі ${this.name}`, { type: 'service', event: 'operation_fallback', service: this.name, operation: operationName });
         return fallback;
       }
       
@@ -307,7 +307,7 @@ export abstract class BaseService implements IBaseService {
    */
   protected async cleanup(): Promise<void> {
     try {
-      logger.info(`🧹 Очищення ресурсів сервісу ${this.name}...`);
+      logger.info(`🧹 Очищення ресурсів сервісу ${this.name}...`, { type: 'service', event: 'cleanup_start', service: this.name });
       
       // Очищення таймаутів
       if (this.initializationTimeout) {
@@ -320,7 +320,7 @@ export abstract class BaseService implements IBaseService {
         this.shutdownTimeout = null;
       }
       
-      logger.info(`✅ Ресурси сервісу ${this.name} очищено`);
+      logger.info(`✅ Ресурси сервісу ${this.name} очищено`, { type: 'service', event: 'cleanup_success', service: this.name });
     } catch (error) {
       const meta = error instanceof Error
         ? { type: 'service', event: 'cleanup_failed', service: this.name, errorName: error.name, errorMessage: error.message, stack: error.stack }
