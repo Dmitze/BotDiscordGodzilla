@@ -98,7 +98,12 @@ export class CacheService extends BaseServiceClass {
 
       logger.info('✅ Redis Cache Service ініціалізовано');
     } catch (error) {
-      logger.error('❌ Помилка ініціалізації Redis:', error);
+      logger.error('❌ Помилка ініціалізації Redis:', {
+        type: 'cache_service', event: 'init_failed', service: this.name,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -119,7 +124,12 @@ export class CacheService extends BaseServiceClass {
     });
 
     this.client.on('error', (error) => {
-      logger.error('❌ Redis помилка:', error);
+      logger.error('❌ Redis помилка:', {
+        type: 'cache_service', event: 'redis_error', service: this.name,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       this.isConnected = false;
       this.stats.errors++;
     });
@@ -146,7 +156,12 @@ export class CacheService extends BaseServiceClass {
       await this.client.connect();
       logger.info('✅ Підключення до Redis успішне');
     } catch (error) {
-      logger.error('❌ Помилка підключення до Redis:', error);
+      logger.error('❌ Помилка підключення до Redis:', {
+        type: 'cache_service', event: 'connect_failed', service: this.name,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -163,7 +178,12 @@ export class CacheService extends BaseServiceClass {
       await this.client.ping();
       logger.info('✅ Redis підключення валідне');
     } catch (error) {
-      logger.error('❌ Помилка валідації Redis підключення:', error);
+      logger.error('❌ Помилка валідації Redis підключення:', {
+        type: 'cache_service', event: 'ping_failed', service: this.name,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -203,7 +223,12 @@ export class CacheService extends BaseServiceClass {
       this.stats.errors++;
       this.stats.misses++;
       this.updateStats();
-      logger.error('❌ Помилка отримання з кешу:', error);
+      logger.error('❌ Помилка отримання з кешу:', {
+        type: 'cache_service', event: 'get_failed', service: this.name, key,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return null;
     }
   }
@@ -239,7 +264,12 @@ export class CacheService extends BaseServiceClass {
     } catch (error) {
       this.stats.errors++;
       this.updateStats();
-      logger.error('❌ Помилка збереження в кеш:', error);
+      logger.error('❌ Помилка збереження в кеш:', {
+        type: 'cache_service', event: 'set_failed', service: this.name, key,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return false;
     }
   }
@@ -260,7 +290,12 @@ export class CacheService extends BaseServiceClass {
     } catch (error) {
       this.stats.errors++;
       this.updateStats();
-      logger.error('❌ Помилка видалення з кешу:', error);
+      logger.error('❌ Помилка видалення з кешу:', {
+        type: 'cache_service', event: 'delete_failed', service: this.name, key,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return false;
     }
   }
@@ -286,7 +321,12 @@ export class CacheService extends BaseServiceClass {
     } catch (error) {
       this.stats.errors++;
       this.updateStats();
-      logger.error('❌ Помилка видалення за патерном:', error);
+      logger.error('❌ Помилка видалення за патерном:', {
+        type: 'cache_service', event: 'delete_pattern_failed', service: this.name, pattern,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return 0;
     }
   }
@@ -305,7 +345,12 @@ export class CacheService extends BaseServiceClass {
     } catch (error) {
       this.stats.errors++;
       this.updateStats();
-      logger.error('❌ Помилка перевірки існування ключа:', error);
+      logger.error('❌ Помилка перевірки існування ключа:', {
+        type: 'cache_service', event: 'exists_failed', service: this.name, key,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return false;
     }
   }
@@ -320,11 +365,16 @@ export class CacheService extends BaseServiceClass {
 
     try {
       const result = await this.client.expire(key, ttl);
-      return result;
+      return Boolean(result);
     } catch (error) {
       this.stats.errors++;
       this.updateStats();
-      logger.error('❌ Помилка встановлення TTL:', error);
+      logger.error('❌ Помилка встановлення TTL:', {
+        type: 'cache_service', event: 'expire_failed', service: this.name, key, ttl,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return false;
     }
   }
@@ -343,7 +393,12 @@ export class CacheService extends BaseServiceClass {
     } catch (error) {
       this.stats.errors++;
       this.updateStats();
-      logger.error('❌ Помилка отримання TTL:', error);
+      logger.error('❌ Помилка отримання TTL:', {
+        type: 'cache_service', event: 'ttl_failed', service: this.name, key,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return -2;
     }
   }
@@ -383,7 +438,7 @@ export class CacheService extends BaseServiceClass {
     try {
       const values = await this.client.mGet(keys);
       
-      return values.map(value => {
+      const result = values.map(value => {
         if (value === null) {
           this.stats.misses++;
           return null;
@@ -402,11 +457,18 @@ export class CacheService extends BaseServiceClass {
 
         return value as T;
       });
+      this.updateStats();
+      return result;
     } catch (error) {
       this.stats.errors++;
       this.stats.misses += keys.length;
       this.updateStats();
-      logger.error('❌ Помилка множинного отримання:', error);
+      logger.error('❌ Помилка множинного отримання:', {
+        type: 'cache_service', event: 'mget_failed', service: this.name, keysCount: keys.length,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return keys.map(() => null);
     }
   }
@@ -439,7 +501,12 @@ export class CacheService extends BaseServiceClass {
     } catch (error) {
       this.stats.errors++;
       this.updateStats();
-      logger.error('❌ Помилка множинного збереження:', error);
+      logger.error('❌ Помилка множинного збереження:', {
+        type: 'cache_service', event: 'mset_failed', service: this.name, items: keyValuePairs.length,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return false;
     }
   }
@@ -459,7 +526,12 @@ export class CacheService extends BaseServiceClass {
     } catch (error) {
       this.stats.errors++;
       this.updateStats();
-      logger.error('❌ Помилка очищення кешу:', error);
+      logger.error('❌ Помилка очищення кешу:', {
+        type: 'cache_service', event: 'clear_failed', service: this.name,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return false;
     }
   }
@@ -550,7 +622,12 @@ export class CacheService extends BaseServiceClass {
 
       logger.info('✅ Cache Service зупинено');
     } catch (error) {
-      logger.error('❌ Помилка зупинки Cache Service:', error);
+      logger.error('❌ Помилка зупинки Cache Service:', {
+        type: 'cache_service', event: 'shutdown_failed', service: this.name,
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
