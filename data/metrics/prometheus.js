@@ -4,9 +4,9 @@ const os = require('os');
 
 // Lightweight local logger wrapper to avoid direct console usage
 const log = {
-  info: (msg, meta) => console.log(msg, meta ? JSON.stringify(meta) : ''),
-  warn: (msg, meta) => console.warn(msg, meta ? JSON.stringify(meta) : ''),
-  error: (msg, meta) => console.error(msg, meta ? JSON.stringify(meta) : ''),
+  info: (msg, meta) => console.log(msg, meta ? JSON.stringify({ component: 'Metrics', ...meta }) : ''),
+  warn: (msg, meta) => console.warn(msg, meta ? JSON.stringify({ component: 'Metrics', ...meta }) : ''),
+  error: (msg, meta) => console.error(msg, meta ? JSON.stringify({ component: 'Metrics', ...meta }) : ''),
 };
 
 // Read config from env to avoid TS import in JS
@@ -312,6 +312,12 @@ class MetricsCollector {
       return;
     }
 
+    // Idempotent start
+    if (this._server && this._server.listening) {
+      log.warn('⚠️ Сервер метрик вже запущено', { type: 'metrics', event: 'already_running' });
+      return this._server;
+    }
+
     const app = express();
     const port = METRICS_PORT;
     const path = METRICS_PATH;
@@ -319,7 +325,8 @@ class MetricsCollector {
     // простейший rate-limit
     const windowMs = 10_000; // 10s
     const max = 5; // запросов
-    const hits = new Map();
+    const hits = this._rateLimitHits || new Map();
+    this._rateLimitHits = hits;
 
     // Периодичне оновлення системних метрик (поза хендлером)
     if (!this._systemInterval) {
@@ -357,6 +364,10 @@ class MetricsCollector {
         log.error('Помилка отримання метрик', { type: 'metrics', event: 'render_failed', error: String(error) });
         return res.status(500).end('Помилка отримання метрик');
       }
+      // Cleanup idle IP entries to prevent unbounded growth
+      if (pruned.length === 0) {
+        hits.delete(ip);
+      }
     });
 
     // Ендпоінт для перевірки здоров'я
@@ -374,7 +385,36 @@ class MetricsCollector {
       log.info(`🏥 Health check доступний на http://localhost:${port}/health`, { type: 'metrics', event: 'health_endpoint_ready', port });
     });
 
+    // Save server reference for stop
+    this._server = server;
     return server;
+  }
+
+  /**
+   * Зупинка HTTP сервера для метрик і очищення ресурсів
+   */
+  async stopMetricsServer() {
+    try {
+      if (this._systemInterval) {
+        clearInterval(this._systemInterval);
+        this._systemInterval = null;
+      }
+      if (this._server && this._server.listening) {
+        await new Promise((resolve, reject) => {
+          this._server.close((err) => (err ? reject(err) : resolve()));
+        });
+        this._server = null;
+      }
+      if (this._rateLimitHits) {
+        this._rateLimitHits.clear();
+        this._rateLimitHits = null;
+      }
+      log.info('🛑 Сервер метрик зупинено', { type: 'metrics', event: 'server_stopped' });
+      return true;
+    } catch (error) {
+      log.error('❌ Помилка зупинки сервера метрик', { type: 'metrics', event: 'server_stop_failed', error: String(error) });
+      return false;
+    }
   }
 
   /**
