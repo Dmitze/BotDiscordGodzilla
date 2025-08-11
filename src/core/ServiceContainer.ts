@@ -4,14 +4,13 @@
  */
 
 import type { BaseService, BotConfig, HealthStatus } from '@/types';
-import { BaseService as BaseServiceClass } from './BaseService';
 
 export class ServiceContainer {
   private services = new Map<string, BaseService>();
-  private readonly config: BotConfig;
+  private readonly _config: BotConfig;
 
   constructor(config: BotConfig) {
-    this.config = config;
+    this._config = config;
   }
 
   /**

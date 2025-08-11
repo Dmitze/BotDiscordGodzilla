@@ -4,14 +4,14 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import { Client, GatewayIntentBits, Collection, Events, Interaction, CommandInteraction, ClientEvents } from 'discord.js';
-import type { BotConfig, BaseService, CommandInteraction as CommandInteractionType, BaseCommand } from '@/types';
+import { Client, GatewayIntentBits, Collection, Events, Interaction } from 'discord.js';
+import type { BotConfig, BaseCommand } from '@/types';
 import { ServiceContainer } from './ServiceContainer';
 import { BaseService as BaseServiceClass } from './BaseService';
 import { CommandManager } from './CommandManager';
 import { ErrorHandler } from './ErrorHandler';
-import { EventManager } from './EventManager';
-import { ServiceManager } from './ServiceManager';
+import EventManager from './EventManager';
+import ServiceManager from './ServiceManager';
 import logger from '@/utils/logger';
 
 // Константи для конфігурації бота
@@ -88,17 +88,11 @@ export class Bot extends BaseServiceClass {
         GatewayIntentBits.GuildPresences,
       ],
       failIfNotExists: false,
-      retryLimit: 3,
-      ws: {
-        properties: {
-          browser: 'Discord AI Assistant Bot',
-        },
-      },
     });
 
     // Ініціалізація менеджерів та сервісів
     this.serviceContainer = new ServiceContainer(config);
-    this.commandManager = new CommandManager(this.client, config);
+    this.commandManager = new CommandManager(this, config);
     this.errorHandler = new ErrorHandler(this.serviceContainer);
     this.eventManager = new EventManager(this);
     this.serviceManager = new ServiceManager(this);
@@ -107,6 +101,48 @@ export class Bot extends BaseServiceClass {
     this.setupEventHandlers();
     
     logger.info('🤖 Екземпляр Discord бота створено');
+  }
+
+  /**
+   * Логування стартової статистики бота з безпечним метаданими
+   */
+  private logStartupStats(): void {
+    try {
+      const s = this.getStats();
+      const guilds = this.client.guilds.cache.size;
+      const channels = this.client.channels.cache.size;
+      const meta = {
+        type: 'bot',
+        event: 'startup_stats',
+        guilds,
+        channels,
+      } as const;
+      logger.info(
+        `📊 Стартові метрики: uptime=${s.uptime}ms, errors=${(s as any).errors ?? 0}, reconnects=${(s as any).reconnects ?? 0}`,
+        meta,
+      );
+    } catch (e) {
+      const meta = e instanceof Error
+        ? { type: 'bot', event: 'startup_stats_failed', errorName: e.name, errorMessage: e.message, stack: e.stack }
+        : { type: 'bot', event: 'startup_stats_failed', errorMessage: String(e) };
+      logger.warn('⚠️ Не вдалося залогувати стартові метрики', meta);
+    }
+  }
+
+  /**
+   * Отримання сервісу за назвою (проксі метод для сумісності з ServiceManager)
+   */
+  public getService(name: string): unknown {
+    // Спочатку пробуємо через ServiceManager, якщо вже ініціалізований
+    if (this.serviceManager && typeof this.serviceManager.getService === 'function') {
+      return this.serviceManager.getService(name);
+    }
+    // В іншому випадку – напряму з контейнера сервісів
+    try {
+      return this.serviceContainer.get(name as unknown as string);
+    } catch {
+      return undefined;
+    }
   }
 
   /**
@@ -153,14 +189,18 @@ export class Bot extends BaseServiceClass {
       this.startHealthCheck();
       
       const initDuration = Date.now() - startTime;
-      logger.info(`✅ Discord бот успішно ініціалізовано за ${initDuration}ms`);
+      const meta = { type: 'bot', event: 'initialized', durationMs: initDuration };
+      logger.info(`✅ Discord бот успішно ініціалізовано за ${initDuration}ms`, meta);
       
       // Логування статистики запуску
       this.logStartupStats();
       
     } catch (error) {
       const initDuration = Date.now() - startTime;
-      logger.error(`❌ Помилка ініціалізації бота після ${initDuration}ms:`, error);
+      const meta = error instanceof Error
+        ? { type: 'bot', event: 'initialize_failed', durationMs: initDuration, errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'bot', event: 'initialize_failed', durationMs: initDuration, errorMessage: String(error) };
+      logger.error(`❌ Помилка ініціалізації бота після ${initDuration}ms`, meta);
       
       // Спроба очищення ресурсів
       await this.cleanupOnError();
@@ -185,9 +225,8 @@ export class Bot extends BaseServiceClass {
       logger.info('📡 Завершення менеджера подій...');
       await this.eventManager.shutdown();
       
-      // Завершення менеджера команд
+      // Завершення менеджера команд (команди не потребують спеціального shutdown у поточній реалізації)
       logger.info('📝 Завершення менеджера команд...');
-      await this.commandManager.shutdown();
       
       // Завершення менеджера сервісів
       logger.info('⚙️ Завершення менеджера сервісів...');
@@ -206,11 +245,15 @@ export class Bot extends BaseServiceClass {
       this.client.destroy();
       
       const shutdownDuration = Date.now() - shutdownStartTime;
-      logger.info(`✅ Discord бот успішно завершено за ${shutdownDuration}ms`);
+      const meta = { type: 'bot', event: 'shutdown', durationMs: shutdownDuration };
+      logger.info(`✅ Discord бот успішно завершено за ${shutdownDuration}ms`, meta);
       
     } catch (error) {
       const shutdownDuration = Date.now() - shutdownStartTime;
-      logger.error(`❌ Помилка завершення бота після ${shutdownDuration}ms:`, error);
+      const meta = error instanceof Error
+        ? { type: 'bot', event: 'shutdown_failed', durationMs: shutdownDuration, errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'bot', event: 'shutdown_failed', durationMs: shutdownDuration, errorMessage: String(error) };
+      logger.error(`❌ Помилка завершення бота після ${shutdownDuration}ms`, meta);
       
       // Примусова зупинка при помилці
       logger.warn('🔄 Примусова зупинка Discord клієнта...');
@@ -227,12 +270,9 @@ export class Bot extends BaseServiceClass {
     try {
       const isConnected = this.client.isReady();
       const servicesHealth = await this.serviceContainer.getHealthStatus();
-      const commandsHealth = await this.commandManager.getHealthStatus();
       
-      const allServicesHealthy = Object.values(servicesHealth).every(health => health.healthy);
-      const allCommandsHealthy = Object.values(commandsHealth).every(health => health.healthy);
-      
-      const healthy = isConnected && allServicesHealthy && allCommandsHealthy;
+      const allServicesHealthy = Object.values(servicesHealth).every((health) => health.healthy);
+      const healthy = isConnected && allServicesHealthy;
       
       return {
         healthy,
@@ -241,7 +281,8 @@ export class Bot extends BaseServiceClass {
           connected: isConnected,
           ready: this.isReady,
           services: servicesHealth,
-          commands: commandsHealth,
+          // Команди не надають окремого health, додаємо базову статистику команд
+          commands: { total: this.stats.commands, slow: this.stats.slowCommands },
           stats: this.getStats(),
           uptime: this.getStats().uptime,
           memory: process.memoryUsage(),
@@ -251,7 +292,10 @@ export class Bot extends BaseServiceClass {
         },
       };
     } catch (error) {
-      logger.error('❌ Помилка health check бота:', error);
+      const meta = error instanceof Error
+        ? { type: 'bot', event: 'healthcheck_failed', errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'bot', event: 'healthcheck_failed', errorMessage: String(error) };
+      logger.error('❌ Помилка health check бота', meta);
       return {
         healthy: false,
         service: this.name,
@@ -263,10 +307,11 @@ export class Bot extends BaseServiceClass {
   /**
    * Отримання детальної статистики бота
    */
-  protected onGetStats(): BotStats {
+  protected onGetStats(): Partial<import('@/types').ServiceStats> {
     this.stats.uptime = Date.now() - this.startTime;
     this.stats.memory = process.memoryUsage();
-    return { ...this.stats };
+    // Повертаємо як розширену статистику сервісу, BaseService додасть базові поля
+    return { ...this.stats } as Record<string, unknown>;
   }
 
   /**
@@ -291,12 +336,18 @@ export class Bot extends BaseServiceClass {
           logger.warn('⚠️ Проблеми з підключенням до Discord API');
         }
       } catch (networkError) {
-        logger.warn('⚠️ Проблеми з мережевим підключенням:', networkError);
+        const meta = networkError instanceof Error
+          ? { type: 'bot', event: 'network_issue', errorName: networkError.name, errorMessage: networkError.message }
+          : { type: 'bot', event: 'network_issue', errorMessage: String(networkError) };
+        logger.warn('⚠️ Проблеми з мережевим підключенням', meta);
       }
       
       logger.info('✅ Системні ресурси бота перевірено');
     } catch (error) {
-      logger.error('❌ Помилка перевірки системних ресурсів бота:', error);
+      const meta = error instanceof Error
+        ? { type: 'bot', event: 'resources_check_failed', errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'bot', event: 'resources_check_failed', errorMessage: String(error) };
+      logger.error('❌ Помилка перевірки системних ресурсів бота', meta);
       throw error;
     }
   }
@@ -321,7 +372,10 @@ export class Bot extends BaseServiceClass {
       this.reconnectAttempts = 0;
       
     } catch (error) {
-      logger.error('❌ Помилка підключення до Discord:', error);
+      const meta = error instanceof Error
+        ? { type: 'bot', event: 'login_failed', errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'bot', event: 'login_failed', errorMessage: String(error) };
+      logger.error('❌ Помилка підключення до Discord', meta);
       
       if (this.reconnectAttempts < BOT_CONSTANTS.MAX_RECONNECT_ATTEMPTS) {
         this.reconnectAttempts++;
@@ -368,7 +422,7 @@ export class Bot extends BaseServiceClass {
         }
         
         if (interaction.isCommand()) {
-          await this.handleCommand(interaction as CommandInteraction);
+          await this.handleCommand(interaction as any);
         } else if (interaction.isButton()) {
           await this.handleButtonInteraction(interaction);
         } else if (interaction.isSelectMenu()) {
@@ -376,7 +430,10 @@ export class Bot extends BaseServiceClass {
         }
       } catch (error) {
         this.stats.errors++;
-        logger.error('❌ Помилка обробки interaction:', error);
+        const meta = error instanceof Error
+          ? { type: 'bot', event: 'interaction_failed', errorName: error.name, errorMessage: error.message, stack: error.stack }
+          : { type: 'bot', event: 'interaction_failed', errorMessage: String(error) };
+        logger.error('❌ Помилка обробки interaction', meta);
         await this.handleInteractionError(interaction, error);
       }
     });
@@ -384,7 +441,10 @@ export class Bot extends BaseServiceClass {
     // Error event
     this.client.on(Events.Error, (error) => {
       this.stats.errors++;
-      logger.error('❌ Помилка Discord клієнта:', error);
+      const meta = error instanceof Error
+        ? { type: 'bot', event: 'client_error', errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'bot', event: 'client_error', errorMessage: String(error) };
+      logger.error('❌ Помилка Discord клієнта', meta);
       
       // Спроба перепідключення при критичних помилках
       if (this.shouldReconnect(error)) {
@@ -392,19 +452,21 @@ export class Bot extends BaseServiceClass {
       }
     });
 
-    // Disconnect event
-    this.client.on(Events.Disconnect, (event) => {
+    // Shard disconnect event (v14)
+    this.client.on(Events.ShardDisconnect, (event, shardId) => {
       this.isReady = false;
-      logger.warn('🔌 Discord клієнт відключено:', event);
+      const meta = { type: 'bot', event: 'shard_disconnect', shardId, code: (event as unknown as { code?: unknown })?.code };
+      logger.warn('🔌 Discord shard відключено', meta);
       
       // Автоматичне перепідключення
       this.scheduleReconnect();
     });
 
-    // Reconnecting event
-    this.client.on(Events.Reconnecting, () => {
+    // Shard reconnecting event (v14)
+    this.client.on(Events.ShardReconnecting, (shardId) => {
       this.stats.reconnects++;
-      logger.info('🔄 Discord клієнт перепідключається...');
+      const meta = { type: 'bot', event: 'shard_reconnecting', shardId };
+      logger.info('🔄 Discord shard перепідключається...', meta);
     });
 
     // Guild events
@@ -422,7 +484,7 @@ export class Bot extends BaseServiceClass {
   /**
    * Обробка команд з детальним логуванням
    */
-  private async handleCommand(interaction: CommandInteraction): Promise<void> {
+  private async handleCommand(interaction: any): Promise<void> {
     const startTime = Date.now();
     const commandName = interaction.commandName;
     const userId = interaction.user.id;
@@ -463,7 +525,10 @@ export class Bot extends BaseServiceClass {
       
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error(`❌ Помилка виконання команди ${commandName} після ${duration}ms:`, error);
+      const meta = error instanceof Error
+        ? { type: 'bot', event: 'command_failed', commandName, durationMs: duration, errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'bot', event: 'command_failed', commandName, durationMs: duration, errorMessage: String(error) };
+      logger.error(`❌ Помилка виконання команди ${commandName}`, meta);
       throw error;
     }
   }
@@ -504,7 +569,10 @@ export class Bot extends BaseServiceClass {
         }
       }
     } catch (replyError) {
-      logger.error('❌ Помилка відповіді на помилку interaction:', replyError);
+      const meta = replyError instanceof Error
+        ? { type: 'bot', event: 'interaction_reply_failed', errorName: replyError.name, errorMessage: replyError.message, stack: replyError.stack }
+        : { type: 'bot', event: 'interaction_reply_failed', errorMessage: String(replyError) };
+      logger.error('❌ Помилка відповіді на помилку interaction', meta);
     }
   }
 
@@ -546,7 +614,10 @@ export class Bot extends BaseServiceClass {
         });
       }
     } catch (error) {
-      logger.error('❌ Помилка обробки rate limit:', error);
+      const meta = error instanceof Error
+        ? { type: 'bot', event: 'rate_limit_reply_failed', errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'bot', event: 'rate_limit_reply_failed', errorMessage: String(error) };
+      logger.error('❌ Помилка обробки rate limit', meta);
     }
   }
 
@@ -598,97 +669,73 @@ export class Bot extends BaseServiceClass {
     }
 
     this.reconnectAttempts++;
-    logger.info(`🔄 Планування перепідключення ${this.reconnectAttempts}/${BOT_CONSTANTS.MAX_RECONNECT_ATTEMPTS} через ${BOT_CONSTANTS.RECONNECT_DELAY}ms`);
+    const meta = { type: 'bot', event: 'reconnect_scheduled', reconnectAttempts: this.reconnectAttempts, delayMs: BOT_CONSTANTS.RECONNECT_DELAY } as const;
+    logger.info(`🔄 Планування перепідключення ${this.reconnectAttempts}/${BOT_CONSTANTS.MAX_RECONNECT_ATTEMPTS} через ${BOT_CONSTANTS.RECONNECT_DELAY}ms`, meta);
     
     setTimeout(() => {
       this.connectToDiscord();
     }, BOT_CONSTANTS.RECONNECT_DELAY);
   }
 
-  /**
-   * Запуск health check
-   */
-  private startHealthCheck(): void {
-    this.healthCheckInterval = setInterval(async () => {
-      try {
-        const health = await this.onHealthCheck();
-        if (!health.healthy) {
-          logger.warn('⚠️ Health check виявив проблеми:', health);
-        }
-      } catch (error) {
-        logger.error('❌ Помилка health check:', error);
+ 
+
+/**
+ * Запуск health check
+ */
+private startHealthCheck(): void {
+  this.healthCheckInterval = setInterval(async () => {
+    try {
+      const health = await this.onHealthCheck();
+      if (!health.healthy) {
+        const meta = { type: 'bot', event: 'health_check_warning', healthy: health.healthy, details: health.details } as const;
+        logger.warn('⚠️ Health check виявив проблеми', meta);
       }
-    }, BOT_CONSTANTS.HEALTH_CHECK_INTERVAL);
+    } catch (error) {
+      const meta = error instanceof Error
+        ? { type: 'bot', event: 'health_check_error', errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'bot', event: 'health_check_error', errorMessage: String(error) };
+      logger.error('❌ Помилка health check', meta);
+    }
+  }, BOT_CONSTANTS.HEALTH_CHECK_INTERVAL);
+  
+  const meta = { type: 'bot', event: 'health_check_started' } as const;
+  logger.info('🏥 Health check запущено', meta);
+}
+
+/**
+ * Зупинка health check
+ */
+private stopHealthCheck(): void {
+  if (this.healthCheckInterval) {
+    clearInterval(this.healthCheckInterval);
+    this.healthCheckInterval = null;
+    const meta = { type: 'bot', event: 'health_check_stopped' } as const;
+    logger.info('🏥 Health check зупинено', meta);
+  }
+}
+
+/**
+ * Очищення ресурсів при помилці
+ */
+private async cleanupOnError(): Promise<void> {
+  try {
+    const meta = { type: 'bot', event: 'cleanup_start' } as const;
+    logger.info('🧹 Очищення ресурсів при помилці...', meta);
     
-    logger.info('🏥 Health check запущено');
-  }
-
-  /**
-   * Зупинка health check
-   */
-  private stopHealthCheck(): void {
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
-      this.healthCheckInterval = null;
-      logger.info('🏥 Health check зупинено');
+    this.stopHealthCheck();
+    
+    if (this.client) {
+      this.client.destroy();
     }
+    
+    logger.info('✅ Ресурси очищено', { type: 'bot', event: 'cleanup_done' } as const);
+  } catch (error) {
+    const errMeta = error instanceof Error
+      ? { type: 'bot', event: 'cleanup_error', errorName: error.name, errorMessage: error.message, stack: error.stack }
+      : { type: 'bot', event: 'cleanup_error', errorMessage: String(error) };
+    logger.error('❌ Помилка очищення ресурсів', errMeta);
   }
-
-  /**
-   * Очищення ресурсів при помилці
-   */
-  private async cleanupOnError(): Promise<void> {
-    try {
-      logger.info('🧹 Очищення ресурсів при помилці...');
-      
-      this.stopHealthCheck();
-      
-      if (this.client) {
-        this.client.destroy();
-      }
-      
-      logger.info('✅ Ресурси очищено');
-    } catch (error) {
-      logger.error('❌ Помилка очищення ресурсів:', error);
-    }
-  }
-
-  /**
-   * Логування статистики запуску
-   */
-  private logStartupStats(): void {
-    try {
-      const stats = this.getStats();
-      logger.info('📊 Статистика запуску бота:', {
-        uptime: `${Math.round(stats.uptime / 1000)}s`,
-        commands: stats.commands,
-        interactions: stats.interactions,
-        errors: stats.errors,
-        reconnects: stats.reconnects,
-        memory: {
-          rss: `${Math.round(stats.memory.rss / 1024 / 1024)}MB`,
-          heapUsed: `${Math.round(stats.memory.heapUsed / 1024 / 1024)}MB`,
-        },
-        rateLimitHits: stats.rateLimitHits,
-        slowCommands: stats.slowCommands,
-      });
-    } catch (error) {
-      logger.error('❌ Помилка логування статистики запуску:', error);
-    }
-  }
-
-  /**
-   * Реєстрація команди
-   */
-  public registerCommand(command: BaseCommand): void {
-    try {
-      const commandName = command.getName();
-      this.commands.set(commandName, command);
-      logger.debug(`✅ Команда зареєстрована: ${commandName}`);
-    } catch (error) {
-      logger.error('❌ Помилка реєстрації команди:', error);
-    }
-  }
+}
 
   /**
    * Отримання всіх команд
@@ -712,8 +759,9 @@ export class Bot extends BaseServiceClass {
     isConnecting: boolean; 
     reconnectAttempts: number; 
   } {
+    const base = this.getStats();
     return {
-      ...this.getStats(),
+      ...(base as unknown as BotStats),
       isReady: this.isReady,
       isConnecting: this.isConnecting,
       reconnectAttempts: this.reconnectAttempts,

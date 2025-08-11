@@ -5,7 +5,7 @@
  */
 
 import logger from '../utils/logger';
-import { Client, Guild, Message } from 'discord.js';
+import { Client, Guild, Message, Events } from 'discord.js';
 
 interface Bot {
   client: Client;
@@ -67,8 +67,8 @@ class EventManager {
    * Реєстрація стандартних подій
    */
   private registerDefaultEvents(): void {
-    // Ready event
-    this.registerEvent('ready', () => {
+    // Ready event (v14)
+    this.registerEvent(Events.ClientReady, () => {
       logger.info(`🤖 Бот ${this.bot.client.user?.tag} готовий до роботи!`, {
         type: 'event',
         event: 'ready',
@@ -76,8 +76,8 @@ class EventManager {
       this.bot.client.user?.setActivity('ЗСУ Документи', { type: 3 }); // WATCHING
     });
 
-    // Error event
-    this.registerEvent('error', (error: Error) => {
+    // Error event (v14)
+    this.registerEvent(Events.Error, (error: Error) => {
       logger.error('Discord клієнт помилка', {
         type: 'system',
         event: 'client_error',
@@ -87,8 +87,8 @@ class EventManager {
       });
     });
 
-    // Warn event
-    this.registerEvent('warn', (warning: string) => {
+    // Warn event (v14)
+    this.registerEvent(Events.Warn, (warning: string) => {
       logger.warn('Discord клієнт попередження', {
         type: 'system',
         event: 'client_warn',
@@ -96,24 +96,24 @@ class EventManager {
       });
     });
 
-    // Disconnect event
-    this.registerEvent('disconnect', () => {
+    // Shard disconnect event (v14)
+    this.registerEvent(Events.ShardDisconnect, () => {
       logger.warn('Discord клієнт відключено', {
         type: 'event',
-        event: 'disconnect',
+        event: 'shard_disconnect',
       });
     });
 
-    // Reconnecting event
-    this.registerEvent('reconnecting', () => {
+    // Shard reconnecting event (v14)
+    this.registerEvent(Events.ShardReconnecting, () => {
       logger.info('Discord клієнт перепідключається...', {
         type: 'event',
-        event: 'reconnecting',
+        event: 'shard_reconnecting',
       });
     });
 
-    // Guild Create event
-    this.registerEvent('guildCreate', (guild: Guild) => {
+    // Guild Create event (v14)
+    this.registerEvent(Events.GuildCreate, (guild: Guild) => {
       logger.info(`📥 Бот додано на сервер: ${guild.name} (${guild.id})`, {
         type: 'event',
         event: 'guildCreate',
@@ -121,8 +121,8 @@ class EventManager {
       });
     });
 
-    // Guild Delete event
-    this.registerEvent('guildDelete', (guild: Guild) => {
+    // Guild Delete event (v14)
+    this.registerEvent(Events.GuildDelete, (guild: Guild) => {
       logger.info(`📤 Бот видалено з сервера: ${guild.name} (${guild.id})`, {
         type: 'event',
         event: 'guildDelete',
@@ -130,8 +130,8 @@ class EventManager {
       });
     });
 
-    // Message Create event (для логування)
-    this.registerEvent('messageCreate', (message: Message) => {
+    // Message Create event (для логування, v14)
+    this.registerEvent(Events.MessageCreate, (message: Message) => {
       if (message.author.bot) return;
 
       logger.debug(`💬 Повідомлення від ${message.author.tag}: ${message.content.substring(0, 50)}...`, {

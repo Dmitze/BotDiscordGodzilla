@@ -3,15 +3,15 @@
  * Оптимізоване кешування з підтримкою різних стратегій
  */
 
-import { createClient, RedisClientType } from 'redis';
+import { createClient } from 'redis';
 import type { 
-  BaseService, 
   BotConfig, 
   HealthStatus, 
   ServiceStats,
   CacheStats,
   CacheOptions
 } from '@/types';
+
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 
 // TODO: Створити типизовані утиліти
@@ -38,7 +38,7 @@ interface CacheServiceOptions extends CacheOptions {
 }
 
 export class CacheService extends BaseServiceClass {
-  private client: RedisClientType | null = null;
+  private client: ReturnType<typeof createClient> | null = null;
   private isConnected = false;
   private stats: CacheServiceStats;
   private readonly defaultTTL = 3600; // 1 година
@@ -72,11 +72,9 @@ export class CacheService extends BaseServiceClass {
       }
 
       // Створення Redis клієнта з оптимізацією
-      this.client = createClient({
-        url: this.config.redis.url,
+      const redisOptions: Parameters<typeof createClient>[0] = {
         socket: {
           connectTimeout: 10000,
-          lazyConnect: true,
           reconnectStrategy: (retries) => {
             if (retries > this.maxRetries) {
               logger.error('Redis: Максимальна кількість спроб підключення досягнута');
@@ -85,7 +83,14 @@ export class CacheService extends BaseServiceClass {
             return Math.min(retries * this.retryDelay, 30000);
           },
         },
-      });
+      };
+
+      // Додаємо url лише якщо визначено, щоб уникнути undefined при exactOptionalPropertyTypes
+      if (this.config.redis.url) {
+        (redisOptions as { url: string }).url = this.config.redis.url;
+      }
+
+      this.client = createClient(redisOptions);
 
       // Обробники подій
       this.setupEventHandlers();

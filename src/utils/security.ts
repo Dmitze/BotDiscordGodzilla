@@ -582,7 +582,7 @@ export class SecurityManager {
   /**
    * Оновлення статистики
    */
-  private updateStats(success: boolean, duration: number): void {
+  private updateStats(_success: boolean, duration: number): void {
     try {
       this.stats.totalValidations++;
       this.stats.totalValidationTime += duration;
@@ -657,12 +657,28 @@ export const getSuspiciousActivities = () => securityManager.getSuspiciousActivi
 export const cleanupSecurityManager = () => securityManager.cleanup();
 
 // Функції для зворотної сумісності
-export const sanitizeInput = (input: string): string => {
+// Overloads to support legacy and extended usage
+export function sanitizeInput(input: string): string;
+export function sanitizeInput(
+  input: string,
+  inputType: 'command' | 'message' | 'url' | 'file'
+): SecurityValidationResult;
+export function sanitizeInput(
+  input: string,
+  inputType?: 'command' | 'message' | 'url' | 'file'
+): string | SecurityValidationResult {
+  if (inputType) {
+    return validateInput(input, { inputType });
+  }
   const result = validateInput(input);
   return result.sanitizedValue;
-};
+}
 
-export const validateCommandOptions = (options: any): SecurityValidationResult => {
+export const validateCommandOptions = (
+  options: any,
+  _schema?: Record<string, any>
+): SecurityValidationResult => {
+  // Currently ignoring custom schema; the SecurityManager performs intrinsic checks.
   const input = JSON.stringify(options);
   return validateInput(input, { inputType: 'command' });
 };

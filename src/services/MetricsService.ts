@@ -4,14 +4,14 @@
  */
 
 import { Registry, Counter, Gauge, Histogram, collectDefaultMetrics } from 'prom-client';
-import type { 
-  BaseService, 
-  BotConfig, 
-  HealthStatus, 
+import type {
+  BotConfig,
   ServiceStats,
   CacheStats,
-  QueueStats
+  QueueStats,
+  HealthStatus,
 } from '@/types';
+
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 
 // TODO: Створити типизовані утиліти
@@ -379,7 +379,7 @@ export class MetricsService extends BaseServiceClass {
   /**
    * Вимірювання часу відповіді API
    */
-  public measureApiResponseTime(service: string, endpoint: string, duration: number): void {
+  public measureApiResponseTime(service: string, _endpoint: string, duration: number): void {
     if (this.metrics) {
       this.metrics.apiResponseTime.observe({ service }, duration / 1000);
     }

@@ -70,11 +70,14 @@ export abstract class BaseService implements IBaseService {
       this.retryCount = 0;
       
       const duration = Date.now() - startTime;
-      logger.info(`✅ Сервіс ${this.name} успішно ініціалізовано за ${duration}ms`);
+      logger.info(`✅ Сервіс ${this.name} успішно ініціалізовано за ${duration}ms`, { type: 'service', event: 'initialized', service: this.name, durationMs: duration });
       
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error(`❌ Помилка ініціалізації сервісу ${this.name} після ${duration}ms:`, error);
+      const meta = error instanceof Error
+        ? { type: 'service', event: 'initialize_failed', service: this.name, durationMs: duration, errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'service', event: 'initialize_failed', service: this.name, durationMs: duration, errorMessage: String(error) };
+      logger.error(`❌ Помилка ініціалізації сервісу ${this.name} після ${duration}ms`, meta);
       
       // Очищення таймауту
       if (this.initializationTimeout) {
@@ -133,11 +136,14 @@ export abstract class BaseService implements IBaseService {
       this.isShuttingDown = false;
       
       const duration = Date.now() - shutdownStartTime;
-      logger.info(`✅ Сервіс ${this.name} успішно зупинено за ${duration}ms`);
+      logger.info(`✅ Сервіс ${this.name} успішно зупинено за ${duration}ms`, { type: 'service', event: 'shutdown', service: this.name, durationMs: duration });
       
     } catch (error) {
       const duration = Date.now() - shutdownStartTime;
-      logger.error(`❌ Помилка зупинки сервісу ${this.name} після ${duration}ms:`, error);
+      const meta = error instanceof Error
+        ? { type: 'service', event: 'shutdown_failed', service: this.name, durationMs: duration, errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'service', event: 'shutdown_failed', service: this.name, durationMs: duration, errorMessage: String(error) };
+      logger.error(`❌ Помилка зупинки сервісу ${this.name} після ${duration}ms`, meta);
       
       // Очищення таймауту
       if (this.shutdownTimeout) {
@@ -173,7 +179,7 @@ export abstract class BaseService implements IBaseService {
       const duration = Date.now() - startTime;
       
       if (!health.healthy) {
-        logger.warn(`⚠️ Health check сервісу ${this.name} виявив проблеми за ${duration}ms:`, health);
+        logger.warn(`⚠️ Health check сервісу ${this.name} виявив проблеми за ${duration}ms`, { type: 'service', event: 'healthcheck_unhealthy', service: this.name, durationMs: duration, details: health });
       } else {
         logger.debug(`✅ Health check сервісу ${this.name} пройшов успішно за ${duration}ms`);
       }
@@ -186,7 +192,10 @@ export abstract class BaseService implements IBaseService {
       };
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error(`❌ Помилка health check сервісу ${this.name} після ${duration}ms:`, error);
+      const meta = error instanceof Error
+        ? { type: 'service', event: 'healthcheck_failed', service: this.name, durationMs: duration, errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'service', event: 'healthcheck_failed', service: this.name, durationMs: duration, errorMessage: String(error) };
+      logger.error(`❌ Помилка health check сервісу ${this.name} після ${duration}ms`, meta);
       
       return {
         healthy: false,
@@ -214,16 +223,14 @@ export abstract class BaseService implements IBaseService {
       const serviceStats = this.onGetStats();
       const combinedStats = { ...baseStats, ...serviceStats };
       
-      logger.debug(`📊 Статистика сервісу ${this.name}:`, {
-        uptime: `${Math.round(combinedStats.uptime / 1000)}s`,
-        requests: combinedStats.requests,
-        errors: combinedStats.errors,
-        isInitialized: combinedStats.isInitialized,
-      });
+      logger.debug(`📊 Статистика сервісу ${this.name}:`, combinedStats);
       
       return combinedStats;
     } catch (error) {
-      logger.error(`❌ Помилка отримання статистики сервісу ${this.name}:`, error);
+      const meta = error instanceof Error
+        ? { type: 'service', event: 'get_stats_failed', service: this.name, errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'service', event: 'get_stats_failed', service: this.name, errorMessage: String(error) };
+      logger.error(`❌ Помилка отримання статистики сервісу ${this.name}`, meta);
       
       return {
         service: this.name,
@@ -281,7 +288,10 @@ export abstract class BaseService implements IBaseService {
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error(`❌ Помилка операції ${operationName} в сервісі ${this.name} після ${duration}ms:`, error);
+      const meta = error instanceof Error
+        ? { type: 'service', event: 'operation_failed', service: this.name, operation: operationName, durationMs: duration, errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'service', event: 'operation_failed', service: this.name, operation: operationName, durationMs: duration, errorMessage: String(error) };
+      logger.error(`❌ Помилка операції ${operationName} в сервісі ${this.name} після ${duration}ms`, meta);
       
       if (fallback !== undefined) {
         logger.warn(`🔄 Використання fallback значення для операції ${operationName} в сервісі ${this.name}`);
@@ -312,7 +322,10 @@ export abstract class BaseService implements IBaseService {
       
       logger.info(`✅ Ресурси сервісу ${this.name} очищено`);
     } catch (error) {
-      logger.error(`❌ Помилка очищення ресурсів сервісу ${this.name}:`, error);
+      const meta = error instanceof Error
+        ? { type: 'service', event: 'cleanup_failed', service: this.name, errorName: error.name, errorMessage: error.message, stack: error.stack }
+        : { type: 'service', event: 'cleanup_failed', service: this.name, errorMessage: String(error) };
+      logger.error(`❌ Помилка очищення ресурсів сервісу ${this.name}`, meta);
     }
   }
 
