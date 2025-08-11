@@ -4,7 +4,7 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import type { LogMeta, PerformanceMetrics, SystemMetrics } from '@/types';
+import type { PerformanceMetrics, SystemMetrics } from '@/types';
 import logger from './logger';
 
 // Константи для оптимізації продуктивності
@@ -106,7 +106,12 @@ export class PerformanceOptimizer {
 
       logger.info('✅ Моніторинг продуктивності запущено');
     } catch (error) {
-      logger.error('❌ Помилка запуску моніторингу продуктивності:', error as LogMeta);
+      logger.error('❌ Помилка запуску моніторингу продуктивності', {
+        type: 'performance',
+        component: 'PerformanceOptimizer',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw new Error(`Помилка запуску моніторингу: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
     }
   }
@@ -138,17 +143,24 @@ export class PerformanceOptimizer {
 
       logger.debug('📊 Метрики продуктивності зібрано', {
         memory: {
-          rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`,
-          heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
-          heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+          rss: memoryUsage.rss,
+          heapUsed: memoryUsage.heapUsed,
+          heapTotal: memoryUsage.heapTotal,
+          external: memoryUsage.external,
+          arrayBuffers: (memoryUsage as NodeJS.MemoryUsage & { arrayBuffers?: number }).arrayBuffers ?? 0,
         },
         cpu: {
-          usage: `${cpuUsage.usage.toFixed(2)}%`,
-          load: cpuUsage.load.toFixed(2),
+          usage: cpuUsage.usage,
+          load: cpuUsage.load,
         },
-      } as LogMeta);
+      });
     } catch (error) {
-      logger.error('❌ Помилка збору метрик продуктивності:', error as LogMeta);
+      logger.error('❌ Помилка збору метрик продуктивності', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.collectMetrics',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -171,7 +183,12 @@ export class PerformanceOptimizer {
 
           this.performanceData.cpu.usage = Math.min(usage, 100);
         } catch (cpuError) {
-          logger.error('❌ Помилка вимірювання CPU:', cpuError as LogMeta);
+          logger.error('❌ Помилка вимірювання CPU', {
+            type: 'performance',
+            component: 'PerformanceOptimizer.getCPUUsage',
+            error: cpuError instanceof Error ? cpuError.message : String(cpuError),
+            stack: cpuError instanceof Error ? cpuError.stack : undefined,
+          });
           this.performanceData.cpu.usage = 0;
         }
       }, PERFORMANCE_CONSTANTS.CPU_MEASUREMENT_DELAY);
@@ -181,7 +198,12 @@ export class PerformanceOptimizer {
         load: require('os').loadavg()[0] || 0,
       };
     } catch (error) {
-      logger.error('❌ Помилка отримання використання CPU:', error as LogMeta);
+      logger.error('❌ Помилка отримання використання CPU', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.getCPUUsage',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return { usage: 0, load: 0 };
     }
   }
@@ -200,7 +222,9 @@ export class PerformanceOptimizer {
         logger.warn('⚠️ Високе використання пам\'яті', {
           heapUsed: `${Math.round(heapUsedPercent)}%`,
           threshold: `${PERFORMANCE_CONSTANTS.MEMORY_THRESHOLD}%`,
-        } as LogMeta);
+          type: 'performance',
+          component: 'PerformanceOptimizer.checkThresholds',
+        });
         this.optimizeMemory();
       }
 
@@ -209,11 +233,18 @@ export class PerformanceOptimizer {
         logger.warn('⚠️ Високе використання CPU', {
           usage: `${cpuUsage.usage.toFixed(2)}%`,
           threshold: `${PERFORMANCE_CONSTANTS.CPU_THRESHOLD}%`,
-        } as LogMeta);
+          type: 'performance',
+          component: 'PerformanceOptimizer.checkThresholds',
+        });
         this.optimizeCPU();
       }
     } catch (error) {
-      logger.error('❌ Помилка перевірки порогів продуктивності:', error as LogMeta);
+      logger.error('❌ Помилка перевірки порогів продуктивності', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.checkThresholds',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -241,7 +272,12 @@ export class PerformanceOptimizer {
 
       logger.info('✅ Оптимізація пам\'яті завершено');
     } catch (error) {
-      logger.error('❌ Помилка оптимізації пам\'яті:', error as LogMeta);
+      logger.error('❌ Помилка оптимізації пам\'яті:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.optimizeMemory',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -265,7 +301,12 @@ export class PerformanceOptimizer {
 
       logger.info('✅ Оптимізація CPU завершено');
     } catch (error) {
-      logger.error('❌ Помилка оптимізації CPU:', error as LogMeta);
+      logger.error('❌ Помилка оптимізації CPU:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.optimizeCPU',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -285,10 +326,17 @@ export class PerformanceOptimizer {
           freedMemory: `${Math.round(freedMemory / 1024 / 1024)}MB`,
           beforeHeap: `${Math.round(beforeMemory.heapUsed / 1024 / 1024)}MB`,
           afterHeap: `${Math.round(afterMemory.heapUsed / 1024 / 1024)}MB`,
-        } as LogMeta);
+          type: 'performance',
+          component: 'PerformanceOptimizer.performGarbageCollection',
+        });
       }
     } catch (error) {
-      logger.error('❌ Помилка garbage collection:', error as LogMeta);
+      logger.error('❌ Помилка garbage collection:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.performGarbageCollection',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -331,7 +379,12 @@ export class PerformanceOptimizer {
         logger.debug(`🧹 Очищено ${totalCleaned} записів з кешів`);
       }
     } catch (error) {
-      logger.error('❌ Помилка очищення кешів:', error as LogMeta);
+      logger.error('❌ Помилка очищення кешів:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.cleanupCaches',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -394,16 +447,25 @@ export class PerformanceOptimizer {
           duration: `${duration.toFixed(2)}ms`,
           category,
           threshold: `${PERFORMANCE_CONSTANTS.SLOW_OPERATION_THRESHOLD}ms`,
-        } as LogMeta);
+          type: 'performance',
+          component: 'PerformanceOptimizer.recordOperation',
+        });
       }
 
       // Логування продуктивності
       logger.performance(operationName, duration, {
         category,
         error: error ? true : false,
-      } as LogMeta);
+        type: 'performance',
+        component: 'PerformanceOptimizer.recordOperation',
+      });
     } catch (error) {
-      logger.error('❌ Помилка запису операції:', error as LogMeta);
+      logger.error('❌ Помилка запису операції:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.recordOperation',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -433,7 +495,12 @@ export class PerformanceOptimizer {
 
       logger.debug(`💾 Значення кешовано: ${cacheName}:${key}`);
     } catch (error) {
-      logger.error('❌ Помилка кешування:', error as LogMeta);
+      logger.error('❌ Помилка кешування:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.cache',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -455,7 +522,12 @@ export class PerformanceOptimizer {
       logger.debug(`📖 Значення отримано з кешу: ${cacheName}:${key}`);
       return entry.value;
     } catch (error) {
-      logger.error('❌ Помилка отримання з кешу:', error as LogMeta);
+      logger.error('❌ Помилка отримання з кешу:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.getFromCache',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return null;
     }
   }
@@ -494,7 +566,12 @@ export class PerformanceOptimizer {
         },
       };
     } catch (error) {
-      logger.error('❌ Помилка отримання статистики продуктивності:', error as LogMeta);
+      logger.error('❌ Помилка отримання статистики продуктивності:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.getPerformanceStats',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return {};
     }
   }
@@ -522,7 +599,12 @@ export class PerformanceOptimizer {
         processId: process.pid,
       };
     } catch (error) {
-      logger.error('❌ Помилка отримання системних метрик:', error as LogMeta);
+      logger.error('❌ Помилка отримання системних метрик:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.getSystemMetrics',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return {
         memory: { rss: 0, heapUsed: 0, heapTotal: 0, external: 0 },
         cpu: { usage: 0, load: 0 },
@@ -570,7 +652,12 @@ export class PerformanceOptimizer {
 
       logger.info('✅ Ресурси PerformanceOptimizer очищено');
     } catch (error) {
-      logger.error('❌ Помилка очищення PerformanceOptimizer:', error as LogMeta);
+      logger.error('❌ Помилка очищення PerformanceOptimizer:', {
+        type: 'performance',
+        component: 'PerformanceOptimizer.cleanup',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     } finally {
       this.isShuttingDown = false;
     }
