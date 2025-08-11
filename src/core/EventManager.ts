@@ -4,7 +4,7 @@
  * TypeScript версія
  */
 
-import logger from '../utils/logger';
+import logger from '@/utils/logger';
 import { Client, Guild, Message, Events } from 'discord.js';
 
 interface Bot {

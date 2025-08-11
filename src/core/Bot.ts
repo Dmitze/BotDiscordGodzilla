@@ -327,20 +327,7 @@ export class Bot extends BaseServiceClass {
       if (heapUsedMB > 200) {
         logger.warn(`⚠️ Високе використання пам'яті бота: ${Math.round(heapUsedMB)}MB`);
       }
-      
-      // Перевірка доступності мережі
-      try {
-        const testUrl = 'https://discord.com/api/v10/gateway';
-        const response = await fetch(testUrl, { method: 'HEAD' });
-        if (!response.ok) {
-          logger.warn('⚠️ Проблеми з підключенням до Discord API');
-        }
-      } catch (networkError) {
-        const meta = networkError instanceof Error
-          ? { type: 'bot', event: 'network_issue', errorName: networkError.name, errorMessage: networkError.message }
-          : { type: 'bot', event: 'network_issue', errorMessage: String(networkError) };
-        logger.warn('⚠️ Проблеми з мережевим підключенням', meta);
-      }
+      // Політика: офлайн/ізольоване середовище — пропускаємо зовнішні мережеві перевірки
       
       logger.info('✅ Системні ресурси бота перевірено');
     } catch (error) {
