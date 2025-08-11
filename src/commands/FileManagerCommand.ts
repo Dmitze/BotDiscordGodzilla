@@ -3,9 +3,10 @@
  * Включає пошук, читання та аналіз файлів
  */
 
-import { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } from 'discord.js';
+import { AttachmentBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
+import logger from '@/utils/logger';
 
 interface FileSearchOptions {
   query: string;
@@ -46,6 +47,7 @@ export class FileManagerCommand extends BaseCommand {
       'файли',
       '📁 Робота з файлами в Google Drive',
       config,
+      {},
       (builder: any) => {
         return builder
           .addSubcommand((subcommand: any) =>
@@ -190,12 +192,18 @@ export class FileManagerCommand extends BaseCommand {
       await this.sendResult(interaction, result, subcommand);
 
       // Логування успішного виконання
-      console.log(`File manager command executed successfully for ${interaction.user.tag}`, {
+      logger.info('File manager command executed successfully', {
+        userId: interaction.user.id,
+        userTag: interaction.user.tag,
         subcommand,
         success: true,
       });
     } catch (error) {
-      console.error('File Manager command error:', error);
+      logger.error('File Manager command error', {
+        error: error instanceof Error ? error.message : String(error),
+        userId: interaction.user?.id,
+        subcommand: (() => { try { return interaction.options.getSubcommand(); } catch { return undefined; } })(),
+      });
 
       const errorMessage =
         '❌ Помилка при роботі з файлами. Спробуйте ще раз або зверніться до адміністратора.';
@@ -211,7 +219,7 @@ export class FileManagerCommand extends BaseCommand {
   /**
    * Перевірка прав доступу
    */
-  private async checkPermission(interaction: any): Promise<boolean> {
+  private async checkPermission(_interaction: ChatInputCommandInteraction): Promise<boolean> {
     // TODO: Реалізувати перевірку прав доступу
     // Тимчасова реалізація - дозволяємо всім
     return true;
@@ -220,7 +228,7 @@ export class FileManagerCommand extends BaseCommand {
   /**
    * Витяг параметрів з interaction
    */
-  private extractOptions(interaction: any, subcommand: string): any {
+  private extractOptions(interaction: ChatInputCommandInteraction, subcommand: string): any {
     const options: any = {};
 
     switch (subcommand) {
@@ -325,7 +333,7 @@ export class FileManagerCommand extends BaseCommand {
   /**
    * Відправка результату
    */
-  private async sendResult(interaction: any, result: FileResult, subcommand: string): Promise<void> {
+  private async sendResult(interaction: ChatInputCommandInteraction, result: FileResult, subcommand: string): Promise<void> {
     if (!result.success) {
       await interaction.editReply({ content: result.message });
       return;
@@ -346,20 +354,8 @@ export class FileManagerCommand extends BaseCommand {
   }
 
   /**
-   * Отримання назви типу файлу
+   * Резерв: отримання назви типу файлу — видалено як неиспользуемое
    */
-  private getFileTypeName(mimeType: string): string {
-    const typeNames: Record<string, string> = {
-      'application/pdf': 'PDF',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Excel',
-      'text/plain': 'Текст',
-      'image/jpeg': 'JPEG',
-      'image/png': 'PNG',
-    };
-
-    return typeNames[mimeType] || 'Невідомий тип';
-  }
 
   /**
    * Отримання назви типу аналізу
@@ -392,7 +388,9 @@ export class FileManagerCommand extends BaseCommand {
    * Логування події безпеки
    */
   private logSecurityEvent(eventType: string, data: Record<string, any>): void {
-    // TODO: Реалізувати логування подій безпеки
-    console.log(`Security event: ${eventType}`, data);
+    logger.info('security_event', {
+      eventType,
+      ...data,
+    });
   }
-} 
+}
