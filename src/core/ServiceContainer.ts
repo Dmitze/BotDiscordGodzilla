@@ -4,6 +4,7 @@
  */
 
 import type { BaseService, BotConfig, HealthStatus } from '@/types';
+import logger from '@/utils/logger';
 
 export class ServiceContainer {
   private services = new Map<string, BaseService>();
@@ -84,7 +85,12 @@ export class ServiceContainer {
       try {
         shutdownPromises.push(service.shutdown());
       } catch (error) {
-        console.error(`Помилка завершення сервісу ${name}:`, error);
+        logger.error('Помилка завершення сервісу', {
+          type: 'service',
+          event: 'shutdown_error',
+          service: name,
+          errorMessage: String(error),
+        });
       }
     }
 
