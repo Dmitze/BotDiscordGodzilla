@@ -4,7 +4,8 @@
  * TypeScript версія
  */
 
-import logger from '../utils/logger';
+import logger from '@/utils/logger';
+
 import { AIService } from '../services/AIService';
 import { GoogleService } from '../services/GoogleService';
 import { CacheService } from '../services/CacheService';
@@ -57,7 +58,10 @@ class ServiceManager {
    */
   async initialize(): Promise<void> {
     try {
-      logger.info('🔧 Ініціалізація менеджера сервісів...');
+      logger.info('🔧 Ініціалізація менеджера сервісів...', {
+        type: 'service_manager',
+        event: 'init',
+      });
 
       // Створення сервісів
       await this.createServices();
@@ -65,11 +69,19 @@ class ServiceManager {
       // Ініціалізація сервісів
       await this.initializeServices();
 
-      logger.info('✅ Менеджер сервісів ініціалізовано');
-    } catch (error) {
-      logger.error('❌ Помилка ініціалізації менеджера сервісів:', {
-        error: error instanceof Error ? error.message : String(error),
+      logger.info('✅ Менеджер сервісів ініціалізовано', {
+        type: 'service_manager',
+        event: 'init_success',
       });
+    } catch (error) {
+      logger.error('❌ Помилка ініціалізації менеджера сервісів', {
+        type: 'service_manager',
+        event: 'init_failed',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
       throw error;
     }
   }
@@ -107,13 +119,22 @@ class ServiceManager {
       try {
         if (service.initialize) {
           await service.initialize();
-          logger.debug(`✅ Сервіс ${name} ініціалізовано`);
+          logger.debug('✅ Сервіс ініціалізовано', {
+            type: 'service_manager',
+            event: 'service_initialized',
+            service: name,
+          });
         }
       } catch (error) {
-        logger.error(`❌ Помилка ініціалізації сервісу ${name}:`, {
+        logger.error('❌ Помилка ініціалізації сервісу', {
+          type: 'service_manager',
+          event: 'service_init_failed',
           service: name,
-          error: error instanceof Error ? error.message : String(error),
+          errorName: error instanceof Error ? error.name : undefined,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
         });
+
         // Видаляємо сервіс, який не вдалося ініціалізувати
         this.services.delete(name);
       }
@@ -129,7 +150,10 @@ class ServiceManager {
     const metricsService = this.services.get('metrics');
     if (metricsService && metricsService.start) {
       await metricsService.start();
-      logger.info('📊 Метрики запущено');
+      logger.info('📊 Метрики запущено', {
+        type: 'service_manager',
+        event: 'metrics_started',
+      });
     }
   }
 
@@ -140,7 +164,10 @@ class ServiceManager {
     const cacheService = this.services.get('cache');
     if (cacheService && cacheService.start) {
       await cacheService.start();
-      logger.info('💾 Кеш запущено');
+      logger.info('💾 Кеш запущено', {
+        type: 'service_manager',
+        event: 'cache_started',
+      });
     }
   }
 
@@ -151,7 +178,10 @@ class ServiceManager {
     const schedulerService = this.services.get('scheduler');
     if (schedulerService && schedulerService.start) {
       await schedulerService.start();
-      logger.info('⏰ Планувальник запущено');
+      logger.info('⏰ Планувальник запущено', {
+        type: 'service_manager',
+        event: 'scheduler_started',
+      });
     }
   }
 
@@ -192,9 +222,13 @@ class ServiceManager {
         try {
           return await service[methodName](...args);
         } catch (error) {
-          logger.error(`Помилка виконання ${methodName} на сервісі:`, {
-            method: methodName,
-            error: error instanceof Error ? error.message : String(error),
+          logger.error('Помилка виконання методу на сервісі', {
+            type: 'service_manager',
+            event: 'method_execution_failed',
+            methodName: methodName,
+            errorName: error instanceof Error ? error.name : undefined,
+            errorMessage: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
           });
           return null;
         }
@@ -226,14 +260,24 @@ class ServiceManager {
    * Graceful shutdown всіх сервісів
    */
   async shutdown(): Promise<void> {
-    logger.info('🛑 Завершення роботи сервісів...');
+    logger.info('🛑 Завершення роботи сервісів...', {
+      type: 'service_manager',
+      event: 'shutdown',
+    });
 
     try {
       await this.executeOnAllServices('shutdown');
-      logger.info('✅ Сервіси успішно завершено');
+      logger.info('✅ Сервіси успішно завершено', {
+        type: 'service_manager',
+        event: 'shutdown_success',
+      });
     } catch (error) {
-      logger.error('❌ Помилка при завершенні сервісів:', {
-        error: error instanceof Error ? error.message : String(error),
+      logger.error('❌ Помилка при завершенні сервісів', {
+        type: 'service_manager',
+        event: 'shutdown_failed',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
     }
   }
