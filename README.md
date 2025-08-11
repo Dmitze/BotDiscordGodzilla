@@ -41,6 +41,9 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 - **[🔄 Оновлення](docs/guides/UPGRADE_GUIDE.md)** - як оновити бота
 - **[📘 TypeScript](docs/guides/TYPESCRIPT_MIGRATION_GUIDE.md)** - міграція на TypeScript
 
+### **🧭 Індекс документації**
+- **[🔗 Повний індекс документації](docs/INDEX.md)** — швидкі переходи до всіх розділів і README папок
+
 ### **🔌 API та технічна документація**
 - **[📋 API документація](docs/api/API_DOCUMENTATION.md)** - повна API документація
 - **[📝 Довідник команд](docs/api/COMMANDS_REFERENCE.md)** - всі команди бота
@@ -77,6 +80,20 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 ### **📝 Історія змін**
 - **[📋 Changelog](docs/changelog/CHANGELOG.md)** - історія оновлень
+
+### **📂 README по папках коду**
+- **[src/core](src/core/README.md)** — ядро системи
+- **[src/services](src/services/README.md)** — бізнес-логіка та інтеграції
+- **[src/commands](src/commands/README.md)** — команди бота
+- **[src/commands/modules](src/commands/modules/README.md)** — метрики та валідація команд
+- **[src/utils](src/utils/README.md)** — утиліти та інфраструктура
+- **[src/config](src/config/README.md)** — конфігурація та ENV валідація
+- **[src/scripts](src/scripts/README.md)** — керування Slash-командами
+- **[src/types](src/types/README.md)** — спільні типи
+- **[data](data/README.md)** — дані та артефакти
+- **[data/logs](data/logs/README.md)** — лог-файли
+- **[data/metrics](data/metrics/README.md)** — Prometheus метрики
+- **[data/tmp](data/tmp/README.md)** — тимчасові файли
 
 ---
 
