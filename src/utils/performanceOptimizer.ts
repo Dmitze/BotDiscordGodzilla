@@ -301,7 +301,7 @@ export class PerformanceOptimizer {
       const now = Date.now();
       const maxAge = 30 * 60 * 1000; // 30 хвилин
 
-      for (const [cacheName, cache] of this.caches.entries()) {
+      for (const [_cacheName, cache] of this.caches.entries()) {
         let cleanedCount = 0;
         const entriesToDelete: string[] = [];
 
@@ -414,7 +414,7 @@ export class PerformanceOptimizer {
     cacheName: string,
     key: string,
     value: T,
-    ttl: number = 300000 // 5 хвилин за замовчуванням
+    _ttl: number = 300000 // 5 хвилин за замовчуванням (не використовується прямо, очищення планове)
   ): void {
     try {
       if (!this.caches.has(cacheName)) {

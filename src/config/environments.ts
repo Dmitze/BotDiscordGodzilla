@@ -108,34 +108,34 @@ interface EnvironmentConfig extends BaseConfig {
 const baseConfig: BaseConfig = {
   // Налаштування логування
   logging: {
-    level: process.env.LOG_LEVEL || 'info',
-    maxFiles: parseInt(process.env.LOG_MAX_FILES || '5'),
-    maxSize: process.env.LOG_MAX_SIZE || '10m',
+    level: process.env['LOG_LEVEL'] || 'info',
+    maxFiles: parseInt(process.env['LOG_MAX_FILES'] || '5'),
+    maxSize: process.env['LOG_MAX_SIZE'] || '10m',
     directory: path.join(process.cwd(), 'logs'),
   },
 
   // Налаштування метрик
   metrics: {
-    enabled: process.env.METRICS_ENABLED === 'true',
-    port: parseInt(process.env.METRICS_PORT || '9090'),
-    path: process.env.METRICS_PATH || '/metrics',
+    enabled: process.env['METRICS_ENABLED'] === 'true',
+    port: parseInt(process.env['METRICS_PORT'] || '9090'),
+    path: process.env['METRICS_PATH'] || '/metrics',
   },
 
   // Налаштування безпеки
   security: {
-    rateLimitWindow: parseInt(process.env.RATE_LIMIT_WINDOW || '60000'),
-    rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100'),
-    adminRole: process.env.ADMIN_ROLE || 'Admin',
-    botUserRole: process.env.BOT_USER_ROLE || 'Bot User',
+    rateLimitWindow: parseInt(process.env['RATE_LIMIT_WINDOW'] || '60000'),
+    rateLimitMax: parseInt(process.env['RATE_LIMIT_MAX'] || '100'),
+    adminRole: process.env['ADMIN_ROLE'] || 'Admin',
+    botUserRole: process.env['BOT_USER_ROLE'] || 'Bot User',
   },
 
   // Налаштування продуктивності
   performance: {
-    cacheTTL: parseInt(process.env.CACHE_TTL || '300000'),
-    maxSearchResults: parseInt(process.env.MAX_SEARCH_RESULTS || '100'),
-    maxAnalysisRows: parseInt(process.env.MAX_ANALYSIS_ROWS || '1000'),
-    requestTimeout: parseInt(process.env.REQUEST_TIMEOUT || '30000'),
-    maxRetries: parseInt(process.env.MAX_RETRIES || '3'),
+    cacheTTL: parseInt(process.env['CACHE_TTL'] || '300000'),
+    maxSearchResults: parseInt(process.env['MAX_SEARCH_RESULTS'] || '100'),
+    maxAnalysisRows: parseInt(process.env['MAX_ANALYSIS_ROWS'] || '1000'),
+    requestTimeout: parseInt(process.env['REQUEST_TIMEOUT'] || '30000'),
+    maxRetries: parseInt(process.env['MAX_RETRIES'] || '3'),
   },
 };
 
@@ -147,41 +147,41 @@ const development: EnvironmentConfig = {
 
   // Discord налаштування
   discord: {
-    token: process.env.DISCORD_TOKEN || '',
-    clientId: process.env.CLIENT_ID || '',
-    guildId: process.env.GUILD_ID || '',
+    token: process.env['DISCORD_TOKEN'] || '',
+    clientId: process.env['CLIENT_ID'] || '',
+    guildId: process.env['GUILD_ID'] || '',
     intents: ['Guilds', 'GuildMessages', 'MessageContent'],
   },
 
   // Google Services
   google: {
-    apiKey: process.env.GOOGLE_API_KEY || '',
-    appScriptUrl: process.env.APP_SCRIPT_URL || '',
-    sheetName: process.env.SHEET_NAME || 'Data',
+    apiKey: process.env['GOOGLE_API_KEY'] || '',
+    appScriptUrl: process.env['APP_SCRIPT_URL'] || '',
+    sheetName: process.env['SHEET_NAME'] || 'Data',
   },
 
   // AI налаштування
   ai: {
     openai: {
-      apiKey: process.env.OPENAI_API_KEY || '',
-      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-      maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '1000'),
-      temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7'),
+      apiKey: process.env['OPENAI_API_KEY'] || '',
+      model: process.env['OPENAI_MODEL'] || 'gpt-3.5-turbo',
+      maxTokens: parseInt(process.env['OPENAI_MAX_TOKENS'] || '1000'),
+      temperature: parseFloat(process.env['OPENAI_TEMPERATURE'] || '0.7'),
     },
     ollama: {
-      enabled: process.env.OLLAMA_ENABLED === 'true',
-      url: process.env.OLLAMA_URL || 'http://localhost:11434',
-      model: process.env.OLLAMA_MODEL || 'llama2',
+      enabled: process.env['OLLAMA_ENABLED'] === 'true',
+      url: process.env['OLLAMA_URL'] || 'http://localhost:11434',
+      model: process.env['OLLAMA_MODEL'] || 'llama2',
     },
   },
 
   // Redis налаштування
   redis: {
-    enabled: process.env.REDIS_ENABLED === 'true',
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-    password: process.env.REDIS_PASSWORD || null,
-    db: parseInt(process.env.REDIS_DB || '0'),
+    enabled: process.env['REDIS_ENABLED'] === 'true',
+    host: process.env['REDIS_HOST'] || 'localhost',
+    port: parseInt(process.env['REDIS_PORT'] || '6379'),
+    password: process.env['REDIS_PASSWORD'] || null,
+    db: parseInt(process.env['REDIS_DB'] || '0'),
   },
 
   // Налаштування для розробки
@@ -201,23 +201,23 @@ const testing: EnvironmentConfig = {
 
   // Discord налаштування (тестовий сервер)
   discord: {
-    token: process.env.TEST_DISCORD_TOKEN || process.env.DISCORD_TOKEN || '',
-    clientId: process.env.TEST_CLIENT_ID || process.env.CLIENT_ID || '',
-    guildId: process.env.TEST_GUILD_ID || process.env.GUILD_ID || '',
+    token: process.env['TEST_DISCORD_TOKEN'] || process.env['DISCORD_TOKEN'] || '',
+    clientId: process.env['TEST_CLIENT_ID'] || process.env['CLIENT_ID'] || '',
+    guildId: process.env['TEST_GUILD_ID'] || process.env['GUILD_ID'] || '',
     intents: ['Guilds', 'GuildMessages', 'MessageContent'],
   },
 
   // Google Services (тестові)
   google: {
-    apiKey: process.env.TEST_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || '',
-    appScriptUrl: process.env.TEST_APP_SCRIPT_URL || process.env.APP_SCRIPT_URL || '',
-    sheetName: process.env.TEST_SHEET_NAME || 'TestData',
+    apiKey: process.env['TEST_GOOGLE_API_KEY'] || process.env['GOOGLE_API_KEY'] || '',
+    appScriptUrl: process.env['TEST_APP_SCRIPT_URL'] || process.env['APP_SCRIPT_URL'] || '',
+    sheetName: process.env['TEST_SHEET_NAME'] || 'TestData',
   },
 
   // AI налаштування (тестові)
   ai: {
     openai: {
-      apiKey: process.env.TEST_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '',
+      apiKey: process.env['TEST_OPENAI_API_KEY'] || process.env['OPENAI_API_KEY'] || '',
       model: 'gpt-3.5-turbo',
       maxTokens: 500,
       temperature: 0.5,
@@ -256,41 +256,41 @@ const staging: EnvironmentConfig = {
 
   // Discord налаштування
   discord: {
-    token: process.env.STAGING_DISCORD_TOKEN || process.env.DISCORD_TOKEN || '',
-    clientId: process.env.STAGING_CLIENT_ID || process.env.CLIENT_ID || '',
-    guildId: process.env.STAGING_GUILD_ID || process.env.GUILD_ID || '',
+    token: process.env['STAGING_DISCORD_TOKEN'] || process.env['DISCORD_TOKEN'] || '',
+    clientId: process.env['STAGING_CLIENT_ID'] || process.env['CLIENT_ID'] || '',
+    guildId: process.env['STAGING_GUILD_ID'] || process.env['GUILD_ID'] || '',
     intents: ['Guilds', 'GuildMessages', 'MessageContent'],
   },
 
   // Google Services
   google: {
-    apiKey: process.env.STAGING_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || '',
-    appScriptUrl: process.env.STAGING_APP_SCRIPT_URL || process.env.APP_SCRIPT_URL || '',
-    sheetName: process.env.STAGING_SHEET_NAME || 'StagingData',
+    apiKey: process.env['STAGING_GOOGLE_API_KEY'] || process.env['GOOGLE_API_KEY'] || '',
+    appScriptUrl: process.env['STAGING_APP_SCRIPT_URL'] || process.env['APP_SCRIPT_URL'] || '',
+    sheetName: process.env['STAGING_SHEET_NAME'] || 'StagingData',
   },
 
   // AI налаштування
   ai: {
     openai: {
-      apiKey: process.env.STAGING_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '',
-      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-      maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '1000'),
-      temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7'),
+      apiKey: process.env['STAGING_OPENAI_API_KEY'] || process.env['OPENAI_API_KEY'] || '',
+      model: process.env['OPENAI_MODEL'] || 'gpt-3.5-turbo',
+      maxTokens: parseInt(process.env['OPENAI_MAX_TOKENS'] || '1000'),
+      temperature: parseFloat(process.env['OPENAI_TEMPERATURE'] || '0.7'),
     },
     ollama: {
-      enabled: process.env.OLLAMA_ENABLED === 'true',
-      url: process.env.OLLAMA_URL || 'http://localhost:11434',
-      model: process.env.OLLAMA_MODEL || 'llama2',
+      enabled: process.env['OLLAMA_ENABLED'] === 'true',
+      url: process.env['OLLAMA_URL'] || 'http://localhost:11434',
+      model: process.env['OLLAMA_MODEL'] || 'llama2',
     },
   },
 
   // Redis налаштування
   redis: {
-    enabled: process.env.REDIS_ENABLED === 'true',
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-    password: process.env.REDIS_PASSWORD || null,
-    db: parseInt(process.env.REDIS_DB || '0'),
+    enabled: process.env['REDIS_ENABLED'] === 'true',
+    host: process.env['REDIS_HOST'] || 'localhost',
+    port: parseInt(process.env['REDIS_PORT'] || '6379'),
+    password: process.env['REDIS_PASSWORD'] || null,
+    db: parseInt(process.env['REDIS_DB'] || '0'),
   },
 
   // Налаштування для staging
@@ -311,41 +311,41 @@ const production: EnvironmentConfig = {
 
   // Discord налаштування
   discord: {
-    token: process.env.DISCORD_TOKEN || '',
-    clientId: process.env.CLIENT_ID || '',
-    guildId: process.env.GUILD_ID || '',
+    token: process.env['DISCORD_TOKEN'] || '',
+    clientId: process.env['CLIENT_ID'] || '',
+    guildId: process.env['GUILD_ID'] || '',
     intents: ['Guilds', 'GuildMessages', 'MessageContent'],
   },
 
   // Google Services
   google: {
-    apiKey: process.env.GOOGLE_API_KEY || '',
-    appScriptUrl: process.env.APP_SCRIPT_URL || '',
-    sheetName: process.env.SHEET_NAME || 'Data',
+    apiKey: process.env['GOOGLE_API_KEY'] || '',
+    appScriptUrl: process.env['APP_SCRIPT_URL'] || '',
+    sheetName: process.env['SHEET_NAME'] || 'Data',
   },
 
   // AI налаштування
   ai: {
     openai: {
-      apiKey: process.env.OPENAI_API_KEY || '',
-      model: process.env.OPENAI_MODEL || 'gpt-4',
-      maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '2000'),
-      temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7'),
+      apiKey: process.env['OPENAI_API_KEY'] || '',
+      model: process.env['OPENAI_MODEL'] || 'gpt-4',
+      maxTokens: parseInt(process.env['OPENAI_MAX_TOKENS'] || '2000'),
+      temperature: parseFloat(process.env['OPENAI_TEMPERATURE'] || '0.7'),
     },
     ollama: {
-      enabled: process.env.OLLAMA_ENABLED === 'true',
-      url: process.env.OLLAMA_URL || 'http://localhost:11434',
-      model: process.env.OLLAMA_MODEL || 'llama2',
+      enabled: process.env['OLLAMA_ENABLED'] === 'true',
+      url: process.env['OLLAMA_URL'] || 'http://localhost:11434',
+      model: process.env['OLLAMA_MODEL'] || 'llama2',
     },
   },
 
   // Redis налаштування
   redis: {
-    enabled: process.env.REDIS_ENABLED === 'true',
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-    password: process.env.REDIS_PASSWORD || null,
-    db: parseInt(process.env.REDIS_DB || '0'),
+    enabled: process.env['REDIS_ENABLED'] === 'true',
+    host: process.env['REDIS_HOST'] || 'localhost',
+    port: parseInt(process.env['REDIS_PORT'] || '6379'),
+    password: process.env['REDIS_PASSWORD'] || null,
+    db: parseInt(process.env['REDIS_DB'] || '0'),
   },
 
   // Налаштування для продакшену
@@ -362,7 +362,7 @@ const production: EnvironmentConfig = {
 
 // Функція для отримання конфігурації за середовищем
 function getConfig(environment: string | null = null): EnvironmentConfig {
-  const env = environment || process.env.NODE_ENV || 'development';
+  const env = environment || process.env['NODE_ENV'] || 'development';
 
   switch (env.toLowerCase()) {
     case 'development':

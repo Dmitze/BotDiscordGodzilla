@@ -5,7 +5,6 @@
  */
 
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import logger from './logger';
 
 interface PaginationOptions {
   itemsPerPage?: number;
@@ -248,7 +247,7 @@ class Pagination {
   /**
    * Форматування назви поля
    */
-  private formatFieldName(item: any, index: number): string {
+  private formatFieldName(_item: any, index: number): string {
     if (this.fields.length > 0) {
       const fieldIndex = index % this.fields.length;
       return this.fields[fieldIndex] || `Елемент ${index + 1}`;
@@ -259,7 +258,7 @@ class Pagination {
   /**
    * Форматування значення поля
    */
-  private formatFieldValue(item: any, index: number): string {
+  private formatFieldValue(item: any, _index: number): string {
     if (typeof item === 'string') {
       return this.truncateText(item, 100);
     } else if (typeof item === 'object' && item !== null) {
