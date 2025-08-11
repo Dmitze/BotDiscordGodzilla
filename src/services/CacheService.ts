@@ -62,7 +62,7 @@ export class CacheService extends BaseServiceClass {
   protected async onInitialize(): Promise<void> {
     try {
       if (!this.config.redis.enabled) {
-        logger.info('Redis кешування вимкнено');
+        logger.info('Redis кешування вимкнено', { component: 'CacheService' });
         return;
       }
 
@@ -72,7 +72,7 @@ export class CacheService extends BaseServiceClass {
           connectTimeout: 10000,
           reconnectStrategy: (retries) => {
             if (retries > this.maxRetries) {
-              logger.error('Redis: Максимальна кількість спроб підключення досягнута');
+              logger.error('Redis: Максимальна кількість спроб підключення досягнута', { component: 'CacheService' });
               return false;
             }
             return Math.min(retries * this.retryDelay, 30000);
@@ -96,10 +96,11 @@ export class CacheService extends BaseServiceClass {
       // Валідація підключення
       await this.validateConnection();
 
-      logger.info('✅ Redis Cache Service ініціалізовано');
+      logger.info('✅ Redis Cache Service ініціалізовано', { component: 'CacheService' });
     } catch (error) {
       logger.error('❌ Помилка ініціалізації Redis:', {
         type: 'cache_service', event: 'init_failed', service: this.name,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -115,17 +116,18 @@ export class CacheService extends BaseServiceClass {
     if (!this.client) return;
 
     this.client.on('connect', () => {
-      logger.info('🔗 Redis: Підключено');
+      logger.info('🔗 Redis: Підключено', { component: 'CacheService' });
       this.isConnected = true;
     });
 
     this.client.on('ready', () => {
-      logger.info('✅ Redis: Готовий до роботи');
+      logger.info('✅ Redis: Готовий до роботи', { component: 'CacheService' });
     });
 
     this.client.on('error', (error) => {
       logger.error('❌ Redis помилка:', {
         type: 'cache_service', event: 'redis_error', service: this.name,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -135,12 +137,12 @@ export class CacheService extends BaseServiceClass {
     });
 
     this.client.on('end', () => {
-      logger.warn('🔌 Redis: З\'єднання закрито');
+      logger.warn('🔌 Redis: З\'єднання закрито', { component: 'CacheService' });
       this.isConnected = false;
     });
 
     this.client.on('reconnecting', () => {
-      logger.info('🔄 Redis: Перепідключення...');
+      logger.info('🔄 Redis: Перепідключення...', { component: 'CacheService' });
     });
   }
 
@@ -154,10 +156,11 @@ export class CacheService extends BaseServiceClass {
 
     try {
       await this.client.connect();
-      logger.info('✅ Підключення до Redis успішне');
+      logger.info('✅ Підключення до Redis успішне', { component: 'CacheService' });
     } catch (error) {
       logger.error('❌ Помилка підключення до Redis:', {
         type: 'cache_service', event: 'connect_failed', service: this.name,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -176,10 +179,11 @@ export class CacheService extends BaseServiceClass {
 
     try {
       await this.client.ping();
-      logger.info('✅ Redis підключення валідне');
+      logger.info('✅ Redis підключення валідне', { component: 'CacheService' });
     } catch (error) {
       logger.error('❌ Помилка валідації Redis підключення:', {
         type: 'cache_service', event: 'ping_failed', service: this.name,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -225,6 +229,7 @@ export class CacheService extends BaseServiceClass {
       this.updateStats();
       logger.error('❌ Помилка отримання з кешу:', {
         type: 'cache_service', event: 'get_failed', service: this.name, key,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -266,6 +271,7 @@ export class CacheService extends BaseServiceClass {
       this.updateStats();
       logger.error('❌ Помилка збереження в кеш:', {
         type: 'cache_service', event: 'set_failed', service: this.name, key,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -292,6 +298,7 @@ export class CacheService extends BaseServiceClass {
       this.updateStats();
       logger.error('❌ Помилка видалення з кешу:', {
         type: 'cache_service', event: 'delete_failed', service: this.name, key,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -323,6 +330,7 @@ export class CacheService extends BaseServiceClass {
       this.updateStats();
       logger.error('❌ Помилка видалення за патерном:', {
         type: 'cache_service', event: 'delete_pattern_failed', service: this.name, pattern,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -347,6 +355,7 @@ export class CacheService extends BaseServiceClass {
       this.updateStats();
       logger.error('❌ Помилка перевірки існування ключа:', {
         type: 'cache_service', event: 'exists_failed', service: this.name, key,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -371,6 +380,7 @@ export class CacheService extends BaseServiceClass {
       this.updateStats();
       logger.error('❌ Помилка встановлення TTL:', {
         type: 'cache_service', event: 'expire_failed', service: this.name, key, ttl,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -395,6 +405,7 @@ export class CacheService extends BaseServiceClass {
       this.updateStats();
       logger.error('❌ Помилка отримання TTL:', {
         type: 'cache_service', event: 'ttl_failed', service: this.name, key,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -465,6 +476,7 @@ export class CacheService extends BaseServiceClass {
       this.updateStats();
       logger.error('❌ Помилка множинного отримання:', {
         type: 'cache_service', event: 'mget_failed', service: this.name, keysCount: keys.length,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -503,6 +515,7 @@ export class CacheService extends BaseServiceClass {
       this.updateStats();
       logger.error('❌ Помилка множинного збереження:', {
         type: 'cache_service', event: 'mset_failed', service: this.name, items: keyValuePairs.length,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -521,13 +534,14 @@ export class CacheService extends BaseServiceClass {
 
     try {
       await this.client.flushDb();
-      logger.info('🧹 Кеш очищено');
+      logger.info('🧹 Кеш очищено', { component: 'CacheService' });
       return true;
     } catch (error) {
       this.stats.errors++;
       this.updateStats();
       logger.error('❌ Помилка очищення кешу:', {
         type: 'cache_service', event: 'clear_failed', service: this.name,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -620,10 +634,11 @@ export class CacheService extends BaseServiceClass {
         this.isConnected = false;
       }
 
-      logger.info('✅ Cache Service зупинено');
+      logger.info('✅ Cache Service зупинено', { component: 'CacheService' });
     } catch (error) {
       logger.error('❌ Помилка зупинки Cache Service:', {
         type: 'cache_service', event: 'shutdown_failed', service: this.name,
+        component: 'CacheService',
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
