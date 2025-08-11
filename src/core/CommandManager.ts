@@ -6,6 +6,7 @@
 import { Collection, ChatInputCommandInteraction, GuildMember, EmbedBuilder, Events } from 'discord.js';
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
+import type { GoogleService } from '@/services/GoogleService';
 
 // Імпорт всіх команд
 import { SearchCommand } from '@/commands/SearchCommand';
@@ -89,9 +90,19 @@ export class CommandManager {
    */
   private async loadCommands(): Promise<void> {
     try {
+      // Отримуємо GoogleService з контейнера сервісів (опційно)
+      let googleService: GoogleService | undefined;
+      try {
+        if (this.bot?.serviceContainer?.has('google')) {
+          googleService = this.bot.serviceContainer.get('google') as unknown as GoogleService;
+        }
+      } catch {
+        // сервіс може бути не зареєстрований — це не критична помилка для ініціалізації команд
+      }
+
       // Створюємо екземпляри всіх команд
       const commandInstances = [
-        new SearchCommand(this.config),
+        new SearchCommand(this.config, googleService),
         new PerformanceCommand(this.config),
         new AIAssistantCommand(this.config),
         new DocumentsCommand(this.config),
