@@ -3,30 +3,15 @@
  * Спеціалізовані функції для оперативної роботи
  */
 
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { 
+  EmbedBuilder, 
+  ChatInputCommandInteraction
+} from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
+import logger from '@/utils/logger';
 
-interface TaskOptions {
-  action: string;
-  query?: string;
-}
-
-interface CoordinationOptions {
-  type: string;
-  unit?: string;
-}
-
-interface IntelligenceOptions {
-  type: string;
-  area?: string;
-}
-
-interface CommunicationOptions {
-  action: string;
-  channel?: string;
-  message?: string;
-}
+// локальні інтерфейси видалено як не використані
 
 export class OperationsCommand extends BaseCommand {
   constructor(config: BotConfig) {
@@ -34,6 +19,7 @@ export class OperationsCommand extends BaseCommand {
       'операції',
       '⚔️ Оперативне управління ЗСУ',
       config,
+      {},
       (builder: any) => {
         return builder
           .addSubcommand((subcommand: any) =>
@@ -174,7 +160,11 @@ export class OperationsCommand extends BaseCommand {
           await interaction.reply('❌ Невідома підкоманда');
       }
     } catch (error) {
-      console.error('❌ Помилка команди операцій:', error);
+      logger.error('❌ Помилка команди операцій', {
+        error: error instanceof Error ? error.message : String(error),
+        userId: (interaction as ChatInputCommandInteraction).user?.id,
+        command: this.name,
+      });
       await interaction.reply('❌ Помилка оперативного управління');
     }
   }
@@ -182,7 +172,7 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Обробка оперативної ситуації
    */
-  private async handleSituation(interaction: any): Promise<void> {
+  private async handleSituation(interaction: ChatInputCommandInteraction): Promise<void> {
     const sector = interaction.options.getString('сектор') || 'all';
     
     const embed = new EmbedBuilder()
@@ -213,21 +203,20 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Обробка завдань
    */
-  private async handleTasks(interaction: any): Promise<void> {
+  private async handleTasks(interaction: ChatInputCommandInteraction): Promise<void> {
     const action = interaction.options.getString('дія', true);
     const query = interaction.options.getString('запит');
 
-    const taskOptions: TaskOptions = {
+    logger.info('Виконання дії управління завданнями', {
       action,
       query: query || undefined,
-    };
+      userId: interaction.user.id,
+    });
 
     const embed = new EmbedBuilder()
       .setTitle('🎯 Управління завданнями')
       .setColor(0x0099ff)
       .setTimestamp();
-
-    const actionName = this.getTaskActionName(action);
 
     switch (action) {
       case 'current':
@@ -273,14 +262,15 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Обробка координації
    */
-  private async handleCoordination(interaction: any): Promise<void> {
+  private async handleCoordination(interaction: ChatInputCommandInteraction): Promise<void> {
     const type = interaction.options.getString('тип', true);
     const unit = interaction.options.getString('підрозділ');
 
-    const coordinationOptions: CoordinationOptions = {
+    logger.info('Координація між підрозділами', {
       type,
       unit: unit || undefined,
-    };
+      userId: interaction.user.id,
+    });
 
     const embed = new EmbedBuilder()
       .setTitle('🔄 Координація між підрозділами')
@@ -302,14 +292,15 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Обробка розвідки
    */
-  private async handleIntelligence(interaction: any): Promise<void> {
+  private async handleIntelligence(interaction: ChatInputCommandInteraction): Promise<void> {
     const type = interaction.options.getString('тип', true);
     const area = interaction.options.getString('район');
 
-    const intelligenceOptions: IntelligenceOptions = {
+    logger.info('Запит розвідувальних даних', {
       type,
       area: area || undefined,
-    };
+      userId: interaction.user.id,
+    });
 
     const embed = new EmbedBuilder()
       .setTitle('🔍 Розвідувальні дані')
@@ -331,23 +322,22 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Обробка зв'язку
    */
-  private async handleCommunications(interaction: any): Promise<void> {
+  private async handleCommunications(interaction: ChatInputCommandInteraction): Promise<void> {
     const action = interaction.options.getString('дія', true);
     const channel = interaction.options.getString('канал');
     const message = interaction.options.getString('повідомлення');
 
-    const communicationOptions: CommunicationOptions = {
+    logger.info('Управління зв\'язком', {
       action,
       channel: channel || undefined,
       message: message || undefined,
-    };
+      userId: interaction.user.id,
+    });
 
     const embed = new EmbedBuilder()
       .setTitle('📡 Управління зв\'язком')
       .setColor(0x9932cc)
       .setTimestamp();
-
-    const actionName = this.getCommunicationActionName(action);
 
     switch (action) {
       case 'status':
@@ -396,17 +386,7 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Отримання назви дії завдання
    */
-  private getTaskActionName(action: string): string {
-    const actionNames: Record<string, string> = {
-      current: 'Поточні завдання',
-      new: 'Нове завдання',
-      update: 'Оновити статус',
-      complete: 'Завершити завдання',
-      archive: 'Архів завдань',
-    };
-
-    return actionNames[action] || action;
-  }
+  // helper getTaskActionName видалено як не використовується
 
   /**
    * Отримання назви типу координації
@@ -441,15 +421,5 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Отримання назви дії зв'язку
    */
-  private getCommunicationActionName(action: string): string {
-    const actionNames: Record<string, string> = {
-      status: 'Статус зв\'язку',
-      channels: 'Налаштування каналів',
-      message: 'Передача повідомлення',
-      quality: 'Перевірка якості',
-      backup: 'Резервні канали',
-    };
-
-    return actionNames[action] || action;
-  }
+  // helper getCommunicationActionName видалено як не використовується
 } 
