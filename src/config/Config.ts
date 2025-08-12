@@ -291,23 +291,26 @@ export class Config {
    */
   private static loadMetricsConfig(): MetricsConfig {
     try {
-      logger.debug('📊 Завантаження Metrics конфігурації...');
-      
-      const config: MetricsConfig = {
-        enabled: this.getEnv('METRICS_ENABLED', 'true').toLowerCase() === 'true',
-        port: this.validateNumber(
-          this.getEnv('METRICS_PORT', CONFIG_CONSTANTS.DEFAULT_METRICS_PORT.toString()),
-          CONFIG_CONSTANTS.DEFAULT_METRICS_PORT,
-          1024,
-          65535
-        ),
-        path: this.getEnv('METRICS_PATH', CONFIG_CONSTANTS.DEFAULT_METRICS_PATH),
-      };
+      logger.debug('📊 Завантаження Metrics конфігурації...', { component: 'Config', type: 'config', section: 'metrics', event: 'load_start' });
 
-      logger.debug('✅ Metrics конфігурація завантажена');
+      const enabled = this.getEnv('METRICS_ENABLED', 'true').toLowerCase() === 'true';
+      const port = this.validateNumber(
+        this.getEnv('METRICS_PORT', CONFIG_CONSTANTS.DEFAULT_METRICS_PORT.toString()),
+        CONFIG_CONSTANTS.DEFAULT_METRICS_PORT,
+        1024,
+        65535
+      );
+      const rawPath = this.getEnv('METRICS_PATH', CONFIG_CONSTANTS.DEFAULT_METRICS_PATH);
+      const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      if (rawPath !== path) {
+        logger.warn('⚠️ METRICS_PATH не починається зі "/", виконую нормалізацію', { component: 'Config', type: 'config', section: 'metrics', event: 'path_normalized', rawPath, normalized: path });
+      }
+
+      const config: MetricsConfig = { enabled, port, path };
+      logger.debug('✅ Metrics конфігурація завантажена', { component: 'Config', type: 'config', section: 'metrics', event: 'load_success', port: config.port, path: config.path, enabled: config.enabled });
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження Metrics конфігурації:', error as any);
+      logger.error('❌ Помилка завантаження Metrics конфігурації:', { component: 'Config', type: 'config', section: 'metrics', event: 'load_failed', errorName: error instanceof Error ? error.name : undefined, errorMessage: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -431,7 +434,7 @@ export class Config {
    * Валідація конфігурації
    */
   private static validate(config: BotConfig): void {
-    logger.info('🔍 Валідація конфігурації...');
+    logger.info('🔍 Валідація конфігурації...', { component: 'Config', type: 'config', event: 'validate_start' });
     
     const errors: string[] = [];
 
@@ -456,7 +459,12 @@ export class Config {
       throw new Error(errorMessage);
     }
 
-    logger.info('✅ Конфігурація валідна');
+    // Додаткова порада щодо Metrics path
+    if (!config.metrics.path.startsWith('/')) {
+      logger.warn('⚠️ Metrics path не починається зі "/". Рекомендується формат "/metrics"', { component: 'Config', type: 'config', section: 'metrics', event: 'path_warning', path: config.metrics.path });
+    }
+
+    logger.info('✅ Конфігурація валідна', { component: 'Config', type: 'config', event: 'validate_success' });
   }
 
   /**
@@ -536,4 +544,4 @@ export class Config {
     this.clearCache();
     return this.load();
   }
-} 
+}
