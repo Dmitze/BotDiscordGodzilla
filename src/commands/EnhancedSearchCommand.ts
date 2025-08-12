@@ -13,6 +13,7 @@ import {
   ChatInputCommandInteraction
 } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
+import type { GoogleService } from '@/services/GoogleService';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 
@@ -34,7 +35,8 @@ interface SearchResult {
 }
 
 export class EnhancedSearchCommand extends BaseCommand {
-  constructor(config: BotConfig) {
+  private readonly googleService: GoogleService | undefined;
+  constructor(config: BotConfig, googleService?: GoogleService) {
     super(
       'розширений_пошук',
       '🔍 Покращений пошук з діапазонами та сортуванням',
@@ -116,6 +118,7 @@ export class EnhancedSearchCommand extends BaseCommand {
           );
       }
     );
+    this.googleService = googleService;
   }
 
   /**
@@ -173,14 +176,30 @@ export class EnhancedSearchCommand extends BaseCommand {
    * Отримання даних з Google Sheets
    */
   private async getSheetData(): Promise<string[][]> {
-    // TODO: Інтеграція з Google Sheets API
-    // Тимчасова реалізація з моковими даними
-    return [
-      ['назва', 'контрагент', 'серія', 'ціна', 'кількість'],
-      ['Товар 1', 'Контрагент А', 'Серія 1', '100', '50'],
-      ['Товар 2', 'Контрагент Б', 'Серія 2', '200', '30'],
-      ['Товар 3', 'Контрагент А', 'Серія 1', '150', '25'],
-    ];
+    const spreadsheetId: string | undefined = this.config?.google?.spreadsheetId;
+    if (!spreadsheetId) {
+      throw new Error('Не вказано spreadsheetId в конфігурації');
+    }
+    if (!this.googleService) {
+      throw new Error('GoogleService недоступний');
+    }
+
+    const data = await this.getSheetDataWithTimeout(this.googleService!, spreadsheetId);
+    return data.values ?? [];
+  }
+
+  private async getSheetDataWithTimeout(googleService: GoogleService, spreadsheetId: string): Promise<{ range: string; majorDimension: string; values: string[][]; }> {
+    const SEARCH_TIMEOUT = 15000; // 15s для розширеного пошуку
+    return Promise.race([
+      googleService.getSheetData(
+        spreadsheetId,
+        'A:Z',
+        { useCache: true, cacheTTL: 60 }
+      ),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Таймаут отримання даних')), SEARCH_TIMEOUT)
+      ),
+    ]);
   }
 
   /**
