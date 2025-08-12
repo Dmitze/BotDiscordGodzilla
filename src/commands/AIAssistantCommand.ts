@@ -92,8 +92,11 @@ export class AIAssistantCommand extends BaseCommand {
       this.logSecurityEvent('ai_command_executed', {
         userId: interaction.user.id,
         userTag: interaction.user.tag,
+        command: this.name,
         query: commandOptions.query,
         context: commandOptions.context,
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
       });
 
       // Відповідь про обробку
@@ -141,6 +144,9 @@ export class AIAssistantCommand extends BaseCommand {
         command: this.name,
         component: 'AIAssistantCommand.onExecute',
         userTag: interaction.user.tag,
+        userId: interaction.user.id,
+        ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+        channelId: interaction.channelId,
         action: result.action,
         confidence: result.confidence,
         hasActionData: !!result.actionData,
@@ -150,6 +156,9 @@ export class AIAssistantCommand extends BaseCommand {
         type: 'command',
         command: this.name,
         component: 'AIAssistantCommand.onExecute',
+        userId: interaction.user.id,
+        ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+        channelId: interaction.channelId,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
@@ -168,10 +177,61 @@ export class AIAssistantCommand extends BaseCommand {
   /**
    * Перевірка прав доступу
    */
-  private async checkPermission(_interaction: any): Promise<boolean> {
-    // TODO: Реалізувати перевірку прав доступу
-    // Тимчасова реалізація - дозволяємо всім
-    return true;
+  private async checkPermission(interaction: any): Promise<boolean> {
+    try {
+      const { PermissionManager } = await import('../core/PermissionManager');
+      const permissionManager = new PermissionManager(this.config);
+      const result = await permissionManager.checkPermission(
+        interaction.user,
+        interaction.member ?? null,
+        interaction.commandName,
+        interaction.channelId
+      );
+
+      if (!result.allowed) {
+        this.logSecurityEvent('command_access_denied', {
+          severity: 'medium',
+          reason: result.reason,
+          userLevel: result.userLevel,
+          userId: interaction.user.id,
+          ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+          channelId: interaction.channelId,
+          command: interaction.commandName,
+        });
+
+        await interaction.reply({
+          content: `🚫 Доступ заборонено: ${result.reason}`,
+          ephemeral: true,
+        });
+        return false;
+      }
+
+      logger.info('✅ Доступ до AI-команди дозволено', {
+        type: 'security',
+        event: 'permission_granted',
+        component: 'AIAssistantCommand.checkPermission',
+        userId: interaction.user.id,
+        ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+        channelId: interaction.channelId,
+        userLevel: result.userLevel,
+        remainingUses: result.remainingUses,
+      });
+      return true;
+    } catch (error) {
+      logger.error('❌ Помилка перевірки прав у AI-команді', {
+        type: 'security',
+        component: 'AIAssistantCommand.checkPermission',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        userId: interaction.user?.id,
+        ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
+        channelId: interaction.channelId,
+        severity: 'high',
+      });
+      // За замовчуванням не пускати у разі помилки
+      await interaction.reply({ content: '❌ Помилка перевірки прав доступу', ephemeral: true });
+      return false;
+    }
   }
 
   /**
@@ -223,13 +283,11 @@ export class AIAssistantCommand extends BaseCommand {
    * Логування події безпеки
    */
   private logSecurityEvent(eventType: string, data: Record<string, any>): void {
-    // TODO: Реалізувати логування подій безпеки (інтеграція з аудиторським журналом)
-    logger.info('Security event', {
+    logger.security(eventType, data['userId'] || 'unknown', {
       type: 'security',
-      component: 'AIAssistantCommand.logSecurityEvent',
+      component: 'AIAssistantCommand',
       command: this.name,
-      eventType,
-      data,
+      ...data,
     });
   }
 
