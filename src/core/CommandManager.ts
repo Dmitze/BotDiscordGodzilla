@@ -109,7 +109,7 @@ export class CommandManager {
         new FileManagerCommand(this.config),
         new OperationsCommand(this.config),
         new AnalyticsCommand(this.config),
-        new EnhancedSearchCommand(this.config)
+        new EnhancedSearchCommand(this.config, googleService)
       ];
 
       // Реєструємо команди
