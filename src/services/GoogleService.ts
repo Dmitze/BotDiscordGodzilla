@@ -69,6 +69,57 @@ export class GoogleService extends BaseServiceClass {
   }
 
   /**
+   * Отримати метадані файлу Google Drive
+   */
+  public async getDriveFileMetadata(fileId: string): Promise<drive_v3.Schema$File> {
+    try {
+      const file = await this.executeWithRetry(async () => {
+        if (!this.drive) throw new Error('Drive API не ініціалізовано');
+        const res = await this.drive.files.get({ fileId, fields: 'id,name,mimeType,size,modifiedTime,owners(displayName),parents' });
+        return res.data;
+      }, 'drive');
+      return file;
+    } catch (error) {
+      logger.error('❌ Помилка отримання метаданих файлу Drive', { type: 'api_error', event: 'drive_get_metadata_failed', component: 'GoogleService', fileId, error: String(error) });
+      throw error;
+    }
+  }
+
+  /**
+   * Завантаження бінарного файлу з Drive (не Google Docs/Sheets типи)
+   */
+  public async downloadDriveFile(fileId: string): Promise<Buffer> {
+    try {
+      const data = await this.executeWithRetry(async () => {
+        if (!this.drive) throw new Error('Drive API не ініціалізовано');
+        const res = await this.drive.files.get({ fileId, alt: 'media' }, { responseType: 'arraybuffer' });
+        return Buffer.from(res.data as any);
+      }, 'drive');
+      return data;
+    } catch (error) {
+      logger.error('❌ Помилка завантаження файла Drive', { type: 'api_error', event: 'drive_download_failed', component: 'GoogleService', fileId, error: String(error) });
+      throw error;
+    }
+  }
+
+  /**
+   * Експорт файлу Google Docs/Sheets/Slides у вказаний MIME тип
+   */
+  public async exportDriveFile(fileId: string, mimeType: string): Promise<Buffer> {
+    try {
+      const data = await this.executeWithRetry(async () => {
+        if (!this.drive) throw new Error('Drive API не ініціалізовано');
+        const res = await this.drive.files.export({ fileId, mimeType }, { responseType: 'arraybuffer' });
+        return Buffer.from(res.data as any);
+      }, 'drive');
+      return data;
+    } catch (error) {
+      logger.error('❌ Помилка експорту файла Drive', { type: 'api_error', event: 'drive_export_failed', component: 'GoogleService', fileId, mimeType, error: String(error) });
+      throw error;
+    }
+  }
+
+  /**
    * Ініціалізація Google сервісів
    */
   protected async onInitialize(): Promise<void> {
@@ -100,6 +151,137 @@ export class GoogleService extends BaseServiceClass {
       }
       throw error;
     }
+  }
+
+  /**
+   * Список файлів у папці Google Drive з опціями рекурсії та фільтрації
+   */
+  public async listDriveFilesInFolder(
+    folderId: string,
+    opts: {
+      recursive?: boolean;
+      type?: 'sheet' | 'folder' | 'any';
+      query?: string; // частина імені файла (case-insensitive contains)
+      limit?: number;
+      pageToken?: string;
+      maxDepth?: number; // обмеження глибини рекурсії
+    } = {}
+  ): Promise<drive_v3.Schema$File[]> {
+    const {
+      recursive = false,
+      type = 'any',
+      query = '',
+      limit = 100,
+      pageToken,
+      maxDepth = 2,
+    } = opts;
+
+    const cacheKey = `drive:list:${folderId}:${type}:${query}:${recursive}:${maxDepth}:${pageToken ?? ''}:${limit}`;
+
+    // Кеш
+    try {
+      const cached = await this.cacheService.get<drive_v3.Schema$File[]>(cacheKey);
+      if (cached) {
+        this.stats.cacheHits++;
+        logger.debug('✅ Використано кешовані дані Drive list', { type: 'system', event: 'cache_hit', component: 'GoogleService', folderId });
+        return cached;
+      }
+    } catch (e) {
+      this.stats.cacheMisses++;
+    }
+
+    // Побудова MIME фільтра
+    const mimeFilter =
+      type === 'sheet'
+        ? " and mimeType='application/vnd.google-apps.spreadsheet'"
+        : type === 'folder'
+          ? " and mimeType='application/vnd.google-apps.folder'"
+          : '';
+
+    // Побудова name contains фільтра
+    const nameFilter = query ? ` and name contains '${query.replace(/'/g, "\\'")}'` : '';
+
+    const q = `'${folderId}' in parents and trashed=false${mimeFilter}${nameFilter}`;
+
+    const firstLevel = await this.executeWithRetry(async () => {
+      if (!this.drive) throw new Error('Drive API не ініціалізовано');
+      const params: drive_v3.Params$Resource$Files$List = {
+        q,
+        fields: 'nextPageToken, files(id,name,mimeType,size,modifiedTime,parents)',
+        pageSize: Math.min(limit, 1000),
+        // Омітаємо pageToken, якщо він undefined, щоб задовольнити exactOptionalPropertyTypes
+        ...(pageToken ? { pageToken } : {}),
+      };
+      const response = await this.drive.files.list(params);
+      return response.data.files || [];
+    }, 'drive');
+
+    let results: drive_v3.Schema$File[] = [...firstLevel];
+
+    if (recursive && maxDepth > 0) {
+      const folders = firstLevel.filter((f: drive_v3.Schema$File) => f.mimeType === 'application/vnd.google-apps.folder');
+      for (const folder of folders) {
+        try {
+          const sub = await this.listDriveFilesInFolder(folder.id!, { recursive: true, type, query, limit, maxDepth: maxDepth - 1 });
+          results.push(...sub);
+        } catch (err) {
+          logger.warn('⚠️ Неможливо отримати вміст підпапки', { type: 'api_error', event: 'drive_list_subfolder_failed', component: 'GoogleService', folderId: folder.id });
+        }
+      }
+    }
+
+    // Кешуємо на короткий термін (30с), щоб не перевищувати квоти
+    try {
+      await this.cacheService.set(cacheKey, results, 30);
+    } catch {}
+
+    return results;
+  }
+
+  /**
+   * Отримати список листів у таблиці
+   */
+  public async listSheets(spreadsheetId: string): Promise<string[]> {
+    const cacheKey = `sheets:list:${spreadsheetId}`;
+    try {
+      const cached = await this.cacheService.get<string[]>(cacheKey);
+      if (cached) {
+        this.stats.cacheHits++;
+        return cached;
+      }
+    } catch {
+      this.stats.cacheMisses++;
+    }
+
+    const titles = await this.executeWithRetry(async () => {
+      if (!this.sheets) throw new Error('Sheets API не ініціалізовано');
+      const res = await this.sheets.spreadsheets.get({ spreadsheetId });
+      const sheets = res.data.sheets || [];
+      return sheets.map(s => s.properties?.title || '').filter(Boolean);
+    }, 'sheets');
+
+    try { await this.cacheService.set(cacheKey, titles, 60); } catch {}
+    return titles;
+  }
+
+  /**
+   * Знайти таблиці за ім'ям у папці (з опцією рекурсії)
+   */
+  public async findSpreadsheetsByNameInFolder(
+    namePart: string,
+    rootFolderId: string,
+    recursive: boolean = true,
+    maxDepth: number = 3
+  ): Promise<drive_v3.Schema$File[]> {
+    const files = await this.listDriveFilesInFolder(rootFolderId, {
+      recursive,
+      maxDepth,
+      type: 'sheet',
+      query: namePart,
+      limit: 500,
+    });
+    // Повертаємо тільки spreadsheets
+    return files.filter(f => f.mimeType === 'application/vnd.google-apps.spreadsheet');
   }
 
   /**
