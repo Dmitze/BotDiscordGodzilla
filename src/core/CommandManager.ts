@@ -7,6 +7,7 @@ import { Collection, ChatInputCommandInteraction, GuildMember, EmbedBuilder, Eve
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
+import type { SheetsContextService } from '@/services/SheetsContextService';
 
 // Імпорт всіх команд
 import { SearchCommand } from '@/commands/SearchCommand';
@@ -17,6 +18,7 @@ import { FileManagerCommand } from '@/commands/FileManagerCommand';
 import { OperationsCommand } from '@/commands/OperationsCommand';
 import { AnalyticsCommand } from '@/commands/AnalyticsCommand';
 import { EnhancedSearchCommand } from '@/commands/EnhancedSearchCommand';
+import { SelectSheetCommand } from '@/commands/SelectSheetCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -90,11 +92,15 @@ export class CommandManager {
    */
   private async loadCommands(): Promise<void> {
     try {
-      // Отримуємо GoogleService з контейнера сервісів (опційно)
+      // Отримуємо GoogleService та SheetsContextService з контейнера сервісів (опційно)
       let googleService: GoogleService | undefined;
+      let sheetsContext: SheetsContextService | undefined;
       try {
         if (this.bot?.serviceContainer?.has('google')) {
           googleService = this.bot.serviceContainer.get('google') as unknown as GoogleService;
+        }
+        if (this.bot?.serviceContainer?.has('sheetsContext')) {
+          sheetsContext = this.bot.serviceContainer.get('sheetsContext') as unknown as SheetsContextService;
         }
       } catch {
         // сервіс може бути не зареєстрований — це не критична помилка для ініціалізації команд
@@ -109,7 +115,8 @@ export class CommandManager {
         new FileManagerCommand(this.config),
         new OperationsCommand(this.config),
         new AnalyticsCommand(this.config),
-        new EnhancedSearchCommand(this.config, googleService)
+        new EnhancedSearchCommand(this.config, googleService, sheetsContext),
+        new SelectSheetCommand(this.config, googleService, sheetsContext),
       ];
 
       // Реєструємо команди
