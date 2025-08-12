@@ -10,6 +10,7 @@ import { AIService } from '../services/AIService';
 import { GoogleService } from '../services/GoogleService';
 import { CacheService } from '../services/CacheService';
 import { MetricsService } from '../services/MetricsService';
+import { SheetsContextService } from '../services/SheetsContextService';
 import SchedulerService from '../services/SchedulerService';
 import type { BotConfig } from '@/types';
 
@@ -112,6 +113,9 @@ class ServiceManager {
 
     // Scheduler Service
     this.services.set('scheduler', new SchedulerService(this.bot));
+
+    // Sheets Context Service
+    this.services.set('sheetsContext', new SheetsContextService(this.bot.config));
   }
 
   /**
