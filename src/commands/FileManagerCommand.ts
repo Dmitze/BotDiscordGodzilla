@@ -7,6 +7,10 @@ import { AttachmentBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'di
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
+import type { drive_v3 } from 'googleapis';
+import type { GoogleService } from '@/services/GoogleService';
+import type { AIService } from '@/services/AIService';
+import type { SheetsContextService } from '@/services/SheetsContextService';
 
 interface FileSearchOptions {
   query: string;
@@ -173,16 +177,16 @@ export class FileManagerCommand extends BaseCommand {
       let result: FileResult;
       switch (subcommand) {
         case 'пошук':
-          result = await this.handleSearch(validation.data as FileSearchOptions);
+          result = await this.handleSearch(interaction, validation.data as FileSearchOptions);
           break;
         case 'читати':
-          result = await this.handleRead(validation.data as FileReadOptions);
+          result = await this.handleRead(interaction, validation.data as FileReadOptions);
           break;
         case 'аналіз':
-          result = await this.handleAnalyze(validation.data as FileAnalysisOptions);
+          result = await this.handleAnalyze(interaction, validation.data as FileAnalysisOptions);
           break;
         case 'звіт':
-          result = await this.handleReport(validation.data as FileReportOptions);
+          result = await this.handleReport(interaction, validation.data as FileReportOptions);
           break;
         default:
           throw new Error(`Невідома підкоманда: ${subcommand}`);
@@ -285,49 +289,221 @@ export class FileManagerCommand extends BaseCommand {
   /**
    * Обробка пошуку файлів
    */
-  private async handleSearch(options: FileSearchOptions): Promise<FileResult> {
-    // TODO: Інтеграція з Google Drive API
-    return {
-      success: true,
-      message: `🔍 **Пошук файлів**\n\nЗапит: ${options.query}\nПапка: ${options.folder || 'Всі папки'}\n\nТимчасова відповідь: Знайдено 0 файлів`,
-    };
+  private async handleSearch(interaction: ChatInputCommandInteraction, options: FileSearchOptions): Promise<FileResult> {
+    const svc = this.getGoogleService(interaction);
+    if (!svc) {
+      return { success: false, message: '❌ GoogleService недоступний' };
+    }
+
+    const folderId = options.folder || this.config.google?.driveFolderId;
+    if (!folderId) {
+      return { success: false, message: '❌ Не вказано ID папки. Додайте параметр "папка" або налаштуйте driveFolderId у конфігурації.' };
+    }
+
+    const files: drive_v3.Schema$File[] = await svc.listDriveFilesInFolder(folderId, {
+      recursive: true,
+      type: 'any',
+      query: options.query,
+      limit: 50,
+      maxDepth: 4,
+    });
+
+    if (!files.length) {
+      return { success: true, message: `🔍 Пошук: "${options.query}"\nПапка: ${folderId}\n\nНічого не знайдено.` };
+    }
+
+    const lines = files.slice(0, 20).map((f, idx) => {
+      const icon = f.mimeType === 'application/vnd.google-apps.folder' ? '📁' :
+                   f.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📊' :
+                   f.mimeType === 'application/vnd.google-apps.document' ? '📄' : '📦';
+      return `${idx + 1}. ${icon} ${f.name} — ${f.id}`;
+    });
+
+    const more = files.length > 20 ? `\n…та ще ${files.length - 20}` : '';
+    const msg = `🔍 **Результати пошуку**\nЗапит: ${options.query}\nПапка: ${folderId}\nЗнайдено: ${files.length}\n\n${lines.join('\n')}${more}`;
+    return { success: true, message: msg };
   }
 
   /**
    * Обробка читання файлу
    */
-  private async handleRead(options: FileReadOptions): Promise<FileResult> {
-    // TODO: Інтеграція з Google Drive API
+  private async handleRead(interaction: ChatInputCommandInteraction, options: FileReadOptions): Promise<FileResult> {
+    const svc = this.getGoogleService(interaction);
+    if (!svc) return { success: false, message: '❌ GoogleService недоступний' };
+
+    const meta = await svc.getDriveFileMetadata(options.fileId);
+    if (!meta || !meta.mimeType) return { success: false, message: '❌ Неможливо отримати метадані файлу' };
+
+    const isGApp = meta.mimeType.startsWith('application/vnd.google-apps');
+    let fileBuf: Buffer;
+    let fileName: string;
+
+    if (isGApp) {
+      // Експорт для Google типів
+      if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
+        fileBuf = await svc.exportDriveFile(options.fileId, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        fileName = `${meta.name || 'spreadsheet'}.xlsx`;
+      } else if (meta.mimeType === 'application/vnd.google-apps.document') {
+        fileBuf = await svc.exportDriveFile(options.fileId, 'application/pdf');
+        fileName = `${meta.name || 'document'}.pdf`;
+      } else if (meta.mimeType === 'application/vnd.google-apps.presentation') {
+        fileBuf = await svc.exportDriveFile(options.fileId, 'application/pdf');
+        fileName = `${meta.name || 'presentation'}.pdf`;
+      } else {
+        // За замовчуванням пробуємо PDF
+        fileBuf = await svc.exportDriveFile(options.fileId, 'application/pdf');
+        fileName = `${meta.name || 'file'}.pdf`;
+      }
+    } else {
+      // Звичайний файл
+      fileBuf = await svc.downloadDriveFile(options.fileId);
+      fileName = meta.name || `${options.fileId}`;
+    }
+
     return {
       success: true,
-      message: `📄 **Читання файлу**\n\nID файлу: ${options.fileId}\n\nТимчасова відповідь: Файл успішно прочитано`,
+      message: `📄 **Файл завантажено**\n\nНазва: ${meta.name}\nТип: ${meta.mimeType}`,
+      file: fileBuf,
+      fileName,
     };
   }
 
   /**
    * Обробка аналізу файлу
    */
-  private async handleAnalyze(options: FileAnalysisOptions): Promise<FileResult> {
-    // TODO: Інтеграція з AI сервісом
+  private async handleAnalyze(interaction: ChatInputCommandInteraction, options: FileAnalysisOptions): Promise<FileResult> {
     const analysisTypeName = this.getAnalysisTypeName(options.analysisType);
-    
+
+    const anyClient = interaction.client as any;
+    const ai = (anyClient?.serviceContainer?.get?.('ai') as AIService | undefined);
+    const google = this.getGoogleService(interaction);
+    const sheetsContext = (anyClient?.serviceContainer?.get?.('sheetsContext') as SheetsContextService | undefined);
+
+    // Отримуємо текстову витримку з файлу для аналізу (offline)
+    let contextText = '';
+    try {
+      if (google) {
+        const meta = await google.getDriveFileMetadata(options.fileId);
+        if (meta.mimeType === 'application/vnd.google-apps.document') {
+          const buf = await google.exportDriveFile(options.fileId, 'text/plain');
+          contextText = buf.toString('utf8').slice(0, 4000);
+        } else if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
+          const buf = await google.exportDriveFile(options.fileId, 'text/csv');
+          contextText = buf.toString('utf8').slice(0, 4000);
+        } else {
+          contextText = `File: ${meta.name} (${meta.mimeType})`;
+        }
+      }
+    } catch {}
+
+    // Додатковий контекст із SheetsContextService (якщо є)
+    let sheetCtxNote = '';
+    try {
+      if (sheetsContext) {
+        const ctx = await (sheetsContext as any).get?.('current');
+        if (ctx) sheetCtxNote = `\nContext: ${JSON.stringify(ctx).slice(0, 500)}`;
+      }
+    } catch {}
+
+    let analysis = `Тип аналізу: ${analysisTypeName}\n${sheetCtxNote}`;
+    if (ai) {
+      try {
+        const res = await (ai as any).generate?.(
+          `Проаналізуй наступний вміст та надай ${analysisTypeName}:\n\n${contextText}`,
+          { maxTokens: 512 }
+        );
+        if (res && typeof res.content === 'string') {
+          analysis = res.content;
+        }
+      } catch {
+        // Фолбек на локальне резюме без мережі
+        analysis = `${analysis}\n\nЗведення (локальне): ${contextText.slice(0, 800)}`;
+      }
+    } else {
+      analysis = `${analysis}\n\nЗведення (локальне): ${contextText.slice(0, 800)}`;
+    }
+
     return {
       success: true,
-      message: `🤖 **AI-аналіз файлу**\n\nID файлу: ${options.fileId}\nТип аналізу: ${analysisTypeName}\n\nТимчасова відповідь: Аналіз виконано успішно`,
+      message: `🤖 **AI-аналіз файлу**\n\n${analysis}`,
     };
   }
 
   /**
    * Обробка створення звіту
    */
-  private async handleReport(options: FileReportOptions): Promise<FileResult> {
-    // TODO: Інтеграція з сервісом звітів
-    return {
-      success: true,
-      message: `📋 **Створення звіту**\n\nID файлу: ${options.fileId}\nФормат: ${options.format.toUpperCase()}\n\nТимчасова відповідь: Звіт створено успішно`,
-      file: Buffer.from('Тимчасовий звіт'),
-      fileName: `report.${options.format}`,
-    };
+  private async handleReport(interaction: ChatInputCommandInteraction, options: FileReportOptions): Promise<FileResult> {
+    const google = this.getGoogleService(interaction);
+    if (!google) return { success: false, message: '❌ GoogleService недоступний' };
+
+    const meta = await google.getDriveFileMetadata(options.fileId);
+    const baseName = (meta.name || 'report').replace(/\.[^/.]+$/, '');
+
+    // Збираємо коротку інформацію про файл як вміст звіту
+    let content = `Звіт по файлу\nНазва: ${meta.name}\nТип: ${meta.mimeType}\nОновлено: ${meta.modifiedTime}`;
+    try {
+      if (meta.mimeType === 'application/vnd.google-apps.document') {
+        const buf = await google.exportDriveFile(options.fileId, 'text/plain');
+        content += `\n\nФрагмент вмісту:\n${buf.toString('utf8').slice(0, 1000)}`;
+      } else if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
+        const buf = await google.exportDriveFile(options.fileId, 'text/csv');
+        content += `\n\nПерші рядки (CSV):\n${buf.toString('utf8').slice(0, 1000)}`;
+      }
+    } catch {}
+
+    if (options.format === 'txt') {
+      return { success: true, message: '📋 Звіт сформовано (TXT)', file: Buffer.from(content, 'utf8'), fileName: `${baseName}-report.txt` };
+    }
+
+    if (options.format === 'pdf') {
+      const pdf = await this.renderPdf(content, baseName);
+      return { success: true, message: '📋 Звіт сформовано (PDF)', file: pdf, fileName: `${baseName}-report.pdf` };
+    }
+
+    // docx
+    const docx = await this.renderDocx(content, baseName);
+    return { success: true, message: '📋 Звіт сформовано (DOCX)', file: docx, fileName: `${baseName}-report.docx` };
+  }
+
+  // Helpers
+  private async renderPdf(text: string, title: string): Promise<Buffer> {
+    return await new Promise<Buffer>((resolve, reject) => {
+      try {
+        // Dynamic require to avoid dependency at module load time
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const PDFDocument = require('pdfkit');
+        const doc = new PDFDocument({ margin: 50 });
+        const chunks: Buffer[] = [];
+        doc.on('data', (d: any) => chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        doc.fontSize(18).text(title, { underline: true });
+        doc.moveDown();
+        doc.fontSize(12).text(text);
+        doc.end();
+      } catch (e) { reject(e as any); }
+    });
+  }
+
+  private async renderDocx(text: string, title: string): Promise<Buffer> {
+    // Dynamic require for docx
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const docx = require('docx');
+    const { Document, Packer, Paragraph, HeadingLevel, TextRun } = docx;
+    const doc = new Document({
+      sections: [
+        {
+          properties: {},
+          children: [
+            new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ children: [ new TextRun(text) ] }),
+          ],
+        },
+      ],
+    });
+    const buf = await Packer.toBuffer(doc);
+    return Buffer.from(buf);
   }
 
   /**
@@ -354,19 +530,14 @@ export class FileManagerCommand extends BaseCommand {
   }
 
   /**
-   * Резерв: отримання назви типу файлу — видалено як неиспользуемое
-   */
-
-  /**
    * Отримання назви типу аналізу
    */
-  private getAnalysisTypeName(type: string): string {
+  private getAnalysisTypeName(type: FileAnalysisOptions['analysisType']): string {
     const typeNames: Record<string, string> = {
       summary: 'Короткий зміст',
       detailed: 'Детальний аналіз',
       key_points: 'Ключові моменти',
     };
-
     return typeNames[type] || type;
   }
 
@@ -392,5 +563,21 @@ export class FileManagerCommand extends BaseCommand {
       eventType,
       ...data,
     });
+  }
+
+  /**
+   * Отримання GoogleService через ServiceContainer
+   */
+  private getGoogleService(interaction: ChatInputCommandInteraction): GoogleService | undefined {
+    try {
+      const anyClient = interaction.client as any;
+      const svc = anyClient?.serviceContainer?.get?.('google');
+      return svc as GoogleService | undefined;
+    } catch (e) {
+      logger.warn('FileManager: не вдалося отримати GoogleService', {
+        component: 'FileManagerCommand', event: 'service_resolve_failed', error: String(e),
+      });
+      return undefined;
+    }
   }
 }
