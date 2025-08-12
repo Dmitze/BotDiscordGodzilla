@@ -511,26 +511,19 @@ export class GoogleService extends BaseServiceClass {
           await this.executeWithRetry(
             async () => {
               if (!this.sheets) throw new Error('Sheets API не ініціалізовано');
-              
-              const requests = chunk.map(item => ({
-                updateCells: {
-                  range: {
-                    sheetId: 0, // TODO: Отримати sheetId
-                    startRowIndex: 0,
-                    endRowIndex: item.values.length,
-                    startColumnIndex: 0,
-                    endColumnIndex: item.values[0]?.length || 0,
-                  },
-                  rows: item.values.map(row => ({
-                    values: row.map(cell => ({ userEnteredValue: { stringValue: cell } })),
-                  })),
-                  fields: 'userEnteredValue',
-                },
+
+              // Використовуємо values.batchUpdate, щоб не залежати від sheetId
+              const valueUpdates = chunk.map(item => ({
+                range: item.range,
+                values: item.values,
               }));
 
-              await this.sheets.spreadsheets.batchUpdate({
+              await this.sheets.spreadsheets.values.batchUpdate({
                 spreadsheetId,
-                requestBody: { requests },
+                requestBody: {
+                  data: valueUpdates,
+                  valueInputOption: 'RAW',
+                },
               });
             },
             'sheets',
