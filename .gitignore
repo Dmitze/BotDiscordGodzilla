@@ -14,3 +14,6 @@ data/logs/*.log
 *.test.ts
 coverage/
 
+node_modules/
+
+
