@@ -14,6 +14,7 @@ import {
 } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
+import type { SheetsContextService } from '@/services/SheetsContextService';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 
@@ -36,7 +37,8 @@ interface SearchResult {
 
 export class EnhancedSearchCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
-  constructor(config: BotConfig, googleService?: GoogleService) {
+  private readonly sheetsContext: SheetsContextService | undefined;
+  constructor(config: BotConfig, googleService?: GoogleService, sheetsContext?: SheetsContextService) {
     super(
       'розширений_пошук',
       '🔍 Покращений пошук з діапазонами та сортуванням',
@@ -95,6 +97,20 @@ export class EnhancedSearchCommand extends BaseCommand {
           )
           .addStringOption((option: any) =>
             option
+              .setName('таблиця')
+              .setDescription('Назва файлу Google Sheets (пошук у кореневій папці)')
+              .setRequired(false)
+              .setMaxLength(120)
+          )
+          .addStringOption((option: any) =>
+            option
+              .setName('лист')
+              .setDescription('Назва листа в таблиці')
+              .setRequired(false)
+              .setMaxLength(100)
+          )
+          .addStringOption((option: any) =>
+            option
               .setName('сортування')
               .setDescription('Поле для сортування')
               .setRequired(false)
@@ -119,6 +135,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       }
     );
     this.googleService = googleService;
+    this.sheetsContext = sheetsContext;
   }
 
   /**
@@ -130,11 +147,38 @@ export class EnhancedSearchCommand extends BaseCommand {
     await interaction.deferReply();
 
     try {
+      // Опціональні параметры вибору таблиці/листа
+      let spreadsheetName = interaction.options.getString('таблиця') || undefined;
+      let sheetName = interaction.options.getString('лист') || undefined;
+
+      // Підхват контексту за замовчуванням (user -> channel -> guild)
+      let spreadsheetIdOverride: string | undefined;
+      if (!spreadsheetName) {
+        try {
+          const key: { userId: string; channelId: string } & Partial<{ guildId: string }> = {
+            userId: interaction.user.id,
+            channelId: interaction.channelId,
+          };
+          if (interaction.guildId) key.guildId = interaction.guildId;
+          const ctx = await this.sheetsContext?.getContext(key as any);
+          if (ctx) {
+            spreadsheetIdOverride = ctx.spreadsheetId;
+            // якщо лист не переданий явно — беремо з контексту
+            if (!sheetName && ctx.sheetName) sheetName = ctx.sheetName;
+          }
+        } catch (e) {
+          logger.warn('EnhancedSearch: не вдалося отримати контекст листа', {
+            component: 'EnhancedSearchCommand', event: 'context_get_failed', error: String(e),
+          });
+        }
+      }
+
       // Отримуємо параметри пошуку
       const filters = this.extractFilters(interaction);
       
-      // Отримуємо дані з Google Sheets
-      const sheetData = await this.getSheetData();
+      // Отримуємо дані з Google Sheets (з урахуванням вибраної таблиці/листа)
+      const sheetResponse = await this.getSheetData(spreadsheetName, sheetName, spreadsheetIdOverride);
+      const sheetData = sheetResponse.values;
       if (!sheetData || sheetData.length === 0) {
         return interaction.editReply('❌ Немає даних для пошуку');
       }
@@ -153,7 +197,27 @@ export class EnhancedSearchCommand extends BaseCommand {
       const sortedResults = this.sortResults(results, headers, filters.sortBy, filters.sortOrder);
 
       // Створюємо embed з результатами
-      const embed = this.createResultsEmbed(sortedResults, headers, filters);
+      const embed = this.createResultsEmbed(sortedResults, headers, filters, {
+        spreadsheetId: sheetResponse.spreadsheetId,
+        range: sheetResponse.range,
+      });
+
+      // Зберігаємо контекст вибору (останню успішну таблицю/лист)
+      try {
+        const key: { userId: string; channelId: string } & Partial<{ guildId: string }> = {
+          userId: interaction.user.id,
+          channelId: interaction.channelId,
+        };
+        if (interaction.guildId) key.guildId = interaction.guildId;
+        await this.sheetsContext?.setContext(key as any, {
+          spreadsheetId: sheetResponse.spreadsheetId,
+          sheetName: sheetName,
+        });
+      } catch (e) {
+        logger.warn('EnhancedSearch: не вдалося зберегти контекст листа', {
+          component: 'EnhancedSearchCommand', event: 'context_set_failed', error: String(e),
+        });
+      }
       
       // Створюємо кнопки для навігації
       const components = this.createNavigationComponents(sortedResults.length);
@@ -175,25 +239,56 @@ export class EnhancedSearchCommand extends BaseCommand {
   /**
    * Отримання даних з Google Sheets
    */
-  private async getSheetData(): Promise<string[][]> {
-    const spreadsheetId: string | undefined = this.config?.google?.spreadsheetId;
-    if (!spreadsheetId) {
-      throw new Error('Не вказано spreadsheetId в конфігурації');
-    }
+  private async getSheetData(spreadsheetName?: string, sheetName?: string, spreadsheetIdOverride?: string): Promise<{ values: string[][]; spreadsheetId: string; range: string; }> {
     if (!this.googleService) {
       throw new Error('GoogleService недоступний');
     }
 
-    const data = await this.getSheetDataWithTimeout(this.googleService!, spreadsheetId);
-    return data.values ?? [];
+    // Визначаємо spreadsheetId: або з конфіга, або по імені через Drive
+    let targetSpreadsheetId: string | undefined = spreadsheetIdOverride || this.config?.google?.spreadsheetId;
+    if (spreadsheetName) {
+      const folderId = this.config?.google?.driveFolderId;
+      if (!folderId) throw new Error('Не вказано GOOGLE_DRIVE_FOLDER_ID в конфігурації');
+
+      const matches = await this.googleService.findSpreadsheetsByNameInFolder(spreadsheetName, folderId, true, 3);
+      if (!matches.length) {
+        throw new Error(`Таблиця з назвою, що містить "${spreadsheetName}", не знайдена у вказаній папці`);
+      }
+
+      // Пробуємо точний match по name (case-insensitive), інакше беремо першу
+      const exact = matches.find(f => (f.name || '').toLowerCase() === spreadsheetName.toLowerCase());
+      const chosen = exact || matches[0];
+      if (!chosen || !chosen.id) {
+        throw new Error('Не вдалося визначити ID вибраної таблиці');
+      }
+      targetSpreadsheetId = chosen.id;
+    }
+
+    if (!targetSpreadsheetId) {
+      throw new Error('Не вказано spreadsheetId в конфігурації і не передано "таблиця"');
+    }
+
+    // Якщо вказаний лист — перевіряємо існування
+    let range = 'A:Z';
+    if (sheetName) {
+      const sheets = await this.googleService.listSheets(targetSpreadsheetId);
+      const exists = sheets.some(s => s.toLowerCase() === sheetName.toLowerCase());
+      if (!exists) {
+        throw new Error(`Лист "${sheetName}" не знайдено у вибраній таблиці`);
+      }
+      range = `${sheetName}!A:Z`;
+    }
+
+    const data = await this.getSheetDataWithTimeout(this.googleService!, targetSpreadsheetId, range);
+    return { values: data.values ?? [], spreadsheetId: targetSpreadsheetId, range: data.range };
   }
 
-  private async getSheetDataWithTimeout(googleService: GoogleService, spreadsheetId: string): Promise<{ range: string; majorDimension: string; values: string[][]; }> {
+  private async getSheetDataWithTimeout(googleService: GoogleService, spreadsheetId: string, range: string = 'A:Z'): Promise<{ range: string; majorDimension: string; values: string[][]; }> {
     const SEARCH_TIMEOUT = 15000; // 15s для розширеного пошуку
     return Promise.race([
       googleService.getSheetData(
         spreadsheetId,
-        'A:Z',
+        range,
         { useCache: true, cacheTTL: 60 }
       ),
       new Promise<never>((_, reject) =>
@@ -328,7 +423,7 @@ export class EnhancedSearchCommand extends BaseCommand {
   /**
    * Створення embed з результатами
    */
-  private createResultsEmbed(results: SearchResult[], headers: string[], filters: SearchFilters): EmbedBuilder {
+  private createResultsEmbed(results: SearchResult[], headers: string[], filters: SearchFilters, ctx?: { spreadsheetId: string; range: string; }): EmbedBuilder {
     const embed = new EmbedBuilder()
       .setTitle('🔍 Результати розширеного пошуку')
       .setColor(0x00ff88)
@@ -341,6 +436,15 @@ export class EnhancedSearchCommand extends BaseCommand {
         name: '📋 Активні фільтри',
         value: activeFilters.join('\n'),
         inline: false
+      });
+    }
+
+    // Контекст обраної таблиці/листа
+    if (ctx) {
+      embed.addFields({
+        name: '📁 Контекст',
+        value: `Spreadsheet: ${ctx.spreadsheetId.substring(0, 10)}...\nRange: ${ctx.range}`,
+        inline: false,
       });
     }
 
