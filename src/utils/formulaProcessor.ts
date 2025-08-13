@@ -15,12 +15,45 @@ const FORMULA_PROCESSOR_CONSTANTS = {
   MAX_NESTED_LEVELS: 10,
   MAX_ITERATIONS: 1000,
   ALLOWED_FUNCTIONS: [
-    'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
-    'sqrt', 'pow', 'exp', 'log', 'ln', 'abs',
-    'floor', 'ceil', 'round', 'min', 'max',
-    'sum', 'avg', 'count', 'if', 'case',
+    'sin',
+    'cos',
+    'tan',
+    'asin',
+    'acos',
+    'atan',
+    'sqrt',
+    'pow',
+    'exp',
+    'log',
+    'ln',
+    'abs',
+    'floor',
+    'ceil',
+    'round',
+    'min',
+    'max',
+    'sum',
+    'avg',
+    'count',
+    'if',
+    'case',
   ] as readonly string[],
-  ALLOWED_OPERATORS: ['+', '-', '*', '/', '^', '(', ')', '=', '<', '>', '<=', '>=', '!=', '=='] as readonly string[],
+  ALLOWED_OPERATORS: [
+    '+',
+    '-',
+    '*',
+    '/',
+    '^',
+    '(',
+    ')',
+    '=',
+    '<',
+    '>',
+    '<=',
+    '>=',
+    '!=',
+    '==',
+  ] as readonly string[],
   ALLOWED_VARIABLES: /^[a-zA-Z_][a-zA-Z0-9_]*$/,
   MAX_VARIABLES: 50,
   PRECISION: 10,
@@ -202,7 +235,9 @@ export class FormulaProcessor {
 
       // Перевірка довжини
       if (formula.length > FORMULA_PROCESSOR_CONSTANTS.MAX_FORMULA_LENGTH) {
-        errors.push(`Формула занадто довга (${formula.length} символів, максимум ${FORMULA_PROCESSOR_CONSTANTS.MAX_FORMULA_LENGTH})`);
+        errors.push(
+          `Формула занадто довга (${formula.length} символів, максимум ${FORMULA_PROCESSOR_CONSTANTS.MAX_FORMULA_LENGTH})`
+        );
         sanitizedFormula = formula.substring(0, FORMULA_PROCESSOR_CONSTANTS.MAX_FORMULA_LENGTH);
       }
 
@@ -242,7 +277,9 @@ export class FormulaProcessor {
       }
 
       if (variables.length > FORMULA_PROCESSOR_CONSTANTS.MAX_VARIABLES) {
-        errors.push(`Занадто багато змінних (${variables.length}, максимум ${FORMULA_PROCESSOR_CONSTANTS.MAX_VARIABLES})`);
+        errors.push(
+          `Занадто багато змінних (${variables.length}, максимум ${FORMULA_PROCESSOR_CONSTANTS.MAX_VARIABLES})`
+        );
       }
 
       // Перевірка функцій
@@ -394,7 +431,7 @@ export class FormulaProcessor {
    */
   private async executeFormula(
     formula: string,
-    variables: Record<string, number>,
+    variables: Record<string, number>
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       try {
@@ -426,7 +463,8 @@ export class FormulaProcessor {
         }
 
         // Округлення до заданої точності
-        const roundedResult = Math.round(result * Math.pow(10, FORMULA_PROCESSOR_CONSTANTS.PRECISION)) /
+        const roundedResult =
+          Math.round(result * Math.pow(10, FORMULA_PROCESSOR_CONSTANTS.PRECISION)) /
           Math.pow(10, FORMULA_PROCESSOR_CONSTANTS.PRECISION);
 
         resolve(roundedResult);
@@ -446,8 +484,10 @@ export class FormulaProcessor {
 
     for (const match of matches) {
       // Виключення функцій та констант
-      if (!FORMULA_PROCESSOR_CONSTANTS.ALLOWED_FUNCTIONS.includes(match) &&
-        !['PI', 'E', 'INFINITY', 'NAN'].includes(match)) {
+      if (
+        !FORMULA_PROCESSOR_CONSTANTS.ALLOWED_FUNCTIONS.includes(match) &&
+        !['PI', 'E', 'INFINITY', 'NAN'].includes(match)
+      ) {
         variables.add(match);
       }
     }
@@ -529,7 +569,10 @@ export class FormulaProcessor {
    */
   private generateOperationId(formula: string): string {
     const timestamp = Date.now();
-    const hash = require('crypto').createHash('md5').update(`${formula}:${timestamp}`).digest('hex');
+    const hash = require('crypto')
+      .createHash('md5')
+      .update(`${formula}:${timestamp}`)
+      .digest('hex');
     return `formula_${hash.substring(0, 8)}`;
   }
 
@@ -549,9 +592,14 @@ export class FormulaProcessor {
       }
 
       // Розподіл складності
-      const complexityLevel = complexity < 10 ? 'low' :
-        complexity < 50 ? 'medium' :
-          complexity < 100 ? 'high' : 'very_high';
+      const complexityLevel =
+        complexity < 10
+          ? 'low'
+          : complexity < 50
+            ? 'medium'
+            : complexity < 100
+              ? 'high'
+              : 'very_high';
 
       this.stats.complexityDistribution[complexityLevel] =
         (this.stats.complexityDistribution[complexityLevel] || 0) + 1;
@@ -644,8 +692,9 @@ export const formulaProcessor = new FormulaProcessor();
 export const validateFormula = (formula: string) => formulaProcessor.validateFormula(formula);
 export const evaluateFormula = (formula: string, variables?: Record<string, number>) =>
   formulaProcessor.evaluateFormula(formula, variables);
-export const setVariable = (name: string, value: number) => formulaProcessor.setVariable(name, value);
+export const setVariable = (name: string, value: number) =>
+  formulaProcessor.setVariable(name, value);
 export const getVariable = (name: string) => formulaProcessor.getVariable(name);
 export const clearVariables = () => formulaProcessor.clearVariables();
 export const getFormulaProcessorStats = () => formulaProcessor.getStats();
-export const cleanupFormulaProcessor = () => formulaProcessor.cleanup(); 
+export const cleanupFormulaProcessor = () => formulaProcessor.cleanup();
