@@ -98,7 +98,9 @@ class SchedulerService {
       this._isActive = true;
       logger.info('✅ Scheduler сервіс ініціалізовано');
     } catch (error) {
-      logger.error(`❌ Помилка ініціалізації Scheduler сервісу: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `❌ Помилка ініціалізації Scheduler сервісу: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }
@@ -114,8 +116,12 @@ class SchedulerService {
 
       logger.debug('✅ Планувальник створено');
     } catch (error) {
-      logger.error(`Помилка створення планувальника: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
+      logger.warn(
+        `⚠️ Планувальник вимкнено: ${error instanceof Error ? error.message : String(error)}. Модуль 'node-cron' не знайдено. Продовжуємо без Scheduler.`
+      );
+      // Дозволяємо подальший запуск системи без падения
+      this.scheduler = null;
+      return;
     }
   }
 
@@ -146,15 +152,26 @@ class SchedulerService {
 
       logger.debug('✅ Стандартні завдання зареєстровано');
     } catch (error) {
-      logger.error(`Помилка реєстрації стандартних завдань: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Помилка реєстрації стандартних завдань: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
   /**
    * Планування завдання
    */
-  scheduleJob(name: string, schedule: string, task: () => Promise<void> | void, options: any = {}): any {
+  scheduleJob(
+    name: string,
+    schedule: string,
+    task: () => Promise<void> | void,
+    options: any = {}
+  ): any {
     try {
+      if (!this.scheduler) {
+        logger.warn(`⚠️ Сервіс планувальника недоступний. Завдання "${name}" не буде заплановано.`);
+        return null;
+      }
       if (this.jobs.has(name)) {
         this.stopJob(name);
       }
@@ -190,7 +207,9 @@ class SchedulerService {
       logger.debug(`✅ Завдання "${name}" заплановано: ${schedule}`);
       return job;
     } catch (error) {
-      logger.error(`Помилка планування завдання "${name}": ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Помилка планування завдання "${name}": ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }
@@ -225,7 +244,9 @@ class SchedulerService {
       jobInfo.errors++;
       this.stats.jobsFailed++;
 
-      logger.error(`❌ Помилка виконання завдання "${name}": ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `❌ Помилка виконання завдання "${name}": ${error instanceof Error ? error.message : String(error)}`
+      );
 
       // Сповіщення про помилку
       await this.notifyJobError(name, error);
@@ -246,7 +267,9 @@ class SchedulerService {
         logger.debug(`🛑 Завдання "${name}" зупинено`);
       }
     } catch (error) {
-      logger.error(`Помилка зупинки завдання "${name}": ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Помилка зупинки завдання "${name}": ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -288,7 +311,9 @@ class SchedulerService {
         logger.info('🧹 Кеш очищено');
       }
     } catch (error) {
-      logger.error(`Помилка очищення кешу: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Помилка очищення кешу: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -310,7 +335,9 @@ class SchedulerService {
         logger.debug(`📊 Статистика сервісів оновлена: ${JSON.stringify(servicesStats)}`);
       }
     } catch (error) {
-      logger.error(`Помилка оновлення статистики: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Помилка оновлення статистики: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -328,7 +355,10 @@ class SchedulerService {
       // Перевірка сервісів
       const serviceManager = this.bot.serviceManager;
       if (serviceManager) {
-        const servicesStatus = serviceManager.getServicesStatus() as Record<string, { isActive?: boolean; stats?: unknown }>;
+        const servicesStatus = serviceManager.getServicesStatus() as Record<
+          string,
+          { isActive?: boolean; stats?: unknown }
+        >;
 
         for (const [name, s] of Object.entries(servicesStatus)) {
           const active = !!s.isActive;
@@ -359,7 +389,9 @@ class SchedulerService {
         await this.notifyHealthIssue(healthStatus);
       }
     } catch (error) {
-      logger.error(`Помилка перевірки здоров'я: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Помилка перевірки здоров'я: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -375,7 +407,9 @@ class SchedulerService {
 
       logger.info('✅ Резервна копія створена');
     } catch (error) {
-      logger.error(`Помилка створення резервної копії: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Помилка створення резервної копії: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -387,9 +421,13 @@ class SchedulerService {
       // Тут можна додати логіку сповіщення
       // Наприклад, відправка повідомлення в Discord канал
 
-      logger.warn(`⚠️ Сповіщення про помилку завдання "${jobName}": ${error instanceof Error ? error.message : String(error)}`);
+      logger.warn(
+        `⚠️ Сповіщення про помилку завдання "${jobName}": ${error instanceof Error ? error.message : String(error)}`
+      );
     } catch (notifyError) {
-      logger.error(`Помилка сповіщення про помилку завдання: ${notifyError instanceof Error ? notifyError.message : String(notifyError)}`);
+      logger.error(
+        `Помилка сповіщення про помилку завдання: ${notifyError instanceof Error ? notifyError.message : String(notifyError)}`
+      );
     }
   }
 
@@ -402,7 +440,9 @@ class SchedulerService {
 
       logger.warn(`⚠️ Проблеми здоров'я системи: ${healthStatus.overall}`);
     } catch (notifyError) {
-      logger.error(`Помилка сповіщення про проблеми здоров'я: ${notifyError instanceof Error ? notifyError.message : String(notifyError)}`);
+      logger.error(
+        `Помилка сповіщення про проблеми здоров'я: ${notifyError instanceof Error ? notifyError.message : String(notifyError)}`
+      );
     }
   }
 
@@ -439,7 +479,9 @@ class SchedulerService {
       this._isActive = false;
       logger.info('✅ Scheduler сервіс завершено');
     } catch (error) {
-      logger.error(`❌ Помилка завершення Scheduler сервісу: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `❌ Помилка завершення Scheduler сервісу: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 }
