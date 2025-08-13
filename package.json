@@ -56,7 +56,8 @@
     "setup:dev": "npm run deploy:dev && npm run deploy:guild",
     "setup:prod": "npm run deploy:pm2 && npm run deploy:guild",
     "deploy:commands": "ts-node src/scripts/deployCommands.ts",
-    "deploy:commands:build": "npm run build && node dist/scripts/deployCommands.js"
+    "deploy:commands:build": "npm run build && node dist/scripts/deployCommands.js",
+    "ocr:smoke": "ts-node -r tsconfig-paths/register src/scripts/ocrSmoke.ts"
   },
   "keywords": [
     "discord",

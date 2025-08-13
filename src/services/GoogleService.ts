@@ -67,6 +67,43 @@ export class GoogleService extends BaseServiceClass {
   }
 
   /**
+   * OCR для локального буфера (без Drive)
+   */
+  public async extractTextFromBuffer(buf: Buffer): Promise<string> {
+    try {
+      const hash = createHash('sha1').update(buf).digest('hex');
+      const cacheKey = `ocr:buffer:${hash}`;
+      const ttl = this.config.google.ocrCacheTTL ?? this.config.performance.cacheTTL ?? 3600;
+
+      const cached = await this.cacheService.get<string>(cacheKey);
+      if (cached) {
+        this.stats.cacheHits++;
+        return cached;
+      }
+      this.stats.cacheMisses++;
+
+      const provider = this.config.google.ocrProvider ?? 'vision';
+      let text = '';
+      if (provider === 'off') text = '';
+      else if (provider === 'tesseract') text = await this.ocrWithTesseract(buf);
+      else text = await this.ocrWithVision(buf);
+
+      if (text && text.trim()) {
+        await this.cacheService.set(cacheKey, text, ttl);
+      }
+      return text;
+    } catch (error) {
+      logger.error('❌ Помилка OCR для буфера', {
+        type: 'processing_error',
+        event: 'buffer_ocr_failed',
+        component: 'GoogleService',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return '';
+    }
+  }
+
+  /**
    * OCR зображень з фича-флагом (Vision/Tesseract) та кэшуванням
    */
   public async extractTextFromImage(file: drive_v3.Schema$File): Promise<string> {

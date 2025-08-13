@@ -78,6 +78,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
     const { OperationsCommand } = await import('@/commands/OperationsCommand');
     const { AnalyticsCommand } = await import('@/commands/AnalyticsCommand');
     const { EnhancedSearchCommand } = await import('@/commands/EnhancedSearchCommand');
+    const { OCRCommand } = await import('@/commands/OCRCommand');
 
     const commands = [
       new SearchCommand(botConfig),
@@ -88,6 +89,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
       new OperationsCommand(botConfig),
       new AnalyticsCommand(botConfig),
       new EnhancedSearchCommand(botConfig),
+      new OCRCommand(botConfig),
     ];
 
     // Підготовка даних команд

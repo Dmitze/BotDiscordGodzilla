@@ -25,6 +25,7 @@ import { OperationsCommand } from '@/commands/OperationsCommand';
 import { AnalyticsCommand } from '@/commands/AnalyticsCommand';
 import { EnhancedSearchCommand } from '@/commands/EnhancedSearchCommand';
 import { SelectSheetCommand } from '@/commands/SelectSheetCommand';
+import { OCRCommand } from '@/commands/OCRCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -119,6 +120,7 @@ export class CommandManager {
         new AnalyticsCommand(this.config),
         new EnhancedSearchCommand(this.config, googleService, sheetsContext),
         new SelectSheetCommand(this.config, googleService, sheetsContext),
+        new OCRCommand(this.config, googleService),
       ];
 
       // Реєструємо команди
