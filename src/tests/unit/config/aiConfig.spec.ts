@@ -48,4 +48,3 @@ describe('Config AI and Metrics defaults', () => {
     expect(cfg.metrics.port).toBe(9091);
   });
 });
-
