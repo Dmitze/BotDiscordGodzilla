@@ -516,4 +516,4 @@ class QueueManager extends EventEmitter {
 }
 
 // Експорт синглтона
-export default new QueueManager(); 
+export default new QueueManager();
