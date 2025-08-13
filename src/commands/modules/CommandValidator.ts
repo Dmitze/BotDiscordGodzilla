@@ -99,7 +99,7 @@ export class CommandValidator {
         isValid,
         errors,
         warnings,
-        sanitizedValues
+        sanitizedValues,
       };
     } catch (error) {
       logger.error('❌ Помилка валідації команди', {
@@ -113,7 +113,7 @@ export class CommandValidator {
       return {
         isValid: false,
         errors: ['Внутрішня помилка валідації'],
-        warnings: []
+        warnings: [],
       };
     }
   }
@@ -178,13 +178,13 @@ export class CommandValidator {
         isValid: errors.length === 0,
         errors,
         warnings,
-        sanitizedValues
+        sanitizedValues,
       };
     } catch (error) {
       return {
         isValid: false,
         errors: ['Помилка валідації опцій'],
-        warnings: []
+        warnings: [],
       };
     }
   }
@@ -281,13 +281,13 @@ export class CommandValidator {
       return {
         isValid: errors.length === 0,
         errors,
-        warnings
+        warnings,
       };
     } catch (error) {
       return {
         isValid: false,
         errors: ['Помилка валідації дозволів'],
-        warnings: []
+        warnings: [],
       };
     }
   }
@@ -307,7 +307,8 @@ export class CommandValidator {
 
       // Перевірка що interaction не застарілий
       const interactionAge = Date.now() - interaction.createdTimestamp;
-      if (interactionAge > 15 * 60 * 1000) { // 15 хвилин
+      if (interactionAge > 15 * 60 * 1000) {
+        // 15 хвилин
         warnings.push('Interaction застарілий');
       }
 
@@ -325,13 +326,13 @@ export class CommandValidator {
       return {
         isValid: errors.length === 0,
         errors,
-        warnings
+        warnings,
       };
     } catch (error) {
       return {
         isValid: false,
         errors: ['Помилка валідації контексту'],
-        warnings: []
+        warnings: [],
       };
     }
   }
@@ -374,7 +375,7 @@ export class CommandValidator {
     return {
       isValid: errors.length === 0,
       errors,
-      warnings: []
+      warnings: [],
     };
   }
 
@@ -390,7 +391,7 @@ export class CommandValidator {
     return {
       totalValidations: 0,
       successfulValidations: 0,
-      failedValidations: 0
+      failedValidations: 0,
     };
   }
 }
