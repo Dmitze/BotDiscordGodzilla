@@ -13,29 +13,29 @@ jest.mock('discord.js', () => ({
     setDescription: jest.fn().mockReturnThis(),
     addStringOption: jest.fn().mockReturnThis(),
     addIntegerOption: jest.fn().mockReturnThis(),
-    addSubcommand: jest.fn().mockReturnThis()
+    addSubcommand: jest.fn().mockReturnThis(),
   })),
   EmbedBuilder: jest.fn().mockImplementation(() => ({
     setColor: jest.fn().mockReturnThis(),
     setTitle: jest.fn().mockReturnThis(),
     setDescription: jest.fn().mockReturnThis(),
     addFields: jest.fn().mockReturnThis(),
-    setTimestamp: jest.fn().mockReturnThis()
+    setTimestamp: jest.fn().mockReturnThis(),
   })),
   ActionRowBuilder: jest.fn().mockImplementation(() => ({
-    addComponents: jest.fn().mockReturnThis()
+    addComponents: jest.fn().mockReturnThis(),
   })),
   ButtonBuilder: jest.fn().mockImplementation(() => ({
     setCustomId: jest.fn().mockReturnThis(),
     setLabel: jest.fn().mockReturnThis(),
     setStyle: jest.fn().mockReturnThis(),
-    setDisabled: jest.fn().mockReturnThis()
+    setDisabled: jest.fn().mockReturnThis(),
   })),
   ButtonStyle: {
     Primary: 'primary',
     Secondary: 'secondary',
-    Danger: 'danger'
-  }
+    Danger: 'danger',
+  },
 }));
 
 // Мокаємо сервіси
@@ -43,7 +43,7 @@ jest.mock('../../services/AIService', () => {
   return jest.fn().mockImplementation(() => ({
     initialize: jest.fn().mockResolvedValue(),
     generateResponse: jest.fn().mockResolvedValue('AI response'),
-    isActive: () => true
+    isActive: () => true,
   }));
 });
 
@@ -53,9 +53,9 @@ jest.mock('../../services/GoogleService', () => {
     getSheetData: jest.fn().mockResolvedValue([
       ['Назва', 'Опис', 'Тип'],
       ['Тест 1', 'Опис 1', 'orders'],
-      ['Тест 2', 'Опис 2', 'reports']
+      ['Тест 2', 'Опис 2', 'reports'],
     ]),
-    isActive: () => true
+    isActive: () => true,
   }));
 });
 
@@ -64,7 +64,7 @@ jest.mock('../../services/CacheService', () => {
     initialize: jest.fn().mockResolvedValue(),
     get: jest.fn().mockResolvedValue(null),
     set: jest.fn().mockResolvedValue(),
-    isActive: () => true
+    isActive: () => true,
   }));
 });
 
@@ -73,7 +73,7 @@ jest.mock('../../services/MetricsService', () => {
     initialize: jest.fn().mockResolvedValue(),
     incrementCommand: jest.fn(),
     measureCommandDuration: jest.fn(),
-    isActive: () => true
+    isActive: () => true,
   }));
 });
 
@@ -81,7 +81,7 @@ jest.mock('../../utils/logger', () => ({
   info: jest.fn(),
   error: jest.fn(),
   warn: jest.fn(),
-  debug: jest.fn()
+  debug: jest.fn(),
 }));
 
 describe('Commands Integration Tests', () => {
@@ -96,14 +96,14 @@ describe('Commands Integration Tests', () => {
           ai: require('../../services/AIService')(),
           google: require('../../services/GoogleService')(),
           cache: require('../../services/CacheService')(),
-          metrics: require('../../services/MetricsService')()
+          metrics: require('../../services/MetricsService')(),
         };
         return services[name];
       }),
       handleError: jest.fn().mockResolvedValue({
         handled: true,
-        message: 'Error handled'
-      })
+        message: 'Error handled',
+      }),
     };
 
     // Створюємо мок interaction
@@ -111,17 +111,17 @@ describe('Commands Integration Tests', () => {
       options: {
         getString: jest.fn(),
         getInteger: jest.fn(),
-        getSubcommand: jest.fn()
+        getSubcommand: jest.fn(),
       },
       user: {
         tag: 'testuser#1234',
-        id: '123456789'
+        id: '123456789',
       },
       deferReply: jest.fn().mockResolvedValue(),
       editReply: jest.fn().mockResolvedValue(),
       reply: jest.fn().mockResolvedValue(),
       deferred: false,
-      replied: false
+      replied: false,
     };
   });
 
@@ -176,7 +176,7 @@ describe('Commands Integration Tests', () => {
       // Перевіряємо, що повернулася помилка валідації
       expect(mockInteraction.editReply).toHaveBeenCalledWith({
         content: expect.stringContaining('Помилка валідації'),
-        ephemeral: true
+        ephemeral: true,
       });
     });
 
@@ -337,7 +337,7 @@ describe('Commands Integration Tests', () => {
       // Перевіряємо, що повернулася помилка валідації
       expect(mockInteraction.editReply).toHaveBeenCalledWith({
         content: expect.stringContaining('Помилка валідації'),
-        ephemeral: true
+        ephemeral: true,
       });
     });
   });
@@ -446,7 +446,7 @@ describe('Commands Integration Tests', () => {
 
       // Мокаємо кешований результат
       mockCacheService.get.mockResolvedValue([
-        { name: 'Cached Result', description: 'From cache' }
+        { name: 'Cached Result', description: 'From cache' },
       ]);
 
       // Виконуємо команду
