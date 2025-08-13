@@ -4,26 +4,26 @@
  * TypeScript версія
  */
 
-import { 
-  EmbedBuilder, 
-  ActionRowBuilder, 
-  ButtonBuilder, 
+import {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
   ButtonStyle,
-  ComponentType
+  ComponentType,
 } from 'discord.js';
 
 import logger from './logger';
 
 // Кольори для різних типів повідомлень
 const COLORS = {
-  SUCCESS: 0x00FF00,    // Зелений
-  ERROR: 0xFF0000,      // Червоний
-  WARNING: 0xFFA500,    // Помаранчевий
-  INFO: 0x0099FF,       // Синій
-  AI: 0x9B59B6,         // Фіолетовий
-  SEARCH: 0x3498DB,     // Голубий
-  FILES: 0xE67E22,      // Оранжевий
-  EXPORT: 0x27AE60      // Темно-зелений
+  SUCCESS: 0x00ff00, // Зелений
+  ERROR: 0xff0000, // Червоний
+  WARNING: 0xffa500, // Помаранчевий
+  INFO: 0x0099ff, // Синій
+  AI: 0x9b59b6, // Фіолетовий
+  SEARCH: 0x3498db, // Голубий
+  FILES: 0xe67e22, // Оранжевий
+  EXPORT: 0x27ae60, // Темно-зелений
 } as const;
 
 // Емодзі для різних дій
@@ -41,7 +41,7 @@ const EMOJIS = {
   HELP: '❓',
   SETTINGS: '⚙️',
   STATS: '📊',
-  SECURITY: '🔒'
+  SECURITY: '🔒',
 } as const;
 
 interface ActionButton {
@@ -77,22 +77,31 @@ class UIHelper {
   /**
    * Створення базового embed
    */
-  static createBaseEmbed(title: string, description: string, color: number = COLORS.INFO): EmbedBuilder {
+  static createBaseEmbed(
+    title: string,
+    description: string,
+    color: number = COLORS.INFO
+  ): EmbedBuilder {
     return new EmbedBuilder()
       .setColor(color)
       .setTitle(title)
       .setDescription(description)
       .setTimestamp()
-      .setFooter({ 
-        text: 'Discord AI Assistant Bot', 
-        iconURL: 'https://cdn.discordapp.com/emojis/1234567890.png' 
+      .setFooter({
+        text: 'Discord AI Assistant Bot',
+        iconURL: 'https://cdn.discordapp.com/emojis/1234567890.png',
       });
   }
 
   /**
    * Створення embed для результатів пошуку
    */
-  static createSearchResultsEmbed(results: any[], query: string, page = 0, totalPages = 1): EmbedBuilder {
+  static createSearchResultsEmbed(
+    results: any[],
+    query: string,
+    page = 0,
+    totalPages = 1
+  ): EmbedBuilder {
     const embed = this.createBaseEmbed(
       `${EMOJIS.SEARCH} Результати пошуку`,
       `**Запит:** \`${query}\`\n**Знайдено:** ${results.length} записів`,
@@ -105,7 +114,7 @@ class UIHelper {
       embed.addFields({
         name: `${EMOJIS.INFO} Запис ${rowNumber}`,
         value: this.formatSearchResult(result),
-        inline: false
+        inline: false,
       });
     });
 
@@ -114,7 +123,7 @@ class UIHelper {
       embed.addFields({
         name: `${EMOJIS.INFO} Навігація`,
         value: `Сторінка ${page + 1} з ${totalPages}`,
-        inline: true
+        inline: true,
       });
     }
 
@@ -128,13 +137,13 @@ class UIHelper {
     if (Array.isArray(result)) {
       return result.map((item, index) => `${index + 1}. ${item}`).join('\n');
     }
-    
+
     if (typeof result === 'object') {
       return Object.entries(result)
         .map(([key, value]) => `**${key}:** ${value}`)
         .join('\n');
     }
-    
+
     return result.toString();
   }
 
@@ -152,7 +161,7 @@ class UIHelper {
     embed.addFields({
       name: `${EMOJIS.INFO} Відповідь`,
       value: response.length > 1024 ? response.substring(0, 1021) + '...' : response,
-      inline: false
+      inline: false,
     });
 
     // Додавання впевненості
@@ -160,7 +169,7 @@ class UIHelper {
       embed.addFields({
         name: `${EMOJIS.WARNING} Впевненість`,
         value: `${Math.round(confidence * 100)}% - низька впевненість`,
-        inline: true
+        inline: true,
       });
     }
 
@@ -170,12 +179,17 @@ class UIHelper {
   /**
    * Створення embed для роботи з файлами
    */
-  static createFileEmbed(action: string, fileName: string, content: string | null = null, metadata: Record<string, any> | null = null): EmbedBuilder {
+  static createFileEmbed(
+    action: string,
+    fileName: string,
+    content: string | null = null,
+    metadata: Record<string, any> | null = null
+  ): EmbedBuilder {
     const titles: Record<string, string> = {
-      'пошук': `${EMOJIS.FILES} Пошук файлів`,
-      'читати': `${EMOJIS.FILES} Читання файлу`,
-      'аналіз': `${EMOJIS.AI} AI-аналіз файлу`,
-      'звіт': `${EMOJIS.EXPORT} Створення звіту`
+      пошук: `${EMOJIS.FILES} Пошук файлів`,
+      читати: `${EMOJIS.FILES} Читання файлу`,
+      аналіз: `${EMOJIS.AI} AI-аналіз файлу`,
+      звіт: `${EMOJIS.EXPORT} Створення звіту`,
     };
 
     const embed = this.createBaseEmbed(
@@ -188,7 +202,7 @@ class UIHelper {
       embed.addFields({
         name: `${EMOJIS.INFO} Вміст`,
         value: content.length > 1024 ? content.substring(0, 1021) + '...' : content,
-        inline: false
+        inline: false,
       });
     }
 
@@ -198,7 +212,7 @@ class UIHelper {
         value: Object.entries(metadata)
           .map(([key, value]) => `**${key}:** ${value}`)
           .join('\n'),
-        inline: true
+        inline: true,
       });
     }
 
@@ -218,7 +232,7 @@ class UIHelper {
     embed.addFields({
       name: `${EMOJIS.INFO} Файл`,
       value: fileName,
-      inline: true
+      inline: true,
     });
 
     return embed;
@@ -237,7 +251,7 @@ class UIHelper {
     embed.addFields({
       name: `${EMOJIS.INFO} Деталі`,
       value: typeof error === 'string' ? error : error.message || error.toString(),
-      inline: false
+      inline: false,
     });
 
     return embed;
@@ -247,17 +261,13 @@ class UIHelper {
    * Створення embed для успіху
    */
   static createSuccessEmbed(message: string, details: string | null = null): EmbedBuilder {
-    const embed = this.createBaseEmbed(
-      `${EMOJIS.SUCCESS} Успішно`,
-      message,
-      COLORS.SUCCESS
-    );
+    const embed = this.createBaseEmbed(`${EMOJIS.SUCCESS} Успішно`, message, COLORS.SUCCESS);
 
     if (details) {
       embed.addFields({
         name: `${EMOJIS.INFO} Деталі`,
         value: details,
-        inline: false
+        inline: false,
       });
     }
 
@@ -267,7 +277,11 @@ class UIHelper {
   /**
    * Створення кнопок для навігації
    */
-  static createNavigationButtons(currentPage: number, totalPages: number, customIds: Record<string, string> = {}): ActionRowBuilder<ButtonBuilder> {
+  static createNavigationButtons(
+    currentPage: number,
+    totalPages: number,
+    customIds: Record<string, string> = {}
+  ): ActionRowBuilder<ButtonBuilder> {
     const row = new ActionRowBuilder<ButtonBuilder>();
 
     // Кнопка "Попередня"
@@ -332,14 +346,19 @@ class UIHelper {
     const progress = Math.round((current / total) * width);
     const bar = '█'.repeat(progress) + '░'.repeat(width - progress);
     const percentage = Math.round((current / total) * 100);
-    
+
     return `\`[${bar}]\` ${percentage}% (${current}/${total})`;
   }
 
   /**
    * Створення embed з прогрес-баром
    */
-  static createProgressEmbed(title: string, current: number, total: number, status = ''): EmbedBuilder {
+  static createProgressEmbed(
+    title: string,
+    current: number,
+    total: number,
+    status = ''
+  ): EmbedBuilder {
     const embed = this.createBaseEmbed(
       `${EMOJIS.LOADING} ${title}`,
       this.createProgressBar(current, total),
@@ -350,7 +369,7 @@ class UIHelper {
       embed.addFields({
         name: `${EMOJIS.INFO} Статус`,
         value: status,
-        inline: false
+        inline: false,
       });
     }
 
@@ -361,7 +380,14 @@ class UIHelper {
    * Створення embed для довідки
    */
   static createHelpEmbed(category = 'general'): EmbedBuilder {
-    const helpData: Record<string, { title: string; description: string; fields: Array<{ name: string; value: string; inline?: boolean }> }> = {
+    const helpData: Record<
+      string,
+      {
+        title: string;
+        description: string;
+        fields: Array<{ name: string; value: string; inline?: boolean }>;
+      }
+    > = {
       general: {
         title: `${EMOJIS.HELP} Довідка по командам`,
         description: 'Виберіть категорію команд для отримання детальної інформації',
@@ -370,8 +396,8 @@ class UIHelper {
           { name: '🤖 AI', value: 'AI-асистент та аналіз', inline: true },
           { name: '📁 Файли', value: 'Робота з файлами', inline: true },
           { name: '📤 Експорт', value: 'Експорт даних', inline: true },
-          { name: '⚙️ Адміністративні', value: 'Управління ботом', inline: true }
-        ]
+          { name: '⚙️ Адміністративні', value: 'Управління ботом', inline: true },
+        ],
       },
       search: {
         title: `${EMOJIS.SEARCH} Команди пошуку`,
@@ -380,16 +406,21 @@ class UIHelper {
           { name: '/пошук', value: 'Пошук за конкретним полем', inline: false },
           { name: '/розумний-пошук', value: 'Пошук за кількома критеріями', inline: false },
           { name: '/залишки', value: 'Показує підсумкові значення', inline: false },
-          { name: '/оновити', value: 'Показує останні записи', inline: false }
-        ]
+          { name: '/оновити', value: 'Показує останні записи', inline: false },
+        ],
       },
       ai: {
         title: `${EMOJIS.AI} AI-функції`,
         description: 'Команди для роботи з AI-асистентом',
         fields: [
           { name: '/ai', value: 'Природномовний запит до AI', inline: false },
-          { name: 'Приклади запитів:', value: '• "знайди товари iPhone"\n• "проаналізуй залишки"\n• "створіть звіт по продажах"', inline: false }
-        ]
+          {
+            name: 'Приклади запитів:',
+            value:
+              '• "знайди товари iPhone"\n• "проаналізуй залишки"\n• "створіть звіт по продажах"',
+            inline: false,
+          },
+        ],
       },
       files: {
         title: `${EMOJIS.FILES} Робота з файлами`,
@@ -398,9 +429,9 @@ class UIHelper {
           { name: '/файли пошук', value: 'Пошук файлів в Google Drive', inline: false },
           { name: '/файли читати', value: 'Читання вмісту файлу', inline: false },
           { name: '/файли аналіз', value: 'AI-аналіз файлу', inline: false },
-          { name: '/файли звіт', value: 'Створення звіту з файлу', inline: false }
-        ]
-      }
+          { name: '/файли звіт', value: 'Створення звіту з файлу', inline: false },
+        ],
+      },
     };
 
     const data = (helpData[category] ?? helpData['general']) as {
@@ -431,7 +462,7 @@ class UIHelper {
     embed.addFields({
       name: `${EMOJIS.INFO} Загальна статистика`,
       value: `**Команд виконано:** ${stats.totalCommands || 0}\n**Унікальних користувачів:** ${stats.uniqueUsers || 0}\n**Активних розмов:** ${stats.activeConversations || 0}`,
-      inline: false
+      inline: false,
     });
 
     // Статистика по командах
@@ -439,11 +470,11 @@ class UIHelper {
       const commandStats = Object.entries(stats.commandStats)
         .map(([cmd, count]) => `**${cmd}:** ${count}`)
         .join('\n');
-      
+
       embed.addFields({
         name: `${EMOJIS.INFO} Популярні команди`,
         value: commandStats || 'Немає даних',
-        inline: true
+        inline: true,
       });
     }
 
@@ -452,7 +483,7 @@ class UIHelper {
       embed.addFields({
         name: `${EMOJIS.AI} AI статистика`,
         value: `**Запитів:** ${stats.aiStats.requests || 0}\n**Провайдер:** ${stats.aiStats.provider || 'N/A'}\n**Середній час відповіді:** ${stats.aiStats.avgResponseTime || 0}мс`,
-        inline: true
+        inline: true,
       });
     }
 
@@ -474,7 +505,7 @@ class UIHelper {
         embed.addFields({
           name: key,
           value: value.toString(),
-          inline: true
+          inline: true,
         });
       });
     }
@@ -485,14 +516,18 @@ class UIHelper {
   /**
    * Створення інтерактивного меню
    */
-  static createInteractiveMenu(title: string, options: MenuOption[], description = ''): { embed: EmbedBuilder; row: ActionRowBuilder<ButtonBuilder> } {
+  static createInteractiveMenu(
+    title: string,
+    options: MenuOption[],
+    description = ''
+  ): { embed: EmbedBuilder; row: ActionRowBuilder<ButtonBuilder> } {
     const embed = this.createBaseEmbed(title, description, COLORS.INFO);
 
     options.forEach((option, index) => {
       embed.addFields({
         name: `${index + 1}. ${option.label}`,
         value: option.description || 'Немає опису',
-        inline: false
+        inline: false,
       });
     });
 
@@ -517,19 +552,17 @@ class UIHelper {
       const response = await interaction.awaitMessageComponent({
         filter: (i: any) => i.user.id === interaction.user.id,
         time: timeout,
-        componentType: ComponentType.Button
+        componentType: ComponentType.Button,
       });
 
       return response;
     } catch (error) {
-      logger.error(`Interaction timeout or error: ${(error instanceof Error) ? error.message : String(error)}`);
+      logger.error(
+        `Interaction timeout or error: ${error instanceof Error ? error.message : String(error)}`
+      );
       return null;
     }
   }
 }
 
-export {
-  UIHelper,
-  COLORS,
-  EMOJIS
-}; 
+export { UIHelper, COLORS, EMOJIS };
