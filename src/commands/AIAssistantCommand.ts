@@ -72,6 +72,9 @@ export class AIAssistantCommand extends BaseCommand {
         return;
       }
 
+      // Миттєво відправляємо defer, щоб уникнути таймауту Discord ("Приложение не отвечает")
+      await interaction.deferReply();
+
       // Валідація параметрів
       const commandOptions = {
         query: interaction.options.getString('запит'),
@@ -80,9 +83,8 @@ export class AIAssistantCommand extends BaseCommand {
 
       const validation = this.validateCommandOptions(commandOptions);
       if (!validation.isValid) {
-        await interaction.reply({
+        await interaction.editReply({
           content: `❌ Помилка валідації:\n${validation.errors.join('\n')}`,
-          ephemeral: true,
         });
         return;
       }
@@ -97,9 +99,6 @@ export class AIAssistantCommand extends BaseCommand {
         guildId: interaction.guildId,
         channelId: interaction.channelId,
       });
-
-      // Відповідь про обробку
-      await interaction.deferReply();
 
       // Обробка запиту через AI
       const result = await this.processAIQuery(
@@ -333,10 +332,36 @@ export class AIAssistantCommand extends BaseCommand {
           recursive: true,
           type: 'sheet',
           limit: 50,
-          maxDepth: 3,
+          maxDepth: -1, // безлімітна глибина: обхід всіх підпапок
         });
 
         if (!files.length) {
+          // Спроба доступу безпосередньо до таблиці з конфігурації як діагностика доступу
+          const spreadsheetId = this.config.google.spreadsheetId;
+          if (spreadsheetId) {
+            try {
+              const sheetTitles = await this.googleService.listSheets(spreadsheetId);
+              if (sheetTitles && sheetTitles.length >= 0) {
+                // Доступ до таблиці працює, але у вказаній папці немає spreadsheets
+                return {
+                  response:
+                    'Таблиці не знайдені у вказаній папці Google Drive. Проте доступ до таблиці з конфігурації працює. Переконайтесь, що потрібні файли знаходяться у цій папці або змініть GOOGLE_DRIVE_FOLDER_ID на правильну папку.',
+                  confidence: 0.92,
+                  action: 'list_sheets',
+                  actionData: { type: 'list', format: 'text' },
+                };
+              }
+            } catch (e) {
+              // Немає доступу до конкретної таблиці — повідомляємо користувача
+              return {
+                response:
+                  'Не вдалось отримати доступ до таблиць: папка порожня або недоступна, а також немає доступу до таблиці з конфігурації. Перевірте, що ви надали доступ сервісному акаунту та що файли знаходяться у вказаній папці.',
+                confidence: 0.7,
+                action: 'list_sheets',
+                actionData: { type: 'list', format: 'text' },
+              };
+            }
+          }
           return {
             response: 'Таблиці не знайдені у вказаній папці Google Drive.',
             confidence: 0.9,
@@ -345,11 +370,20 @@ export class AIAssistantCommand extends BaseCommand {
           };
         }
 
-        const lines = files.slice(0, 20).map((f, idx) => `${idx + 1}. ${f.name} (id: ${f.id})`);
+        const lines = files.slice(0, 20).map((f, idx) => {
+          const mime = f.mimeType || '';
+          const label =
+            mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+              ? 'Excel (.xlsx)'
+              : mime === 'application/vnd.ms-excel'
+                ? 'Excel (.xls)'
+                : 'Google Sheets';
+          return `${idx + 1}. ${f.name} [${label}] (id: ${f.id})`;
+        });
         const more = files.length > 20 ? `\n… та ще ${files.length - 20}` : '';
 
         return {
-          response: `Знайдено ${files.length} таблиць:\n\n${lines.join('\n')}${more}`,
+          response: `Знайдено ${files.length} таблиць/Excel-файлів:\n\n${lines.join('\n')}${more}`,
           confidence: 0.95,
           action: 'list_sheets',
           actionData: { type: 'list', format: 'text' },
