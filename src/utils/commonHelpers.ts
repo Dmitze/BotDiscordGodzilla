@@ -17,12 +17,12 @@ import logger from './logger';
 
 // Константи для стандартних значень
 export const EMBED_COLORS = {
-  SUCCESS: 0x00FF00,
-  ERROR: 0xFF0000,
-  WARNING: 0xFFA500,
-  INFO: 0x0099FF,
-  PRIMARY: 0x00AE86,
-  SECONDARY: 0x808080
+  SUCCESS: 0x00ff00,
+  ERROR: 0xff0000,
+  WARNING: 0xffa500,
+  INFO: 0x0099ff,
+  PRIMARY: 0x00ae86,
+  SECONDARY: 0x808080,
 } as const;
 
 export const EMBED_LIMITS = {
@@ -32,7 +32,7 @@ export const EMBED_LIMITS = {
   FIELD_VALUE_MAX: 1024,
   FIELDS_MAX: 25,
   FOOTER_MAX: 2048,
-  AUTHOR_MAX: 256
+  AUTHOR_MAX: 256,
 } as const;
 
 export const TIME_CONSTANTS = {
@@ -40,7 +40,7 @@ export const TIME_CONSTANTS = {
   MINUTE: 60 * 1000,
   HOUR: 60 * 60 * 1000,
   DAY: 24 * 60 * 60 * 1000,
-  WEEK: 7 * 24 * 60 * 60 * 1000
+  WEEK: 7 * 24 * 60 * 60 * 1000,
 } as const;
 
 /**
@@ -53,15 +53,19 @@ export class EmbedFactory {
   /**
    * Базовий embed з загальними налаштуваннями
    */
-  static createBase(title: string, description: string, color: number = EMBED_COLORS.PRIMARY): EmbedBuilder {
+  static createBase(
+    title: string,
+    description: string,
+    color: number = EMBED_COLORS.PRIMARY
+  ): EmbedBuilder {
     return new EmbedBuilder()
       .setColor(color)
       .setTitle(this.truncateText(title, EMBED_LIMITS.TITLE_MAX))
       .setDescription(this.truncateText(description, EMBED_LIMITS.DESCRIPTION_MAX))
       .setTimestamp()
-      .setFooter({ 
-        text: this.defaultFooter, 
-        iconURL: this.defaultIconURL 
+      .setFooter({
+        text: this.defaultFooter,
+        iconURL: this.defaultIconURL,
       });
   }
 
@@ -77,15 +81,15 @@ export class EmbedFactory {
    */
   static error(title: string, description: string, showSupport: boolean = true): EmbedBuilder {
     const embed = this.createBase(`❌ ${title}`, description, EMBED_COLORS.ERROR);
-    
+
     if (showSupport) {
       embed.addFields({
         name: '📞 Потрібна допомога?',
         value: 'Зверніться до адміністрації сервера або перевірте документацію.',
-        inline: false
+        inline: false,
       });
     }
-    
+
     return embed;
   }
 
@@ -106,7 +110,10 @@ export class EmbedFactory {
   /**
    * Embed для завантаження/очікування
    */
-  static loading(title: string = 'Завантаження', description: string = 'Зачекайте...'): EmbedBuilder {
+  static loading(
+    title: string = 'Завантаження',
+    description: string = 'Зачекайте...'
+  ): EmbedBuilder {
     return this.createBase(`⏳ ${title}`, description, EMBED_COLORS.WARNING);
   }
 
@@ -114,20 +121,20 @@ export class EmbedFactory {
    * Embed з полями даних
    */
   static dataFields(
-    title: string, 
-    description: string, 
+    title: string,
+    description: string,
     fields: Array<{ name: string; value: string; inline?: boolean }>
   ): EmbedBuilder {
     const embed = this.createBase(title, description);
-    
+
     fields.slice(0, EMBED_LIMITS.FIELDS_MAX).forEach(field => {
       embed.addFields({
         name: this.truncateText(field.name, EMBED_LIMITS.FIELD_NAME_MAX),
         value: this.truncateText(field.value, EMBED_LIMITS.FIELD_VALUE_MAX),
-        inline: field.inline || false
+        inline: field.inline || false,
       });
     });
-    
+
     return embed;
   }
 
@@ -142,12 +149,12 @@ export class EmbedFactory {
     _data?: any
   ): EmbedBuilder {
     const embed = this.createBase(title, description);
-    
+
     embed.setFooter({
       text: `${this.defaultFooter} • Сторінка ${currentPage}/${totalPages}`,
-      iconURL: this.defaultIconURL
+      iconURL: this.defaultIconURL,
     });
-    
+
     return embed;
   }
 
@@ -190,7 +197,10 @@ export class TimeUtils {
   /**
    * Форматування timestamp у читабельний формат
    */
-  static formatTimestamp(timestamp: number, format: 'relative' | 'absolute' | 'datetime' = 'relative'): string {
+  static formatTimestamp(
+    timestamp: number,
+    format: 'relative' | 'absolute' | 'datetime' = 'relative'
+  ): string {
     const date = new Date(timestamp);
     const now = new Date();
     const diff = now.getTime() - timestamp;
@@ -364,20 +374,27 @@ export class DataUtils {
    * Групування масиву за ключем
    */
   static groupBy<T>(array: T[], keyFn: (item: T) => string): Record<string, T[]> {
-    return array.reduce((groups, item) => {
-      const key = keyFn(item);
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(item);
-      return groups;
-    }, {} as Record<string, T[]>);
+    return array.reduce(
+      (groups, item) => {
+        const key = keyFn(item);
+        if (!groups[key]) {
+          groups[key] = [];
+        }
+        groups[key].push(item);
+        return groups;
+      },
+      {} as Record<string, T[]>
+    );
   }
 
   /**
    * Пагінація масиву
    */
-  static paginate<T>(array: T[], page: number, pageSize: number): {
+  static paginate<T>(
+    array: T[],
+    page: number,
+    pageSize: number
+  ): {
     items: T[];
     totalPages: number;
     currentPage: number;
@@ -395,7 +412,7 @@ export class DataUtils {
       totalPages,
       currentPage,
       hasNext: currentPage < totalPages,
-      hasPrev: currentPage > 1
+      hasPrev: currentPage > 1,
     };
   }
 }
@@ -419,7 +436,9 @@ export class DiscordUtils {
       }
       return true;
     } catch (error) {
-      logger.error(`❌ Помилка відправлення відповіді Discord: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `❌ Помилка відправлення відповіді Discord: ${error instanceof Error ? error.message : String(error)}`
+      );
       return false;
     }
   }
@@ -440,25 +459,25 @@ export class DiscordUtils {
         .setEmoji('⏪')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(disabled || currentPage <= 1),
-      
+
       new ButtonBuilder()
         .setCustomId('pagination_prev')
         .setEmoji('◀️')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(disabled || currentPage <= 1),
-      
+
       new ButtonBuilder()
         .setCustomId('pagination_info')
         .setLabel(`${currentPage}/${totalPages}`)
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(true),
-      
+
       new ButtonBuilder()
         .setCustomId('pagination_next')
         .setEmoji('▶️')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(disabled || currentPage >= totalPages),
-      
+
       new ButtonBuilder()
         .setCustomId('pagination_last')
         .setEmoji('⏩')
@@ -536,17 +555,11 @@ export class ErrorUtils {
   /**
    * Створення стандартного embed для помилки
    */
-  static createErrorEmbed(
-    error: unknown,
-    showDetails: boolean = false
-  ): EmbedBuilder {
+  static createErrorEmbed(error: unknown, showDetails: boolean = false): EmbedBuilder {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    
+
     if (showDetails) {
-      return EmbedFactory.error(
-        'Помилка виконання',
-        `Деталі: ${errorMessage.substring(0, 1000)}`
-      );
+      return EmbedFactory.error('Помилка виконання', `Деталі: ${errorMessage.substring(0, 1000)}`);
     } else {
       return EmbedFactory.error(
         'Помилка виконання',
@@ -565,11 +578,11 @@ export class ErrorUtils {
         'ENOTFOUND',
         'Database',
         'Permission denied',
-        'Out of memory'
+        'Out of memory',
       ];
-      
-      return criticalPatterns.some(pattern => 
-        error.message.includes(pattern) || error.stack?.includes(pattern)
+
+      return criticalPatterns.some(
+        pattern => error.message.includes(pattern) || error.stack?.includes(pattern)
       );
     }
     return false;
@@ -596,7 +609,7 @@ export class RetryUtils {
       maxAttempts = 3,
       delay = 1000,
       backoff = 'exponential',
-      shouldRetry = () => true
+      shouldRetry = () => true,
     } = options;
 
     let lastError: unknown;
@@ -611,9 +624,8 @@ export class RetryUtils {
           throw error;
         }
 
-        const waitTime = backoff === 'exponential' 
-          ? delay * Math.pow(2, attempt - 1)
-          : delay * attempt;
+        const waitTime =
+          backoff === 'exponential' ? delay * Math.pow(2, attempt - 1) : delay * attempt;
 
         logger.warn(`🔄 Повторна спроба ${attempt}/${maxAttempts} через ${waitTime}ms`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
