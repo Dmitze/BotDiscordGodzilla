@@ -41,11 +41,30 @@ const SECURITY_CONSTANTS = {
     /<option/gi,
   ],
   ALLOWED_CHARS: /^[a-zA-Z0-9\s\-_.,!?@#$%^&*()+=<>{}[\]|\\/:;"'`~]+$/,
-  ALLOWED_URLS: /^https?:\/\/(www\.)?(discord\.com|discordapp\.com|google\.com|docs\.google\.com|drive\.google\.com)/i,
+  ALLOWED_URLS:
+    /^https?:\/\/(www\.)?(discord\.com|discordapp\.com|google\.com|docs\.google\.com|drive\.google\.com)/i,
   BLACKLISTED_WORDS: [
-    'admin', 'root', 'sudo', 'system', 'exec', 'eval', 'require', 'import',
-    'delete', 'drop', 'insert', 'update', 'select', 'union', 'where',
-    'script', 'javascript', 'vbscript', 'onload', 'onerror', 'onclick',
+    'admin',
+    'root',
+    'sudo',
+    'system',
+    'exec',
+    'eval',
+    'require',
+    'import',
+    'delete',
+    'drop',
+    'insert',
+    'update',
+    'select',
+    'union',
+    'where',
+    'script',
+    'javascript',
+    'vbscript',
+    'onload',
+    'onerror',
+    'onclick',
   ],
 } as const;
 
@@ -147,14 +166,20 @@ export class SecurityManager {
    */
   private startPeriodicTasks(): void {
     // Очищення rate limit кешу кожні 5 хвилин
-    setInterval(() => {
-      this.cleanupRateLimitCache();
-    }, 5 * 60 * 1000);
+    setInterval(
+      () => {
+        this.cleanupRateLimitCache();
+      },
+      5 * 60 * 1000
+    );
 
     // Очищення підозрілої активності кожні 10 хвилин
-    setInterval(() => {
-      this.cleanupSuspiciousActivities();
-    }, 10 * 60 * 1000);
+    setInterval(
+      () => {
+        this.cleanupSuspiciousActivities();
+      },
+      10 * 60 * 1000
+    );
 
     logger.info('⏰ Періодичні завдання безпеки запущено');
   }
@@ -188,7 +213,9 @@ export class SecurityManager {
 
       // Перевірка довжини
       if (input.length > SECURITY_CONSTANTS.MAX_INPUT_LENGTH) {
-        errors.push(`Введення занадто довге (${input.length} символів, максимум ${SECURITY_CONSTANTS.MAX_INPUT_LENGTH})`);
+        errors.push(
+          `Введення занадто довге (${input.length} символів, максимум ${SECURITY_CONSTANTS.MAX_INPUT_LENGTH})`
+        );
         sanitizedValue = input.substring(0, SECURITY_CONSTANTS.MAX_INPUT_LENGTH);
       }
 
@@ -207,7 +234,7 @@ export class SecurityManager {
       // Перевірка на SQL ін'єкції
       const sqlResult = this.checkForSQLInjection(input);
       if (sqlResult.found) {
-        errors.push('Виявлено потенційну SQL ін\'єкцію');
+        errors.push("Виявлено потенційну SQL ін'єкцію");
         this.recordSecurityEvent('suspicious_activity', context.userId || 'unknown', {
           subtype: 'sql_injection_attempt',
           pattern: sqlResult.pattern,
@@ -358,7 +385,11 @@ export class SecurityManager {
   /**
    * Перевірка rate limit
    */
-  public checkRateLimit(userId: string): { allowed: boolean; remaining: number; resetTime: number } {
+  public checkRateLimit(userId: string): {
+    allowed: boolean;
+    remaining: number;
+    resetTime: number;
+  } {
     try {
       const now = Date.now();
       const userLimit = this.rateLimitMap.get(userId);
@@ -433,7 +464,9 @@ export class SecurityManager {
 
       // Перевірка довжини
       if (url.length > SECURITY_CONSTANTS.MAX_URL_LENGTH) {
-        errors.push(`URL занадто довгий (${url.length} символів, максимум ${SECURITY_CONSTANTS.MAX_URL_LENGTH})`);
+        errors.push(
+          `URL занадто довгий (${url.length} символів, максимум ${SECURITY_CONSTANTS.MAX_URL_LENGTH})`
+        );
       }
 
       // Перевірка протоколу
@@ -586,7 +619,8 @@ export class SecurityManager {
     try {
       this.stats.totalValidations++;
       this.stats.totalValidationTime += duration;
-      this.stats.averageValidationTime = this.stats.totalValidationTime / this.stats.totalValidations;
+      this.stats.averageValidationTime =
+        this.stats.totalValidationTime / this.stats.totalValidations;
     } catch (error) {
       handleError(error, {
         serviceName: 'SecurityManager',
