@@ -89,7 +89,7 @@ class Logger {
       averageLogSize: 0,
       logBufferSize: 0,
     };
-    
+
     this.initialize();
   }
 
@@ -98,7 +98,20 @@ class Logger {
    */
   private sanitizeMeta(meta: LogMeta): LogMeta {
     const SECRET_KEYS = new Set([
-      'token', 'apiKey', 'apikey', 'api_key', 'password', 'pass', 'secret', 'clientSecret', 'authorization', 'auth', 'bearer', 'session', 'cookie', 'cookies'
+      'token',
+      'apiKey',
+      'apikey',
+      'api_key',
+      'password',
+      'pass',
+      'secret',
+      'clientSecret',
+      'authorization',
+      'auth',
+      'bearer',
+      'session',
+      'cookie',
+      'cookies',
     ]);
 
     const MAX_STRING_LEN = 2000; // захист від гігантських полів
@@ -114,7 +127,7 @@ class Logger {
       if (typeof value === 'object') {
         if (seen.has(value as object)) return '[CIRCULAR]';
         seen.add(value as object);
-        if (Array.isArray(value)) return value.map((v) => redact(key, v));
+        if (Array.isArray(value)) return value.map(v => redact(key, v));
         const out: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
           out[k] = redact(k, v);
@@ -138,16 +151,16 @@ class Logger {
   private initialize(): void {
     try {
       console.log('🔧 Ініціалізація логера...');
-      
+
       // Створення папки для логів
       this.ensureLogsDirectory();
-      
+
       // Конфігурація форматів
       const formats = this.createFormats();
-      
+
       // Створення транспортів
       const transports = this.createTransports();
-      
+
       // Створення логера
       this.logger = winston.createLogger({
         level: this.getLogLevel(),
@@ -159,13 +172,12 @@ class Logger {
 
       // Налаштування обробки необроблених помилок
       this.setupExceptionHandling();
-      
+
       // Запуск періодичних завдань
       this.startPeriodicTasks();
-      
+
       this.isInitialized = true;
       console.log('✅ Логер успішно ініціалізовано');
-      
     } catch (error) {
       console.error('❌ Помилка ініціалізації логера:', error);
       this.createFallbackLogger();
@@ -183,7 +195,9 @@ class Logger {
       }
     } catch (error) {
       console.error('❌ Помилка створення папки логів:', error);
-      throw new Error(`Неможливо створити папку логів: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
+      throw new Error(
+        `Неможливо створити папку логів: ${error instanceof Error ? error.message : 'Невідома помилка'}`
+      );
     }
   }
 
@@ -201,15 +215,15 @@ class Logger {
           if (service) log += ` [${service}]`;
           if (userId) log += ` [User:${userId}]`;
           log += `: ${message}`;
-          
-          const remainingMeta = Object.keys(meta).filter(key => 
-            !['timestamp', 'level', 'service', 'userId'].includes(key)
+
+          const remainingMeta = Object.keys(meta).filter(
+            key => !['timestamp', 'level', 'service', 'userId'].includes(key)
           );
-          
+
           if (remainingMeta.length > 0) {
             log += ` ${JSON.stringify(meta)}`;
           }
-          
+
           return log;
         })
       ),
@@ -226,7 +240,7 @@ class Logger {
    */
   private createTransports(): winston.transport[] {
     const formats = this.createFormats();
-    
+
     return [
       // Консольний транспорт
       new winston.transports.Console({
@@ -296,11 +310,11 @@ class Logger {
   private getLogLevel(): string {
     const level = process.env['LOG_LEVEL']?.toLowerCase();
     const validLevels = ['error', 'warn', 'info', 'debug'];
-    
+
     if (level && validLevels.includes(level)) {
       return level;
     }
-    
+
     return process.env['NODE_ENV'] === 'production' ? 'info' : 'debug';
   }
 
@@ -311,7 +325,7 @@ class Logger {
     if (!this.logger) return;
 
     const formats = this.createFormats();
-    
+
     this.logger.exceptions.handle(
       new winston.transports.File({
         filename: path.join(this.logsDir, 'exceptions.log'),
@@ -351,13 +365,11 @@ class Logger {
    */
   private createFallbackLogger(): void {
     console.warn('⚠️ Використання резервного логера');
-    
+
     this.logger = winston.createLogger({
       level: 'info',
       format: winston.format.simple(),
-      transports: [
-        new winston.transports.Console(),
-      ],
+      transports: [new winston.transports.Console()],
     });
   }
 
@@ -398,7 +410,6 @@ class Logger {
       if (duration > 100) {
         console.warn(`⚠️ Повільне логування: ${duration.toFixed(2)}ms`);
       }
-
     } catch (error) {
       console.error('❌ Помилка логування:', error);
       console.log(`[${level.toUpperCase()}]: ${message}`, meta);
@@ -412,10 +423,10 @@ class Logger {
     this.stats.totalLogs++;
     this.stats.lastLogTime = new Date();
     this.stats.logBufferSize = this.logBuffer.length;
-    
+
     const logSize = JSON.stringify({ level, message, meta }).length;
     this.stats.averageLogSize = (this.stats.averageLogSize + logSize) / 2;
-    
+
     switch (level) {
       case 'error':
         this.stats.errors++;
@@ -427,7 +438,7 @@ class Logger {
         this.stats.debug++;
         break;
     }
-    
+
     if ((meta as any)['type'] === 'command') this.stats.commands++;
     if ((meta as any)['type'] === 'api_request') this.stats.apiRequests++;
     if ((meta as any)['type'] === 'performance') this.stats.performance++;
@@ -446,9 +457,9 @@ class Logger {
       meta,
       size: JSON.stringify({ level, message, meta }).length,
     };
-    
+
     this.logBuffer.push(entry);
-    
+
     // Обмеження розміру буфера
     if (this.logBuffer.length > LOGGER_CONFIG.BUFFER_SIZE) {
       this.logBuffer.shift();
@@ -458,15 +469,17 @@ class Logger {
   /**
    * Скидання буфера логів
    */
-  private flushLogBuffer(): void {
+  private flushLogBuffer(verbose: boolean = true): void {
     if (this.logBuffer.length === 0) return;
-    
+
     try {
       const bufferSize = this.logBuffer.length;
       const totalSize = this.logBuffer.reduce((sum, entry) => sum + entry.size, 0);
-      
-      this.debug(`Скидання буфера логів: ${bufferSize} записів, ${totalSize} байт`);
-      
+
+      if (verbose) {
+        this.debug(`Скидання буфера логів: ${bufferSize} записів, ${totalSize} байт`);
+      }
+
       this.logBuffer = [];
       this.stats.logBufferSize = 0;
     } catch (error) {
@@ -482,17 +495,17 @@ class Logger {
       const files = fs.readdirSync(this.logsDir);
       const now = Date.now();
       let cleanedCount = 0;
-      
+
       for (const file of files) {
         const filePath = path.join(this.logsDir, file);
         const stats = fs.statSync(filePath);
-        
+
         if (now - stats.mtime.getTime() > LOGGER_CONFIG.MAX_LOG_AGE) {
           fs.unlinkSync(filePath);
           cleanedCount++;
         }
       }
-      
+
       if (cleanedCount > 0) {
         this.info(`Очищено ${cleanedCount} старих лог-файлів`);
       }
@@ -532,7 +545,13 @@ class Logger {
   /**
    * Логування команд з детальною інформацією
    */
-  public command(command: string, user: string, duration: number, success: boolean = true, meta: LogMeta = {}): void {
+  public command(
+    command: string,
+    user: string,
+    duration: number,
+    success: boolean = true,
+    meta: LogMeta = {}
+  ): void {
     this.log('info', `Команда виконана: ${command}`, {
       ...meta,
       command,
@@ -547,7 +566,13 @@ class Logger {
   /**
    * Логування помилок команд
    */
-  public commandError(command: string, user: string, error: Error, duration: number, meta: LogMeta = {}): void {
+  public commandError(
+    command: string,
+    user: string,
+    error: Error,
+    duration: number,
+    meta: LogMeta = {}
+  ): void {
     this.log('error', `Помилка команди: ${command}`, {
       ...meta,
       command,
@@ -563,7 +588,13 @@ class Logger {
   /**
    * Логування API запитів
    */
-  public apiRequest(service: string, endpoint: string, duration: number, success: boolean = true, meta: LogMeta = {}): void {
+  public apiRequest(
+    service: string,
+    endpoint: string,
+    duration: number,
+    success: boolean = true,
+    meta: LogMeta = {}
+  ): void {
     this.log('info', `API запит: ${service} - ${endpoint}`, {
       ...meta,
       service,
@@ -578,7 +609,13 @@ class Logger {
   /**
    * Логування помилок API
    */
-  public apiError(service: string, endpoint: string, error: Error, duration: number, meta: LogMeta = {}): void {
+  public apiError(
+    service: string,
+    endpoint: string,
+    error: Error,
+    duration: number,
+    meta: LogMeta = {}
+  ): void {
     this.log('error', `Помилка API: ${service} - ${endpoint}`, {
       ...meta,
       service,
@@ -633,7 +670,7 @@ class Logger {
    * Отримання детальної статистики логера
    */
   public getStats(): LoggerStats {
-    return { 
+    return {
       ...this.stats,
       logBufferSize: this.logBuffer.length,
     };
@@ -651,31 +688,35 @@ class Logger {
    */
   public async cleanup(): Promise<void> {
     try {
-      this.info('Очищення ресурсів логера...');
-      
+      // Переводимо логер у пасивний режим, щоб уникнути записів у закриті потоки
+      this.isInitialized = false;
+      console.log('🧹 Очищення ресурсів логера...');
+
       // Зупинка періодичних завдань
       if (this.cleanupInterval) {
         clearInterval(this.cleanupInterval);
         this.cleanupInterval = null;
       }
-      
+
       if (this.flushInterval) {
         clearInterval(this.flushInterval);
         this.flushInterval = null;
       }
-      
-      // Скидання буфера
-      this.flushLogBuffer();
-      
-      // Закриття логера
+
+      // Скидання буфера без додаткового логування
+      this.flushLogBuffer(false);
+
+      // Закриття транспортів та звільнення інстансу
       if (this.logger) {
-        await new Promise<void>((resolve) => {
-          this.logger!.on('finish', () => resolve());
-          this.logger!.end();
-        });
+        try {
+          this.logger.close();
+        } catch (e) {
+          console.warn('⚠️ Помилка при закритті логера:', e);
+        }
+        this.logger = null;
       }
-      
-      this.info('Ресурси логера очищено');
+
+      console.log('✅ Ресурси логера очищено');
     } catch (error) {
       console.error('❌ Помилка очищення ресурсів логера:', error);
     }
@@ -693,4 +734,4 @@ class Logger {
 const logger = new Logger();
 
 export default logger;
-export { Logger, type LogMeta, type LoggerStats, type LogEntry }; 
+export { Logger, type LogMeta, type LoggerStats, type LogEntry };
