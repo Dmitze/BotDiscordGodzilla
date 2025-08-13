@@ -16,4 +16,3 @@ describe('logger redact', () => {
     expect(last.meta['nested']['note']).toBe('ok');
   });
 });
-
