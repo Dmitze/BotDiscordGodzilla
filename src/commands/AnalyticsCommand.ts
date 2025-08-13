@@ -10,130 +10,124 @@ import logger from '@/utils/logger';
 
 export class AnalyticsCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super(
-      'аналітика',
-      '📊 Аналітика та звітність ЗСУ',
-      config,
-      {},
-      (builder: any) => {
-        return builder
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('звіт')
-              .setDescription('📋 Генерація звітів')
-              .addStringOption((option: any) =>
-                option
-                  .setName('тип')
-                  .setDescription('Тип звіту')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Щоденний звіт', value: 'daily' },
-                    { name: 'Тижневий звіт', value: 'weekly' },
-                    { name: 'Місячний звіт', value: 'monthly' },
-                    { name: 'Звіт по особовому складу', value: 'personnel' },
-                    { name: 'Звіт по техніці', value: 'equipment' },
-                    { name: 'Звіт по операціях', value: 'operations' },
-                    { name: 'Звіт по МТЗ', value: 'materials' },
-                    { name: 'Звіт по наказах', value: 'orders' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option
-                  .setName('формат')
-                  .setDescription('Формат звіту')
-                  .setRequired(false)
-                  .addChoices(
-                    { name: 'Текстовий', value: 'text' },
-                    { name: 'Excel', value: 'excel' },
-                    { name: 'PDF', value: 'pdf' }
-                  )
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('статистика')
-              .setDescription('📈 Статистика та метрики')
-              .addStringOption((option: any) =>
-                option
-                  .setName('категорія')
-                  .setDescription('Категорія статистики')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Загальна статистика', value: 'general' },
-                    { name: 'Бойова готовність', value: 'combat' },
-                    { name: 'Особовий склад', value: 'personnel' },
-                    { name: 'Техніка', value: 'equipment' },
-                    { name: 'Операції', value: 'operations' },
-                    { name: 'МТЗ', value: 'materials' },
-                    { name: 'Ефективність', value: 'efficiency' }
-                  )
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('прогноз')
-              .setDescription('🔮 Прогнозування та планування')
-              .addStringOption((option: any) =>
-                option
-                  .setName('тип')
-                  .setDescription('Тип прогнозу')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Потреби в МТЗ', value: 'materials' },
-                    { name: 'Ремонт техніки', value: 'repairs' },
-                    { name: 'Особовий склад', value: 'personnel' },
-                    { name: 'Оперативні потреби', value: 'operations' },
-                    { name: 'Бюджет', value: 'budget' }
-                  )
-              )
-              .addIntegerOption((option: any) =>
-                option
-                  .setName('період')
-                  .setDescription('Період прогнозування (днів)')
-                  .setRequired(false)
-                  .setMinValue(1)
-                  .setMaxValue(365)
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('порівняння')
-              .setDescription('⚖️ Порівняльний аналіз')
-              .addStringOption((option: any) =>
-                option
-                  .setName('об\'єкт')
-                  .setDescription('Об\'єкт порівняння')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Підрозділи', value: 'units' },
-                    { name: 'Періоди', value: 'periods' },
-                    { name: 'Показники', value: 'metrics' },
-                    { name: 'Регіони', value: 'regions' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option
-                  .setName('метрика')
-                  .setDescription('Метрика для порівняння')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Ефективність', value: 'efficiency' },
-                    { name: 'Витрати', value: 'costs' },
-                    { name: 'Результати', value: 'results' },
-                    { name: 'Час виконання', value: 'time' }
-                  )
-              )
-              .addIntegerOption((option: any) =>
-                option
-                  .setName('період')
-                  .setDescription('Період аналізу (днів)')
-                  .setRequired(false)
-                  .setMinValue(1)
-                  .setMaxValue(365)
-              )
-          );
-      }
-    );
+    super('analytics', '📊 Аналітика та звітність ЗСУ', config, {}, (builder: any) => {
+      return builder
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('report')
+            .setDescription('📋 Генерація звітів')
+            .addStringOption((option: any) =>
+              option
+                .setName('type')
+                .setDescription('Тип звіту')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Щоденний звіт', value: 'daily' },
+                  { name: 'Тижневий звіт', value: 'weekly' },
+                  { name: 'Місячний звіт', value: 'monthly' },
+                  { name: 'Звіт по особовому складу', value: 'personnel' },
+                  { name: 'Звіт по техніці', value: 'equipment' },
+                  { name: 'Звіт по операціях', value: 'operations' },
+                  { name: 'Звіт по МТЗ', value: 'materials' },
+                  { name: 'Звіт по наказах', value: 'orders' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option
+                .setName('format')
+                .setDescription('Формат звіту')
+                .setRequired(false)
+                .addChoices(
+                  { name: 'Текстовий', value: 'text' },
+                  { name: 'Excel', value: 'excel' },
+                  { name: 'PDF', value: 'pdf' }
+                )
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('stats')
+            .setDescription('📈 Статистика та метрики')
+            .addStringOption((option: any) =>
+              option
+                .setName('category')
+                .setDescription('Категорія статистики')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Загальна статистика', value: 'general' },
+                  { name: 'Бойова готовність', value: 'combat' },
+                  { name: 'Особовий склад', value: 'personnel' },
+                  { name: 'Техніка', value: 'equipment' },
+                  { name: 'Операції', value: 'operations' },
+                  { name: 'МТЗ', value: 'materials' },
+                  { name: 'Ефективність', value: 'efficiency' }
+                )
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('forecast')
+            .setDescription('🔮 Прогнозування та планування')
+            .addStringOption((option: any) =>
+              option
+                .setName('type')
+                .setDescription('Тип прогнозу')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Потреби в МТЗ', value: 'materials' },
+                  { name: 'Ремонт техніки', value: 'repairs' },
+                  { name: 'Особовий склад', value: 'personnel' },
+                  { name: 'Оперативні потреби', value: 'operations' },
+                  { name: 'Бюджет', value: 'budget' }
+                )
+            )
+            .addIntegerOption((option: any) =>
+              option
+                .setName('period')
+                .setDescription('Період прогнозування (днів)')
+                .setRequired(false)
+                .setMinValue(1)
+                .setMaxValue(365)
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('compare')
+            .setDescription('⚖️ Порівняльний аналіз')
+            .addStringOption((option: any) =>
+              option
+                .setName('object')
+                .setDescription("Об'єкт порівняння")
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Підрозділи', value: 'units' },
+                  { name: 'Періоди', value: 'periods' },
+                  { name: 'Показники', value: 'metrics' },
+                  { name: 'Регіони', value: 'regions' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option
+                .setName('metric')
+                .setDescription('Метрика для порівняння')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Ефективність', value: 'efficiency' },
+                  { name: 'Витрати', value: 'costs' },
+                  { name: 'Результати', value: 'results' },
+                  { name: 'Час виконання', value: 'time' }
+                )
+            )
+            .addIntegerOption((option: any) =>
+              option
+                .setName('period')
+                .setDescription('Період аналізу (днів)')
+                .setRequired(false)
+                .setMinValue(1)
+                .setMaxValue(365)
+            )
+        );
+    });
   }
 
   /**
@@ -141,21 +135,21 @@ export class AnalyticsCommand extends BaseCommand {
    */
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
-    
+
     try {
       const subcommand = interaction.options.getSubcommand();
 
       switch (subcommand) {
-        case 'звіт':
+        case 'report':
           await this.handleReport(interaction);
           break;
-        case 'статистика':
+        case 'stats':
           await this.handleStatistics(interaction);
           break;
-        case 'прогноз':
+        case 'forecast':
           await this.handleForecast(interaction);
           break;
-        case 'порівняння':
+        case 'compare':
           await this.handleComparison(interaction);
           break;
         default:
@@ -171,8 +165,8 @@ export class AnalyticsCommand extends BaseCommand {
    * Обробка генерації звітів
    */
   private async handleReport(interaction: any): Promise<void> {
-    const type = interaction.options.getString('тип', true);
-    const format = interaction.options.getString('формат') || 'text';
+    const type = interaction.options.getString('type', true);
+    const format = interaction.options.getString('format') || 'text';
 
     const embed = new EmbedBuilder()
       .setTitle('📋 Генерація звітів')
@@ -190,13 +184,12 @@ export class AnalyticsCommand extends BaseCommand {
     );
 
     // Додаємо кнопку для завантаження
-    const row = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('download_report')
-          .setLabel('📥 Завантажити звіт')
-          .setStyle(ButtonStyle.Primary)
-      );
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('download_report')
+        .setLabel('📥 Завантажити звіт')
+        .setStyle(ButtonStyle.Primary)
+    );
 
     await interaction.reply({ embeds: [embed], components: [row] });
   }
@@ -205,7 +198,7 @@ export class AnalyticsCommand extends BaseCommand {
    * Обробка статистики
    */
   private async handleStatistics(interaction: any): Promise<void> {
-    const category = interaction.options.getString('категорія', true);
+    const category = interaction.options.getString('category', true);
 
     const embed = new EmbedBuilder()
       .setTitle('📈 Статистика та метрики')
@@ -267,9 +260,7 @@ export class AnalyticsCommand extends BaseCommand {
         );
         break;
       default:
-        embed.addFields(
-          { name: 'Дані', value: 'Недоступні', inline: false }
-        );
+        embed.addFields({ name: 'Дані', value: 'Недоступні', inline: false });
     }
 
     await interaction.reply({ embeds: [embed] });
@@ -279,8 +270,8 @@ export class AnalyticsCommand extends BaseCommand {
    * Обробка прогнозування
    */
   private async handleForecast(interaction: any): Promise<void> {
-    const type = interaction.options.getString('тип', true);
-    const period = interaction.options.getInteger('період') || 30;
+    const type = interaction.options.getString('type', true);
+    const period = interaction.options.getInteger('period') || 30;
 
     const embed = new EmbedBuilder()
       .setTitle('🔮 Прогнозування та планування')
@@ -303,9 +294,9 @@ export class AnalyticsCommand extends BaseCommand {
    * Обробка порівняльного аналізу
    */
   private async handleComparison(interaction: any): Promise<void> {
-    const object = interaction.options.getString('об\'єкт', true);
-    const metric = interaction.options.getString('метрика', true);
-    const period = interaction.options.getInteger('період') || 30;
+    const object = interaction.options.getString('object', true);
+    const metric = interaction.options.getString('metric', true);
+    const period = interaction.options.getInteger('period') || 30;
 
     const embed = new EmbedBuilder()
       .setTitle('⚖️ Порівняльний аналіз')
@@ -402,4 +393,4 @@ export class AnalyticsCommand extends BaseCommand {
 
     return metricNames[metric] || metric;
   }
-} 
+}
