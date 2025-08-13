@@ -228,7 +228,10 @@ class ServiceManager {
   /**
    * Виконання методу на всіх сервісах
    */
-  async executeOnAllServices(methodName: string, ...args: any[]): Promise<PromiseSettledResult<any>[]> {
+  async executeOnAllServices(
+    methodName: string,
+    ...args: any[]
+  ): Promise<PromiseSettledResult<any>[]> {
     const promises = Array.from(this.services.values()).map(async service => {
       if (service[methodName] && typeof service[methodName] === 'function') {
         try {
@@ -313,4 +316,4 @@ class ServiceManager {
   }
 }
 
-export default ServiceManager; 
+export default ServiceManager;
