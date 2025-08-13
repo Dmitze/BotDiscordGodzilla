@@ -46,14 +46,22 @@ class ClusterManager {
   private isMaster: boolean;
   private isActive: boolean;
   private stats: ClusterStats;
-  
+
   private static formatError(error: unknown): string {
     if (error instanceof Error) return error.message;
-    try { return JSON.stringify(error); } catch { return String(error); }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
   }
   private static formatAny(value: unknown): string {
     if (typeof value === 'string') return value;
-    try { return JSON.stringify(value); } catch { return String(value); }
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
   }
 
   constructor(config: Partial<ClusterConfig> = {}) {
@@ -61,15 +69,15 @@ class ClusterManager {
       workers: config.workers || os.cpus().length,
       restartDelay: config.restartDelay || 5000,
       maxRestarts: config.maxRestarts || 10,
-      ...config
+      ...config,
     };
-    
+
     this.workers = new Map();
     this.restartCounts = new Map();
     const isPrimary: boolean = (cluster as any).isPrimary ?? (cluster as any).isMaster ?? false;
     this.isMaster = isPrimary;
     this.isActive = false;
-    
+
     this.stats = {
       totalWorkers: 0,
       activeWorkers: 0,
@@ -90,7 +98,7 @@ class ClusterManager {
 
     try {
       logger.info(`🚀 Запуск кластера з ${this.config.workers} workers...`);
-      
+
       // Створення workers
       for (let i = 0; i < this.config.workers; i++) {
         await this.createWorker();
@@ -113,7 +121,7 @@ class ClusterManager {
   private async createWorker(): Promise<Worker> {
     try {
       const worker: Worker = (cluster as any).fork();
-      
+
       this.workers.set(worker.id, {
         id: worker.id,
         pid: worker.process.pid ?? 0,
@@ -185,7 +193,9 @@ class ClusterManager {
           logger.info(`✅ Worker ${worker.id} готовий`);
           break;
         default:
-          logger.debug(`📨 Повідомлення від worker ${worker.id}: ${ClusterManager.formatAny(message)}`);
+          logger.debug(
+            `📨 Повідомлення від worker ${worker.id}: ${ClusterManager.formatAny(message)}`
+          );
       }
     } catch (error) {
       logger.error(`❌ Помилка обробки повідомлення worker: ${ClusterManager.formatError(error)}`);
@@ -231,7 +241,9 @@ class ClusterManager {
       this.restartCounts.set(workerId, restartCount + 1);
       this.stats.restarts++;
 
-      logger.info(`🔄 Перезапуск worker ${workerId} (спроба ${restartCount + 1}/${this.config.maxRestarts})`);
+      logger.info(
+        `🔄 Перезапуск worker ${workerId} (спроба ${restartCount + 1}/${this.config.maxRestarts})`
+      );
 
       // Затримка перед перезапуском
       await new Promise(resolve => setTimeout(resolve, this.config.restartDelay));
@@ -244,7 +256,9 @@ class ClusterManager {
 
       logger.info(`✅ Worker ${workerId} перезапущено як ${newWorker.id}`);
     } catch (error) {
-      logger.error(`❌ Помилка перезапуску worker ${workerId}: ${ClusterManager.formatError(error)}`);
+      logger.error(
+        `❌ Помилка перезапуску worker ${workerId}: ${ClusterManager.formatError(error)}`
+      );
     }
   }
 
@@ -297,7 +311,9 @@ class ClusterManager {
       worker.send(message);
       return true;
     } catch (error) {
-      logger.error(`❌ Помилка відправки повідомлення worker ${workerId}: ${ClusterManager.formatError(error)}`);
+      logger.error(
+        `❌ Помилка відправки повідомлення worker ${workerId}: ${ClusterManager.formatError(error)}`
+      );
       return false;
     }
   }
@@ -336,7 +352,9 @@ class ClusterManager {
 
       // Зупинка всіх workers
       for (const [workerId] of this.workers.entries()) {
-        const workersRec = (cluster as any).workers as Record<string, Worker | undefined> | undefined;
+        const workersRec = (cluster as any).workers as
+          | Record<string, Worker | undefined>
+          | undefined;
         const worker = Object.values(workersRec ?? {}).find(w => w && w.id === workerId);
         if (worker) worker.kill();
       }
