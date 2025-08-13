@@ -6,6 +6,7 @@
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
+import type { GoogleService } from '@/services/GoogleService';
 
 interface AIQueryResult {
   response: string;
@@ -32,32 +33,30 @@ interface ValidationSchema {
 }
 
 export class AIAssistantCommand extends BaseCommand {
-  constructor(config: BotConfig) {
-    super(
-      'ai',
-      '🤖 AI-асистент для роботи з Google Sheets',
-      config,
-      {},
-      (builder: any) => {
-        return builder
-          .addStringOption((option: any) =>
-            option
-              .setName('запит')
-              .setDescription(
-                'Що ви хочете зробити? (наприклад: "знайди товари iPhone", "проаналізуй залишки")'
-              )
-              .setRequired(true)
-              .setMaxLength(1000)
-          )
-          .addStringOption((option: any) =>
-            option
-              .setName('контекст')
-              .setDescription('Додатковий контекст для AI')
-              .setRequired(false)
-              .setMaxLength(500)
-          );
-      }
-    );
+  private readonly googleService: GoogleService | undefined;
+
+  constructor(config: BotConfig, googleService?: GoogleService) {
+    super('ai', '🤖 AI-асистент для роботи з Google Sheets', config, {}, (builder: any) => {
+      return builder
+        .addStringOption((option: any) =>
+          option
+            .setName('запит')
+            .setDescription(
+              'Що ви хочете зробити? (наприклад: "знайди товари iPhone", "проаналізуй залишки")'
+            )
+            .setRequired(true)
+            .setMaxLength(1000)
+        )
+        .addStringOption((option: any) =>
+          option
+            .setName('контекст')
+            .setDescription('Додатковий контекст для AI')
+            .setRequired(false)
+            .setMaxLength(500)
+        );
+    });
+
+    this.googleService = googleService;
   }
 
   /**
@@ -65,7 +64,7 @@ export class AIAssistantCommand extends BaseCommand {
    */
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
-    
+
     try {
       // Перевірка прав доступу
       const hasAccess = await this.checkPermission(interaction);
@@ -294,19 +293,90 @@ export class AIAssistantCommand extends BaseCommand {
   /**
    * Обробка AI запиту
    */
-  private async processAIQuery(_userId: string, query: string, _context?: string): Promise<AIQueryResult> {
-    // TODO: Інтеграція з AI сервісом
-    // Тимчасова реалізація
+  private async processAIQuery(
+    _userId: string,
+    query: string,
+    _context?: string
+  ): Promise<AIQueryResult> {
+    const q = (query || '').toLowerCase();
+
+    // Проста детекція наміру: показати таблиці Google
+    const intentListSheets =
+      /таблиц|таблицы|лист(ы|и)?|sheets?|список.*таблиц|какие.*таблиц|google\s*диск|google\s*sheets/.test(
+        q
+      ) && /какие|покажи|список|list|что|найд/i.test(q);
+
+    if (intentListSheets) {
+      try {
+        if (!this.googleService) {
+          return {
+            response:
+              'GoogleService не доступний для цієї команди. Перевірте ініціалізацію сервісів або конфігурацію.',
+            confidence: 0.6,
+            action: 'list_sheets',
+            actionData: { type: 'list', format: 'text' },
+          };
+        }
+
+        const folderId = this.config.google.driveFolderId;
+        if (!folderId) {
+          return {
+            response:
+              'Не налаштовано google.driveFolderId у конфігурації. Додайте ID каталогу з таблицями.',
+            confidence: 0.6,
+            action: 'list_sheets',
+            actionData: { type: 'list', format: 'text' },
+          };
+        }
+
+        const files = await this.googleService.listDriveFilesInFolder(folderId, {
+          recursive: true,
+          type: 'sheet',
+          limit: 50,
+          maxDepth: 3,
+        });
+
+        if (!files.length) {
+          return {
+            response: 'Таблиці не знайдені у вказаній папці Google Drive.',
+            confidence: 0.9,
+            action: 'list_sheets',
+            actionData: { type: 'list', format: 'text' },
+          };
+        }
+
+        const lines = files.slice(0, 20).map((f, idx) => `${idx + 1}. ${f.name} (id: ${f.id})`);
+        const more = files.length > 20 ? `\n… та ще ${files.length - 20}` : '';
+
+        return {
+          response: `Знайдено ${files.length} таблиць:\n\n${lines.join('\n')}${more}`,
+          confidence: 0.95,
+          action: 'list_sheets',
+          actionData: { type: 'list', format: 'text' },
+        };
+      } catch (error) {
+        logger.error('Помилка отримання списку таблиць', {
+          type: 'command',
+          component: 'AIAssistantCommand.processAIQuery',
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return {
+          response:
+            'Сталася помилка при отриманні списку таблиць Google. Спробуйте пізніше або перевірте доступи.',
+          confidence: 0.4,
+          action: 'list_sheets',
+          actionData: { type: 'list', format: 'text' },
+        };
+      }
+    }
+
+    // Базова тимчасова відповідь
     const response = `Це тимчасова відповідь AI на запит: "${query}"`;
-    
     return {
       response,
       confidence: 0.8,
       action: 'search',
-      actionData: {
-        type: 'search',
-        format: 'text',
-      },
+      actionData: { type: 'search', format: 'text' },
     };
   }
-} 
+}
