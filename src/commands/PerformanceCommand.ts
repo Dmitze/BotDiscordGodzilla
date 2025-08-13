@@ -35,40 +35,24 @@ interface ServiceStats {
 
 export class PerformanceCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super(
-      'продуктивність',
-      '📊 Моніторинг продуктивності системи',
-      config,
-      {},
-      (builder: any) => {
-        return builder
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('статус')
-              .setDescription('Загальний статус продуктивності')
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('кеш')
-              .setDescription('Статистика кешування')
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('черги')
-              .setDescription('Статистика черг завдань')
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('api')
-              .setDescription('Статистика API запитів')
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('оптимізація')
-              .setDescription('Рекомендації по оптимізації')
-          );
-      }
-    );
+    super('продуктивність', '📊 Моніторинг продуктивності системи', config, {}, (builder: any) => {
+      return builder
+        .addSubcommand((subcommand: any) =>
+          subcommand.setName('статус').setDescription('Загальний статус продуктивності')
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand.setName('кеш').setDescription('Статистика кешування')
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand.setName('черги').setDescription('Статистика черг завдань')
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand.setName('api').setDescription('Статистика API запитів')
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand.setName('оптимізація').setDescription('Рекомендації по оптимізації')
+        );
+    });
   }
 
   /**
@@ -76,10 +60,10 @@ export class PerformanceCommand extends BaseCommand {
    */
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
-    
+
     try {
       const subcommand = interaction.options.getSubcommand();
-      
+
       switch (subcommand) {
         case 'статус':
           await this.showGeneralStatus(interaction);
@@ -121,22 +105,22 @@ export class PerformanceCommand extends BaseCommand {
     // Основні метрики
     const memoryUsage = process.memoryUsage();
     const uptime = process.uptime();
-    
+
     embed.addFields(
       {
-        name: '💾 Пам\'ять',
+        name: "💾 Пам'ять",
         value: `Використано: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB\nВсього: ${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
-        inline: true
+        inline: true,
       },
       {
         name: '⏱️ Час роботи',
         value: `${Math.floor(uptime / 3600)}г ${Math.floor((uptime % 3600) / 60)}хв`,
-        inline: true
+        inline: true,
       },
       {
         name: '🔄 CPU',
         value: `${Math.round(process.cpuUsage().user / 1000000)}ms`,
-        inline: true
+        inline: true,
       }
     );
 
@@ -146,13 +130,11 @@ export class PerformanceCommand extends BaseCommand {
       const healthyServices = Object.values(services).filter((s: any) => s.healthy).length;
       const totalServices = Object.keys(services).length;
 
-      embed.addFields(
-        {
-          name: '🔧 Сервіси',
-          value: `${healthyServices}/${totalServices} працюють`,
-          inline: true
-        }
-      );
+      embed.addFields({
+        name: '🔧 Сервіси',
+        value: `${healthyServices}/${totalServices} працюють`,
+        inline: true,
+      });
     }
 
     // Статистика Discord
@@ -161,12 +143,12 @@ export class PerformanceCommand extends BaseCommand {
         {
           name: '👥 Користувачі',
           value: bot.client.users.cache.size.toString(),
-          inline: true
+          inline: true,
         },
         {
           name: '🏠 Сервери',
           value: bot.client.guilds.cache.size.toString(),
-          inline: true
+          inline: true,
         }
       );
     }
@@ -188,33 +170,33 @@ export class PerformanceCommand extends BaseCommand {
       const cacheService = bot.serviceContainer.get('cache');
       if (cacheService) {
         const stats: CacheStats = cacheService.getCacheStats();
-        const hitRate = stats.hits / (stats.hits + stats.misses) * 100;
+        const hitRate = (stats.hits / (stats.hits + stats.misses)) * 100;
 
         embed.addFields(
           {
             name: '🎯 Попадання',
             value: `${stats.hits} (${hitRate.toFixed(1)}%)`,
-            inline: true
+            inline: true,
           },
           {
             name: '❌ Промахи',
             value: stats.misses.toString(),
-            inline: true
+            inline: true,
           },
           {
             name: '💾 Записи',
             value: stats.sets.toString(),
-            inline: true
+            inline: true,
           },
           {
             name: '🗑️ Видалення',
             value: stats.deletes.toString(),
-            inline: true
+            inline: true,
           },
           {
             name: '⚠️ Помилки',
             value: stats.errors.toString(),
-            inline: true
+            inline: true,
           }
         );
 
@@ -222,8 +204,9 @@ export class PerformanceCommand extends BaseCommand {
         if (hitRate < 50) {
           embed.addFields({
             name: '💡 Рекомендація',
-            value: 'Низький відсоток попадань. Розгляньте збільшення TTL або оптимізацію ключів кешу.',
-            inline: false
+            value:
+              'Низький відсоток попадань. Розгляньте збільшення TTL або оптимізацію ключів кешу.',
+            inline: false,
           });
         }
       } else {
@@ -246,37 +229,38 @@ export class PerformanceCommand extends BaseCommand {
 
     if (bot?.queueManager) {
       const stats: QueueStats = bot.queueManager.getQueueStats();
-      
+
       embed.addFields(
         {
           name: '🔴 Високий пріоритет',
           value: `Завдань: ${stats.high?.length || 0}\nОбробляється: ${stats.high?.processing || 0}`,
-          inline: true
+          inline: true,
         },
         {
           name: '🟡 Звичайний пріоритет',
           value: `Завдань: ${stats.normal?.length || 0}\nОбробляється: ${stats.normal?.processing || 0}`,
-          inline: true
+          inline: true,
         },
         {
           name: '🟢 Низький пріоритет',
           value: `Завдань: ${stats.low?.length || 0}\nОбробляється: ${stats.low?.processing || 0}`,
-          inline: true
+          inline: true,
         },
         {
           name: '📊 Загальна статистика',
           value: `Оброблено: ${stats.processed || 0}\nНевдало: ${stats.failed || 0}\nСередній час: ${Math.round(stats.averageProcessingTime || 0)}ms`,
-          inline: false
+          inline: false,
         }
       );
 
       // Попередження про довгу чергу
-      const totalPending = (stats.high?.length || 0) + (stats.normal?.length || 0) + (stats.low?.length || 0);
+      const totalPending =
+        (stats.high?.length || 0) + (stats.normal?.length || 0) + (stats.low?.length || 0);
       if (totalPending > 50) {
         embed.addFields({
           name: '⚠️ Попередження',
           value: 'Довга черга завдань. Розгляньте збільшення кількості workers.',
-          inline: false
+          inline: false,
         });
       }
     } else {
@@ -304,7 +288,7 @@ export class PerformanceCommand extends BaseCommand {
         embed.addFields({
           name: '📊 Google API',
           value: `Успішні запити: ${googleStats.requests?.success || 0}\nПомилки: ${googleStats.errors?.count || 0}\nСередній час: ${Math.round(googleStats.requests?.averageDuration || 0)}ms`,
-          inline: true
+          inline: true,
         });
       }
 
@@ -315,7 +299,7 @@ export class PerformanceCommand extends BaseCommand {
         embed.addFields({
           name: '🤖 AI API',
           value: `Запити: ${aiStats.totalRequests || 0}\nУспішні: ${aiStats.successfulRequests || 0}\nСередній час: ${Math.round(aiStats.averageResponseTime || 0)}ms`,
-          inline: true
+          inline: true,
         });
       }
     }
@@ -326,7 +310,9 @@ export class PerformanceCommand extends BaseCommand {
   /**
    * Показ рекомендацій по оптимізації
    */
-  private async showOptimizationRecommendations(interaction: ChatInputCommandInteraction): Promise<void> {
+  private async showOptimizationRecommendations(
+    interaction: ChatInputCommandInteraction
+  ): Promise<void> {
     const bot = (interaction.client as any).bot;
     const embed = new EmbedBuilder()
       .setTitle('💡 Рекомендації по оптимізації')
@@ -339,7 +325,9 @@ export class PerformanceCommand extends BaseCommand {
     const memoryUsage = process.memoryUsage();
     const memoryUsageMB = memoryUsage.heapUsed / 1024 / 1024;
     if (memoryUsageMB > 500) {
-      recommendations.push('💾 Високе використання пам\'яті. Розгляньте очищення кешу або оптимізацію алгоритмів.');
+      recommendations.push(
+        "💾 Високе використання пам'яті. Розгляньте очищення кешу або оптимізацію алгоритмів."
+      );
     }
 
     // Перевірка кешу
@@ -347,10 +335,12 @@ export class PerformanceCommand extends BaseCommand {
       const cacheService = bot.serviceContainer.get('cache');
       if (cacheService) {
         const cacheStats: CacheStats = cacheService.getCacheStats();
-        const hitRate = cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100;
-        
+        const hitRate = (cacheStats.hits / (cacheStats.hits + cacheStats.misses)) * 100;
+
         if (hitRate < 60) {
-          recommendations.push('📋 Низький відсоток попадань в кеш. Оптимізуйте стратегію кешування.');
+          recommendations.push(
+            '📋 Низький відсоток попадань в кеш. Оптимізуйте стратегію кешування.'
+          );
         }
       }
     }
@@ -358,17 +348,23 @@ export class PerformanceCommand extends BaseCommand {
     // Перевірка черг
     if (bot?.queueManager) {
       const queueStats: QueueStats = bot.queueManager.getQueueStats();
-      const totalPending = (queueStats.high?.length || 0) + (queueStats.normal?.length || 0) + (queueStats.low?.length || 0);
-      
+      const totalPending =
+        (queueStats.high?.length || 0) +
+        (queueStats.normal?.length || 0) +
+        (queueStats.low?.length || 0);
+
       if (totalPending > 30) {
-        recommendations.push('📋 Довга черга завдань. Збільшіть кількість workers або оптимізуйте завдання.');
+        recommendations.push(
+          '📋 Довга черга завдань. Збільшіть кількість workers або оптимізуйте завдання.'
+        );
       }
     }
 
     // Перевірка часу відповіді
     const uptime = process.uptime();
-    if (uptime > 86400) { // Більше 24 годин
-      recommendations.push('⏰ Система працює довго. Розгляньте перезапуск для очищення пам\'яті.');
+    if (uptime > 86400) {
+      // Більше 24 годин
+      recommendations.push("⏰ Система працює довго. Розгляньте перезапуск для очищення пам'яті.");
     }
 
     if (recommendations.length === 0) {
@@ -379,4 +375,4 @@ export class PerformanceCommand extends BaseCommand {
 
     await interaction.reply({ embeds: [embed] });
   }
-} 
+}
