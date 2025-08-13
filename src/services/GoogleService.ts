@@ -4,6 +4,8 @@
  */
 
 import { google, sheets_v4, drive_v3, docs_v1 } from 'googleapis';
+import { ImageAnnotatorClient } from '@google-cloud/vision';
+import { createHash } from 'crypto';
 import pdfParse from 'pdf-parse';
 import * as mammoth from 'mammoth';
 import type { BotConfig, HealthStatus, ServiceStats, SheetData, BatchSheetData } from '@/types';
@@ -62,6 +64,114 @@ export class GoogleService extends BaseServiceClass {
       cacheHits: 0,
       cacheMisses: 0,
     };
+  }
+
+  /**
+   * OCR зображень з фича-флагом (Vision/Tesseract) та кэшуванням
+   */
+  public async extractTextFromImage(file: drive_v3.Schema$File): Promise<string> {
+    try {
+      const mime = file.mimeType || '';
+      if (!/^image\//i.test(mime)) return '';
+      const buf = await this.downloadDriveFile(file.id!);
+
+      // Ключ кэша на основе fileId + modifiedTime (если есть) + хэш контента
+      const modified = (file as any).modifiedTime || '';
+      const hash = createHash('sha1').update(buf).digest('hex');
+      const cacheKey = `ocr:image:${file.id}:${modified}:${hash}`;
+
+      const ttl = this.config.google.ocrCacheTTL ?? this.config.performance.cacheTTL ?? 3600;
+      const cached = await this.cacheService.get<string>(cacheKey);
+      if (cached) {
+        this.stats.cacheHits++;
+        return cached;
+      }
+      this.stats.cacheMisses++;
+
+      const provider = this.config.google.ocrProvider ?? 'vision';
+      let text = '';
+      if (provider === 'off') {
+        text = '';
+      } else if (provider === 'tesseract') {
+        text = await this.ocrWithTesseract(buf);
+      } else {
+        text = await this.ocrWithVision(buf);
+      }
+
+      if (text && text.trim().length > 0) {
+        await this.cacheService.set(cacheKey, text, ttl);
+      }
+      return text;
+    } catch (error) {
+      logger.error('❌ Помилка OCR для зображення', {
+        type: 'processing_error',
+        event: 'image_ocr_failed',
+        component: 'GoogleService',
+        fileId: file.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return '';
+    }
+  }
+
+  /**
+   * OCR через Google Vision (по умолчанию)
+   */
+  private async ocrWithVision(buf: Buffer): Promise<string> {
+    const client = new ImageAnnotatorClient();
+    const [result] = await client.textDetection({ image: { content: buf } });
+    const annotations = result?.textAnnotations ?? [];
+    const first = annotations[0];
+    if (first && (first as any).description) return String((first as any).description);
+    const descriptions = annotations
+      .map(a => (a && 'description' in a ? ((a as any).description as string | undefined) : undefined))
+      .filter((d): d is string => typeof d === 'string' && d.length > 0);
+    return descriptions.join('\n');
+  }
+
+  /**
+   * OCR через офлайн Tesseract
+   * Требует установленные зависимости tesseract.js и tesseract.js-node,
+   * а также локальные traineddata (config.google.tesseractLangPath)
+   */
+  private async ocrWithTesseract(buf: Buffer): Promise<string> {
+    try {
+      // Динамический импорт, чтобы не ломать окружение без зависимости
+      const { createWorker } = await import('tesseract.js');
+
+      const langs = this.config.google.tesseractLangs || 'eng';
+      const langPath = this.config.google.tesseractLangPath;
+
+      const worker = await createWorker({
+        // logger: m => logger.debug('tesseract', { progress: m.progress }),
+        langPath, // если задан, tesseract.js загрузит traineddata локально
+        cachePath: undefined,
+      } as any);
+
+      try {
+        await (worker as any).loadLanguage(langs);
+        await (worker as any).initialize(langs);
+
+        const { data } = (await (worker as any).recognize(buf)) as any;
+        const text: string = data?.text ?? '';
+        return text;
+      } finally {
+        await (worker as any).terminate();
+      }
+    } catch (err) {
+      logger.error('❌ Помилка Tesseract OCR', {
+        type: 'processing_error',
+        event: 'tesseract_ocr_failed',
+        component: 'GoogleService',
+        error: err instanceof Error ? err.message : String(err),
+      });
+      // Фоллбек на Vision, если доступно
+      try {
+        return await this.ocrWithVision(buf);
+      } catch {
+        return '';
+      }
+    }
   }
 
   /**

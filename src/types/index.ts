@@ -29,6 +29,13 @@ export interface GoogleConfig {
   appScriptUrl: string;
   sheetName: string;
   credentials?: GoogleCredentials;
+  // OCR settings
+  ocrProvider?: 'vision' | 'tesseract' | 'off';
+  ocrCacheTTL?: number;
+  tesseractLangs?: string; // e.g. "eng+ukr+rus"
+  tesseractLangPath?: string; // local path to traineddata directory
+  // Analytics cache
+  analyticsCacheTTL?: number;
 }
 
 export interface GoogleCredentials {
