@@ -15,120 +15,114 @@ interface DocumentAction {
 
 export class DocumentsCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super(
-      'документи',
-      '📄 Робота з військовими документами ЗСУ',
-      config,
-      {},
-      (builder: any) => {
-        return builder
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('особовий-склад')
-              .setDescription('👥 Робота з особовим складом')
-              .addStringOption((option: any) =>
-                option
-                  .setName('дія')
-                  .setDescription('Дія з особовим складом')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Пошук особового складу', value: 'search' },
-                    { name: 'Додати особу', value: 'add' },
-                    { name: 'Оновити дані', value: 'update' },
-                    { name: 'Звіт по особовому складу', value: 'report' },
-                    { name: 'Перевірка наявності', value: 'check' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('техніка')
-              .setDescription('🚗 Робота з технікою та озброєнням')
-              .addStringOption((option: any) =>
-                option
-                  .setName('дія')
-                  .setDescription('Дія з технікою')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Пошук техніки', value: 'search' },
-                    { name: 'Додати техніку', value: 'add' },
-                    { name: 'Стан техніки', value: 'status' },
-                    { name: 'Звіт по техніці', value: 'report' },
-                    { name: 'Технічне обслуговування', value: 'maintenance' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('матеріали')
-              .setDescription('📦 Робота з матеріально-технічним забезпеченням')
-              .addStringOption((option: any) =>
-                option
-                  .setName('дія')
-                  .setDescription('Дія з матеріалами')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Пошук матеріалів', value: 'search' },
-                    { name: 'Додати матеріали', value: 'add' },
-                    { name: 'Залишки', value: 'stock' },
-                    { name: 'Звіт по МТЗ', value: 'report' },
-                    { name: 'Поповнення', value: 'replenish' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('операції')
-              .setDescription('⚔️ Робота з оперативними документами')
-              .addStringOption((option: any) =>
-                option
-                  .setName('дія')
-                  .setDescription('Дія з операціями')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Пошук операцій', value: 'search' },
-                    { name: 'Додати операцію', value: 'add' },
-                    { name: 'Статус операцій', value: 'status' },
-                    { name: 'Звіт по операціях', value: 'report' },
-                    { name: 'Планування', value: 'planning' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('накази')
-              .setDescription('📋 Робота з наказами та розпорядженнями')
-              .addStringOption((option: any) =>
-                option
-                  .setName('дія')
-                  .setDescription('Дія з наказами')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Пошук наказів', value: 'search' },
-                    { name: 'Створити наказ', value: 'create' },
-                    { name: 'Статус виконання', value: 'status' },
-                    { name: 'Звіт по наказах', value: 'report' },
-                    { name: 'Архівування', value: 'archive' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
-              )
-          );
-      }
-    );
+    super('документи', '📄 Робота з військовими документами ЗСУ', config, {}, (builder: any) => {
+      return builder
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('особовий-склад')
+            .setDescription('👥 Робота з особовим складом')
+            .addStringOption((option: any) =>
+              option
+                .setName('дія')
+                .setDescription('Дія з особовим складом')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Пошук особового складу', value: 'search' },
+                  { name: 'Додати особу', value: 'add' },
+                  { name: 'Оновити дані', value: 'update' },
+                  { name: 'Звіт по особовому складу', value: 'report' },
+                  { name: 'Перевірка наявності', value: 'check' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('техніка')
+            .setDescription('🚗 Робота з технікою та озброєнням')
+            .addStringOption((option: any) =>
+              option
+                .setName('дія')
+                .setDescription('Дія з технікою')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Пошук техніки', value: 'search' },
+                  { name: 'Додати техніку', value: 'add' },
+                  { name: 'Стан техніки', value: 'status' },
+                  { name: 'Звіт по техніці', value: 'report' },
+                  { name: 'Технічне обслуговування', value: 'maintenance' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('матеріали')
+            .setDescription('📦 Робота з матеріально-технічним забезпеченням')
+            .addStringOption((option: any) =>
+              option
+                .setName('дія')
+                .setDescription('Дія з матеріалами')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Пошук матеріалів', value: 'search' },
+                  { name: 'Додати матеріали', value: 'add' },
+                  { name: 'Залишки', value: 'stock' },
+                  { name: 'Звіт по МТЗ', value: 'report' },
+                  { name: 'Поповнення', value: 'replenish' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('операції')
+            .setDescription('⚔️ Робота з оперативними документами')
+            .addStringOption((option: any) =>
+              option
+                .setName('дія')
+                .setDescription('Дія з операціями')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Пошук операцій', value: 'search' },
+                  { name: 'Додати операцію', value: 'add' },
+                  { name: 'Статус операцій', value: 'status' },
+                  { name: 'Звіт по операціях', value: 'report' },
+                  { name: 'Планування', value: 'planning' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('накази')
+            .setDescription('📋 Робота з наказами та розпорядженнями')
+            .addStringOption((option: any) =>
+              option
+                .setName('дія')
+                .setDescription('Дія з наказами')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Пошук наказів', value: 'search' },
+                  { name: 'Створити наказ', value: 'create' },
+                  { name: 'Статус виконання', value: 'status' },
+                  { name: 'Звіт по наказах', value: 'report' },
+                  { name: 'Архівування', value: 'archive' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
+            )
+        );
+    });
   }
 
   /**
@@ -136,7 +130,7 @@ export class DocumentsCommand extends BaseCommand {
    */
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
-    
+
     try {
       const subcommand = interaction.options.getSubcommand();
       const action = interaction.options.getString('дія', true);
@@ -190,21 +184,19 @@ export class DocumentsCommand extends BaseCommand {
     switch (action.type) {
       case 'search':
         embed.setDescription(`🔍 **Пошук особового складу**\n\nЗапит: ${action.query || 'Всі'}`);
-        embed.addFields(
-          { name: 'Результат', value: 'Тимчасова відповідь: Знайдено 0 осіб', inline: false }
-        );
+        embed.addFields({
+          name: 'Результат',
+          value: 'Тимчасова відповідь: Знайдено 0 осіб',
+          inline: false,
+        });
         break;
       case 'add':
         embed.setDescription(`➕ **Додавання особи**\n\nДані: ${action.query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Особа додана успішно', inline: false }
-        );
+        embed.addFields({ name: 'Статус', value: '✅ Особа додана успішно', inline: false });
         break;
       case 'update':
         embed.setDescription(`✏️ **Оновлення даних**\n\nДані: ${action.query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Дані оновлено успішно', inline: false }
-        );
+        embed.addFields({ name: 'Статус', value: '✅ Дані оновлено успішно', inline: false });
         break;
       case 'report':
         embed.setDescription('📊 **Звіт по особовому складу**');
@@ -215,10 +207,10 @@ export class DocumentsCommand extends BaseCommand {
         );
         break;
       case 'check':
-        embed.setDescription(`🔍 **Перевірка наявності**\n\nЗапит: ${action.query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Результат', value: '❌ Особа не знайдена', inline: false }
+        embed.setDescription(
+          `🔍 **Перевірка наявності**\n\nЗапит: ${action.query || 'Не вказано'}`
         );
+        embed.addFields({ name: 'Результат', value: '❌ Особа не знайдена', inline: false });
         break;
       default:
         embed.setDescription('❌ Невідома дія');
@@ -236,19 +228,18 @@ export class DocumentsCommand extends BaseCommand {
       .setColor(0xff9900)
       .setTimestamp();
 
-
     switch (action.type) {
       case 'search':
         embed.setDescription(`🔍 **Пошук техніки**\n\nЗапит: ${action.query || 'Вся техніка'}`);
-        embed.addFields(
-          { name: 'Результат', value: 'Тимчасова відповідь: Знайдено 0 одиниць техніки', inline: false }
-        );
+        embed.addFields({
+          name: 'Результат',
+          value: 'Тимчасова відповідь: Знайдено 0 одиниць техніки',
+          inline: false,
+        });
         break;
       case 'add':
         embed.setDescription(`➕ **Додавання техніки**\n\nДані: ${action.query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Техніка додана успішно', inline: false }
-        );
+        embed.addFields({ name: 'Статус', value: '✅ Техніка додана успішно', inline: false });
         break;
       case 'status':
         embed.setDescription('📊 **Стан техніки**');
@@ -291,16 +282,20 @@ export class DocumentsCommand extends BaseCommand {
 
     switch (action.type) {
       case 'search':
-        embed.setDescription(`🔍 **Пошук матеріалів**\n\nЗапит: ${action.query || 'Всі матеріали'}`);
-        embed.addFields(
-          { name: 'Результат', value: 'Тимчасова відповідь: Знайдено 0 позицій', inline: false }
+        embed.setDescription(
+          `🔍 **Пошук матеріалів**\n\nЗапит: ${action.query || 'Всі матеріали'}`
         );
+        embed.addFields({
+          name: 'Результат',
+          value: 'Тимчасова відповідь: Знайдено 0 позицій',
+          inline: false,
+        });
         break;
       case 'add':
-        embed.setDescription(`➕ **Додавання матеріалів**\n\nДані: ${action.query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Матеріали додано успішно', inline: false }
+        embed.setDescription(
+          `➕ **Додавання матеріалів**\n\nДані: ${action.query || 'Не вказано'}`
         );
+        embed.addFields({ name: 'Статус', value: '✅ Матеріали додано успішно', inline: false });
         break;
       case 'stock':
         embed.setDescription('📊 **Залишки матеріалів**');
@@ -319,9 +314,7 @@ export class DocumentsCommand extends BaseCommand {
         break;
       case 'replenish':
         embed.setDescription('🔄 **Поповнення запасів**');
-        embed.addFields(
-          { name: 'Потребує поповнення', value: '0 позицій', inline: false }
-        );
+        embed.addFields({ name: 'Потребує поповнення', value: '0 позицій', inline: false });
         break;
       default:
         embed.setDescription('❌ Невідома дія');
@@ -342,15 +335,15 @@ export class DocumentsCommand extends BaseCommand {
     switch (action.type) {
       case 'search':
         embed.setDescription(`🔍 **Пошук операцій**\n\nЗапит: ${action.query || 'Всі операції'}`);
-        embed.addFields(
-          { name: 'Результат', value: 'Тимчасова відповідь: Знайдено 0 операцій', inline: false }
-        );
+        embed.addFields({
+          name: 'Результат',
+          value: 'Тимчасова відповідь: Знайдено 0 операцій',
+          inline: false,
+        });
         break;
       case 'add':
         embed.setDescription(`➕ **Додавання операції**\n\nДані: ${action.query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Операцію додано успішно', inline: false }
-        );
+        embed.addFields({ name: 'Статус', value: '✅ Операцію додано успішно', inline: false });
         break;
       case 'status':
         embed.setDescription('📊 **Статус операцій**');
@@ -370,9 +363,7 @@ export class DocumentsCommand extends BaseCommand {
         break;
       case 'planning':
         embed.setDescription('📅 **Планування операцій**');
-        embed.addFields(
-          { name: 'Заплановано', value: '0 операцій', inline: false }
-        );
+        embed.addFields({ name: 'Заплановано', value: '0 операцій', inline: false });
         break;
       default:
         embed.setDescription('❌ Невідома дія');
@@ -393,15 +384,15 @@ export class DocumentsCommand extends BaseCommand {
     switch (action.type) {
       case 'search':
         embed.setDescription(`🔍 **Пошук наказів**\n\nЗапит: ${action.query || 'Всі накази'}`);
-        embed.addFields(
-          { name: 'Результат', value: 'Тимчасова відповідь: Знайдено 0 наказів', inline: false }
-        );
+        embed.addFields({
+          name: 'Результат',
+          value: 'Тимчасова відповідь: Знайдено 0 наказів',
+          inline: false,
+        });
         break;
       case 'create':
         embed.setDescription(`📝 **Створення наказу**\n\nЗміст: ${action.query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Наказ створено успішно', inline: false }
-        );
+        embed.addFields({ name: 'Статус', value: '✅ Наказ створено успішно', inline: false });
         break;
       case 'status':
         embed.setDescription('📊 **Статус виконання**');
@@ -421,9 +412,7 @@ export class DocumentsCommand extends BaseCommand {
         break;
       case 'archive':
         embed.setDescription('📦 **Архівування наказів**');
-        embed.addFields(
-          { name: 'Готово до архівування', value: '0 наказів', inline: false }
-        );
+        embed.addFields({ name: 'Готово до архівування', value: '0 наказів', inline: false });
         break;
       default:
         embed.setDescription('❌ Невідома дія');
