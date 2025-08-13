@@ -9,9 +9,13 @@ export class SelectSheetCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
   private readonly sheetsContext: SheetsContextService | undefined;
 
-  constructor(config: BotConfig, googleService?: GoogleService, sheetsContext?: SheetsContextService) {
+  constructor(
+    config: BotConfig,
+    googleService?: GoogleService,
+    sheetsContext?: SheetsContextService
+  ) {
     super(
-      'вибрати_таблицю',
+      'select_sheet',
       '📁 Вибір Google таблиці та листа для контексту пошуку',
       config,
       {},
@@ -19,24 +23,24 @@ export class SelectSheetCommand extends BaseCommand {
         builder
           .setDescription('Встановити/показати/очистити контекст таблиці та листа')
           .addStringOption((opt: any) =>
-            opt.setName('режим')
+            opt
+              .setName('mode')
               .setDescription('Дія: встановити, показати або очистити')
               .setRequired(false)
               .addChoices(
                 { name: 'встановити', value: 'set' },
                 { name: 'показати', value: 'show' },
-                { name: 'очистити', value: 'clear' },
+                { name: 'очистити', value: 'clear' }
               )
           )
           .addStringOption((opt: any) =>
-            opt.setName('таблиця')
+            opt
+              .setName('spreadsheet')
               .setDescription('Назва таблиці (у папці) або ID')
               .setRequired(false)
           )
           .addStringOption((opt: any) =>
-            opt.setName('лист')
-              .setDescription('Назва листа в таблиці')
-              .setRequired(false)
+            opt.setName('sheet').setDescription('Назва листа в таблиці').setRequired(false)
           )
     );
     this.googleService = googleService;
@@ -46,7 +50,7 @@ export class SelectSheetCommand extends BaseCommand {
   protected override async onExecute({ interaction }: CommandExecuteOptions): Promise<void> {
     await interaction.deferReply({ ephemeral: true });
 
-    const mode = interaction.options.getString('режим') || 'set';
+    const mode = interaction.options.getString('mode') || 'set';
 
     try {
       if (mode === 'clear') {
@@ -56,7 +60,9 @@ export class SelectSheetCommand extends BaseCommand {
         };
         if (interaction.guildId) key.guildId = interaction.guildId;
         const removed = await this.sheetsContext?.clearContext(key as any);
-        await interaction.editReply(removed ? '✅ Контекст очищено' : 'ℹ️ Немає збереженого контексту');
+        await interaction.editReply(
+          removed ? '✅ Контекст очищено' : 'ℹ️ Немає збереженого контексту'
+        );
         return;
       }
 
@@ -71,7 +77,9 @@ export class SelectSheetCommand extends BaseCommand {
           await interaction.editReply('ℹ️ Контекст не встановлено');
           return;
         }
-        await interaction.editReply(`📄 Поточний контекст:\nSpreadsheet: ${ctx.spreadsheetId}\nSheet: ${ctx.sheetName || '—'}`);
+        await interaction.editReply(
+          `📄 Поточний контекст:\nSpreadsheet: ${ctx.spreadsheetId}\nSheet: ${ctx.sheetName || '—'}`
+        );
         return;
       }
 
@@ -84,8 +92,8 @@ export class SelectSheetCommand extends BaseCommand {
         throw new Error('Не вказано GOOGLE_DRIVE_FOLDER_ID в конфігурації');
       }
 
-      const spreadsheetInput = interaction.options.getString('таблиця') || '';
-      let sheetName = interaction.options.getString('лист') || undefined;
+      const spreadsheetInput = interaction.options.getString('spreadsheet') || '';
+      let sheetName = interaction.options.getString('sheet') || undefined;
 
       // Визначаємо spreadsheetId
       let spreadsheetId: string | undefined;
@@ -95,11 +103,19 @@ export class SelectSheetCommand extends BaseCommand {
         if (looksLikeId) {
           spreadsheetId = spreadsheetInput;
         } else {
-          const matches = await this.googleService.findSpreadsheetsByNameInFolder(spreadsheetInput, folderId, true, 3);
-          if (matches.length === 0) throw new Error(`Таблицю за ім'ям "${spreadsheetInput}" не знайдено у папці`);
+          const matches = await this.googleService.findSpreadsheetsByNameInFolder(
+            spreadsheetInput,
+            folderId,
+            true,
+            3
+          );
+          if (matches.length === 0)
+            throw new Error(`Таблицю за ім'ям "${spreadsheetInput}" не знайдено у папці`);
           if (matches.length > 1) {
             logger.warn('SelectSheet: знайдено кілька відповідників, обираємо перший', {
-              component: 'SelectSheetCommand', count: matches.length, query: spreadsheetInput,
+              component: 'SelectSheetCommand',
+              count: matches.length,
+              query: spreadsheetInput,
             });
           }
           spreadsheetId = matches[0]?.id || undefined;
@@ -130,11 +146,15 @@ export class SelectSheetCommand extends BaseCommand {
         sheetName,
       });
 
-      await interaction.editReply(`✅ Контекст встановлено:\nSpreadsheet: ${spreadsheetId}\nSheet: ${sheetName || '—'}`);
+      await interaction.editReply(
+        `✅ Контекст встановлено:\nSpreadsheet: ${spreadsheetId}\nSheet: ${sheetName || '—'}`
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logger.error('❌ Помилка виконання SelectSheetCommand', {
-        component: 'SelectSheetCommand', event: 'command_failed', errorMessage: message,
+        component: 'SelectSheetCommand',
+        event: 'command_failed',
+        errorMessage: message,
       });
       await interaction.editReply(`❌ Помилка: ${message}`);
     }
