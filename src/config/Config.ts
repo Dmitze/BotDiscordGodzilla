@@ -156,6 +156,18 @@ export class Config {
         applicationCredentials: this.getRequiredEnv('GOOGLE_APPLICATION_CREDENTIALS'),
         appScriptUrl: this.getRequiredEnv('GOOGLE_APP_SCRIPT_URL'),
         sheetName: this.getEnv('GOOGLE_SHEET_NAME', 'Sheet1'),
+        // OCR settings with safe offline defaults
+        ocrProvider: (this.getEnv('OCR_PROVIDER', 'off') as 'vision' | 'tesseract' | 'off'),
+        ocrCacheTTL: this.validateNumber(this.getEnv('OCR_CACHE_TTL', '3600'), 3600, 60, 604800),
+        tesseractLangs: this.getEnv('TESSERACT_LANGS', 'eng'),
+        tesseractLangPath: this.getEnv('TESSERACT_LANG_PATH', ''),
+        // Analytics cache TTL
+        analyticsCacheTTL: this.validateNumber(
+          this.getEnv('ANALYTICS_CACHE_TTL', '900'),
+          900,
+          60,
+          604800
+        ),
       };
 
       // Валідація Google API ключа
