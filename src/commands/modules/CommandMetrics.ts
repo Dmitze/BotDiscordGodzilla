@@ -100,7 +100,7 @@ export class CommandMetricsCollector {
         success,
         timestamp: Date.now(),
         fromCache: options.fromCache ?? false,
-        retryCount: options.retryCount ?? 0
+        retryCount: options.retryCount ?? 0,
       };
       if (typeof options.error === 'string') {
         executionMetric.error = options.error;
@@ -131,7 +131,6 @@ export class CommandMetricsCollector {
           thresholdMs: this.thresholds.verySlowExecutionMs,
         });
       }
-
     } catch (error) {
       logger.error('❌ Помилка запису метрик команди', {
         type: 'command_metrics',
@@ -159,7 +158,7 @@ export class CommandMetricsCollector {
       cacheMisses: 0,
       userCount: 0,
       retries: 0,
-      cooldownHits: 0
+      cooldownHits: 0,
     };
   }
 
@@ -272,9 +271,7 @@ export class CommandMetricsCollector {
     trendDirection: 'up' | 'down' | 'stable';
   } {
     const now = Date.now();
-    const recentExecutions = this.executionHistory.filter(
-      e => now - e.timestamp < timeframe
-    );
+    const recentExecutions = this.executionHistory.filter(e => now - e.timestamp < timeframe);
 
     const totalExecutions = recentExecutions.length;
     const errors = recentExecutions.filter(e => !e.success).length;
@@ -290,7 +287,7 @@ export class CommandMetricsCollector {
     });
 
     const topCommands = Object.entries(commandCounts)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
       .map(([command]) => command);
 
@@ -303,7 +300,7 @@ export class CommandMetricsCollector {
     if (previousTimeframe.length > 0) {
       const previousCount = previousTimeframe.length;
       const changePercent = ((totalExecutions - previousCount) / previousCount) * 100;
-      
+
       if (changePercent > 20) trendDirection = 'up';
       else if (changePercent < -20) trendDirection = 'down';
     }
@@ -313,7 +310,7 @@ export class CommandMetricsCollector {
       errorRate,
       averageResponseTime,
       topCommands,
-      trendDirection
+      trendDirection,
     };
   }
 
@@ -356,7 +353,8 @@ export class CommandMetricsCollector {
 
     // Аналіз на проблеми
     allMetrics.forEach(metric => {
-      const errorRate = metric.executionCount > 0 ? (metric.errorCount / metric.executionCount) * 100 : 0;
+      const errorRate =
+        metric.executionCount > 0 ? (metric.errorCount / metric.executionCount) * 100 : 0;
 
       // Критичний рівень помилок
       if (errorRate > this.thresholds.criticalErrorRate) {
@@ -365,9 +363,11 @@ export class CommandMetricsCollector {
           message: `Критичний рівень помилок`,
           command: metric.commandName,
           metric: 'errorRate',
-          value: errorRate
+          value: errorRate,
         });
-        recommendations.push(`Терміново перевірити команду ${metric.commandName} - ${errorRate.toFixed(1)}% помилок`);
+        recommendations.push(
+          `Терміново перевірити команду ${metric.commandName} - ${errorRate.toFixed(1)}% помилок`
+        );
       }
       // Попереджувальний рівень помилок
       else if (errorRate > this.thresholds.warningErrorRate) {
@@ -376,7 +376,7 @@ export class CommandMetricsCollector {
           message: `Високий рівень помилок`,
           command: metric.commandName,
           metric: 'errorRate',
-          value: errorRate
+          value: errorRate,
         });
       }
 
@@ -387,9 +387,11 @@ export class CommandMetricsCollector {
           message: `Повільна команда`,
           command: metric.commandName,
           metric: 'averageExecutionTime',
-          value: metric.averageExecutionTime
+          value: metric.averageExecutionTime,
         });
-        recommendations.push(`Оптимізувати продуктивність команди ${metric.commandName} - ${metric.averageExecutionTime.toFixed(0)}ms`);
+        recommendations.push(
+          `Оптимізувати продуктивність команди ${metric.commandName} - ${metric.averageExecutionTime.toFixed(0)}ms`
+        );
       }
 
       // Низька ефективність кешу
@@ -397,7 +399,9 @@ export class CommandMetricsCollector {
       if (totalCacheRequests > 10) {
         const cacheHitRate = (metric.cacheHits / totalCacheRequests) * 100;
         if (cacheHitRate < 50) {
-          recommendations.push(`Покращити стратегію кешування для команди ${metric.commandName} - ${cacheHitRate.toFixed(1)}% hits`);
+          recommendations.push(
+            `Покращити стратегію кешування для команди ${metric.commandName} - ${cacheHitRate.toFixed(1)}% hits`
+          );
         }
       }
     });
@@ -416,10 +420,10 @@ export class CommandMetricsCollector {
         totalCommands: allMetrics.length,
         totalExecutions,
         overallErrorRate,
-        averageResponseTime
+        averageResponseTime,
       },
       alerts,
-      recommendations
+      recommendations,
     };
   }
 
@@ -445,39 +449,41 @@ export class CommandMetricsCollector {
    * Періодичне звітування
    */
   private startPeriodicReporting(): void {
-    setInterval(() => {
-      try {
-        const report = this.generatePerformanceReport();
-        
-        // Логування критичних алертів
-        const criticalAlerts = report.alerts.filter(a => a.level === 'critical');
-        if (criticalAlerts.length > 0) {
-          logger.error('🚨 Критичні проблеми продуктивності команд', {
+    setInterval(
+      () => {
+        try {
+          const report = this.generatePerformanceReport();
+
+          // Логування критичних алертів
+          const criticalAlerts = report.alerts.filter(a => a.level === 'critical');
+          if (criticalAlerts.length > 0) {
+            logger.error('🚨 Критичні проблеми продуктивності команд', {
+              type: 'command_metrics',
+              component: 'CommandMetricsCollector.startPeriodicReporting',
+              alerts: criticalAlerts,
+              recommendations: report.recommendations,
+            });
+          }
+
+          // Логування статистики
+          logger.info('📊 Періодичний звіт команд', {
             type: 'command_metrics',
             component: 'CommandMetricsCollector.startPeriodicReporting',
-            alerts: criticalAlerts,
-            recommendations: report.recommendations,
+            summary: report.summary,
+            alertsCount: report.alerts.length,
+            recommendationsCount: report.recommendations.length,
+          });
+        } catch (error) {
+          logger.error('❌ Помилка періодичного звітування метрик', {
+            type: 'command_metrics',
+            component: 'CommandMetricsCollector.startPeriodicReporting',
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
           });
         }
-
-        // Логування статистики
-        logger.info('📊 Періодичний звіт команд', {
-          type: 'command_metrics',
-          component: 'CommandMetricsCollector.startPeriodicReporting',
-          summary: report.summary,
-          alertsCount: report.alerts.length,
-          recommendationsCount: report.recommendations.length,
-        });
-
-      } catch (error) {
-        logger.error('❌ Помилка періодичного звітування метрик', {
-          type: 'command_metrics',
-          component: 'CommandMetricsCollector.startPeriodicReporting',
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        });
-      }
-    }, 15 * 60 * 1000); // Кожні 15 хвилин
+      },
+      15 * 60 * 1000
+    ); // Кожні 15 хвилин
   }
 
   /**
