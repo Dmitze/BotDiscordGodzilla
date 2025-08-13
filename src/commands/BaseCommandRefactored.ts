@@ -4,22 +4,21 @@
  * Версія 4.0.0 - Модульна архітектура
  */
 
-import { 
-  SlashCommandBuilder, 
-  ChatInputCommandInteraction, 
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
   EmbedBuilder,
   AutocompleteInteraction,
-  MessageComponentInteraction
+  MessageComponentInteraction,
 } from 'discord.js';
 
-import type { 
-  BotConfig, 
-  CommandStats,
-  CommandContext
-} from '@/types';
+import type { BotConfig, CommandStats, CommandContext } from '@/types';
 
 import logger from '@/utils/logger';
-import CommandValidator, { type ValidationResult, type ValidationRules } from './modules/CommandValidator';
+import CommandValidator, {
+  type ValidationResult,
+  type ValidationRules,
+} from './modules/CommandValidator';
 import CommandMetricsCollector from './modules/CommandMetrics';
 
 // Константи конфігурації
@@ -60,13 +59,13 @@ export abstract class BaseCommand {
   public readonly examples: string[];
   public readonly permissions: string[];
   public readonly cooldown: number;
-  
+
   protected stats: CommandStats;
   protected cooldowns: Map<string, number> = new Map();
   protected readonly config: BotConfig;
   protected isShuttingDown = false;
   protected readonly startedAt: number = Date.now();
-  
+
   // Модульні компоненти
   protected validator: CommandValidator;
   protected metrics: CommandMetricsCollector;
@@ -159,11 +158,10 @@ export abstract class BaseCommand {
         interaction,
         startTime,
         retryCount: 0,
-        validationResult
+        validationResult,
       });
 
       success = true;
-
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
       logger.error('Помилка виконання команди', {
@@ -200,10 +198,10 @@ export abstract class BaseCommand {
     try {
       // Базова валідація
       const baseValidation = await this.validator.validateCommand(interaction, customRules);
-      
+
       // Кастомна валідація команди
       const customValidation = await this.customValidation(interaction);
-      
+
       // Об'єднання результатів
       const combinedErrors = [...baseValidation.errors, ...customValidation.errors];
       const combinedWarnings = [...baseValidation.warnings, ...customValidation.warnings];
@@ -214,10 +212,9 @@ export abstract class BaseCommand {
         warnings: combinedWarnings,
         sanitizedValues: {
           ...baseValidation.sanitizedValues,
-          ...customValidation.sanitizedValues
-        }
+          ...customValidation.sanitizedValues,
+        },
       };
-
     } catch (error) {
       logger.error('Помилка валідації команди', {
         type: 'command',
@@ -230,7 +227,7 @@ export abstract class BaseCommand {
       return {
         isValid: false,
         errors: ['Внутрішня помилка валідації'],
-        warnings: []
+        warnings: [],
       };
     }
   }
@@ -238,12 +235,14 @@ export abstract class BaseCommand {
   /**
    * Кастомна валідація для конкретної команди
    */
-  protected async customValidation(_interaction: ChatInputCommandInteraction): Promise<ValidationResult> {
+  protected async customValidation(
+    _interaction: ChatInputCommandInteraction
+  ): Promise<ValidationResult> {
     // Базова реалізація - може бути перевизначена в дочірніх класах
     return {
       isValid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     };
   }
 
@@ -252,7 +251,7 @@ export abstract class BaseCommand {
    */
   private async executeWithRetry(options: CommandExecuteOptions): Promise<void> {
     const { retryCount = 0 } = options;
-    
+
     try {
       await this.execute(options);
     } catch (error) {
@@ -264,12 +263,14 @@ export abstract class BaseCommand {
           attempt: retryCount + 1,
           maxAttempts: COMMAND_CONFIG.MAX_RETRIES,
         });
-        
-        await new Promise(resolve => setTimeout(resolve, COMMAND_CONFIG.RETRY_DELAY * (retryCount + 1)));
-        
+
+        await new Promise(resolve =>
+          setTimeout(resolve, COMMAND_CONFIG.RETRY_DELAY * (retryCount + 1))
+        );
+
         await this.executeWithRetry({
           ...options,
-          retryCount: retryCount + 1
+          retryCount: retryCount + 1,
         });
       } else {
         throw error;
@@ -283,10 +284,12 @@ export abstract class BaseCommand {
   protected shouldRetry(error: unknown): boolean {
     if (error instanceof Error) {
       // Повторюємо для тимчасових помилок мережі
-      return error.message.includes('timeout') ||
-             error.message.includes('network') ||
-             error.message.includes('ECONNRESET') ||
-             error.message.includes('rate limit');
+      return (
+        error.message.includes('timeout') ||
+        error.message.includes('network') ||
+        error.message.includes('ECONNRESET') ||
+        error.message.includes('rate limit')
+      );
     }
     return false;
   }
@@ -301,7 +304,7 @@ export abstract class BaseCommand {
 
   protected setCooldown(userId: string): void {
     this.cooldowns.set(userId, Date.now() + this.cooldown);
-    
+
     // Автоматичне видалення після закінчення cooldown
     setTimeout(() => {
       this.cooldowns.delete(userId);
@@ -317,13 +320,15 @@ export abstract class BaseCommand {
    * Відправка повідомлень про помилки
    */
   protected async sendCooldownMessage(
-    interaction: ChatInputCommandInteraction, 
+    interaction: ChatInputCommandInteraction,
     remainingTime: number
   ): Promise<void> {
     const embed = new EmbedBuilder()
-      .setColor(0xFFA500)
+      .setColor(0xffa500)
       .setTitle('⏱️ Cooldown')
-      .setDescription(`Зачекайте ще ${Math.ceil(remainingTime / 1000)} секунд перед наступним використанням команди.`)
+      .setDescription(
+        `Зачекайте ще ${Math.ceil(remainingTime / 1000)} секунд перед наступним використанням команди.`
+      )
       .setTimestamp();
 
     if (interaction.replied || interaction.deferred) {
@@ -334,11 +339,11 @@ export abstract class BaseCommand {
   }
 
   protected async sendValidationError(
-    interaction: ChatInputCommandInteraction, 
+    interaction: ChatInputCommandInteraction,
     validation: ValidationResult
   ): Promise<void> {
     const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
+      .setColor(0xff0000)
       .setTitle('❌ Помилка валідації')
       .setDescription(validation.errors.join('\n'))
       .setTimestamp();
@@ -347,7 +352,7 @@ export abstract class BaseCommand {
       embed.addFields({
         name: '⚠️ Попередження',
         value: validation.warnings.join('\n'),
-        inline: false
+        inline: false,
       });
     }
 
@@ -359,11 +364,11 @@ export abstract class BaseCommand {
   }
 
   protected async handleExecutionError(
-    interaction: ChatInputCommandInteraction, 
+    interaction: ChatInputCommandInteraction,
     error: unknown
   ): Promise<void> {
     const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
+      .setColor(0xff0000)
       .setTitle('❌ Помилка виконання')
       .setDescription('Виникла помилка під час виконання команди. Спробуйте пізніше.')
       .setTimestamp();
@@ -373,7 +378,7 @@ export abstract class BaseCommand {
       embed.addFields({
         name: 'Деталі помилки',
         value: error.message.substring(0, 1000),
-        inline: false
+        inline: false,
       });
     }
 
@@ -420,52 +425,57 @@ export abstract class BaseCommand {
       switch (option.type) {
         case 'string':
           this.data.addStringOption(opt => {
-            opt.setName(option.name)
-               .setDescription(option.description)
-               .setRequired(option.required || false);
-            
+            opt
+              .setName(option.name)
+              .setDescription(option.description)
+              .setRequired(option.required || false);
+
             if (option.choices) {
               opt.addChoices(...option.choices);
             }
-            
+
             return opt;
           });
           break;
-        
+
         case 'integer':
           this.data.addIntegerOption(opt => {
-            opt.setName(option.name)
-               .setDescription(option.description)
-               .setRequired(option.required || false);
-            
+            opt
+              .setName(option.name)
+              .setDescription(option.description)
+              .setRequired(option.required || false);
+
             if (option.min_value !== undefined) opt.setMinValue(option.min_value);
             if (option.max_value !== undefined) opt.setMaxValue(option.max_value);
-            
+
             return opt;
           });
           break;
 
         case 'boolean':
           this.data.addBooleanOption(opt => {
-            return opt.setName(option.name)
-                     .setDescription(option.description)
-                     .setRequired(option.required || false);
+            return opt
+              .setName(option.name)
+              .setDescription(option.description)
+              .setRequired(option.required || false);
           });
           break;
 
         case 'user':
           this.data.addUserOption(opt => {
-            return opt.setName(option.name)
-                     .setDescription(option.description)
-                     .setRequired(option.required || false);
+            return opt
+              .setName(option.name)
+              .setDescription(option.description)
+              .setRequired(option.required || false);
           });
           break;
 
         case 'attachment':
           this.data.addAttachmentOption(opt => {
-            return opt.setName(option.name)
-                     .setDescription(option.description)
-                     .setRequired(option.required || false);
+            return opt
+              .setName(option.name)
+              .setDescription(option.description)
+              .setRequired(option.required || false);
           });
           break;
       }
@@ -503,18 +513,18 @@ export abstract class BaseCommand {
    * Створення стандартного embed відповіді
    */
   protected createEmbed(
-    title: string, 
-    description: string, 
-    color: number = 0x00AE86
+    title: string,
+    description: string,
+    color: number = 0x00ae86
   ): EmbedBuilder {
     return new EmbedBuilder()
       .setColor(color)
       .setTitle(title)
       .setDescription(description)
       .setTimestamp()
-      .setFooter({ 
+      .setFooter({
         text: `${this.name} | Discord AI Assistant Bot`,
-        iconURL: 'https://cdn.discordapp.com/embed/avatars/0.png'
+        iconURL: 'https://cdn.discordapp.com/embed/avatars/0.png',
       });
   }
 
@@ -523,7 +533,7 @@ export abstract class BaseCommand {
    */
   protected hasPermission(interaction: ChatInputCommandInteraction, permission: string): boolean {
     if (!interaction.guild || !interaction.member) return false;
-    
+
     const member: any = interaction.member as any;
     const perms: any = member?.permissions as any;
     return Boolean(perms && typeof perms.has === 'function' && perms.has(permission as any));
