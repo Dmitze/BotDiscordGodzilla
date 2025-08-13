@@ -4,20 +4,20 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import { 
-  SlashCommandBuilder, 
+import {
+  SlashCommandBuilder,
   EmbedBuilder,
   ChatInputCommandInteraction,
   AutocompleteInteraction,
   MessageComponentInteraction,
 } from 'discord.js';
 
-import type { 
-  BotConfig, 
+import type {
+  BotConfig,
   CommandOptions,
   CommandStats,
   CommandContext,
-  HealthStatus
+  HealthStatus,
 } from '@/types';
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
@@ -84,7 +84,7 @@ export abstract class BaseCommand {
   public readonly permissions: string[];
   public readonly cooldown: number;
   public readonly allowDM: boolean;
-  
+
   protected stats: CommandStats;
   protected cooldowns: Map<string, number> = new Map();
   protected executionCache: Map<string, { result: any; timestamp: number }> = new Map();
@@ -109,12 +109,10 @@ export abstract class BaseCommand {
     this.permissions = options.permissions || [];
     this.cooldown = this.validateCooldown(options.cooldown || COMMAND_CONFIG.DEFAULT_COOLDOWN);
     this.allowDM = options.dmPermission ?? true;
-    
+
     // Створення SlashCommandBuilder
-    this.data = new SlashCommandBuilder()
-      .setName(name)
-      .setDescription(description);
-    
+    this.data = new SlashCommandBuilder().setName(name).setDescription(description);
+
     // Додавання опцій через builder функцію
     if (builder) {
       try {
@@ -128,19 +126,21 @@ export abstract class BaseCommand {
           errorMessage: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
         });
-        throw new Error(`Помилка створення команди: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
+        throw new Error(
+          `Помилка створення команди: ${error instanceof Error ? error.message : 'Невідома помилка'}`
+        );
       }
     }
-    
+
     // Встановлення дозволів
     if (options.defaultMemberPermissions) {
       this.data.setDefaultMemberPermissions(options.defaultMemberPermissions);
     }
-    
+
     if (options.dmPermission !== undefined) {
       this.data.setDMPermission(options.dmPermission);
     }
-    
+
     this.stats = {
       service: `Command:${name}`,
       uptime: 0,
@@ -158,7 +158,7 @@ export abstract class BaseCommand {
 
     // Запуск періодичного очищення
     this.startCleanupInterval();
-    
+
     logger.info('Команда ініціалізована', {
       type: 'command',
       component: name,
@@ -175,7 +175,7 @@ export abstract class BaseCommand {
   public async execute(options: CommandExecuteOptions): Promise<void> {
     const startTime = performance.now();
     const userId = options.interaction.user.id;
-    
+
     try {
       // Перевірка стану команди
       if (this.isShuttingDown) {
@@ -225,7 +225,6 @@ export abstract class BaseCommand {
 
       // Оновлення часу останнього виконання
       this.lastExecution.set(userId, Date.now());
-
     } catch (error) {
       // Оновлення статистики помилок
       const duration = performance.now() - startTime;
@@ -247,7 +246,7 @@ export abstract class BaseCommand {
    */
   private async executeWithRetry(options: CommandExecuteOptions): Promise<any> {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 1; attempt <= COMMAND_CONFIG.MAX_RETRIES; attempt++) {
       try {
         const result = await this.onExecute(options);
@@ -255,7 +254,7 @@ export abstract class BaseCommand {
         return result;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         if (attempt < COMMAND_CONFIG.MAX_RETRIES) {
           logger.warn('Спроба виконання невдала, повтор', {
             type: 'command',
@@ -265,19 +264,21 @@ export abstract class BaseCommand {
             attempt,
             maxRetries: COMMAND_CONFIG.MAX_RETRIES,
           });
-          
+
           await new Promise(resolve => setTimeout(resolve, COMMAND_CONFIG.RETRY_DELAY * attempt));
         }
       }
     }
-    
+
     throw lastError || new Error('Всі спроби виконання команди невдалі');
   }
 
   /**
    * Валідація виконання команди
    */
-  private async validateExecution(options: CommandExecuteOptions): Promise<CommandValidationResult> {
+  private async validateExecution(
+    options: CommandExecuteOptions
+  ): Promise<CommandValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -295,10 +296,14 @@ export abstract class BaseCommand {
       // Перевірка дозволів
       if (this.permissions.length > 0) {
         const member = options.interaction.member as Record<string, unknown> | null | undefined;
-        const perms: unknown = member && 'permissions' in (member as object) ? (member as any).permissions : undefined;
-        const hasFn = perms && typeof (perms as any).has === 'function' ? (perms as any).has.bind(perms) : undefined;
+        const perms: unknown =
+          member && 'permissions' in (member as object) ? (member as any).permissions : undefined;
+        const hasFn =
+          perms && typeof (perms as any).has === 'function'
+            ? (perms as any).has.bind(perms)
+            : undefined;
         if (hasFn) {
-          const hasPermission = this.permissions.some((permission) => hasFn(permission as any));
+          const hasPermission = this.permissions.some(permission => hasFn(permission as any));
           if (!hasPermission) {
             errors.push(`Необхідні дозволи: ${this.permissions.join(', ')}`);
           }
@@ -354,7 +359,7 @@ export abstract class BaseCommand {
    */
   public async autocomplete(options: CommandAutocompleteOptions): Promise<void> {
     const startTime = performance.now();
-    
+
     try {
       logger.debug('Автодоповнення почато', {
         type: 'command',
@@ -373,7 +378,6 @@ export abstract class BaseCommand {
         event: 'autocomplete_finish',
         durationMs: Number(duration.toFixed(2)),
       });
-      
     } catch (error) {
       // keep duration calculation if needed in future metrics
       this.logAutocompleteError(options.interaction, error);
@@ -386,7 +390,7 @@ export abstract class BaseCommand {
    */
   public async handleComponent(options: CommandComponentOptions): Promise<void> {
     const startTime = performance.now();
-    
+
     try {
       logger.debug('Обробка компонента почата', {
         type: 'command',
@@ -406,7 +410,6 @@ export abstract class BaseCommand {
         event: 'component_finish',
         durationMs: Number(duration.toFixed(2)),
       });
-      
     } catch (error) {
       // keep duration calculation if needed in future metrics
       this.logComponentError(options.interaction, error);
@@ -454,7 +457,7 @@ export abstract class BaseCommand {
   protected isOnCooldown(userId: string): boolean {
     const cooldownTime = this.cooldowns.get(userId);
     if (!cooldownTime) return false;
-    
+
     return Date.now() < cooldownTime;
   }
 
@@ -471,7 +474,7 @@ export abstract class BaseCommand {
   protected getCooldownTime(userId: string): number {
     const cooldownTime = this.cooldowns.get(userId);
     if (!cooldownTime) return 0;
-    
+
     return Math.max(0, cooldownTime - Date.now());
   }
 
@@ -489,7 +492,8 @@ export abstract class BaseCommand {
    */
   private getCachedResult(cacheKey: string): any {
     const cached = this.executionCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < 300000) { // 5 хвилин
+    if (cached && Date.now() - cached.timestamp < 300000) {
+      // 5 хвилин
       this.stats.cacheHits++;
       return cached.result;
     }
@@ -529,7 +533,7 @@ export abstract class BaseCommand {
   protected async handleCooldown(interaction: ChatInputCommandInteraction): Promise<void> {
     const remainingTime = this.getCooldownTime(interaction.user.id);
     const seconds = Math.ceil(remainingTime / 1000);
-    
+
     const embed = new EmbedBuilder()
       .setColor('#FF6B6B')
       .setTitle('⏰ Cooldown активний')
@@ -554,7 +558,10 @@ export abstract class BaseCommand {
   /**
    * Обробка кешованого результату
    */
-  private async handleCachedResult(interaction: ChatInputCommandInteraction, _result: any): Promise<void> {
+  private async handleCachedResult(
+    interaction: ChatInputCommandInteraction,
+    _result: any
+  ): Promise<void> {
     const embed = new EmbedBuilder()
       .setColor('#4CAF50')
       .setTitle('⚡ Кешований результат')
@@ -575,14 +582,15 @@ export abstract class BaseCommand {
   /**
    * Обробка помилки валідації
    */
-  private async handleValidationError(interaction: ChatInputCommandInteraction, errors: string[]): Promise<void> {
+  private async handleValidationError(
+    interaction: ChatInputCommandInteraction,
+    errors: string[]
+  ): Promise<void> {
     const embed = new EmbedBuilder()
       .setColor('#FF9800')
       .setTitle('⚠️ Помилка валідації')
       .setDescription('Виправте наступні помилки:')
-      .addFields(
-        errors.map(error => ({ name: '❌', value: error, inline: false }))
-      )
+      .addFields(errors.map(error => ({ name: '❌', value: error, inline: false })))
       .setTimestamp();
 
     try {
@@ -621,12 +629,12 @@ export abstract class BaseCommand {
    * Обробка помилок
    */
   protected async handleError(
-    interaction: ChatInputCommandInteraction, 
+    interaction: ChatInputCommandInteraction,
     error: unknown
   ): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
     const errorStack = error instanceof Error ? error.stack : undefined;
-    
+
     const embed = new EmbedBuilder()
       .setColor('#FF6B6B')
       .setTitle('❌ Помилка виконання команди')
@@ -638,7 +646,11 @@ export abstract class BaseCommand {
       .setTimestamp();
 
     if (errorStack) {
-      embed.addFields({ name: 'Деталі', value: `\`\`\`${errorStack.substring(0, 1000)}...\`\`\``, inline: false });
+      embed.addFields({
+        name: 'Деталі',
+        value: `\`\`\`${errorStack.substring(0, 1000)}...\`\`\``,
+        inline: false,
+      });
     }
 
     try {
@@ -656,13 +668,11 @@ export abstract class BaseCommand {
    * Обробка помилок автодоповнення
    */
   protected async handleAutocompleteError(
-    interaction: AutocompleteInteraction, 
+    interaction: AutocompleteInteraction,
     _error: unknown
   ): Promise<void> {
     try {
-      await interaction.respond([
-        { name: 'Помилка завантаження', value: 'error' }
-      ]);
+      await interaction.respond([{ name: 'Помилка завантаження', value: 'error' }]);
     } catch (replyError) {
       logger.error('Помилка відповіді автодоповнення:', { error: replyError });
     }
@@ -672,11 +682,11 @@ export abstract class BaseCommand {
    * Обробка помилок компонентів
    */
   protected async handleComponentError(
-    interaction: MessageComponentInteraction, 
+    interaction: MessageComponentInteraction,
     error: unknown
   ): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
-    
+
     const embed = new EmbedBuilder()
       .setColor('#FF6B6B')
       .setTitle('❌ Помилка обробки компонента')
@@ -763,7 +773,7 @@ export abstract class BaseCommand {
     this.stats.totalExecutions++;
     this.stats.totalExecutionTime += duration;
     this.stats.uptime = Date.now() - this.stats.uptime;
-    
+
     if (success) {
       this.stats.successfulExecutions++;
     } else {
@@ -801,7 +811,8 @@ export abstract class BaseCommand {
 
     // Очищення кешу
     for (const [key, cached] of this.executionCache.entries()) {
-      if (now - cached.timestamp > 300000) { // 5 хвилин
+      if (now - cached.timestamp > 300000) {
+        // 5 хвилин
         this.executionCache.delete(key);
         cleanedCache++;
       }
@@ -843,9 +854,10 @@ export abstract class BaseCommand {
    * Health check
    */
   public async healthCheck(): Promise<HealthStatus> {
-    const successRate = this.stats.totalExecutions > 0 
-      ? (this.stats.successfulExecutions / this.stats.totalExecutions) * 100 
-      : 0;
+    const successRate =
+      this.stats.totalExecutions > 0
+        ? (this.stats.successfulExecutions / this.stats.totalExecutions) * 100
+        : 0;
 
     const isHealthy = successRate > 80 && this.stats.averageExecutionTime < 10000;
 
@@ -872,7 +884,7 @@ export abstract class BaseCommand {
     this.executionCache.clear();
     this.errorCount.clear();
     this.lastExecution.clear();
-    
+
     logger.info(`Команда ${this.name} зупинена`);
   }
 
@@ -915,4 +927,4 @@ export abstract class BaseCommand {
 **Cooldown:** ${this.cooldown / 1000}с
 ${this.examples.length > 0 ? `**Приклади:**\n${this.examples.map(ex => `\`${ex}\``).join('\n')}` : ''}`;
   }
-} 
+}
