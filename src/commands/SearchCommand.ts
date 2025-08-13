@@ -4,12 +4,15 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction } from 'discord.js';
-import type { 
-  BotConfig, 
-  SheetData,
-  SearchParams
-} from '@/types';
+import {
+  SlashCommandBuilder,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChatInputCommandInteraction,
+} from 'discord.js';
+import type { BotConfig, SheetData, SearchParams } from '@/types';
 import { BaseCommand, type CommandExecuteOptions } from './BaseCommand';
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
@@ -85,16 +88,15 @@ export class SearchCommand extends BaseCommand {
         ],
       },
       (builder: SlashCommandBuilder) => {
-        return (
-          builder
-          .addStringOption((option) =>
+        return builder
+          .addStringOption(option =>
             option
               .setName('запит')
               .setDescription('Що шукати? (наприклад: "особовий склад", "техніка", "зброя")')
               .setRequired(true)
               .setMaxLength(SEARCH_CONFIG.MAX_QUERY_LENGTH)
           )
-          .addStringOption((option) =>
+          .addStringOption(option =>
             option
               .setName('тип_документа')
               .setDescription('Тип документа для пошуку')
@@ -110,25 +112,22 @@ export class SearchCommand extends BaseCommand {
                 { name: 'Журнали', value: 'journals' }
               )
           )
-          .addStringOption((option) =>
+          .addStringOption(option =>
             option
               .setName('дата_від')
               .setDescription('Дата від (формат: ДД.ММ.РРРР)')
               .setMaxLength(10)
           )
-          .addStringOption((option) =>
+          .addStringOption(option =>
             option
               .setName('дата_до')
               .setDescription('Дата до (формат: ДД.ММ.РРРР)')
               .setMaxLength(10)
           )
-          .addStringOption((option) =>
-            option
-              .setName('підрозділ')
-              .setDescription('Підрозділ для пошуку')
-              .setMaxLength(100)
+          .addStringOption(option =>
+            option.setName('підрозділ').setDescription('Підрозділ для пошуку').setMaxLength(100)
           )
-          .addStringOption((option) =>
+          .addStringOption(option =>
             option
               .setName('пріоритет')
               .setDescription('Пріоритет документа')
@@ -140,14 +139,13 @@ export class SearchCommand extends BaseCommand {
                 { name: 'Низький', value: 'low' }
               )
           )
-          .addIntegerOption((option) =>
+          .addIntegerOption(option =>
             option
               .setName('ліміт')
               .setDescription(`Кількість результатів (макс. ${SEARCH_CONFIG.MAX_RESULTS})`)
               .setMinValue(1)
               .setMaxValue(SEARCH_CONFIG.MAX_RESULTS)
-          )
-        ) as unknown as SlashCommandBuilder;
+          ) as unknown as SlashCommandBuilder;
       }
     );
     if (googleService) this.googleService = googleService;
@@ -159,11 +157,11 @@ export class SearchCommand extends BaseCommand {
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
     const startTime = performance.now();
-    
+
     try {
       // Валідація та отримання параметрів пошуку
       const searchParams = await this.extractAndValidateParams(interaction);
-      
+
       // Відкладена відповідь
       await interaction.deferReply();
 
@@ -216,7 +214,6 @@ export class SearchCommand extends BaseCommand {
         if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
         logger.info('Пошук успішно завершено', meta);
       }
-
     } catch (error) {
       const duration = performance.now() - startTime;
       this.updateSearchStats(false, duration, false);
@@ -242,7 +239,9 @@ export class SearchCommand extends BaseCommand {
   /**
    * Витяг та валідація параметрів
    */
-  private async extractAndValidateParams(interaction: ChatInputCommandInteraction): Promise<SearchParams> {
+  private async extractAndValidateParams(
+    interaction: ChatInputCommandInteraction
+  ): Promise<SearchParams> {
     const query = interaction.options.getString('запит', true);
     const documentType = interaction.options.getString('тип_документа') || 'all';
     const dateFrom = interaction.options.getString('дата_від') ?? undefined;
@@ -298,14 +297,21 @@ export class SearchCommand extends BaseCommand {
   /**
    * Виконання пошуку з кешуванням
    */
-  private async performSearchWithCache(searchParams: SearchParams, _userId: string): Promise<SearchResult> {
+  private async performSearchWithCache(
+    searchParams: SearchParams,
+    _userId: string
+  ): Promise<SearchResult> {
     const cacheKey = this.generateSearchCacheKey(searchParams);
-    
+
     // Перевірка кешу
     const cached = this.searchCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < SEARCH_CONFIG.CACHE_TTL * 1000) {
       this.searchStats.cacheHits++;
-      logger.debug('Результат знайдено в кеші', { type: 'performance', component: 'SearchCommand', cacheKey });
+      logger.debug('Результат знайдено в кеші', {
+        type: 'performance',
+        component: 'SearchCommand',
+        cacheKey,
+      });
       return { ...cached.result, cacheHit: true };
     }
 
@@ -391,11 +397,10 @@ export class SearchCommand extends BaseCommand {
       throw new Error('Не вказано spreadsheetId в конфігурації');
     }
     return Promise.race([
-      googleService.getSheetData(
-        spreadsheetId,
-        'A:Z',
-        { useCache: true, cacheTTL: SEARCH_CONFIG.CACHE_TTL }
-      ),
+      googleService.getSheetData(spreadsheetId, 'A:Z', {
+        useCache: true,
+        cacheTTL: SEARCH_CONFIG.CACHE_TTL,
+      }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Таймаут отримання даних')), SEARCH_CONFIG.SEARCH_TIMEOUT)
       ),
@@ -407,7 +412,7 @@ export class SearchCommand extends BaseCommand {
    */
   private filterData(rows: string[][], headers: string[], searchParams: SearchParams): string[][] {
     const startTime = performance.now();
-    
+
     try {
       const filteredRows = rows.filter(row => {
         // Перевірка запиту
@@ -416,8 +421,10 @@ export class SearchCommand extends BaseCommand {
         }
 
         // Перевірка типу документа
-        if (searchParams.documentType !== 'all' && 
-            !this.matchesDocumentType(row, headers, searchParams.documentType)) {
+        if (
+          searchParams.documentType !== 'all' &&
+          !this.matchesDocumentType(row, headers, searchParams.documentType)
+        ) {
           return false;
         }
 
@@ -434,8 +441,10 @@ export class SearchCommand extends BaseCommand {
         }
 
         // Перевірка пріоритету
-        if (searchParams.priority !== 'all' && 
-            !this.matchesPriority(row, headers, searchParams.priority)) {
+        if (
+          searchParams.priority !== 'all' &&
+          !this.matchesPriority(row, headers, searchParams.priority)
+        ) {
           return false;
         }
 
@@ -473,10 +482,13 @@ export class SearchCommand extends BaseCommand {
    * Перевірка відповідності запиту з оптимізацією
    */
   private matchesQuery(row: string[], _headers: string[], query: string): boolean {
-    const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 0);
+    const searchTerms = query
+      .toLowerCase()
+      .split(' ')
+      .filter(term => term.length > 0);
     if (searchTerms.length === 0) return true;
 
-    return row.some((cell) => {
+    return row.some(cell => {
       const cellValue = cell.toLowerCase();
       return searchTerms.some(term => cellValue.includes(term));
     });
@@ -496,7 +508,12 @@ export class SearchCommand extends BaseCommand {
   /**
    * Перевірка діапазону дат
    */
-  private matchesDateRange(row: string[], headers: string[], dateFrom?: string, dateTo?: string): boolean {
+  private matchesDateRange(
+    row: string[],
+    headers: string[],
+    dateFrom?: string,
+    dateTo?: string
+  ): boolean {
     const dateIndex = headers.findIndex(h => h.toLowerCase().includes('дата'));
     if (dateIndex === -1) return true;
 
@@ -556,7 +573,7 @@ export class SearchCommand extends BaseCommand {
       // Спробувати різні формати дати
       const formats = [
         /(\d{1,2})\.(\d{1,2})\.(\d{4})/, // ДД.ММ.РРРР
-        /(\d{4})-(\d{1,2})-(\d{1,2})/,   // РРРР-ММ-ДД
+        /(\d{4})-(\d{1,2})-(\d{1,2})/, // РРРР-ММ-ДД
         /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // ДД/ММ/РРРР
       ];
 
@@ -572,11 +589,13 @@ export class SearchCommand extends BaseCommand {
           const mNum = parseInt(month, 10);
           const yNum = parseInt(year, 10);
           const date = new Date(yNum, mNum - 1, dNum);
-          
+
           // Перевірка валідності дати
-          if (date.getFullYear() === yNum && 
-              date.getMonth() === mNum - 1 && 
-              date.getDate() === dNum) {
+          if (
+            date.getFullYear() === yNum &&
+            date.getMonth() === mNum - 1 &&
+            date.getDate() === dNum
+          ) {
             return date;
           }
         }
@@ -600,7 +619,7 @@ export class SearchCommand extends BaseCommand {
           const cellValue = cell || 'Н/Д';
           return `${header}: ${cellValue}`;
         });
-        
+
         return `**${index + 1}.** ${formattedRow.slice(0, 3).join(' | ')}`;
       });
     } catch (error) {
@@ -618,20 +637,20 @@ export class SearchCommand extends BaseCommand {
       .setTitle('🔍 Результати пошуку')
       .setDescription(`**Запит:** ${searchResult.query}`)
       .addFields(
-        { 
-          name: '📊 Статистика', 
-          value: `Знайдено: **${searchResult.totalCount}**\nПісля фільтрації: **${searchResult.filteredCount}**`, 
-          inline: true 
+        {
+          name: '📊 Статистика',
+          value: `Знайдено: **${searchResult.totalCount}**\nПісля фільтрації: **${searchResult.filteredCount}**`,
+          inline: true,
         },
-        { 
-          name: '📄 Тип документа', 
-          value: this.getDocumentTypeName(searchResult.filters.documentType), 
-          inline: true 
+        {
+          name: '📄 Тип документа',
+          value: this.getDocumentTypeName(searchResult.filters.documentType),
+          inline: true,
         },
-        { 
-          name: '⚡ Швидкість', 
-          value: `${searchResult.searchTime.toFixed(2)}ms${searchResult.cacheHit ? ' (кеш)' : ''}`, 
-          inline: true 
+        {
+          name: '⚡ Швидкість',
+          value: `${searchResult.searchTime.toFixed(2)}ms${searchResult.cacheHit ? ' (кеш)' : ''}`,
+          inline: true,
         }
       )
       .setTimestamp();
@@ -639,9 +658,9 @@ export class SearchCommand extends BaseCommand {
     // Додавання результатів
     if (formattedResults.length > 0) {
       const resultsText = formattedResults.slice(0, 10).join('\n');
-      embed.addFields({ 
-        name: `📋 Результати (${formattedResults.length})`, 
-        value: resultsText.length > 1024 ? resultsText.substring(0, 1021) + '...' : resultsText 
+      embed.addFields({
+        name: `📋 Результати (${formattedResults.length})`,
+        value: resultsText.length > 1024 ? resultsText.substring(0, 1021) + '...' : resultsText,
       });
     } else {
       embed.addFields({ name: '📋 Результати', value: 'Нічого не знайдено' });
@@ -653,28 +672,30 @@ export class SearchCommand extends BaseCommand {
   /**
    * Створення кнопок пагінації
    */
-  private createPaginationComponents(searchResult: SearchResult, currentPage: number): ActionRowBuilder<ButtonBuilder>[] {
+  private createPaginationComponents(
+    searchResult: SearchResult,
+    currentPage: number
+  ): ActionRowBuilder<ButtonBuilder>[] {
     const totalPages = Math.ceil(searchResult.filteredCount / SEARCH_CONFIG.DEFAULT_LIMIT);
-    
+
     if (totalPages <= 1) return [];
 
-    const row = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId(`search_prev_${currentPage}`)
-          .setLabel('◀️ Попередня')
-          .setStyle(ButtonStyle.Secondary)
-          .setDisabled(currentPage <= 1),
-        new ButtonBuilder()
-          .setCustomId(`search_next_${currentPage}`)
-          .setLabel('Наступна ▶️')
-          .setStyle(ButtonStyle.Secondary)
-          .setDisabled(currentPage >= totalPages),
-        new ButtonBuilder()
-          .setCustomId(`search_close`)
-          .setLabel('❌ Закрити')
-          .setStyle(ButtonStyle.Danger)
-      );
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`search_prev_${currentPage}`)
+        .setLabel('◀️ Попередня')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(currentPage <= 1),
+      new ButtonBuilder()
+        .setCustomId(`search_next_${currentPage}`)
+        .setLabel('Наступна ▶️')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(currentPage >= totalPages),
+      new ButtonBuilder()
+        .setCustomId(`search_close`)
+        .setLabel('❌ Закрити')
+        .setStyle(ButtonStyle.Danger)
+    );
 
     return [row];
   }
@@ -687,7 +708,7 @@ export class SearchCommand extends BaseCommand {
       .sort()
       .map(key => `${key}:${params[key as keyof SearchParams]}`)
       .join('|');
-    
+
     return `search:${Buffer.from(sortedParams).toString('base64')}`;
   }
 
@@ -698,15 +719,15 @@ export class SearchCommand extends BaseCommand {
    */
   private getDocumentTypeName(type: string): string {
     const typeNames: Record<string, string> = {
-      'all': 'Всі документи',
-      'orders': 'Накази',
-      'reports': 'Доповіді',
-      'statistics': 'Звіти',
-      'plans': 'Плани',
-      'instructions': 'Інструкції',
-      'protocols': 'Протоколи',
-      'cards': 'Картки',
-      'journals': 'Журнали',
+      all: 'Всі документи',
+      orders: 'Накази',
+      reports: 'Доповіді',
+      statistics: 'Звіти',
+      plans: 'Плани',
+      instructions: 'Інструкції',
+      protocols: 'Протоколи',
+      cards: 'Картки',
+      journals: 'Журнали',
     };
 
     return typeNames[type] || type;
@@ -718,8 +739,9 @@ export class SearchCommand extends BaseCommand {
   private updateSearchStats(success: boolean, duration: number, _cacheHit: boolean): void {
     this.searchStats.totalSearches++;
     this.searchStats.totalSearchTime += duration;
-    this.searchStats.averageSearchTime = this.searchStats.totalSearchTime / this.searchStats.totalSearches;
-    
+    this.searchStats.averageSearchTime =
+      this.searchStats.totalSearchTime / this.searchStats.totalSearches;
+
     if (!success) {
       this.searchStats.errors++;
     }
@@ -728,9 +750,12 @@ export class SearchCommand extends BaseCommand {
   /**
    * Обробка помилки пошуку
    */
-  private async handleSearchError(interaction: ChatInputCommandInteraction, error: unknown): Promise<void> {
+  private async handleSearchError(
+    interaction: ChatInputCommandInteraction,
+    error: unknown
+  ): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
-    
+
     const errorEmbed = new EmbedBuilder()
       .setColor('#FF6B6B')
       .setTitle('❌ Помилка пошуку')
@@ -742,20 +767,34 @@ export class SearchCommand extends BaseCommand {
       .setTimestamp();
 
     try {
-      if (interaction.deferred || interaction.replied) {
+      if (interaction.deferred) {
         await interaction.editReply({ embeds: [errorEmbed] });
+      } else if (interaction.replied) {
+        await interaction.followUp({ embeds: [errorEmbed], ephemeral: true });
       } else {
         await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
       }
     } catch (replyError) {
-      logger.error('Помилка відправки повідомлення про помилку пошуку', { component: 'SearchCommand', error: replyError });
+      logger.error('Помилка відправки повідомлення про помилку пошуку', {
+        component: 'SearchCommand',
+        error: replyError,
+      });
     }
   }
 
   /**
    * Отримання статистики пошуку
    */
-  public getSearchStats(): { totalSearches: number; cacheHits: number; cacheMisses: number; averageSearchTime: number; totalSearchTime: number; errors: number; cacheSize: number; paginationStates: number } {
+  public getSearchStats(): {
+    totalSearches: number;
+    cacheHits: number;
+    cacheMisses: number;
+    averageSearchTime: number;
+    totalSearchTime: number;
+    errors: number;
+    cacheSize: number;
+    paginationStates: number;
+  } {
     return {
       totalSearches: this.searchStats.totalSearches,
       cacheHits: this.searchStats.cacheHits,
@@ -769,4 +808,4 @@ export class SearchCommand extends BaseCommand {
   }
 
   // Примітка: керування очищенням/завершенням виконується базовим класом
-} 
+}
