@@ -11,7 +11,17 @@ jest.mock('../utils/security', () => {
     errors: [],
     warnings: [],
   });
-  const sanitizeInput = (input: string) => input;
+  const sanitizeInput = (input: string, inputType?: 'command' | 'message' | 'url' | 'file') => {
+    if (inputType) {
+      return {
+        isValid: true,
+        sanitizedValue: input,
+        errors: [],
+        warnings: [],
+      };
+    }
+    return input;
+  };
   // Простий, чистий хелпер для маскування PII у тестах
   // Не створює таймерів, сумісний з юніт/інтеграційними тестами
   const maskPII = (
