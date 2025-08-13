@@ -109,7 +109,7 @@ export class ErrorHandler {
    */
   private setupGlobalErrorHandlers(): void {
     // Обробка необроблених помилок
-    process.on('uncaughtException', (error) => {
+    process.on('uncaughtException', error => {
       this.handleUncaughtException(error);
     });
 
@@ -119,7 +119,7 @@ export class ErrorHandler {
     });
 
     // Обробка попереджень
-    process.on('warning', (warning) => {
+    process.on('warning', warning => {
       this.handleWarning(warning);
     });
 
@@ -277,7 +277,7 @@ export class ErrorHandler {
       message: errorObj.message,
       ...(errorObj.stack ? { stack: errorObj.stack } : {}),
       code: (error as any)?.code,
-      ...(('cause' in (errorObj as any)) && (errorObj as any).cause !== undefined
+      ...('cause' in (errorObj as any) && (errorObj as any).cause !== undefined
         ? { cause: (errorObj as any).cause as Error }
         : {}),
       timestamp: new Date(),
@@ -308,7 +308,11 @@ export class ErrorHandler {
     if (message.includes('validation') || name.includes('validation')) {
       return ERROR_HANDLER_CONSTANTS.ERROR_CATEGORIES.VALIDATION;
     }
-    if (message.includes('network') || message.includes('connection') || message.includes('timeout')) {
+    if (
+      message.includes('network') ||
+      message.includes('connection') ||
+      message.includes('timeout')
+    ) {
       return ERROR_HANDLER_CONSTANTS.ERROR_CATEGORIES.NETWORK;
     }
     if (message.includes('database') || message.includes('sql') || message.includes('query')) {
@@ -399,7 +403,10 @@ export class ErrorHandler {
       }
 
       // Логування stack trace для серйозних помилок
-      if (errorDetails.severity !== ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.LOW && errorDetails.stack) {
+      if (
+        errorDetails.severity !== ERROR_HANDLER_CONSTANTS.SEVERITY_LEVELS.LOW &&
+        errorDetails.stack
+      ) {
         logger.debug('📋 Stack trace', {
           type: 'system',
           event: 'stack_trace',
@@ -448,7 +455,6 @@ export class ErrorHandler {
       // Оновлення середньої частоти помилок
       const uptime = process.uptime();
       this.errorStats.averageErrorRate = uptime > 0 ? this.errorStats.totalErrors / uptime : 0;
-
     } catch (statsError) {
       console.error('❌ Помилка оновлення статистики помилок:', statsError);
     }
@@ -464,7 +470,9 @@ export class ErrorHandler {
     const truncatedLines = lines.slice(0, ERROR_HANDLER_CONSTANTS.MAX_STACK_TRACE_LINES);
 
     if (lines.length > ERROR_HANDLER_CONSTANTS.MAX_STACK_TRACE_LINES) {
-      truncatedLines.push(`... (${lines.length - ERROR_HANDLER_CONSTANTS.MAX_STACK_TRACE_LINES} more lines)`);
+      truncatedLines.push(
+        `... (${lines.length - ERROR_HANDLER_CONSTANTS.MAX_STACK_TRACE_LINES} more lines)`
+      );
     }
 
     return truncatedLines.join('\n');
@@ -476,12 +484,12 @@ export class ErrorHandler {
   private createFallbackErrorHandler(): void {
     console.error('🔧 Створення fallback обробника помилок...');
 
-    process.on('uncaughtException', (error) => {
+    process.on('uncaughtException', error => {
       console.error('💥 Критична помилка (fallback):', error);
       process.exit(1);
     });
 
-    process.on('unhandledRejection', (reason) => {
+    process.on('unhandledRejection', reason => {
       console.error('💥 Необроблений rejection (fallback):', reason);
     });
   }
@@ -549,4 +557,4 @@ export const handleError = (
 
 export const getErrorStats = () => errorHandler.getStats();
 export const getErrorHistory = () => errorHandler.getErrorHistory();
-export const clearErrorHistory = () => errorHandler.clearErrorHistory(); 
+export const clearErrorHistory = () => errorHandler.clearErrorHistory();
