@@ -3,10 +3,7 @@
  * Спеціалізовані функції для оперативної роботи
  */
 
-import { 
-  EmbedBuilder, 
-  ChatInputCommandInteraction
-} from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
@@ -15,120 +12,114 @@ import logger from '@/utils/logger';
 
 export class OperationsCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super(
-      'операції',
-      '⚔️ Оперативне управління ЗСУ',
-      config,
-      {},
-      (builder: any) => {
-        return builder
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('ситуація')
-              .setDescription('📊 Поточна оперативна ситуація')
-              .addStringOption((option: any) =>
-                option
-                  .setName('сектор')
-                  .setDescription('Оперативний сектор')
-                  .setRequired(false)
-                  .addChoices(
-                    { name: 'Всі сектори', value: 'all' },
-                    { name: 'Сектор А', value: 'A' },
-                    { name: 'Сектор Б', value: 'B' },
-                    { name: 'Сектор В', value: 'C' },
-                    { name: 'Сектор Г', value: 'D' }
-                  )
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('завдання')
-              .setDescription('🎯 Управління завданнями')
-              .addStringOption((option: any) =>
-                option
-                  .setName('дія')
-                  .setDescription('Дія з завданнями')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Поточні завдання', value: 'current' },
-                    { name: 'Нове завдання', value: 'new' },
-                    { name: 'Оновити статус', value: 'update' },
-                    { name: 'Завершити завдання', value: 'complete' },
-                    { name: 'Архів завдань', value: 'archive' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('координація')
-              .setDescription('🔄 Координація між підрозділами')
-              .addStringOption((option: any) =>
-                option
-                  .setName('тип')
-                  .setDescription('Тип координації')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Вогнева підтримка', value: 'fire_support' },
-                    { name: 'Логістика', value: 'logistics' },
-                    { name: 'Розвідка', value: 'intelligence' },
-                    { name: 'Медична допомога', value: 'medical' },
-                    { name: "Зв'язок", value: 'communications' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option.setName('підрозділ').setDescription('Підрозділ для координації').setRequired(false)
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('розвідка')
-              .setDescription('🔍 Розвідувальні дані')
-              .addStringOption((option: any) =>
-                option
-                  .setName('тип')
-                  .setDescription('Тип розвідки')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Повітряна розвідка', value: 'air' },
-                    { name: 'Наземна розвідка', value: 'ground' },
-                    { name: 'Технічна розвідка', value: 'technical' },
-                    { name: 'Агентурна розвідка', value: 'agent' },
-                    { name: 'Зведена розвідка', value: 'summary' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option.setName('район').setDescription('Район розвідки').setRequired(false)
-              )
-          )
-          .addSubcommand((subcommand: any) =>
-            subcommand
-              .setName('зв\'язок')
-              .setDescription('📡 Управління зв\'язком')
-              .addStringOption((option: any) =>
-                option
-                  .setName('дія')
-                  .setDescription('Дія зі зв\'язком')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: 'Статус зв\'язку', value: 'status' },
-                    { name: 'Налаштування каналів', value: 'channels' },
-                    { name: 'Передача повідомлення', value: 'message' },
-                    { name: 'Перевірка якості', value: 'quality' },
-                    { name: 'Резервні канали', value: 'backup' }
-                  )
-              )
-              .addStringOption((option: any) =>
-                option.setName('канал').setDescription('Канал зв\'язку').setRequired(false)
-              )
-              .addStringOption((option: any) =>
-                option.setName('повідомлення').setDescription('Текст повідомлення').setRequired(false)
-              )
-          );
-      }
-    );
+    super('operations', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
+      return builder
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('situation')
+            .setDescription('📊 Поточна оперативна ситуація')
+            .addStringOption((option: any) =>
+              option
+                .setName('sector')
+                .setDescription('Оперативний сектор')
+                .setRequired(false)
+                .addChoices(
+                  { name: 'Всі сектори', value: 'all' },
+                  { name: 'Сектор А', value: 'A' },
+                  { name: 'Сектор Б', value: 'B' },
+                  { name: 'Сектор В', value: 'C' },
+                  { name: 'Сектор Г', value: 'D' }
+                )
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('tasks')
+            .setDescription('🎯 Управління завданнями')
+            .addStringOption((option: any) =>
+              option
+                .setName('action')
+                .setDescription('Дія з завданнями')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Поточні завдання', value: 'current' },
+                  { name: 'Нове завдання', value: 'new' },
+                  { name: 'Оновити статус', value: 'update' },
+                  { name: 'Завершити завдання', value: 'complete' },
+                  { name: 'Архів завдань', value: 'archive' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('query').setDescription('Пошуковий запит або дані').setRequired(false)
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('coordination')
+            .setDescription('🔄 Координація між підрозділами')
+            .addStringOption((option: any) =>
+              option
+                .setName('type')
+                .setDescription('Тип координації')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Вогнева підтримка', value: 'fire_support' },
+                  { name: 'Логістика', value: 'logistics' },
+                  { name: 'Розвідка', value: 'intelligence' },
+                  { name: 'Медична допомога', value: 'medical' },
+                  { name: "Зв'язок", value: 'communications' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('unit').setDescription('Підрозділ для координації').setRequired(false)
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('intelligence')
+            .setDescription('🔍 Розвідувальні дані')
+            .addStringOption((option: any) =>
+              option
+                .setName('type')
+                .setDescription('Тип розвідки')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'Повітряна розвідка', value: 'air' },
+                  { name: 'Наземна розвідка', value: 'ground' },
+                  { name: 'Технічна розвідка', value: 'technical' },
+                  { name: 'Агентурна розвідка', value: 'agent' },
+                  { name: 'Зведена розвідка', value: 'summary' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('area').setDescription('Район розвідки').setRequired(false)
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName('communications')
+            .setDescription("📡 Управління зв'язком")
+            .addStringOption((option: any) =>
+              option
+                .setName('action')
+                .setDescription("Дія зі зв'язком")
+                .setRequired(true)
+                .addChoices(
+                  { name: "Статус зв'язку", value: 'status' },
+                  { name: 'Налаштування каналів', value: 'channels' },
+                  { name: 'Передача повідомлення', value: 'message' },
+                  { name: 'Перевірка якості', value: 'quality' },
+                  { name: 'Резервні канали', value: 'backup' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('channel').setDescription("Канал зв'язку").setRequired(false)
+            )
+            .addStringOption((option: any) =>
+              option.setName('message').setDescription('Текст повідомлення').setRequired(false)
+            )
+        );
+    });
   }
 
   /**
@@ -136,24 +127,24 @@ export class OperationsCommand extends BaseCommand {
    */
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
-    
+
     try {
       const subcommand = interaction.options.getSubcommand();
 
       switch (subcommand) {
-        case 'ситуація':
+        case 'situation':
           await this.handleSituation(interaction);
           break;
-        case 'завдання':
+        case 'tasks':
           await this.handleTasks(interaction);
           break;
-        case 'координація':
+        case 'coordination':
           await this.handleCoordination(interaction);
           break;
-        case 'розвідка':
+        case 'intelligence':
           await this.handleIntelligence(interaction);
           break;
-        case 'зв\'язок':
+        case 'communications':
           await this.handleCommunications(interaction);
           break;
         default:
@@ -173,8 +164,8 @@ export class OperationsCommand extends BaseCommand {
    * Обробка оперативної ситуації
    */
   private async handleSituation(interaction: ChatInputCommandInteraction): Promise<void> {
-    const sector = interaction.options.getString('сектор') || 'all';
-    
+    const sector = interaction.options.getString('sector') || 'all';
+
     const embed = new EmbedBuilder()
       .setTitle('📊 Оперативна ситуація')
       .setColor(0xff6b6b)
@@ -204,8 +195,8 @@ export class OperationsCommand extends BaseCommand {
    * Обробка завдань
    */
   private async handleTasks(interaction: ChatInputCommandInteraction): Promise<void> {
-    const action = interaction.options.getString('дія', true);
-    const query = interaction.options.getString('запит');
+    const action = interaction.options.getString('action', true);
+    const query = interaction.options.getString('query');
 
     logger.info('Виконання дії управління завданнями', {
       action,
@@ -229,21 +220,15 @@ export class OperationsCommand extends BaseCommand {
         break;
       case 'new':
         embed.setDescription(`**Нове завдання**\n\nДані: ${query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Завдання створено', inline: false }
-        );
+        embed.addFields({ name: 'Статус', value: '✅ Завдання створено', inline: false });
         break;
       case 'update':
         embed.setDescription(`**Оновлення статусу**\n\nДані: ${query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Статус оновлено', inline: false }
-        );
+        embed.addFields({ name: 'Статус', value: '✅ Статус оновлено', inline: false });
         break;
       case 'complete':
         embed.setDescription(`**Завершення завдання**\n\nДані: ${query || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Завдання завершено', inline: false }
-        );
+        embed.addFields({ name: 'Статус', value: '✅ Завдання завершено', inline: false });
         break;
       case 'archive':
         embed.setDescription('**Архів завдань**');
@@ -263,8 +248,8 @@ export class OperationsCommand extends BaseCommand {
    * Обробка координації
    */
   private async handleCoordination(interaction: ChatInputCommandInteraction): Promise<void> {
-    const type = interaction.options.getString('тип', true);
-    const unit = interaction.options.getString('підрозділ');
+    const type = interaction.options.getString('type', true);
+    const unit = interaction.options.getString('unit');
 
     logger.info('Координація між підрозділами', {
       type,
@@ -283,7 +268,7 @@ export class OperationsCommand extends BaseCommand {
     embed.addFields(
       { name: 'Статус координації', value: '✅ Активна', inline: true },
       { name: 'Учасники', value: '3 підрозділи', inline: true },
-      { name: 'Канал зв\'язку', value: 'Основний', inline: true }
+      { name: "Канал зв'язку", value: 'Основний', inline: true }
     );
 
     await interaction.reply({ embeds: [embed] });
@@ -293,8 +278,8 @@ export class OperationsCommand extends BaseCommand {
    * Обробка розвідки
    */
   private async handleIntelligence(interaction: ChatInputCommandInteraction): Promise<void> {
-    const type = interaction.options.getString('тип', true);
-    const area = interaction.options.getString('район');
+    const type = interaction.options.getString('type', true);
+    const area = interaction.options.getString('area');
 
     logger.info('Запит розвідувальних даних', {
       type,
@@ -323,11 +308,11 @@ export class OperationsCommand extends BaseCommand {
    * Обробка зв'язку
    */
   private async handleCommunications(interaction: ChatInputCommandInteraction): Promise<void> {
-    const action = interaction.options.getString('дія', true);
-    const channel = interaction.options.getString('канал');
-    const message = interaction.options.getString('повідомлення');
+    const action = interaction.options.getString('action', true);
+    const channel = interaction.options.getString('channel');
+    const message = interaction.options.getString('message');
 
-    logger.info('Управління зв\'язком', {
+    logger.info("Управління зв'язком", {
       action,
       channel: channel || undefined,
       message: message || undefined,
@@ -335,13 +320,13 @@ export class OperationsCommand extends BaseCommand {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle('📡 Управління зв\'язком')
+      .setTitle("📡 Управління зв'язком")
       .setColor(0x9932cc)
       .setTimestamp();
 
     switch (action) {
       case 'status':
-        embed.setDescription('**Статус зв\'язку**');
+        embed.setDescription("**Статус зв'язку**");
         embed.addFields(
           { name: 'Основний канал', value: '✅ Працює', inline: true },
           { name: 'Резервний канал', value: '✅ Готовий', inline: true },
@@ -356,13 +341,13 @@ export class OperationsCommand extends BaseCommand {
         );
         break;
       case 'message':
-        embed.setDescription(`**Передача повідомлення**\n\nКанал: ${channel || 'Основний'}\nПовідомлення: ${message || 'Не вказано'}`);
-        embed.addFields(
-          { name: 'Статус', value: '✅ Повідомлення передано', inline: false }
+        embed.setDescription(
+          `**Передача повідомлення**\n\nКанал: ${channel || 'Основний'}\nПовідомлення: ${message || 'Не вказано'}`
         );
+        embed.addFields({ name: 'Статус', value: '✅ Повідомлення передано', inline: false });
         break;
       case 'quality':
-        embed.setDescription('**Перевірка якості зв\'язку**');
+        embed.setDescription("**Перевірка якості зв'язку**");
         embed.addFields(
           { name: 'Якість сигналу', value: '95%', inline: true },
           { name: 'Затримка', value: '50ms', inline: true },
@@ -422,4 +407,4 @@ export class OperationsCommand extends BaseCommand {
    * Отримання назви дії зв'язку
    */
   // helper getCommunicationActionName видалено як не використовується
-} 
+}
