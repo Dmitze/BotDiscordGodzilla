@@ -7,6 +7,7 @@ import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
+import * as xlsx from 'xlsx';
 
 interface AIQueryResult {
   response: string;
@@ -298,6 +299,263 @@ export class AIAssistantCommand extends BaseCommand {
     _context?: string
   ): Promise<AIQueryResult> {
     const q = (query || '').toLowerCase();
+
+    // Інтент: знайти документ (Docs/Word/PDF) і витягти текст
+    const intentExtractText =
+      /(pdf|word|docx|docs?|документ|файл)/i.test(q) && /(покажи|выведи|витягни|извле(ки|чи)|текст)/i.test(q);
+    if (intentExtractText) {
+      if (!this.googleService) {
+        return {
+          response: 'Сервіс Google не ініціалізовано. Перевірте конфігурацію сервісів.',
+          confidence: 0.6,
+          action: 'extract_text',
+          actionData: { type: 'analyze', format: 'text' },
+        };
+      }
+
+      const folderId = this.config.google.driveFolderId;
+      if (!folderId) {
+        return {
+          response: 'Не налаштовано GOOGLE_DRIVE_FOLDER_ID. Додайте ID папки у .env.',
+          confidence: 0.7,
+          action: 'extract_text',
+          actionData: { type: 'analyze', format: 'text' },
+        };
+      }
+
+      // евристика выделения токенов для имени
+      const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || [])
+        .filter(w => w.length >= 2)
+        .slice(0, 5);
+      const nameQuery = nameTokens.join(' ').trim();
+
+      // берем индекс из кеша, иначе строим
+      let index = await this.googleService.getDriveIndex(folderId);
+      if (!index) {
+        index = await this.googleService.buildDriveIndex(folderId, { ttlSeconds: 1800, recursive: true, maxDepth: -1 });
+      }
+      const qlc = (s: string) => s.toLowerCase();
+      const matchesName = (name?: string) => !nameQuery || qlc(name || '').includes(qlc(nameQuery));
+      const isDocLike = (mt?: string) =>
+        mt === 'application/vnd.google-apps.document' ||
+        mt === 'application/pdf' ||
+        mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        mt === 'application/msword';
+
+      const candidates = (index || []).filter(
+        f => isDocLike(f.mimeType ?? undefined) && matchesName(f.name ?? undefined)
+      );
+      if (!candidates.length) {
+        return {
+          response: 'Не знайдено відповідних документів (Docs/Word/PDF) за вашим описом.',
+          confidence: 0.85,
+          action: 'extract_text',
+          actionData: { type: 'analyze', format: 'text' },
+        };
+      }
+
+      // берем первый удачный
+      for (const f of candidates.slice(0, 5)) {
+        try {
+          const text = await this.googleService.extractTextFromFile(f as any);
+          if (!text.trim()) continue;
+          const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
+          return {
+            response: `Файл: ${f.name} (id: ${f.id})\n\n${preview}`,
+            confidence: 0.9,
+            action: 'extract_text',
+            actionData: { type: 'analyze', format: 'text' },
+          };
+        } catch (e) {
+          logger.warn('Не вдалося витягти текст з документу', {
+            type: 'command',
+            component: 'AIAssistantCommand.processAIQuery',
+            fileId: f.id,
+            fileName: f.name,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
+      return {
+        response:
+          'Не вдалося витягти текст: документи порожні або формат не підтримується. ' +
+          'Уточніть назву файла або надішліть приклад.',
+        confidence: 0.7,
+        action: 'extract_text',
+        actionData: { type: 'analyze', format: 'text' },
+      };
+    }
+
+    // Новый інтенсив: знайти Excel/Google Sheet за назвою і проаналізувати «скільки автобусів залишилось/БГ»
+    const intentAnalyzeBuses = /автобус|bus/.test(q) && /(сколько|скiльки|скільки|осталось|залишил(о|ось)|бг|остат)/.test(q);
+    if (intentAnalyzeBuses) {
+      if (!this.googleService) {
+        return {
+          response: 'Сервіс Google не ініціалізовано. Перевірте конфігурацію сервісів.',
+          confidence: 0.6,
+          action: 'analyze_buses',
+          actionData: { type: 'analyze', format: 'text' },
+        };
+      }
+
+      // Витягуємо можливу частину назви файла з запиту (наприклад, «АТ»)
+      // Проста евристика: беремо всі слова з довжиною >= 2 у верхньому регістрі/кирилиці/латиниці
+      const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || [])
+        .filter(w => w.length >= 2)
+        .slice(0, 4);
+
+      const folderId = this.config.google.driveFolderId;
+      if (!folderId) {
+        return {
+          response: 'Не налаштовано GOOGLE_DRIVE_FOLDER_ID. Додайте ID папки у .env.',
+          confidence: 0.7,
+          action: 'analyze_buses',
+          actionData: { type: 'analyze', format: 'text' },
+        };
+      }
+
+      // Пошук кандидатів: у всіх підпапках, за частиною імені (query)
+      const nameQuery = nameTokens.join(' ').trim();
+      const baseOpts: {
+        recursive?: boolean;
+        type?: 'sheet' | 'folder' | 'any';
+        query?: string;
+        limit?: number;
+        pageToken?: string;
+        maxDepth?: number;
+      } = { recursive: true, type: 'any', limit: 100, maxDepth: -1 };
+      if (nameQuery) baseOpts.query = nameQuery;
+      const files = await this.googleService.listDriveFilesInFolder(folderId, baseOpts);
+
+      // Фільтр тільки табличні: Google Sheets або Excel
+      const candidates = files.filter(f => {
+        const mt = f.mimeType || '';
+        return (
+          mt === 'application/vnd.google-apps.spreadsheet' ||
+          mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+          mt === 'application/vnd.ms-excel'
+        );
+      });
+
+      if (!candidates.length) {
+        return {
+          response: 'Не знайдено придатних таблиць (Google Sheets/Excel) за вашим описом.',
+          confidence: 0.85,
+          action: 'analyze_buses',
+          actionData: { type: 'analyze', format: 'text' },
+        };
+      }
+
+      // Внутрішня утиліта: підрахунок «автобусів з БГ/залишок» у масиві обʼєктів (рядків)
+      const countBuses = (rows: Array<Record<string, any>>): number => {
+        if (!rows.length) return 0;
+        // Нормалізуємо ключі та значення
+        const norm = (s: unknown) => String(s ?? '').toLowerCase();
+        const keyLike = (k: string, rx: RegExp) => rx.test(norm(k));
+        // Підбираємо ключі «тип» і «статус» з першого рядка
+        const keys = Object.keys(rows[0] || {});
+        const typeKey =
+          keys.find(k => keyLike(k, /(тип|вид|категор|vehicle|type|category)/i)) ||
+          (keys[0] as string | undefined);
+        const statusKey =
+          keys.find(k => keyLike(k, /(статус|state|status)/i)) ||
+          ((keys[1] as string | undefined) ?? (keys[0] as string | undefined));
+        if (!typeKey || !statusKey) return 0;
+        const tKey: string = typeKey;
+        const sKey: string = statusKey;
+        // Умови фільтра
+        const isBus = (v: unknown) => /автобус|bus/i.test(norm(v));
+        const isRemain = (v: unknown) => /(бг|остат|остал|залиш|в наличии|на складе)/i.test(norm(v));
+        let count = 0;
+        for (const r of rows) {
+          const tv = r[tKey];
+          const sv = r[sKey];
+          if (isBus(tv) && isRemain(sv)) count++;
+        }
+        return count;
+      };
+
+      // Парсер Google Sheets як таблиці обʼєктів
+      const readGoogleSheet = async (spreadsheetId: string): Promise<Array<Record<string, any>>> => {
+        try {
+          const sheetTitles = await this.googleService!.listSheets(spreadsheetId);
+          const first = sheetTitles[0] || 'Лист1';
+          const data = await this.googleService!.getSheetData(spreadsheetId, `${first}!A1:Z1000`);
+          const rows = data.values || [];
+          if (!rows.length) return [];
+          const headerRow: string[] = rows[0] ?? [];
+          const rest = rows.slice(1);
+          const headers = headerRow.map(h => String(h ?? '').trim());
+          return rest.map(row => {
+            const obj: Record<string, any> = {};
+            headers.forEach((h, i) => {
+              if (!h) return;
+              obj[h] = row[i];
+            });
+            return obj;
+          });
+        } catch {
+          return [];
+        }
+      };
+
+      // Парсер Excel буфера як таблиці обʼєктів
+      const readExcelBuffer = (buf: Buffer): Array<Record<string, any>> => {
+        try {
+          const wb = xlsx.read(buf, { type: 'buffer' });
+          const firstName = wb.SheetNames[0];
+          if (!firstName) return [];
+          const sheet = wb.Sheets[firstName];
+          if (!sheet) return [];
+          const json = xlsx.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+          return json;
+        } catch {
+          return [];
+        }
+      };
+
+      // Перебираємо кандидати, перший успішний аналіз возвращаем
+      for (const f of candidates.slice(0, 5)) {
+        const mt = f.mimeType || '';
+        try {
+          let rows: Array<Record<string, any>> = [];
+          if (mt === 'application/vnd.google-apps.spreadsheet') {
+            rows = await readGoogleSheet(f.id!);
+          } else {
+            const buf = await this.googleService.downloadDriveFile(f.id!);
+            rows = readExcelBuffer(buf);
+          }
+          if (!rows.length) continue;
+          const total = countBuses(rows);
+          return {
+            response:
+              `Файл: ${f.name} (id: ${f.id})\n` +
+              `Результат: автобусів зі статусом БГ/залишок — ${total} шт.`,
+            confidence: 0.92,
+            action: 'analyze_buses',
+            actionData: { type: 'analyze', format: 'text' },
+          };
+        } catch (e) {
+          logger.warn('Не вдалося обробити файл-кандидат', {
+            type: 'command',
+            component: 'AIAssistantCommand.processAIQuery',
+            fileId: f.id,
+            fileName: f.name,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
+      return {
+        response:
+          'Не вдалося виконати аналіз: таблиці порожні або структура невідома. ' +
+          'Уточніть назву файла/листів або надішліть приклад для навчання евристик.',
+        confidence: 0.7,
+        action: 'analyze_buses',
+        actionData: { type: 'analyze', format: 'text' },
+      };
+    }
 
     // Проста детекція наміру: показати таблиці Google
     const intentListSheets =
