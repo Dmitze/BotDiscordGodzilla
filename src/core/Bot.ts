@@ -13,6 +13,9 @@ import { ErrorHandler } from './ErrorHandler';
 import EventManager from './EventManager';
 import ServiceManager from './ServiceManager';
 import logger from '@/utils/logger';
+import { ChatRouter } from '@/chat/ChatRouter';
+import { IntentDetector } from '@/chat/IntentDetector';
+import { MemoryService } from '@/chat/MemoryService';
 
 // Константи для конфігурації бота
 const BOT_CONSTANTS = {
@@ -50,6 +53,9 @@ export class Bot extends BaseServiceClass {
   public readonly errorHandler: ErrorHandler;
   public readonly eventManager: EventManager;
   public readonly serviceManager: ServiceManager;
+  private readonly chatMemory: MemoryService;
+  private readonly intentDetector: IntentDetector;
+  private readonly chatRouter: ChatRouter;
 
   private commands = new Collection<string, BaseCommand>();
   private isReady = false;
@@ -83,6 +89,8 @@ export class Bot extends BaseServiceClass {
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.DirectMessages,
+        // Для чат-режиму по вільному тексту (вимаг. дозволу в Dev Portal)
+        GatewayIntentBits.MessageContent,
       ],
       failIfNotExists: false,
     });
@@ -93,6 +101,11 @@ export class Bot extends BaseServiceClass {
     this.errorHandler = new ErrorHandler(this.serviceContainer);
     this.eventManager = new EventManager(this);
     this.serviceManager = new ServiceManager(this);
+
+    // Чат-режим: пам'ять, детектор намірів і роутер повідомлень
+    this.chatMemory = new MemoryService({ maxTokens: 2000, summaryAfter: 1500 });
+    this.intentDetector = new IntentDetector();
+    this.chatRouter = new ChatRouter(this.client, this.chatMemory, this.intentDetector);
 
     // Налаштування обробників подій
     this.setupEventHandlers();
@@ -188,6 +201,18 @@ export class Bot extends BaseServiceClass {
       // Очікування готовності клієнта
       logger.info('⏳ Очікування готовності клієнта...');
       await this.waitForReady();
+
+      // Підключаємо чат-роутер після готовності клієнта
+      try {
+        this.chatRouter.bind();
+      } catch (e) {
+        logger.error('❌ Неможливо підключити ChatRouter', {
+          type: 'bot',
+          event: 'chat_bind_failed',
+          error: e instanceof Error ? e.message : String(e),
+        });
+        // Не зупиняємо весь бот, але логгуємо критично
+      }
 
       // Запуск health check
       this.startHealthCheck();
