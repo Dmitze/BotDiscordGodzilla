@@ -33,7 +33,7 @@ export enum UserLevel {
   TRUSTED = 2,
   MODERATOR = 3,
   ADMIN = 4,
-  OWNER = 5
+  OWNER = 5,
 }
 
 export interface PermissionCheckResult {
@@ -75,7 +75,7 @@ export class PermissionManager {
     if (PermissionManager.instance) {
       return PermissionManager.instance;
     }
-    
+
     PermissionManager.instance = this;
     this.initialize();
   }
@@ -86,17 +86,19 @@ export class PermissionManager {
   private initialize(): void {
     try {
       logger.info('🔐 Ініціалізація системи прав доступу...');
-      
+
       // Завантаження конфігурацій прав для команд
       this.loadPermissionConfigs();
-      
+
       // Запуск періодичного очищення кешу
       this.startCacheCleanup();
-      
+
       this.isInitialized = true;
       logger.info('✅ Система прав доступу ініціалізована');
     } catch (error) {
-      logger.error(`❌ Помилка ініціалізації системи прав: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `❌ Помилка ініціалізації системи прав: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }
@@ -113,7 +115,7 @@ export class PermissionManager {
         requiredPermissions: [PermissionFlagsBits.ViewChannel],
         minUserLevel: UserLevel.USER,
         cooldown: 5000,
-        maxUsesPerDay: 100
+        maxUsesPerDay: 100,
       },
       {
         command: 'ai-асистент',
@@ -121,7 +123,7 @@ export class PermissionManager {
         requiredPermissions: [PermissionFlagsBits.ViewChannel],
         minUserLevel: UserLevel.TRUSTED,
         cooldown: 10000,
-        maxUsesPerDay: 50
+        maxUsesPerDay: 50,
       },
       {
         command: 'файли',
@@ -129,7 +131,7 @@ export class PermissionManager {
         requiredPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.AttachFiles],
         minUserLevel: UserLevel.TRUSTED,
         cooldown: 3000,
-        maxUsesPerDay: 200
+        maxUsesPerDay: 200,
       },
       {
         command: 'аналітика',
@@ -137,7 +139,7 @@ export class PermissionManager {
         requiredPermissions: [PermissionFlagsBits.ViewChannel],
         minUserLevel: UserLevel.TRUSTED,
         cooldown: 15000,
-        maxUsesPerDay: 20
+        maxUsesPerDay: 20,
       },
       {
         command: 'операції',
@@ -145,7 +147,7 @@ export class PermissionManager {
         requiredPermissions: [PermissionFlagsBits.ManageGuild],
         minUserLevel: UserLevel.MODERATOR,
         cooldown: 30000,
-        maxUsesPerDay: 10
+        maxUsesPerDay: 10,
       },
       {
         command: 'продуктивність',
@@ -153,8 +155,8 @@ export class PermissionManager {
         requiredPermissions: [PermissionFlagsBits.Administrator],
         minUserLevel: UserLevel.ADMIN,
         cooldown: 60000,
-        maxUsesPerDay: 5
-      }
+        maxUsesPerDay: 5,
+      },
     ];
 
     configs.forEach(config => {
@@ -175,7 +177,7 @@ export class PermissionManager {
   ): Promise<PermissionCheckResult> {
     try {
       const startTime = Date.now();
-      
+
       // Отримання конфігурації команди
       const permConfig = this.permissionConfigs.get(commandName);
       if (!permConfig) {
@@ -186,7 +188,7 @@ export class PermissionManager {
           userLevel: UserLevel.USER,
           hasRequiredRoles: true,
           hasRequiredPermissions: true,
-          canUseInChannel: true
+          canUseInChannel: true,
         };
       }
 
@@ -198,48 +200,49 @@ export class PermissionManager {
           userLevel: UserLevel.USER,
           hasRequiredRoles: false,
           hasRequiredPermissions: false,
-          canUseInChannel: false
+          canUseInChannel: false,
         };
       }
 
       // Отримання інформації про користувача з кешу або Discord API
       const userInfo = await this.getUserInfo(user.id, member);
-      
+
       // Перевірка рівня користувача
       if (userInfo.userLevel < permConfig.minUserLevel) {
         this.logSecurityEvent('insufficient_user_level', user.id, {
           command: commandName,
           userLevel: userInfo.userLevel,
-          requiredLevel: permConfig.minUserLevel
+          requiredLevel: permConfig.minUserLevel,
         });
-        
+
         return {
           allowed: false,
           reason: `Недостатній рівень користувача (потрібен ${UserLevel[permConfig.minUserLevel]})`,
           userLevel: userInfo.userLevel,
           hasRequiredRoles: false,
           hasRequiredPermissions: false,
-          canUseInChannel: true
+          canUseInChannel: true,
         };
       }
 
       // Перевірка ролей
       const hasRequiredRoles = this.checkRequiredRoles(member, permConfig.requiredRoles);
-      
+
       // Перевірка дозволів Discord
-      const hasRequiredPermissions = this.checkRequiredPermissions(member, permConfig.requiredPermissions);
-      
+      const hasRequiredPermissions = this.checkRequiredPermissions(
+        member,
+        permConfig.requiredPermissions
+      );
+
       // Перевірка каналу
       const canUseInChannel = this.checkChannelPermissions(channelId, permConfig);
-      
+
       // Перевірка використання команди (rate limiting + daily limits)
       const usageCheck = this.checkCommandUsage(user.id, commandName, permConfig);
-      
+
       // Загальна перевірка
-      const allowed = hasRequiredRoles && 
-                     hasRequiredPermissions && 
-                     canUseInChannel && 
-                     usageCheck.allowed;
+      const allowed =
+        hasRequiredRoles && hasRequiredPermissions && canUseInChannel && usageCheck.allowed;
 
       const resultBase = {
         allowed,
@@ -247,7 +250,7 @@ export class PermissionManager {
         hasRequiredRoles,
         hasRequiredPermissions,
         canUseInChannel,
-        remainingUses: usageCheck.remainingUses
+        remainingUses: usageCheck.remainingUses,
       } as PermissionCheckResult;
       if (!allowed) {
         const denialObj: {
@@ -261,7 +264,7 @@ export class PermissionManager {
           hasRequiredRoles,
           hasRequiredPermissions,
           canUseInChannel,
-          usageAllowed: usageCheck.allowed
+          usageAllowed: usageCheck.allowed,
         };
         if (usageCheck.reason !== undefined) {
           denialObj.usageReason = usageCheck.reason;
@@ -275,19 +278,23 @@ export class PermissionManager {
       const duration = Date.now() - startTime;
       if (allowed) {
         this.recordCommandUsage(user.id, commandName);
-        logger.debug(`✅ Доступ дозволено user=${user.id} command=${commandName} duration=${duration}ms level=${UserLevel[userInfo.userLevel]}`);
+        logger.debug(
+          `✅ Доступ дозволено user=${user.id} command=${commandName} duration=${duration}ms level=${UserLevel[userInfo.userLevel]}`
+        );
       } else {
         this.logSecurityEvent('access_denied', user.id, {
           command: commandName,
           reason: result.reason ?? '',
-          duration: `${duration}ms`
+          duration: `${duration}ms`,
         });
       }
 
       return result;
     } catch (error) {
-      logger.error(`❌ Помилка перевірки прав доступу: user=${user.id} command=${commandName} error=${error instanceof Error ? error.message : String(error)}`);
-      
+      logger.error(
+        `❌ Помилка перевірки прав доступу: user=${user.id} command=${commandName} error=${error instanceof Error ? error.message : String(error)}`
+      );
+
       // У разі помилки дозволяємо доступ для базових команд
       return {
         allowed: ['пошук', 'довідка'].includes(commandName),
@@ -295,7 +302,7 @@ export class PermissionManager {
         userLevel: UserLevel.USER,
         hasRequiredRoles: false,
         hasRequiredPermissions: false,
-        canUseInChannel: true
+        canUseInChannel: true,
       };
     }
   }
@@ -306,7 +313,7 @@ export class PermissionManager {
   private async getUserInfo(userId: string, member: GuildMember): Promise<UserPermissionCache> {
     const cacheKey = `${member.guild.id}:${userId}`;
     const cached = this.userCache.get(cacheKey);
-    
+
     // Перевірка кешу
     if (cached && Date.now() - cached.timestamp < PERMISSION_CONSTANTS.CACHE_TTL) {
       cached.lastActivity = Date.now();
@@ -325,14 +332,14 @@ export class PermissionManager {
       roles,
       permissions,
       timestamp: Date.now(),
-      lastActivity: Date.now()
+      lastActivity: Date.now(),
     };
 
     // Кешування з обмеженням розміру
     if (this.userCache.size >= PERMISSION_CONSTANTS.MAX_CACHE_ENTRIES) {
       this.cleanupOldestCacheEntries();
     }
-    
+
     this.userCache.set(cacheKey, userInfo);
     return userInfo;
   }
@@ -352,11 +359,13 @@ export class PermissionManager {
     }
 
     // Перевірка на модератора
-    if (member.permissions.has([
-      PermissionFlagsBits.ManageMessages,
-      PermissionFlagsBits.ManageChannels,
-      PermissionFlagsBits.ManageRoles
-    ])) {
+    if (
+      member.permissions.has([
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.ManageChannels,
+        PermissionFlagsBits.ManageRoles,
+      ])
+    ) {
       return UserLevel.MODERATOR;
     }
 
@@ -380,10 +389,12 @@ export class PermissionManager {
    */
   private checkRequiredRoles(member: GuildMember, requiredRoles: string[]): boolean {
     if (requiredRoles.length === 0) return true;
-    
+
     // Адміністратори завжди мають доступ
-    if (PERMISSION_CONSTANTS.ADMIN_BYPASS && 
-        member.permissions.has(PermissionFlagsBits.Administrator)) {
+    if (
+      PERMISSION_CONSTANTS.ADMIN_BYPASS &&
+      member.permissions.has(PermissionFlagsBits.Administrator)
+    ) {
       return true;
     }
 
@@ -394,35 +405,45 @@ export class PermissionManager {
   /**
    * Перевірка дозволів Discord
    */
-  private checkRequiredPermissions(member: GuildMember, requiredPermissions: PermissionResolvable[]): boolean {
+  private checkRequiredPermissions(
+    member: GuildMember,
+    requiredPermissions: PermissionResolvable[]
+  ): boolean {
     if (requiredPermissions.length === 0) return true;
-    
+
     return member.permissions.has(requiredPermissions);
   }
 
   /**
    * Перевірка дозволів для каналу
    */
-  private checkChannelPermissions(channelId: string | undefined, config: PermissionConfig): boolean {
+  private checkChannelPermissions(
+    channelId: string | undefined,
+    config: PermissionConfig
+  ): boolean {
     if (!channelId) return true;
-    
+
     // Перевірка дозволених каналів
     if (config.allowedChannels && config.allowedChannels.length > 0) {
       return config.allowedChannels.includes(channelId);
     }
-    
+
     // Перевірка заборонених каналів
     if (config.deniedChannels && config.deniedChannels.length > 0) {
       return !config.deniedChannels.includes(channelId);
     }
-    
+
     return true;
   }
 
   /**
    * Перевірка використання команди
    */
-  private checkCommandUsage(userId: string, command: string, config: PermissionConfig): {
+  private checkCommandUsage(
+    userId: string,
+    command: string,
+    config: PermissionConfig
+  ): {
     allowed: boolean;
     reason?: string;
     remainingUses?: number;
@@ -433,11 +454,11 @@ export class PermissionManager {
 
     // Перевірка cooldown
     const lastUsage = this.commandUsage.get(usageKey);
-    if (lastUsage && config.cooldown && (now - lastUsage.lastUse) < config.cooldown) {
+    if (lastUsage && config.cooldown && now - lastUsage.lastUse < config.cooldown) {
       const remainingTime = config.cooldown - (now - lastUsage.lastUse);
       return {
         allowed: false,
-        reason: `Cooldown: ${Math.ceil(remainingTime / 1000)} секунд`
+        reason: `Cooldown: ${Math.ceil(remainingTime / 1000)} секунд`,
       };
     }
 
@@ -446,14 +467,14 @@ export class PermissionManager {
       if (lastUsage && lastUsage.date === today && lastUsage.uses >= config.maxUsesPerDay) {
         return {
           allowed: false,
-          reason: `Досягнуто денний ліміт (${config.maxUsesPerDay})`
+          reason: `Досягнуто денний ліміт (${config.maxUsesPerDay})`,
         };
       }
-      
+
       const remainingUses = config.maxUsesPerDay - (lastUsage?.uses || 0);
       return {
         allowed: true,
-        remainingUses
+        remainingUses,
       };
     }
 
@@ -467,9 +488,9 @@ export class PermissionManager {
     const usageKey = `${userId}:${command}`;
     const now = Date.now();
     const [today = ''] = new Date().toISOString().split('T');
-    
+
     const existing = this.commandUsage.get(usageKey);
-    
+
     if (existing && existing.date === today) {
       existing.uses++;
       existing.lastUse = now;
@@ -479,7 +500,7 @@ export class PermissionManager {
         command,
         uses: 1,
         date: today,
-        lastUse: now
+        lastUse: now,
       });
     }
   }
@@ -495,23 +516,23 @@ export class PermissionManager {
     usageReason?: string;
   }): string {
     const reasons = [];
-    
+
     if (!checks.hasRequiredRoles) {
       reasons.push('відсутні необхідні ролі');
     }
-    
+
     if (!checks.hasRequiredPermissions) {
       reasons.push('недостатні дозволи Discord');
     }
-    
+
     if (!checks.canUseInChannel) {
       reasons.push('команда недоступна в цьому каналі');
     }
-    
+
     if (!checks.usageAllowed && checks.usageReason) {
       reasons.push(checks.usageReason);
     }
-    
+
     return reasons.join(', ');
   }
 
@@ -533,10 +554,10 @@ export class PermissionManager {
   private cleanupOldestCacheEntries(): void {
     const entries = Array.from(this.userCache.entries());
     entries.sort((a, b) => a[1].lastActivity - b[1].lastActivity);
-    
+
     const toDelete = entries.slice(0, Math.floor(PERMISSION_CONSTANTS.MAX_CACHE_ENTRIES * 0.1));
     toDelete.forEach(([key]) => this.userCache.delete(key));
-    
+
     logger.debug(`🧹 Очищено ${toDelete.length} застарілих записів з кешу прав`);
   }
 
@@ -547,7 +568,7 @@ export class PermissionManager {
     setInterval(() => {
       const now = Date.now();
       let cleanedCount = 0;
-      
+
       // Очищення кешу користувачів
       for (const [key, entry] of this.userCache.entries()) {
         if (now - entry.lastActivity > PERMISSION_CONSTANTS.CACHE_TTL * 2) {
@@ -555,7 +576,7 @@ export class PermissionManager {
           cleanedCount++;
         }
       }
-      
+
       // Очищення використання команд (тільки старі дні)
       const [today = ''] = new Date().toISOString().split('T');
       for (const [key, usage] of this.commandUsage.entries()) {
@@ -563,7 +584,7 @@ export class PermissionManager {
           this.commandUsage.delete(key);
         }
       }
-      
+
       if (cleanedCount > 0) {
         logger.debug(`🧹 Очищено кеш прав: ${cleanedCount} записів`);
       }
@@ -596,7 +617,7 @@ export class PermissionManager {
       cachedUsers: this.userCache.size,
       commandConfigs: this.permissionConfigs.size,
       dailyUsage,
-      isInitialized: this.isInitialized
+      isInitialized: this.isInitialized,
     };
   }
 
