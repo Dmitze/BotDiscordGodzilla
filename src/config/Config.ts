@@ -6,7 +6,14 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import type { BotConfig, DiscordConfig, GoogleConfig, AIConfig, RedisConfig, MetricsConfig } from '@/types';
+import type {
+  BotConfig,
+  DiscordConfig,
+  GoogleConfig,
+  AIConfig,
+  RedisConfig,
+  MetricsConfig,
+} from '@/types';
 import logger from '@/utils/logger';
 
 // Константи для конфігурації
@@ -44,7 +51,7 @@ export class Config {
 
     try {
       logger.info('🔧 Завантаження конфігурації...');
-      
+
       const config: BotConfig = {
         discord: this.loadDiscordConfig(),
         google: this.loadGoogleConfig(),
@@ -58,14 +65,16 @@ export class Config {
 
       this.validate(config);
       this.instance = config;
-      
+
       logger.info('✅ Конфігурація успішно завантажена та валідована');
       this.logConfigurationSummary(config);
-      
+
       return config;
     } catch (error) {
       logger.error('❌ Помилка завантаження конфігурації:', error as any);
-      throw new Error(`Помилка конфігурації: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
+      throw new Error(
+        `Помилка конфігурації: ${error instanceof Error ? error.message : 'Невідома помилка'}`
+      );
     }
   }
 
@@ -75,11 +84,11 @@ export class Config {
   private static loadDiscordConfig(): DiscordConfig {
     try {
       logger.debug('📡 Завантаження Discord конфігурації...');
-      
+
       const token = this.getRequiredEnv('DISCORD_TOKEN');
       const clientId = this.getRequiredEnv('DISCORD_CLIENT_ID');
       const guildId = this.getRequiredEnv('DISCORD_GUILD_ID');
-      
+
       // Валідація токена
       if (!token.startsWith('MTA') && !token.startsWith('OTk')) {
         logger.warn('⚠️ Discord токен може бути некоректним');
@@ -90,7 +99,9 @@ export class Config {
         clientId,
         guildId,
         prefix: this.getEnv('DISCORD_PREFIX', CONFIG_CONSTANTS.DEFAULT_PREFIX),
-        intents: this.parseIntents(this.getEnv('DISCORD_INTENTS', CONFIG_CONSTANTS.DEFAULT_INTENTS.join(','))),
+        intents: this.parseIntents(
+          this.getEnv('DISCORD_INTENTS', CONFIG_CONSTANTS.DEFAULT_INTENTS.join(','))
+        ),
       };
 
       logger.debug('✅ Discord конфігурація завантажена');
@@ -109,15 +120,22 @@ export class Config {
       const intents = intentsString.split(',').map(intent => intent.trim());
       const allowed = new Set<string>([
         ...(CONFIG_CONSTANTS.DEFAULT_INTENTS as unknown as string[]),
-        'DirectMessages', 'GuildPresences', 'GuildVoiceStates'
+        'DirectMessages',
+        'GuildPresences',
+        'GuildVoiceStates',
       ]);
       const validIntents = intents.filter(intent => allowed.has(intent));
 
       if (validIntents.length !== intents.length) {
-        logger.warn('⚠️ Деякі Discord intents некоректні:', intents.filter(intent => !validIntents.includes(intent)));
+        logger.warn(
+          '⚠️ Деякі Discord intents некоректні:',
+          intents.filter(intent => !validIntents.includes(intent))
+        );
       }
 
-      return validIntents.length > 0 ? validIntents : ([...CONFIG_CONSTANTS.DEFAULT_INTENTS] as unknown as string[]);
+      return validIntents.length > 0
+        ? validIntents
+        : ([...CONFIG_CONSTANTS.DEFAULT_INTENTS] as unknown as string[]);
     } catch (error) {
       logger.error('❌ Помилка парсингу Discord intents:', error as any);
       return [...(CONFIG_CONSTANTS.DEFAULT_INTENTS as unknown as string[])];
@@ -130,7 +148,7 @@ export class Config {
   private static loadGoogleConfig(): GoogleConfig {
     try {
       logger.debug('🌐 Завантаження Google конфігурації...');
-      
+
       const config: GoogleConfig = {
         spreadsheetId: this.getRequiredEnv('GOOGLE_SPREADSHEET_ID'),
         driveFolderId: this.getRequiredEnv('GOOGLE_DRIVE_FOLDER_ID'),
@@ -177,7 +195,7 @@ export class Config {
         try {
           const credentialsFile = readFileSync(credentialsPath, 'utf8');
           const credentials = JSON.parse(credentialsFile);
-          
+
           if (credentials.client_email && credentials.private_key && credentials.project_id) {
             logger.debug('✅ Google credentials завантажено з файлу');
             return credentials;
@@ -194,7 +212,7 @@ export class Config {
           private_key: privateKey.replace(/\\n/g, '\n'),
           project_id: projectId,
         };
-        
+
         logger.debug('✅ Google credentials завантажено з змінних середовища');
         return credentials;
       }
@@ -212,13 +230,18 @@ export class Config {
   private static loadAIConfig(): AIConfig {
     try {
       logger.debug('🤖 Завантаження AI конфігурації...');
-      
-      const provider = this.getEnv('AI_PROVIDER', CONFIG_CONSTANTS.DEFAULT_AI_PROVIDER) as 'openai' | 'ollama';
-      
+
+      const provider = this.getEnv('AI_PROVIDER', CONFIG_CONSTANTS.DEFAULT_AI_PROVIDER) as
+        | 'openai'
+        | 'ollama';
+
       const config: AIConfig = {
         provider,
         openai: {
-          apiKey: provider === 'openai' ? this.getRequiredEnv('OPENAI_API_KEY') : this.getEnv('OPENAI_API_KEY', ''),
+          apiKey:
+            provider === 'openai'
+              ? this.getRequiredEnv('OPENAI_API_KEY')
+              : this.getEnv('OPENAI_API_KEY', ''),
           model: this.getEnv('OPENAI_MODEL', CONFIG_CONSTANTS.DEFAULT_OPENAI_MODEL),
           maxTokens: this.validateNumber(
             this.getEnv('OPENAI_MAX_TOKENS', CONFIG_CONSTANTS.DEFAULT_OPENAI_MAX_TOKENS.toString()),
@@ -227,7 +250,10 @@ export class Config {
             CONFIG_CONSTANTS.MAX_OPENAI_TOKENS
           ),
           temperature: this.validateNumber(
-            this.getEnv('OPENAI_TEMPERATURE', CONFIG_CONSTANTS.DEFAULT_OPENAI_TEMPERATURE.toString()),
+            this.getEnv(
+              'OPENAI_TEMPERATURE',
+              CONFIG_CONSTANTS.DEFAULT_OPENAI_TEMPERATURE.toString()
+            ),
             CONFIG_CONSTANTS.DEFAULT_OPENAI_TEMPERATURE,
             CONFIG_CONSTANTS.MIN_TEMPERATURE,
             CONFIG_CONSTANTS.MAX_TEMPERATURE
@@ -258,7 +284,7 @@ export class Config {
   private static loadRedisConfig(): RedisConfig {
     try {
       logger.debug('💾 Завантаження Redis конфігурації...');
-      
+
       const config: RedisConfig = {
         host: this.getEnv('REDIS_HOST', CONFIG_CONSTANTS.DEFAULT_REDIS_HOST),
         port: this.validateNumber(
@@ -291,7 +317,12 @@ export class Config {
    */
   private static loadMetricsConfig(): MetricsConfig {
     try {
-      logger.debug('📊 Завантаження Metrics конфігурації...', { component: 'Config', type: 'config', section: 'metrics', event: 'load_start' });
+      logger.debug('📊 Завантаження Metrics конфігурації...', {
+        component: 'Config',
+        type: 'config',
+        section: 'metrics',
+        event: 'load_start',
+      });
 
       const enabled = this.getEnv('METRICS_ENABLED', 'true').toLowerCase() === 'true';
       const port = this.validateNumber(
@@ -303,14 +334,36 @@ export class Config {
       const rawPath = this.getEnv('METRICS_PATH', CONFIG_CONSTANTS.DEFAULT_METRICS_PATH);
       const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
       if (rawPath !== path) {
-        logger.warn('⚠️ METRICS_PATH не починається зі "/", виконую нормалізацію', { component: 'Config', type: 'config', section: 'metrics', event: 'path_normalized', rawPath, normalized: path });
+        logger.warn('⚠️ METRICS_PATH не починається зі "/", виконую нормалізацію', {
+          component: 'Config',
+          type: 'config',
+          section: 'metrics',
+          event: 'path_normalized',
+          rawPath,
+          normalized: path,
+        });
       }
 
       const config: MetricsConfig = { enabled, port, path };
-      logger.debug('✅ Metrics конфігурація завантажена', { component: 'Config', type: 'config', section: 'metrics', event: 'load_success', port: config.port, path: config.path, enabled: config.enabled });
+      logger.debug('✅ Metrics конфігурація завантажена', {
+        component: 'Config',
+        type: 'config',
+        section: 'metrics',
+        event: 'load_success',
+        port: config.port,
+        path: config.path,
+        enabled: config.enabled,
+      });
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження Metrics конфігурації:', { component: 'Config', type: 'config', section: 'metrics', event: 'load_failed', errorName: error instanceof Error ? error.name : undefined, errorMessage: error instanceof Error ? error.message : String(error) });
+      logger.error('❌ Помилка завантаження Metrics конфігурації:', {
+        component: 'Config',
+        type: 'config',
+        section: 'metrics',
+        event: 'load_failed',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }
@@ -321,7 +374,7 @@ export class Config {
   private static loadSecurityConfig() {
     try {
       logger.debug('🔒 Завантаження Security конфігурації...');
-      
+
       return {
         rateLimitWindow: this.validateNumber(
           this.getEnv('RATE_LIMIT_WINDOW', '60000'),
@@ -329,12 +382,7 @@ export class Config {
           1000,
           300000
         ),
-        rateLimitMax: this.validateNumber(
-          this.getEnv('RATE_LIMIT_MAX', '100'),
-          100,
-          1,
-          1000
-        ),
+        rateLimitMax: this.validateNumber(this.getEnv('RATE_LIMIT_MAX', '100'), 100, 1, 1000),
         adminRole: this.getEnv('ADMIN_ROLE', 'Admin'),
         botUserRole: this.getEnv('BOT_USER_ROLE', 'Bot User'),
       };
@@ -350,14 +398,9 @@ export class Config {
   private static loadPerformanceConfig() {
     try {
       logger.debug('⚡ Завантаження Performance конфігурації...');
-      
+
       return {
-        cacheTTL: this.validateNumber(
-          this.getEnv('CACHE_TTL', '300000'),
-          300000,
-          1000,
-          3600000
-        ),
+        cacheTTL: this.validateNumber(this.getEnv('CACHE_TTL', '300000'), 300000, 1000, 3600000),
         maxSearchResults: this.validateNumber(
           this.getEnv('MAX_SEARCH_RESULTS', '100'),
           100,
@@ -376,12 +419,7 @@ export class Config {
           1000,
           300000
         ),
-        maxRetries: this.validateNumber(
-          this.getEnv('MAX_RETRIES', '3'),
-          3,
-          0,
-          10
-        ),
+        maxRetries: this.validateNumber(this.getEnv('MAX_RETRIES', '3'), 3, 0, 10),
       };
     } catch (error) {
       logger.error('❌ Помилка завантаження Performance конфігурації:', error as any);
@@ -395,15 +433,10 @@ export class Config {
   private static loadLoggingConfig() {
     try {
       logger.debug('📝 Завантаження Logging конфігурації...');
-      
+
       return {
         level: this.getEnv('LOG_LEVEL', 'info'),
-        maxFiles: this.validateNumber(
-          this.getEnv('LOG_MAX_FILES', '5'),
-          5,
-          1,
-          50
-        ),
+        maxFiles: this.validateNumber(this.getEnv('LOG_MAX_FILES', '5'), 5, 1, 50),
         maxSize: this.getEnv('LOG_MAX_SIZE', '10m'),
         directory: this.getEnv('LOG_DIRECTORY', join(process.cwd(), 'logs')),
       };
@@ -416,7 +449,12 @@ export class Config {
   /**
    * Валідація числових значень
    */
-  private static validateNumber(value: string, defaultValue: number, min: number, max: number): number {
+  private static validateNumber(
+    value: string,
+    defaultValue: number,
+    min: number,
+    max: number
+  ): number {
     try {
       const num = parseInt(value, 10);
       if (isNaN(num) || num < min || num > max) {
@@ -434,8 +472,12 @@ export class Config {
    * Валідація конфігурації
    */
   private static validate(config: BotConfig): void {
-    logger.info('🔍 Валідація конфігурації...', { component: 'Config', type: 'config', event: 'validate_start' });
-    
+    logger.info('🔍 Валідація конфігурації...', {
+      component: 'Config',
+      type: 'config',
+      event: 'validate_start',
+    });
+
     const errors: string[] = [];
 
     // Валідація Discord
@@ -461,10 +503,20 @@ export class Config {
 
     // Додаткова порада щодо Metrics path
     if (!config.metrics.path.startsWith('/')) {
-      logger.warn('⚠️ Metrics path не починається зі "/". Рекомендується формат "/metrics"', { component: 'Config', type: 'config', section: 'metrics', event: 'path_warning', path: config.metrics.path });
+      logger.warn('⚠️ Metrics path не починається зі "/". Рекомендується формат "/metrics"', {
+        component: 'Config',
+        type: 'config',
+        section: 'metrics',
+        event: 'path_warning',
+        path: config.metrics.path,
+      });
     }
 
-    logger.info('✅ Конфігурація валідна', { component: 'Config', type: 'config', event: 'validate_success' });
+    logger.info('✅ Конфігурація валідна', {
+      component: 'Config',
+      type: 'config',
+      event: 'validate_success',
+    });
   }
 
   /**
