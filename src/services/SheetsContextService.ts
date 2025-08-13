@@ -45,11 +45,17 @@ export class SheetsContextService extends BaseService {
           if (rec.expiresAt <= now) this.memoryStore.delete(key);
         }
       } catch (e) {
-        logger.warn('SheetsContextService: cleanup error', { component: 'SheetsContextService', error: String(e) });
+        logger.warn('SheetsContextService: cleanup error', {
+          component: 'SheetsContextService',
+          error: String(e),
+        });
       }
     }, 60_000);
 
-    logger.info('✅ SheetsContextService инициализирован', { component: 'SheetsContextService', ttl: this.defaultTTL });
+    logger.info('✅ SheetsContextService инициализирован', {
+      component: 'SheetsContextService',
+      ttl: this.defaultTTL,
+    });
   }
 
   protected async onShutdown(): Promise<void> {
@@ -83,11 +89,22 @@ export class SheetsContextService extends BaseService {
     throw new Error('SheetsContextService: пустой ключ контекста');
   }
 
-  public async setContext(key: ContextKey, ctx: Omit<SheetContext, 'updatedAt'>, ttlSec?: number): Promise<void> {
+  public async setContext(
+    key: ContextKey,
+    ctx: Omit<SheetContext, 'updatedAt'>,
+    ttlSec?: number
+  ): Promise<void> {
     const k = this.primaryKey(key);
     const ttl = Math.max(30, ttlSec ?? this.defaultTTL);
-    this.memoryStore.set(k, { value: { ...ctx, updatedAt: Date.now() }, expiresAt: Date.now() + ttl * 1000 });
-    logger.debug('SheetsContextService: контекст сохранён', { component: 'SheetsContextService', key: k, ttl });
+    this.memoryStore.set(k, {
+      value: { ...ctx, updatedAt: Date.now() },
+      expiresAt: Date.now() + ttl * 1000,
+    });
+    logger.debug('SheetsContextService: контекст сохранён', {
+      component: 'SheetsContextService',
+      key: k,
+      ttl,
+    });
   }
 
   public async getContext(key: ContextKey): Promise<SheetContext | null> {
