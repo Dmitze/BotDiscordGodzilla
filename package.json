@@ -12,7 +12,7 @@
     "build": "tsc",
     "postbuild": "tsc-alias",
     "build:watch": "tsc --watch",
-    "clean": "rimraf dist",
+    "clean": "node -e \"try{require('fs').rmSync('dist',{recursive:true,force:true})}catch(e){}\"",
     "prebuild": "npm run clean",
     "deploy": "npm run build && node build/scripts/deploy-production.js",
     "deploy:global": "npm run build && node build/scripts/deploy-production.js global",
@@ -88,6 +88,7 @@
   "dependencies": {
     "@discordjs/builders": "^1.11.2",
     "@discordjs/rest": "^2.5.0",
+    "@google-cloud/vision": "^5.3.3",
     "buffer": "^6.0.3",
     "crypto": "^1.0.1",
     "discord-api-types": "^0.38.11",

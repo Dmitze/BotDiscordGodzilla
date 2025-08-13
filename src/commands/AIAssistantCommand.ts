@@ -8,6 +8,7 @@ import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
 import * as xlsx from 'xlsx';
+import { AnalyticsService } from '@/services/AnalyticsService';
 
 interface AIQueryResult {
   response: string;
@@ -299,6 +300,140 @@ export class AIAssistantCommand extends BaseCommand {
     _context?: string
   ): Promise<AIQueryResult> {
     const q = (query || '').toLowerCase();
+
+    // Інтент: OCR зображень (витягнути текст з картинки)
+    const intentOcrImage = /(картин|изображен|image|photo|png|jpg|jpeg)/i.test(q) && /(ocr|текст|прочитай|извле(ки|чи))/i.test(q);
+    if (intentOcrImage) {
+      if (!this.googleService) {
+        return {
+          response: 'Сервіс Google не ініціалізовано. Перевірте конфігурацію сервісів.',
+          confidence: 0.6,
+          action: 'ocr_image',
+          actionData: { type: 'analyze', format: 'text' },
+        };
+      }
+      const folderId = this.config.google.driveFolderId;
+      if (!folderId) {
+        return {
+          response: 'Не налаштовано GOOGLE_DRIVE_FOLDER_ID. Додайте ID папки у .env.',
+          confidence: 0.7,
+          action: 'ocr_image',
+          actionData: { type: 'analyze', format: 'text' },
+        };
+      }
+      const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || []).filter(w => w.length >= 2).slice(0, 5);
+      const nameQuery = nameTokens.join(' ').trim();
+      let index = await this.googleService.getDriveIndex(folderId);
+      if (!index) index = await this.googleService.buildDriveIndex(folderId, { ttlSeconds: 1800, recursive: true, maxDepth: -1 });
+      const qlc = (s: string) => s.toLowerCase();
+      const matchesName = (name?: string) => !nameQuery || qlc(name || '').includes(qlc(nameQuery));
+      const isImage = (mt?: string) => !!(mt && /^image\//i.test(mt));
+      const candidates = (index || []).filter(f => isImage(f.mimeType ?? undefined) && matchesName(f.name ?? undefined));
+      if (!candidates.length) {
+        return { response: 'Не знайдено відповідних зображень у папці.', confidence: 0.85, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+      }
+      for (const f of candidates.slice(0, 5)) {
+        try {
+          const text = await this.googleService.extractTextFromImage(f as any);
+          if (!text.trim()) continue;
+          const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
+          return { response: `Файл: ${f.name} (id: ${f.id})\n\n${preview}`, confidence: 0.9, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+        } catch (e) {
+          logger.warn('OCR error', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: f.id, err: e instanceof Error ? e.message : String(e) });
+        }
+      }
+      return { response: 'Не вдалося прочитати текст на зображеннях.', confidence: 0.7, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+    }
+
+    // Інтент: базова аналітика по таблицях (группировка/подсчёт по статусам, опционально за месяц)
+    const intentAnalytics = /(группируй|сгруппируй|групу(ва|пу)й|посчитай|підрахуй)/i.test(q) && /(статус|status)/i.test(q);
+    if (intentAnalytics) {
+      if (!this.googleService) {
+        return { response: 'Сервіс Google не ініціалізовано.', confidence: 0.6, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+      }
+      const folderId = this.config.google.driveFolderId;
+      if (!folderId) {
+        return { response: 'Не налаштовано GOOGLE_DRIVE_FOLDER_ID. Додайте ID папки у .env.', confidence: 0.7, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+      }
+      const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || []).filter(w => w.length >= 2).slice(0, 5);
+      const nameQuery = nameTokens.join(' ').trim();
+      // місяці RU/UA для простого фільтру по місяцю
+      const monthMap: Record<string, number> = { 'январ':1, 'лют':2, 'фев':2, 'берез':3, 'март':3, 'квіт':4, 'апрел':4, 'май':5, 'трав':5, 'июн':6, 'черв':6, 'июл':7, 'лип':7, 'авг':8, 'серп':8, 'сен':9, 'верес':9, 'окт':10, 'жовт':10, 'нояб':11, 'листоп':11, 'дек':12, 'груд':12 };
+      const monthKey = Object.keys(monthMap).find(k => q.includes(k));
+      const monthNum = monthKey ? monthMap[monthKey] : undefined;
+
+      const files = await this.googleService.listDriveFilesInFolder(folderId, { recursive: true, type: 'any', limit: 100, maxDepth: -1, ...(nameQuery ? { query: nameQuery } : {}) });
+      const tableLike = files.filter(f => {
+        const mt = f.mimeType || '';
+        return mt === 'application/vnd.google-apps.spreadsheet' || mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || mt === 'application/vnd.ms-excel';
+      });
+      if (!tableLike.length) {
+        return { response: 'Не знайдено таблиць для аналітики.', confidence: 0.85, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+      }
+
+      const readGoogleSheet = async (spreadsheetId: string): Promise<Array<Record<string, any>>> => {
+        try {
+          const sheetTitles = await this.googleService!.listSheets(spreadsheetId);
+          const first = sheetTitles[0] || 'Лист1';
+          const data = await this.googleService!.getSheetData(spreadsheetId, `${first}!A1:Z2000`);
+          const rows = data.values || [];
+          if (!rows.length) return [];
+          const headerRow: string[] = rows[0] ?? [];
+          const rest = rows.slice(1);
+          const headers = headerRow.map(h => String(h ?? '').trim());
+          return rest.map(row => {
+            const obj: Record<string, any> = {};
+            headers.forEach((h, i) => { if (!h) return; obj[h] = row[i]; });
+            return obj;
+          });
+        } catch { return []; }
+      };
+      const readExcelBuffer = (buf: Buffer): Array<Record<string, any>> => {
+        try {
+          const wb = xlsx.read(buf, { type: 'buffer' });
+          const firstName = wb.SheetNames[0];
+          if (!firstName) return [];
+          const sheet = wb.Sheets[firstName];
+          if (!sheet) return [];
+          return xlsx.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+        } catch { return []; }
+      };
+
+      const analytics = new AnalyticsService();
+      for (const f of tableLike.slice(0, 5)) {
+        try {
+          const mt = f.mimeType || '';
+          let rows: Array<Record<string, any>> = [];
+          if (mt === 'application/vnd.google-apps.spreadsheet') rows = await readGoogleSheet(f.id!);
+          else rows = readExcelBuffer(await this.googleService.downloadDriveFile(f.id!));
+          if (!rows.length) continue;
+          // детектируем ключи
+          const schema = analytics.inferSchema(rows);
+          const statusKey = schema.find(k => /статус|status/i.test(k)) || schema[0];
+          const dateKey = schema.find(k => /дата|date/i.test(k));
+          let filtered = rows;
+          if (monthNum && dateKey) {
+            filtered = rows.filter(r => {
+              const v = r[dateKey!];
+              const d = v ? new Date(v) : null;
+              return d instanceof Date && !isNaN(+d) && d.getMonth() + 1 === monthNum;
+            });
+          }
+          if (!statusKey) continue;
+          const groups = analytics.groupBy(filtered, [statusKey]);
+          const lines: string[] = [];
+          for (const [gk, arr] of Object.entries(groups)) {
+            const cnt = analytics.aggregate(arr, null, 'count');
+            lines.push(`${gk || '—'}: ${cnt}`);
+          }
+          const head = `Файл: ${f.name} (id: ${f.id})`;
+          return { response: head + '\n' + lines.join('\n'), confidence: 0.9, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+        } catch (e) {
+          logger.warn('Analytics failed for file', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: f.id, err: e instanceof Error ? e.message : String(e) });
+        }
+      }
+      return { response: 'Не вдалося виконати аналітику: дані порожні або структура невідома.', confidence: 0.7, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+    }
 
     // Інтент: знайти документ (Docs/Word/PDF) і витягти текст
     const intentExtractText =
