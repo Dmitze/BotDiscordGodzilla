@@ -134,13 +134,16 @@ class EventManager {
     this.registerEvent(Events.MessageCreate, (message: Message) => {
       if (message.author.bot) return;
 
-      logger.debug(`💬 Повідомлення від ${message.author.tag}: ${message.content.substring(0, 50)}...`, {
-        type: 'event',
-        event: 'messageCreate',
-        userId: message.author.id,
-        ...(message.guild?.id ? { guildId: message.guild.id } : {}),
-        ...(message.channel?.id ? { channelId: message.channel.id } : {}),
-      });
+      logger.debug(
+        `💬 Повідомлення від ${message.author.tag}: ${message.content.substring(0, 50)}...`,
+        {
+          type: 'event',
+          event: 'messageCreate',
+          userId: message.author.id,
+          ...(message.guild?.id ? { guildId: message.guild.id } : {}),
+          ...(message.channel?.id ? { channelId: message.channel.id } : {}),
+        }
+      );
     });
 
     logger.debug('✅ Стандартні події зареєстровано', {
