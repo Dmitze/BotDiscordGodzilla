@@ -19,7 +19,7 @@ const BASE_SERVICE_CONSTANTS = {
 export abstract class BaseService implements IBaseService {
   public readonly name: string;
   public readonly config: BotConfig;
-  protected isInitialized = false;
+  protected _initialized = false;
   protected startTime: number;
   protected isShuttingDown = false;
   protected retryCount = 0;
@@ -39,10 +39,24 @@ export abstract class BaseService implements IBaseService {
   }
 
   /**
+   * Повертає ім'я сервісу
+   */
+  public getName(): string {
+    return this.name;
+  }
+
+  /**
+   * Ознака, чи сервіс ініціалізовано
+   */
+  public isInitialized(): boolean {
+    return this._initialized;
+  }
+
+  /**
    * Ініціалізація сервісу з детальним логуванням
    */
   public async initialize(): Promise<void> {
-    if (this.isInitialized) {
+    if (this._initialized) {
       logger.warn(`⚠️ Сервіс ${this.name} вже ініціалізовано`, {
         type: 'service',
         event: 'already_initialized',
@@ -85,7 +99,7 @@ export abstract class BaseService implements IBaseService {
         this.initializationTimeout = null;
       }
 
-      this.isInitialized = true;
+      this._initialized = true;
       this.retryCount = 0;
 
       const duration = Date.now() - startTime;
@@ -150,7 +164,7 @@ export abstract class BaseService implements IBaseService {
    * Завершення роботи сервісу з детальним логуванням
    */
   public async shutdown(): Promise<void> {
-    if (!this.isInitialized) {
+    if (!this._initialized) {
       logger.debug(`ℹ️ Сервіс ${this.name} не ініціалізовано, пропускаю зупинку`, {
         type: 'service',
         event: 'shutdown_skip_not_initialized',
@@ -196,7 +210,7 @@ export abstract class BaseService implements IBaseService {
         this.shutdownTimeout = null;
       }
 
-      this.isInitialized = false;
+      this._initialized = false;
       this.isShuttingDown = false;
 
       const duration = Date.now() - shutdownStartTime;
@@ -234,7 +248,7 @@ export abstract class BaseService implements IBaseService {
         this.shutdownTimeout = null;
       }
 
-      this.isInitialized = false;
+      this._initialized = false;
       this.isShuttingDown = false;
 
       throw new Error(
@@ -247,7 +261,7 @@ export abstract class BaseService implements IBaseService {
    * Перевірка здоров'я сервісу з детальним логуванням
    */
   public async healthCheck(): Promise<HealthStatus> {
-    if (!this.isInitialized) {
+    if (!this._initialized) {
       return {
         healthy: false,
         service: this.name,
@@ -321,6 +335,13 @@ export abstract class BaseService implements IBaseService {
   }
 
   /**
+   * Сумісний alias для healthCheck
+   */
+  public async getHealthStatus(): Promise<HealthStatus> {
+    return this.healthCheck();
+  }
+
+  /**
    * Отримання статистики сервісу з детальним логуванням
    */
   public getStats(): ServiceStats {
@@ -330,7 +351,7 @@ export abstract class BaseService implements IBaseService {
         uptime: Date.now() - this.startTime,
         requests: 0,
         errors: 0,
-        isInitialized: this.isInitialized,
+        isInitialized: this._initialized,
         isShuttingDown: this.isShuttingDown,
         retryCount: this.retryCount,
       };
@@ -371,11 +392,11 @@ export abstract class BaseService implements IBaseService {
         uptime: Date.now() - this.startTime,
         requests: 0,
         errors: 1,
-        isInitialized: this.isInitialized,
+        isInitialized: this._initialized,
         isShuttingDown: this.isShuttingDown,
         retryCount: this.retryCount,
         error: error instanceof Error ? error.message : 'Невідома помилка',
-      };
+      } as ServiceStats;
     }
   }
 
@@ -383,7 +404,7 @@ export abstract class BaseService implements IBaseService {
    * Перевірка чи сервіс ініціалізовано
    */
   protected checkInitialized(): void {
-    if (!this.isInitialized) {
+    if (!this._initialized) {
       const error = `Сервіс ${this.name} не ініціалізовано`;
       logger.error(`❌ ${error}`, {
         type: 'service',

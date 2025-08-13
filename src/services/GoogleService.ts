@@ -97,6 +97,7 @@ export class GoogleService extends BaseServiceClass {
     source: 'export' | 'parser' | 'ocr' | 'raw';
     warnings: string[];
   }> {
+    const overallStart = Date.now();
     const meta = await this.getDriveFileMetadata(fileId);
     const mime = String(meta.mimeType || '');
     const modified = meta.modifiedTime ?? '';
@@ -107,6 +108,8 @@ export class GoogleService extends BaseServiceClass {
       const cached = await this.cacheService.get<{ text: string; checksum: string; modifiedTime?: string; source: 'export' | 'parser' | 'ocr' | 'raw'; warnings: string[] }>(baseCacheKey);
       if (cached?.text) {
         this.stats.cacheHits++;
+        // Cache hit: lightweight metrics
+        try { this.metrics?.recordFileOperation({ operation: 'extract_text_cache', status: 'success', mime, fileId }); } catch {}
         return cached;
       }
     } catch {
@@ -122,67 +125,148 @@ export class GoogleService extends BaseServiceClass {
     try {
       if (mime === 'application/vnd.google-apps.document') {
         // Google Docs → экспорт в text/plain
+        const opStart = Date.now();
         const buf = await this.exportFile(fileId, 'text/plain');
         buffer = buf;
         text = buf.toString('utf8');
         source = 'export';
+        try {
+          this.metrics?.recordFileOperation({ operation: 'export_text', status: 'success', mime, fileId });
+          this.metrics?.observeFileOperationLatency('export_text', mime, Date.now() - opStart);
+          this.metrics?.observeTextSizeBytes('export', Buffer.byteLength(text, 'utf8'));
+          if (mime) this.metrics?.incrementMimeType(mime);
+        } catch {}
       } else if (mime === 'application/vnd.google-apps.spreadsheet') {
         // Google Sheets → экспорт в CSV
+        const opStart = Date.now();
         const buf = await this.exportFile(fileId, 'text/csv');
         buffer = buf;
         text = buf.toString('utf8');
         source = 'export';
+        try {
+          this.metrics?.recordFileOperation({ operation: 'export_csv', status: 'success', mime, fileId });
+          this.metrics?.observeFileOperationLatency('export_csv', mime, Date.now() - opStart);
+          this.metrics?.observeTextSizeBytes('export', Buffer.byteLength(text, 'utf8'));
+          if (mime) this.metrics?.incrementMimeType(mime);
+        } catch {}
       } else if (mime === 'application/pdf') {
         // PDF → pdf-parse, при сбое → OCR
+        const dlStart = Date.now();
         const buf = await this.downloadFile(fileId);
         buffer = buf;
         try {
+          this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime, fileId });
+          this.metrics?.observeFileOperationLatency('download', mime, Date.now() - dlStart);
+          this.metrics?.observeTextSizeBytes('download_bytes', buf.length);
+          if (mime) this.metrics?.incrementMimeType(mime);
+        } catch {}
+        try {
+          const parseStart = Date.now();
           const parsed = await pdfParse(buf);
           text = parsed.text || '';
           source = 'parser';
+          try {
+            this.metrics?.recordFileOperation({ operation: 'parse_pdf', status: 'success', mime, fileId });
+            this.metrics?.observeFileOperationLatency('parse_pdf', mime, Date.now() - parseStart);
+            this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(text, 'utf8'));
+          } catch {}
         } catch (e) {
           warnings.push('pdf-parse failed, fallback to OCR');
+          const ocrStart = Date.now();
           text = await this.extractTextFromBuffer(buf);
           source = 'ocr';
+          try {
+            this.metrics?.recordFileOperation({ operation: 'ocr_image', status: 'success', mime, fileId });
+            this.metrics?.observeFileOperationLatency('ocr_image', mime, Date.now() - ocrStart);
+            this.metrics?.observeTextSizeBytes('ocr', Buffer.byteLength(text, 'utf8'));
+          } catch {}
         }
       } else if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mime === 'application/msword') {
         // DOCX/DOC → mammoth (doc → предварительная совместимость ограничена)
+        const dlStart = Date.now();
         const buf = await this.downloadFile(fileId);
         buffer = buf;
         try {
+          this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime, fileId });
+          this.metrics?.observeFileOperationLatency('download', mime, Date.now() - dlStart);
+          this.metrics?.observeTextSizeBytes('download_bytes', buf.length);
+          if (mime) this.metrics?.incrementMimeType(mime);
+        } catch {}
+        try {
           // mammoth в Node ожидает объект { buffer: Buffer }
+          const parseStart = Date.now();
           const { value } = await mammoth.extractRawText({ buffer: buf });
           text = value || '';
           source = 'parser';
+          try {
+            this.metrics?.recordFileOperation({ operation: 'parse_word', status: 'success', mime, fileId });
+            this.metrics?.observeFileOperationLatency('parse_word', mime, Date.now() - parseStart);
+            this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(text, 'utf8'));
+          } catch {}
         } catch (e) {
           warnings.push('mammoth failed, fallback to raw text');
           text = buf.toString('utf8');
           source = 'raw';
+          try {
+            this.metrics?.recordFileOperation({ operation: 'fallback_raw', status: 'success', mime, fileId });
+            this.metrics?.observeTextSizeBytes('raw', Buffer.byteLength(text, 'utf8'));
+          } catch {}
         }
       } else if (/^image\//i.test(mime)) {
         // Изображения → OCR
         const file = await this.getDriveFileMetadata(fileId);
+        const ocrStart = Date.now();
         text = await this.extractTextFromImage(file);
         source = 'ocr';
+        try {
+          this.metrics?.recordFileOperation({ operation: 'ocr_image', status: 'success', mime, fileId });
+          this.metrics?.observeFileOperationLatency('ocr_image', mime, Date.now() - ocrStart);
+          this.metrics?.observeTextSizeBytes('ocr', Buffer.byteLength(text, 'utf8'));
+          if (mime) this.metrics?.incrementMimeType(mime);
+        } catch {}
       } else if (mime === 'text/plain' || mime === 'text/markdown' || mime === 'application/json' || mime === 'text/csv') {
         // Текстовые форматы → прямое чтение
+        const dlStart = Date.now();
         const buf = await this.downloadFile(fileId);
         buffer = buf;
         text = buf.toString('utf8');
         source = 'raw';
+        try {
+          this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime, fileId });
+          this.metrics?.observeFileOperationLatency('download', mime, Date.now() - dlStart);
+          this.metrics?.observeTextSizeBytes('raw', Buffer.byteLength(text, 'utf8'));
+          if (mime) this.metrics?.incrementMimeType(mime);
+        } catch {}
       } else {
         // Неизвестный/бинарный формат → попытка экспортировать в текст, затем OCR как крайний случай
         try {
+          const opStart = Date.now();
           const buf = await this.exportFile(fileId, 'text/plain');
           buffer = buf;
           text = buf.toString('utf8');
           source = 'export';
+          try {
+            this.metrics?.recordFileOperation({ operation: 'export_text', status: 'success', mime, fileId });
+            this.metrics?.observeFileOperationLatency('export_text', mime, Date.now() - opStart);
+            this.metrics?.observeTextSizeBytes('export', Buffer.byteLength(text, 'utf8'));
+            if (mime) this.metrics?.incrementMimeType(mime);
+          } catch {}
         } catch (e) {
           warnings.push('export to text/plain failed, fallback to OCR');
+          const dlStart = Date.now();
           const buf = await this.downloadFile(fileId);
           buffer = buf;
+          const ocrStart = Date.now();
           text = await this.extractTextFromBuffer(buf);
           source = 'ocr';
+          try {
+            this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime, fileId });
+            this.metrics?.observeFileOperationLatency('download', mime, Date.now() - dlStart);
+            this.metrics?.recordFileOperation({ operation: 'ocr_image', status: 'success', mime, fileId });
+            this.metrics?.observeFileOperationLatency('ocr_image', mime, Date.now() - ocrStart);
+            this.metrics?.observeTextSizeBytes('ocr', Buffer.byteLength(text, 'utf8'));
+            if (mime) this.metrics?.incrementMimeType(mime);
+          } catch {}
         }
       }
     } catch (error) {
@@ -195,6 +279,7 @@ export class GoogleService extends BaseServiceClass {
         error: error instanceof Error ? error.message : String(error),
       });
       text = '';
+      try { this.metrics?.recordFileOperation({ operation: 'extract_text', status: 'error', mime, fileId }); } catch {}
     }
 
     // Нормализация и очистка
@@ -211,6 +296,13 @@ export class GoogleService extends BaseServiceClass {
       const ttl = this.config.drive.ttlTextSec ?? 300;
       await this.cacheService.set(baseCacheKey, result, ttl);
     } catch { /* istanbul ignore next */ }
+    // Final overall metrics for extractTextForChat
+    try {
+      this.metrics?.recordFileOperation({ operation: 'extract_text', status: 'success', mime, fileId });
+      this.metrics?.observeFileOperationLatency('extract_text', mime, Date.now() - overallStart);
+      this.metrics?.observeTextSizeBytes(source, Buffer.byteLength(safe, 'utf8'));
+      if (mime) this.metrics?.incrementMimeType(mime);
+    } catch {}
     return result;
   }
 
@@ -2479,6 +2571,7 @@ export class GoogleService extends BaseServiceClass {
    * Витягти текст з Google Docs документа
    */
   private async extractTextFromGoogleDoc(documentId: string): Promise<string> {
+    const start = Date.now();
     if (!this.docs) throw new Error('Docs API не ініціалізовано');
     const res = await this.docs.documents.get({ documentId });
     const body = res.data.body;
@@ -2492,7 +2585,14 @@ export class GoogleService extends BaseServiceClass {
         if (typeof text === 'string' && text.length > 0) parts.push(text);
       }
     }
-    return parts.join('');
+    const text = parts.join('');
+    try {
+      this.metrics?.recordFileOperation({ operation: 'docs_get', status: 'success', mime: 'application/vnd.google-apps.document', fileId: documentId });
+      this.metrics?.observeFileOperationLatency('docs_get', 'application/vnd.google-apps.document', Date.now() - start);
+      this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(text, 'utf8'));
+      this.metrics?.incrementMimeType('application/vnd.google-apps.document');
+    } catch {}
+    return text;
   }
 
   /** Type guard: элемент тела Google Docs, который содержит параграф с элементами */
@@ -2509,9 +2609,38 @@ export class GoogleService extends BaseServiceClass {
     const mime = file.mimeType || '';
     try {
       if (!file.id) return '';
-      if (mime === 'application/vnd.google-apps.document') return await this.extractTextFromGoogleDoc(file.id);
-      if (mime === 'application/pdf') return await this.extractFromPdf(file.id);
-      if (this.isWordMime(mime)) return await this.extractFromDocWord(file.id);
+      // MIME counter
+      try { if (mime) this.metrics?.incrementMimeType(mime); } catch {}
+      if (mime === 'application/vnd.google-apps.document') {
+        const started = Date.now();
+        const t = await this.extractTextFromGoogleDoc(file.id);
+        try {
+          this.metrics?.recordFileOperation({ operation: 'extract_file_text', status: 'success', mime, fileId: file.id });
+          this.metrics?.observeFileOperationLatency('extract_file_text', mime, Date.now() - started);
+          this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(t, 'utf8'));
+        } catch {}
+        return t;
+      }
+      if (mime === 'application/pdf') {
+        const started = Date.now();
+        const t = await this.extractFromPdf(file.id);
+        try {
+          this.metrics?.recordFileOperation({ operation: 'extract_file_text', status: 'success', mime, fileId: file?.id ?? null });
+          this.metrics?.observeFileOperationLatency('extract_file_text', mime, Date.now() - started);
+          this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(t, 'utf8'));
+        } catch {}
+        return t;
+      }
+      if (this.isWordMime(mime)) {
+        const started = Date.now();
+        const t = await this.extractFromDocWord(file.id);
+        try {
+          this.metrics?.recordFileOperation({ operation: 'extract_file_text', status: 'success', mime, fileId: file?.id ?? null });
+          this.metrics?.observeFileOperationLatency('extract_file_text', mime, Date.now() - started);
+          this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(t, 'utf8'));
+        } catch {}
+        return t;
+      }
       return '';
     } catch (error) {
       logger.error('❌ Помилка екстракції тексту з файлу', {
@@ -2522,6 +2651,7 @@ export class GoogleService extends BaseServiceClass {
         mime,
         error: error instanceof Error ? error.message : String(error),
       });
+      try { this.metrics?.recordFileOperation({ operation: 'extract_file_text', status: 'error', mime, fileId: file?.id ?? null }); } catch {}
       return '';
     }
   }
@@ -2538,15 +2668,41 @@ export class GoogleService extends BaseServiceClass {
 
   /** Извлечение текста из PDF */
   private async extractFromPdf(fileId: string): Promise<string> {
+    const dlStart = Date.now();
     const buf = await this.downloadFile(fileId);
+    try {
+      this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime: 'application/pdf', fileId });
+      this.metrics?.observeFileOperationLatency('download', 'application/pdf', Date.now() - dlStart);
+      this.metrics?.observeTextSizeBytes('download_bytes', buf.length);
+    } catch {}
+    const parseStart = Date.now();
     const parsed = await pdfParse(buf);
-    return parsed.text || '';
+    const text = parsed.text || '';
+    try {
+      this.metrics?.recordFileOperation({ operation: 'parse_pdf', status: 'success', mime: 'application/pdf', fileId });
+      this.metrics?.observeFileOperationLatency('parse_pdf', 'application/pdf', Date.now() - parseStart);
+      this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(text, 'utf8'));
+    } catch {}
+    return text;
   }
 
   /** Извлечение текста из DOC/DOCX */
   private async extractFromDocWord(fileId: string): Promise<string> {
+    const dlStart = Date.now();
     const buf = await this.downloadFile(fileId);
+    try {
+      this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', fileId });
+      this.metrics?.observeFileOperationLatency('download', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', Date.now() - dlStart);
+      this.metrics?.observeTextSizeBytes('download_bytes', buf.length);
+    } catch {}
+    const parseStart = Date.now();
     const result = await mammoth.extractRawText({ buffer: buf });
-    return result.value || '';
+    const text = result.value || '';
+    try {
+      this.metrics?.recordFileOperation({ operation: 'parse_word', status: 'success', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', fileId });
+      this.metrics?.observeFileOperationLatency('parse_word', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', Date.now() - parseStart);
+      this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(text, 'utf8'));
+    } catch {}
+    return text;
   }
 }

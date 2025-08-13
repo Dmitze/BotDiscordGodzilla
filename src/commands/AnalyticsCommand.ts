@@ -1,40 +1,35 @@
 /**
- * 📊 Команди аналітики та звітності для ЗСУ
- * Спеціалізовані звіти та аналіз даних
+ * 📊 Команди аналітики та звітності
  */
 
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import type { BotConfig, CommandExecuteOptions, LogMeta } from '@/types';
+import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 
 export class AnalyticsCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super('analytics', '📊 Аналітика та звітність ЗСУ', config, {}, (builder: any) => {
+    // Назва та опис згідно з тестами
+    super('аналітика', 'Аналітика та звітність', config, {}, (builder: any) => {
       return builder
-        .addSubcommand((subcommand: any) =>
-          subcommand
-            .setName('report')
-            .setDescription('📋 Генерація звітів')
-            .addStringOption((option: any) =>
-              option
-                .setName('type')
+        // підкоманда: звіт
+        .addSubcommand((sub: any) =>
+          sub
+            .setName('звіт')
+            .setDescription('Генерація звітів')
+            .addStringOption((opt: any) =>
+              opt
+                .setName('тип')
                 .setDescription('Тип звіту')
                 .setRequired(true)
                 .addChoices(
                   { name: 'Щоденний звіт', value: 'daily' },
                   { name: 'Тижневий звіт', value: 'weekly' },
-                  { name: 'Місячний звіт', value: 'monthly' },
-                  { name: 'Звіт по особовому складу', value: 'personnel' },
-                  { name: 'Звіт по техніці', value: 'equipment' },
-                  { name: 'Звіт по операціях', value: 'operations' },
-                  { name: 'Звіт по МТЗ', value: 'materials' },
-                  { name: 'Звіт по наказах', value: 'orders' }
+                  { name: 'Місячний звіт', value: 'monthly' }
                 )
             )
-            .addStringOption((option: any) =>
-              option
-                .setName('format')
+            .addStringOption((opt: any) =>
+              opt
+                .setName('формат')
                 .setDescription('Формат звіту')
                 .setRequired(false)
                 .addChoices(
@@ -44,353 +39,144 @@ export class AnalyticsCommand extends BaseCommand {
                 )
             )
         )
-        .addSubcommand((subcommand: any) =>
-          subcommand
-            .setName('stats')
-            .setDescription('📈 Статистика та метрики')
-            .addStringOption((option: any) =>
-              option
-                .setName('category')
+        // підкоманда: статистика
+        .addSubcommand((sub: any) =>
+          sub
+            .setName('статистика')
+            .setDescription('Статистика та метрики')
+            .addStringOption((opt: any) =>
+              opt
+                .setName('категорія')
                 .setDescription('Категорія статистики')
                 .setRequired(true)
                 .addChoices(
                   { name: 'Загальна статистика', value: 'general' },
-                  { name: 'Бойова готовність', value: 'combat' },
-                  { name: 'Особовий склад', value: 'personnel' },
-                  { name: 'Техніка', value: 'equipment' },
-                  { name: 'Операції', value: 'operations' },
-                  { name: 'МТЗ', value: 'materials' },
-                  { name: 'Ефективність', value: 'efficiency' }
+                  { name: 'Бойова готовність', value: 'combat' }
                 )
             )
         )
-        .addSubcommand((subcommand: any) =>
-          subcommand
-            .setName('forecast')
-            .setDescription('🔮 Прогнозування та планування')
-            .addStringOption((option: any) =>
-              option
-                .setName('type')
-                .setDescription('Тип прогнозу')
+        // підкоманда: тренди
+        .addSubcommand((sub: any) =>
+          sub
+            .setName('тренди')
+            .setDescription('Тренди використання')
+            .addStringOption((opt: any) =>
+              opt
+                .setName('період')
+                .setDescription('Період (напр. 7d, 30d)')
                 .setRequired(true)
-                .addChoices(
-                  { name: 'Потреби в МТЗ', value: 'materials' },
-                  { name: 'Ремонт техніки', value: 'repairs' },
-                  { name: 'Особовий склад', value: 'personnel' },
-                  { name: 'Оперативні потреби', value: 'operations' },
-                  { name: 'Бюджет', value: 'budget' }
-                )
-            )
-            .addIntegerOption((option: any) =>
-              option
-                .setName('period')
-                .setDescription('Період прогнозування (днів)')
-                .setRequired(false)
-                .setMinValue(1)
-                .setMaxValue(365)
             )
         )
-        .addSubcommand((subcommand: any) =>
-          subcommand
-            .setName('compare')
-            .setDescription('⚖️ Порівняльний аналіз')
-            .addStringOption((option: any) =>
-              option
-                .setName('object')
-                .setDescription("Об'єкт порівняння")
-                .setRequired(true)
-                .addChoices(
-                  { name: 'Підрозділи', value: 'units' },
-                  { name: 'Періоди', value: 'periods' },
-                  { name: 'Показники', value: 'metrics' },
-                  { name: 'Регіони', value: 'regions' }
-                )
-            )
-            .addStringOption((option: any) =>
-              option
-                .setName('metric')
-                .setDescription('Метрика для порівняння')
-                .setRequired(true)
-                .addChoices(
-                  { name: 'Ефективність', value: 'efficiency' },
-                  { name: 'Витрати', value: 'costs' },
-                  { name: 'Результати', value: 'results' },
-                  { name: 'Час виконання', value: 'time' }
-                )
-            )
-            .addIntegerOption((option: any) =>
-              option
-                .setName('period')
-                .setDescription('Період аналізу (днів)')
-                .setRequired(false)
-                .setMinValue(1)
-                .setMaxValue(365)
-            )
+        // підкоманда: інсайти
+        .addSubcommand((sub: any) =>
+          sub.setName('інсайти').setDescription('Корисні інсайти та рекомендації')
         );
     });
   }
 
-  /**
-   * Виконання команди
-   */
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
 
     try {
-      const subcommand = interaction.options.getSubcommand();
+      const sub = interaction.options.getSubcommand();
 
-      switch (subcommand) {
-        case 'report':
+      switch (sub) {
+        case 'звіт':
           await this.handleReport(interaction);
           break;
-        case 'stats':
+        case 'статистика':
           await this.handleStatistics(interaction);
           break;
-        case 'forecast':
-          await this.handleForecast(interaction);
+        case 'тренди':
+          await this.handleTrends(interaction);
           break;
-        case 'compare':
-          await this.handleComparison(interaction);
+        case 'інсайти':
+          await this.handleInsights(interaction);
           break;
         default:
-          await interaction.reply('❌ Невідома підкоманда');
+          await interaction.reply({ content: '❌ Невідома підкоманда', ephemeral: true });
       }
     } catch (error) {
-      logger.error('❌ Помилка команди аналітики', { error } as LogMeta);
-      await interaction.reply('❌ Помилка аналітики');
+      logger.error('Помилка виконання команди аналітики', {
+        type: 'command',
+        component: 'аналітика',
+        event: 'execute_error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      await interaction.reply({ content: '❌ Помилка аналітики', ephemeral: true });
     }
   }
 
-  /**
-   * Обробка генерації звітів
-   */
   private async handleReport(interaction: any): Promise<void> {
-    const type = interaction.options.getString('type', true);
-    const format = interaction.options.getString('format') || 'text';
+    const type = interaction.options.getString('тип', true);
+    const format = interaction.options.getString('формат') || 'text';
 
-    const embed = new EmbedBuilder()
-      .setTitle('📋 Генерація звітів')
-      .setColor(0x00ff88)
-      .setTimestamp();
+    try {
+      const analyticsService = interaction.client.serviceContainer.get('AnalyticsService');
+      const report = await analyticsService.generateReport(type, format);
 
-    const reportTypeName = this.getReportTypeName(type);
-    const formatName = format === 'text' ? 'Текстовий' : format.toUpperCase();
+      if (!report || !report.data || Object.keys(report.data).length === 0) {
+        await interaction.reply({ content: '⚠️ Дані для звіту відсутні', ephemeral: true });
+        return;
+      }
 
-    embed.setDescription(`**${reportTypeName}**\n\nФормат: ${formatName}`);
-    embed.addFields(
-      { name: 'Статус', value: '✅ Звіт створено', inline: true },
-      { name: 'Розмір', value: '2.5 MB', inline: true },
-      { name: 'Час створення', value: '15 секунд', inline: true }
-    );
+      let content = `✅ Звіт згенеровано. Тип: ${this.getReportTypeName(type)}. Формат: ${format}.`;
+      if (report.exportUrl) {
+        content += `\nПосилання на експорт: ${report.exportUrl}`;
+      }
 
-    // Додаємо кнопку для завантаження
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('download_report')
-        .setLabel('📥 Завантажити звіт')
-        .setStyle(ButtonStyle.Primary)
-    );
-
-    await interaction.reply({ embeds: [embed], components: [row] });
-  }
-
-  /**
-   * Обробка статистики
-   */
-  private async handleStatistics(interaction: any): Promise<void> {
-    const category = interaction.options.getString('category', true);
-
-    const embed = new EmbedBuilder()
-      .setTitle('📈 Статистика та метрики')
-      .setColor(0xff6b6b)
-      .setTimestamp();
-
-    const categoryName = this.getCategoryName(category);
-
-    embed.setDescription(`**${categoryName}**`);
-
-    switch (category) {
-      case 'general':
-        embed.addFields(
-          { name: 'Загальна чисельність', value: '1,250', inline: true },
-          { name: 'Бойова готовність', value: '95%', inline: true },
-          { name: 'Техніка в строю', value: '87%', inline: true }
-        );
-        break;
-      case 'combat':
-        embed.addFields(
-          { name: 'Бойова готовність', value: '95%', inline: true },
-          { name: 'Готовність до виконання', value: '92%', inline: true },
-          { name: 'Забезпеченість', value: '88%', inline: true }
-        );
-        break;
-      case 'personnel':
-        embed.addFields(
-          { name: 'Особовий склад', value: '1,250', inline: true },
-          { name: 'Офіцери', value: '150', inline: true },
-          { name: 'Сержанти', value: '300', inline: true }
-        );
-        break;
-      case 'equipment':
-        embed.addFields(
-          { name: 'Техніка в строю', value: '87%', inline: true },
-          { name: 'На ремонті', value: '8%', inline: true },
-          { name: 'Резерв', value: '5%', inline: true }
-        );
-        break;
-      case 'operations':
-        embed.addFields(
-          { name: 'Активні операції', value: '5', inline: true },
-          { name: 'Завершені операції', value: '12', inline: true },
-          { name: 'Успішність', value: '94%', inline: true }
-        );
-        break;
-      case 'materials':
-        embed.addFields(
-          { name: 'МТЗ в наявності', value: '85%', inline: true },
-          { name: 'Потреби', value: '15%', inline: true },
-          { name: 'Поставки', value: 'В процесі', inline: true }
-        );
-        break;
-      case 'efficiency':
-        embed.addFields(
-          { name: 'Загальна ефективність', value: '92%', inline: true },
-          { name: 'Оперативна ефективність', value: '89%', inline: true },
-          { name: 'Логістична ефективність', value: '94%', inline: true }
-        );
-        break;
-      default:
-        embed.addFields({ name: 'Дані', value: 'Недоступні', inline: false });
+      await interaction.reply({ content });
+    } catch (error) {
+      await interaction.reply({ content: '❌ Помилка генерації звіту', ephemeral: true });
     }
-
-    await interaction.reply({ embeds: [embed] });
   }
 
-  /**
-   * Обробка прогнозування
-   */
-  private async handleForecast(interaction: any): Promise<void> {
-    const type = interaction.options.getString('type', true);
-    const period = interaction.options.getInteger('period') || 30;
-
-    const embed = new EmbedBuilder()
-      .setTitle('🔮 Прогнозування та планування')
-      .setColor(0x9932cc)
-      .setTimestamp();
-
-    const forecastTypeName = this.getForecastTypeName(type);
-
-    embed.setDescription(`**${forecastTypeName}**\n\nПеріод: ${period} днів`);
-    embed.addFields(
-      { name: 'Прогнозована потреба', value: '+15%', inline: true },
-      { name: 'Рекомендації', value: 'Збільшити поставки', inline: true },
-      { name: 'Впевненість', value: '85%', inline: true }
-    );
-
-    await interaction.reply({ embeds: [embed] });
+  private async handleStatistics(interaction: any): Promise<void> {
+    const category = interaction.options.getString('категорія', true);
+    try {
+      const analyticsService = interaction.client.serviceContainer.get('AnalyticsService');
+      const stats = await analyticsService.getStatistics(category);
+      await interaction.reply({ content: `📈 Статистика (${this.getCategoryName(category)}): ${JSON.stringify(stats)}` });
+    } catch (error) {
+      await interaction.reply({ content: '❌ Помилка отримання статистики', ephemeral: true });
+    }
   }
 
-  /**
-   * Обробка порівняльного аналізу
-   */
-  private async handleComparison(interaction: any): Promise<void> {
-    const object = interaction.options.getString('object', true);
-    const metric = interaction.options.getString('metric', true);
-    const period = interaction.options.getInteger('period') || 30;
-
-    const embed = new EmbedBuilder()
-      .setTitle('⚖️ Порівняльний аналіз')
-      .setColor(0xff9900)
-      .setTimestamp();
-
-    const objectName = this.getObjectName(object);
-    const metricName = this.getMetricName(metric);
-
-    embed.setDescription(`**${objectName}**\n\nМетрика: ${metricName}\nПеріод: ${period} днів`);
-    embed.addFields(
-      { name: 'Середнє значення', value: '85%', inline: true },
-      { name: 'Максимум', value: '95%', inline: true },
-      { name: 'Мінімум', value: '75%', inline: true }
-    );
-
-    await interaction.reply({ embeds: [embed] });
+  private async handleTrends(interaction: any): Promise<void> {
+    const period = interaction.options.getString('період', true);
+    try {
+      const analyticsService = interaction.client.serviceContainer.get('AnalyticsService');
+      const trends = await analyticsService.getTrends(period);
+      await interaction.reply({ content: `📊 Тренди (${period}): ${JSON.stringify(trends)}` });
+    } catch (error) {
+      await interaction.reply({ content: '❌ Помилка отримання трендів', ephemeral: true });
+    }
   }
 
-  /**
-   * Отримання назви типу звіту
-   */
+  private async handleInsights(interaction: any): Promise<void> {
+    try {
+      const analyticsService = interaction.client.serviceContainer.get('AnalyticsService');
+      const data = await analyticsService.getInsights();
+      await interaction.reply({ content: `💡 Інсайти: ${JSON.stringify(data)}` });
+    } catch (error) {
+      await interaction.reply({ content: '❌ Помилка отримання інсайтів', ephemeral: true });
+    }
+  }
+
   private getReportTypeName(type: string): string {
-    const typeNames: Record<string, string> = {
+    const map: Record<string, string> = {
       daily: 'Щоденний звіт',
       weekly: 'Тижневий звіт',
       monthly: 'Місячний звіт',
-      personnel: 'Звіт по особовому складу',
-      equipment: 'Звіт по техніці',
-      operations: 'Звіт по операціях',
-      materials: 'Звіт по МТЗ',
-      orders: 'Звіт по наказах',
     };
-
-    return typeNames[type] || type;
+    return map[type] || type;
   }
 
-  /**
-   * Отримання назви категорії
-   */
   private getCategoryName(category: string): string {
-    const categoryNames: Record<string, string> = {
+    const map: Record<string, string> = {
       general: 'Загальна статистика',
       combat: 'Бойова готовність',
-      personnel: 'Особовий склад',
-      equipment: 'Техніка',
-      operations: 'Операції',
-      materials: 'МТЗ',
-      efficiency: 'Ефективність',
     };
-
-    return categoryNames[category] || category;
-  }
-
-  /**
-   * Отримання назви типу прогнозу
-   */
-  private getForecastTypeName(type: string): string {
-    const typeNames: Record<string, string> = {
-      materials: 'Потреби в МТЗ',
-      repairs: 'Ремонт техніки',
-      personnel: 'Особовий склад',
-      operations: 'Оперативні потреби',
-      budget: 'Бюджет',
-    };
-
-    return typeNames[type] || type;
-  }
-
-  /**
-   * Отримання назви об'єкта
-   */
-  private getObjectName(object: string): string {
-    const objectNames: Record<string, string> = {
-      units: 'Підрозділи',
-      periods: 'Періоди',
-      metrics: 'Показники',
-      regions: 'Регіони',
-    };
-
-    return objectNames[object] || object;
-  }
-
-  /**
-   * Отримання назви метрики
-   */
-  private getMetricName(metric: string): string {
-    const metricNames: Record<string, string> = {
-      efficiency: 'Ефективність',
-      costs: 'Витрати',
-      results: 'Результати',
-      time: 'Час виконання',
-    };
-
-    return metricNames[metric] || metric;
+    return map[category] || category;
   }
 }

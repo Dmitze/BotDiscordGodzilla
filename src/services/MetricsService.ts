@@ -36,6 +36,11 @@ interface MetricsCollection {
   aiResponseTime: Histogram<string>;
   googleApiRequestsTotal: Counter<string>;
   googleApiResponseTime: Histogram<string>;
+  // File/MIME analytics
+  fileOperationsTotal: Counter<string>;
+  fileOperationLatency: Histogram<string>;
+  textSizeBytes: Histogram<string>;
+  mimeTypeTotal: Counter<string>;
 }
 
 export class MetricsService extends BaseServiceClass {
@@ -258,6 +263,37 @@ export class MetricsService extends BaseServiceClass {
           help: 'Час відповіді Google API',
           labelNames: ['service'],
           buckets: [0.1, 0.5, 1, 2, 5, 10],
+          registers: [this.registry],
+        }),
+
+        // Файлові метрики та MIME-аналітика
+        fileOperationsTotal: new Counter({
+          name: 'discord_bot_file_operations_total',
+          help: 'Кількість файлових операцій',
+          labelNames: ['operation', 'status', 'mime', 'fileId', 'userId'],
+          registers: [this.registry],
+        }),
+
+        fileOperationLatency: new Histogram({
+          name: 'discord_bot_file_operation_latency_seconds',
+          help: 'Затримка файлових операцій',
+          labelNames: ['operation', 'mime'],
+          buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+          registers: [this.registry],
+        }),
+
+        textSizeBytes: new Histogram({
+          name: 'discord_bot_text_size_bytes',
+          help: 'Розмір оброблюваного тексту в байтах',
+          labelNames: ['source'],
+          buckets: [128, 512, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304],
+          registers: [this.registry],
+        }),
+
+        mimeTypeTotal: new Counter({
+          name: 'discord_bot_mime_type_total',
+          help: 'Лічильник появ MIME-типів',
+          labelNames: ['mime'],
           registers: [this.registry],
         }),
       };
@@ -558,6 +594,51 @@ export class MetricsService extends BaseServiceClass {
       this.metrics.googleApiRequestsTotal.inc({ service, endpoint, status });
       this.metrics.googleApiResponseTime.observe({ service }, duration / 1000);
     }
+  }
+
+  /**
+   * Запис файлової операції (інкремент лічильника з повними мітками)
+   */
+  public recordFileOperation(params: {
+    operation: string;
+    status: 'success' | 'error' | string;
+    mime?: string | null;
+    fileId?: string | null;
+    userId?: string | null;
+  }): void {
+    if (!this.metrics) return;
+    const { operation, status, mime, fileId, userId } = params;
+    this.metrics.fileOperationsTotal.inc({
+      operation,
+      status,
+      mime: mime ?? 'unknown',
+      fileId: fileId ?? 'unknown',
+      userId: userId ?? 'unknown',
+    });
+  }
+
+  /**
+   * Спостереження затримки файлової операції (секунди)
+   */
+  public observeFileOperationLatency(operation: string, mime: string | null, durationMs: number): void {
+    if (!this.metrics) return;
+    this.metrics.fileOperationLatency.observe({ operation, mime: mime ?? 'unknown' }, durationMs / 1000);
+  }
+
+  /**
+   * Спостереження розміру тексту в байтах (для OCR/LLM/парсингу)
+   */
+  public observeTextSizeBytes(source: string, sizeBytes: number): void {
+    if (!this.metrics) return;
+    this.metrics.textSizeBytes.observe({ source }, sizeBytes);
+  }
+
+  /**
+   * Лічильник появ MIME-типів
+   */
+  public incrementMimeType(mime: string): void {
+    if (!this.metrics) return;
+    this.metrics.mimeTypeTotal.inc({ mime });
   }
 
   /**
