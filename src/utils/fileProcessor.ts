@@ -140,10 +140,7 @@ export class FileProcessor {
    */
   private ensureDirectories(): void {
     try {
-      const directories = [
-        FILE_PROCESSOR_CONSTANTS.TEMP_DIR,
-        FILE_PROCESSOR_CONSTANTS.BACKUP_DIR,
-      ];
+      const directories = [FILE_PROCESSOR_CONSTANTS.TEMP_DIR, FILE_PROCESSOR_CONSTANTS.BACKUP_DIR];
 
       for (const dir of directories) {
         if (!existsSync(dir)) {
@@ -354,12 +351,16 @@ export class FileProcessor {
 
       // Перевірка розміру
       if (stats.size > FILE_PROCESSOR_CONSTANTS.MAX_FILE_SIZE) {
-        errors.push(`Файл занадто великий (${stats.size} байт, максимум ${FILE_PROCESSOR_CONSTANTS.MAX_FILE_SIZE})`);
+        errors.push(
+          `Файл занадто великий (${stats.size} байт, максимум ${FILE_PROCESSOR_CONSTANTS.MAX_FILE_SIZE})`
+        );
       }
 
       // Перевірка імені файлу
       if (name.length > FILE_PROCESSOR_CONSTANTS.MAX_FILENAME_LENGTH) {
-        errors.push(`Ім'я файлу занадто довге (${name.length} символів, максимум ${FILE_PROCESSOR_CONSTANTS.MAX_FILENAME_LENGTH})`);
+        errors.push(
+          `Ім'я файлу занадто довге (${name.length} символів, максимум ${FILE_PROCESSOR_CONSTANTS.MAX_FILENAME_LENGTH})`
+        );
       }
 
       // Перевірка розширення
@@ -398,7 +399,9 @@ export class FileProcessor {
         warnings,
       };
     } catch (error) {
-      errors.push(`Помилка валідації: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
+      errors.push(
+        `Помилка валідації: ${error instanceof Error ? error.message : 'Невідома помилка'}`
+      );
       return this.createFileInfo(filePath, errors, warnings);
     }
   }
@@ -517,7 +520,10 @@ export class FileProcessor {
    */
   private generateOperationId(type: string, filePath: string): string {
     const timestamp = Date.now();
-    const hash = require('crypto').createHash('md5').update(`${type}:${filePath}:${timestamp}`).digest('hex');
+    const hash = require('crypto')
+      .createHash('md5')
+      .update(`${type}:${filePath}:${timestamp}`)
+      .digest('hex');
     return `${type}_${hash.substring(0, 8)}`;
   }
 
@@ -628,8 +634,11 @@ export const fileProcessor = new FileProcessor();
 
 // Експорт функцій для зручності
 export const readFile = (filePath: string) => fileProcessor.readFile(filePath);
-export const writeFile = (filePath: string, content: string | Buffer, options?: { backup?: boolean; validate?: boolean }) =>
-  fileProcessor.writeFile(filePath, content, options);
+export const writeFile = (
+  filePath: string,
+  content: string | Buffer,
+  options?: { backup?: boolean; validate?: boolean }
+) => fileProcessor.writeFile(filePath, content, options);
 export const getFileProcessorStats = () => fileProcessor.getStats();
 export const cleanupFileProcessor = () => fileProcessor.cleanup();
-export default fileProcessor; 
+export default fileProcessor;
