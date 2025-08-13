@@ -51,12 +51,9 @@ class Pagination {
     this.fields = options.fields || [];
     this.footer = options.footer || '';
     this.timestamp = options.timestamp || new Date();
-    
+
     this.totalItems = this.data.length;
-    this.totalPages = Math.min(
-      Math.ceil(this.totalItems / this.itemsPerPage),
-      this.maxPages
-    );
+    this.totalPages = Math.min(Math.ceil(this.totalItems / this.itemsPerPage), this.maxPages);
   }
 
   /**
@@ -155,12 +152,12 @@ class Pagination {
       pageData.forEach((item, index) => {
         const fieldName = this.formatFieldName(item, index);
         const fieldValue = this.formatFieldValue(item, index);
-        
+
         if (fieldName && fieldValue) {
           embed.addFields({
             name: fieldName,
             value: fieldValue,
-            inline: true
+            inline: true,
           });
         }
       });
@@ -168,7 +165,7 @@ class Pagination {
       embed.addFields({
         name: 'Немає даних',
         value: 'На цій сторінці немає даних для відображення',
-        inline: false
+        inline: false,
       });
     }
 
@@ -274,10 +271,10 @@ class Pagination {
   private formatObjectValue(obj: any): string {
     try {
       const entries = Object.entries(obj).slice(0, 3); // Беремо перші 3 поля
-      const formatted = entries.map(([key, value]) => 
-        `${this.capitalizeFirst(key)}: ${this.formatValue(value)}`
-      ).join('\n');
-      
+      const formatted = entries
+        .map(([key, value]) => `${this.capitalizeFirst(key)}: ${this.formatValue(value)}`)
+        .join('\n');
+
       return this.truncateText(formatted, 100);
     } catch (error) {
       return 'Помилка форматування';
@@ -308,14 +305,14 @@ class Pagination {
    */
   private createFooterText(): string {
     const parts: string[] = [];
-    
+
     if (this.footer) {
       parts.push(this.footer);
     }
-    
+
     parts.push(`Сторінка ${this.currentPage + 1} з ${this.totalPages}`);
     parts.push(`Всього елементів: ${this.totalItems}`);
-    
+
     return parts.join(' • ');
   }
 
@@ -352,7 +349,11 @@ class Pagination {
   /**
    * Створення пагінації з фільтром
    */
-  static createWithFilter(data: any[], filterFn: (item: any) => boolean, options: PaginationOptions = {}): Pagination {
+  static createWithFilter(
+    data: any[],
+    filterFn: (item: any) => boolean,
+    options: PaginationOptions = {}
+  ): Pagination {
     const filteredData = data.filter(filterFn);
     return new Pagination(filteredData, options);
   }
@@ -360,7 +361,11 @@ class Pagination {
   /**
    * Створення пагінації з сортуванням
    */
-  static createWithSort(data: any[], sortFn: (a: any, b: any) => number, options: PaginationOptions = {}): Pagination {
+  static createWithSort(
+    data: any[],
+    sortFn: (a: any, b: any) => number,
+    options: PaginationOptions = {}
+  ): Pagination {
     const sortedData = [...data].sort(sortFn);
     return new Pagination(sortedData, options);
   }
@@ -376,7 +381,12 @@ class Pagination {
   /**
    * Створення пагінації для пошуку
    */
-  static createForSearch(data: any[], searchTerm: string, searchFields: string[] = [], options: PaginationOptions = {}): Pagination {
+  static createForSearch(
+    data: any[],
+    searchTerm: string,
+    searchFields: string[] = [],
+    options: PaginationOptions = {}
+  ): Pagination {
     if (!searchTerm) {
       return new Pagination(data, options);
     }
@@ -389,8 +399,8 @@ class Pagination {
           return value && String(value).toLowerCase().includes(searchLower);
         });
       } else {
-        return Object.values(item).some(value => 
-          value && String(value).toLowerCase().includes(searchLower)
+        return Object.values(item).some(
+          value => value && String(value).toLowerCase().includes(searchLower)
         );
       }
     });
@@ -400,4 +410,4 @@ class Pagination {
 }
 
 export default Pagination;
-export { Pagination }; 
+export { Pagination };
