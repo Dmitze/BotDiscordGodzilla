@@ -3,7 +3,13 @@
  * Централізоване управління всіма командами
  */
 
-import { Collection, ChatInputCommandInteraction, GuildMember, EmbedBuilder, Events } from 'discord.js';
+import {
+  Collection,
+  ChatInputCommandInteraction,
+  GuildMember,
+  EmbedBuilder,
+  Events,
+} from 'discord.js';
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
@@ -36,6 +42,7 @@ interface ICommand {
 }
 
 export class CommandManager {
+  // Nodemon touch: ensure restart after hotfix
   private bot: any;
   private config: BotConfig;
   private commands: Collection<string, ICommand>;
@@ -52,7 +59,7 @@ export class CommandManager {
       totalCommands: 0,
       categories: 0,
       commandsByCategory: {},
-      lastUsed: new Date()
+      lastUsed: new Date(),
     };
   }
 
@@ -92,25 +99,20 @@ export class CommandManager {
    */
   private async loadCommands(): Promise<void> {
     try {
-      // Отримуємо GoogleService та SheetsContextService з контейнера сервісів (опційно)
-      let googleService: GoogleService | undefined;
-      let sheetsContext: SheetsContextService | undefined;
-      try {
-        if (this.bot?.serviceContainer?.has('google')) {
-          googleService = this.bot.serviceContainer.get('google') as unknown as GoogleService;
-        }
-        if (this.bot?.serviceContainer?.has('sheetsContext')) {
-          sheetsContext = this.bot.serviceContainer.get('sheetsContext') as unknown as SheetsContextService;
-        }
-      } catch {
-        // сервіс може бути не зареєстрований — це не критична помилка для ініціалізації команд
-      }
+      // Отримуємо сервіси через Bot.getService() (проксі до ServiceManager/ServiceContainer)
+      // Це гарантує доступ до сервісів, створених у ServiceManager
+      const googleService = (this.bot?.getService?.('google') ?? undefined) as
+        | GoogleService
+        | undefined;
+      const sheetsContext = (this.bot?.getService?.('sheetsContext') ?? undefined) as
+        | SheetsContextService
+        | undefined;
 
       // Створюємо екземпляри всіх команд
       const commandInstances = [
         new SearchCommand(this.config, googleService),
         new PerformanceCommand(this.config),
-        new AIAssistantCommand(this.config),
+        new AIAssistantCommand(this.config, googleService),
         new DocumentsCommand(this.config),
         new FileManagerCommand(this.config),
         new OperationsCommand(this.config),
@@ -184,7 +186,7 @@ export class CommandManager {
    */
   private getCommandCategory(command: ICommand): string {
     const name = command.getName();
-    
+
     if (name.includes('пошук') || name.includes('search')) {
       return 'Пошук';
     }
@@ -206,7 +208,7 @@ export class CommandManager {
     if (name.includes('аналітика') || name.includes('analytics')) {
       return 'Аналітика';
     }
-    
+
     return 'Інші';
   }
 
@@ -214,7 +216,8 @@ export class CommandManager {
    * Реєстрація обробників подій
    */
   private registerEventHandlers(): void {
-    this.bot.on(Events.InteractionCreate, async (interaction: any) => {
+    // Реєструємо обробник на Discord клієнті, а не на екземплярі Bot
+    this.bot.client.on(Events.InteractionCreate, async (interaction: any) => {
       if (interaction.isChatInputCommand()) {
         await this.handleCommand(interaction);
       }
@@ -232,7 +235,7 @@ export class CommandManager {
       if (!command) {
         await interaction.reply({
           content: '❌ Команда не знайдена',
-          ephemeral: true
+          ephemeral: true,
         });
         return;
       }
@@ -245,14 +248,14 @@ export class CommandManager {
       if (!hasPermission) {
         await interaction.reply({
           content: '❌ Недостатньо прав для виконання цієї команди',
-          ephemeral: true
+          ephemeral: true,
         });
         return;
       }
 
       // Виконання команди
       await command.execute({
-        interaction
+        interaction,
       });
 
       logger.info('✅ Команда виконана', {
@@ -263,7 +266,6 @@ export class CommandManager {
         ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
         channelId: interaction.channelId,
       });
-
     } catch (error) {
       logger.error('❌ Помилка виконання команди', {
         type: 'command',
@@ -274,9 +276,10 @@ export class CommandManager {
         channelId: interaction.channelId,
         errorMessage: String(error),
       });
-      
-      const errorMessage = '❌ Помилка при виконанні команди. Спробуйте ще раз або зверніться до адміністратора.';
-      
+
+      const errorMessage =
+        '❌ Помилка при виконанні команди. Спробуйте ще раз або зверніться до адміністратора.';
+
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
@@ -293,7 +296,7 @@ export class CommandManager {
       // Імпорт PermissionManager
       const { PermissionManager } = await import('./PermissionManager');
       const permissionManager = new PermissionManager(this.config);
-      
+
       // Перевірка прав доступу
       const result = await permissionManager.checkPermission(
         interaction.user,
@@ -301,12 +304,12 @@ export class CommandManager {
         interaction.commandName,
         interaction.channelId
       );
-      
+
       // Якщо доступ заборонено, відправляємо повідомлення користувачу
       if (!result.allowed) {
         const embed = this.createPermissionDeniedEmbed(result);
         await interaction.reply({ embeds: [embed], ephemeral: true });
-        
+
         logger.security('command_access_denied', interaction.user.id, {
           type: 'security',
           event: 'command_access_denied',
@@ -318,10 +321,10 @@ export class CommandManager {
           channelId: interaction.channelId,
           userId: interaction.user.id,
         });
-        
+
         return false;
       }
-      
+
       // Логування успішного доступу
       logger.info('✅ Команда дозволена', {
         type: 'command',
@@ -333,7 +336,7 @@ export class CommandManager {
         ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
         channelId: interaction.channelId,
       });
-      
+
       return true;
     } catch (error) {
       if (error instanceof Error) {
@@ -361,7 +364,7 @@ export class CommandManager {
           errorMessage: String(error),
         });
       }
-      
+
       // У разі помилки дозволяємо виконання для базових команд
       const allowedCommands = ['пошук', 'довідка', 'статус'];
       return allowedCommands.includes(interaction.commandName);
@@ -373,25 +376,27 @@ export class CommandManager {
    */
   private createPermissionDeniedEmbed(result: any): EmbedBuilder {
     return new EmbedBuilder()
-      .setColor(0xFF0000)
+      .setColor(0xff0000)
       .setTitle('🚫 Доступ заборонено')
       .setDescription(`Вам заборонено використовувати цю команду.\n\n**Причина:** ${result.reason}`)
       .addFields([
         {
           name: '📊 Ваш рівень доступу',
           value: `${result.userLevel} (${['Заборонений', 'Користувач', 'Довірений', 'Модератор', 'Адміністратор', 'Власник'][result.userLevel]})`,
-          inline: true
+          inline: true,
         },
         {
           name: '🔄 Використання за день',
-          value: result.remainingUses ? `Залишилось: ${result.remainingUses}` : 'Інформація недоступна',
-          inline: true
+          value: result.remainingUses
+            ? `Залишилось: ${result.remainingUses}`
+            : 'Інформація недоступна',
+          inline: true,
         },
         {
-          name: '📞 Зв\'яжіться з адміністратором',
+          name: "📞 Зв'яжіться з адміністратором",
           value: 'Якщо вважаєте, що це помилка, зверніться до адміністрації сервера.',
-          inline: false
-        }
+          inline: false,
+        },
       ])
       .setFooter({ text: 'Discord AI Assistant Bot - Security System' })
       .setTimestamp();
@@ -460,16 +465,16 @@ export class CommandManager {
       type: 'command_manager',
       event: 'reload_start',
     });
-    
+
     this.commands.clear();
     this.commandCategories.clear();
-    
+
     await this.loadCommands();
-    
+
     logger.info('✅ Перезавантажено команди', {
       type: 'command_manager',
       event: 'reload_done',
       count: this.commands.size,
     });
   }
-} 
+}
