@@ -102,7 +102,7 @@ class RetryManager {
 
         // Розраховуємо затримку
         const delay = this.calculateDelay(attempt, config);
-        
+
         logger.warn('⚠️ Планування повторної спроби', {
           type: 'retry',
           event: 'retry_scheduled',
@@ -182,7 +182,11 @@ class RetryManager {
         const anyErr = error as any;
         const status = typeof anyErr?.status === 'number' ? anyErr.status : undefined;
         const code = typeof anyErr?.code === 'string' ? anyErr.code : undefined;
-        return (typeof status === 'number' && status >= 500) || code === 'ECONNRESET' || code === 'ETIMEDOUT';
+        return (
+          (typeof status === 'number' && status >= 500) ||
+          code === 'ECONNRESET' ||
+          code === 'ETIMEDOUT'
+        );
       },
       ...options,
     };
@@ -201,10 +205,12 @@ class RetryManager {
       shouldRetry: (error: Error) => {
         // Повторюємо для тимчасових помилок БД
         const errorMessage = (error?.message ?? '').toLowerCase();
-        return errorMessage.includes('connection') || 
-               errorMessage.includes('timeout') ||
-               errorMessage.includes('deadlock') ||
-               errorMessage.includes('temporary');
+        return (
+          errorMessage.includes('connection') ||
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('deadlock') ||
+          errorMessage.includes('temporary')
+        );
       },
       maxAttempts: 5,
       delay: 2000,
@@ -225,11 +231,13 @@ class RetryManager {
       shouldRetry: (error: Error) => {
         // Повторюємо для тимчасових помилок файлової системи
         const errorCode = (error as any)?.code;
-        return typeof errorCode === 'string' && (
-               errorCode === 'EBUSY' || 
-               errorCode === 'EACCES' || 
-               errorCode === 'ENOENT' ||
-               errorCode === 'EAGAIN');
+        return (
+          typeof errorCode === 'string' &&
+          (errorCode === 'EBUSY' ||
+            errorCode === 'EACCES' ||
+            errorCode === 'ENOENT' ||
+            errorCode === 'EAGAIN')
+        );
       },
       maxAttempts: 3,
       delay: 1000,
@@ -250,7 +258,7 @@ class RetryManager {
       shouldRetry: (error: Error) => {
         // Повторюємо для rate limits та тимчасових помилок Discord
         const statusCode = (error as any)?.status;
-        return (typeof statusCode === 'number' && (statusCode === 429 || statusCode >= 500));
+        return typeof statusCode === 'number' && (statusCode === 429 || statusCode >= 500);
       },
       maxAttempts: 3,
       delay: 1000,
