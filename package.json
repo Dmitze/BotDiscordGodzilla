@@ -60,6 +60,7 @@
     "deploy:commands": "ts-node src/scripts/deployCommands.ts",
     "deploy:commands:build": "npm run build && node dist/scripts/deployCommands.js",
     "ocr:smoke": "ts-node -r tsconfig-paths/register src/scripts/ocrSmoke.ts",
+    "ocr:smoke:drive": "ts-node -r tsconfig-paths/register src/scripts/ocrSmokeDrive.ts",
     "drive:smoke": "ts-node -r tsconfig-paths/register src/scripts/driveExtractSmoke.ts"
   },
   "keywords": [
