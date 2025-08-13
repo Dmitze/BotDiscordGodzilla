@@ -155,4 +155,4 @@ export function expectFunctionCalled(fn: jest.Mock, times: number = 1) {
  */
 export function expectFunctionCalledWith(fn: jest.Mock, ...args: any[]) {
   expect(fn).toHaveBeenCalledWith(...args);
-} 
+}
