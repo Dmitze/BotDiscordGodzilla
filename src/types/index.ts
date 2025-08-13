@@ -384,7 +384,13 @@ export interface Logger {
   debug(message: string, meta?: LogMeta): void;
   command(command: string, user: string, duration: number, success?: boolean, meta?: LogMeta): void;
   commandError(command: string, user: string, error: Error, duration: number, meta?: LogMeta): void;
-  apiRequest(service: string, endpoint: string, duration: number, success?: boolean, meta?: LogMeta): void;
+  apiRequest(
+    service: string,
+    endpoint: string,
+    duration: number,
+    success?: boolean,
+    meta?: LogMeta
+  ): void;
   apiError(service: string, endpoint: string, error: Error, duration: number, meta?: LogMeta): void;
   security(event: string, user: string, details?: LogMeta): void;
   performance(operation: string, duration: number, details?: LogMeta): void;
@@ -524,4 +530,4 @@ export interface PerformanceMetrics {
   metadata?: Record<string, unknown>;
 }
 
-// Всі типи експортовані безпосередньо з цього файлу 
+// Всі типи експортовані безпосередньо з цього файлу
