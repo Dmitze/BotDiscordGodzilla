@@ -88,7 +88,9 @@ class AIEnhanced {
         },
       };
     } catch (error) {
-      logger.error(`Failed to create OpenAI provider: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Failed to create OpenAI provider: ${error instanceof Error ? error.message : String(error)}`
+      );
       return null;
     }
   }
@@ -131,7 +133,9 @@ class AIEnhanced {
         },
       };
     } catch (error) {
-      logger.error(`Failed to create Ollama provider: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Failed to create Ollama provider: ${error instanceof Error ? error.message : String(error)}`
+      );
       return null;
     }
   }
@@ -150,7 +154,9 @@ class AIEnhanced {
       }
       return validMessages.slice(-10);
     } catch (error) {
-      logger.error(`Error getting conversation context: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Error getting conversation context: ${error instanceof Error ? error.message : String(error)}`
+      );
       return [];
     }
   }
@@ -170,7 +176,9 @@ class AIEnhanced {
         memory.messages = memory.messages.slice(-20);
       }
     } catch (error) {
-      logger.error(`Error saving to context: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Error saving to context: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -199,7 +207,9 @@ class AIEnhanced {
       try {
         return JSON.parse(String(response));
       } catch (parseError) {
-        logger.warn(`Failed to parse AI analysis response: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+        logger.warn(
+          `Failed to parse AI analysis response: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+        );
         return {
           type: 'other',
           keywords: [sanitizedInput],
@@ -208,7 +218,9 @@ class AIEnhanced {
         };
       }
     } catch (error) {
-      logger.error(`Natural language analysis error: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Natural language analysis error: ${error instanceof Error ? error.message : String(error)}`
+      );
       return {
         type: 'other',
         keywords: [userInput],
@@ -238,7 +250,9 @@ class AIEnhanced {
     } catch (error: any) {
       const responseTime = Date.now() - startTime;
       this.updateStats(false, responseTime);
-      logger.error(`AI response generation error: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `AI response generation error: ${error instanceof Error ? error.message : String(error)}`
+      );
       if (this.currentProvider === 'openai' && this.providers.ollama) {
         logger.info('Trying Ollama as fallback...');
         this.currentProvider = 'ollama';
@@ -268,7 +282,9 @@ class AIEnhanced {
       `;
       return await this.generateResponse(analysisPrompt, { maxTokens: 1000 });
     } catch (error: any) {
-      logger.error(`Data analysis error: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Data analysis error: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw new Error(`Помилка аналізу даних: ${error.message}`);
     }
   }
@@ -295,12 +311,18 @@ class AIEnhanced {
       `;
       return await this.generateResponse(reportPrompt, { maxTokens: 1500 });
     } catch (error: any) {
-      logger.error(`Report generation error: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Report generation error: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw new Error(`Помилка генерації звіту: ${error.message}`);
     }
   }
 
-  async processNaturalLanguageQuery(userId: string, userInput: string, sheetData: any[] | null = null): Promise<string> {
+  async processNaturalLanguageQuery(
+    userId: string,
+    userInput: string,
+    sheetData: any[] | null = null
+  ): Promise<string> {
     try {
       const sanitizedInput = sanitizeInput(userInput);
       if (!sanitizedInput) throw new Error('Invalid input');
@@ -324,7 +346,9 @@ class AIEnhanced {
       this.saveToContext(userId, 'assistant', response);
       return response;
     } catch (error: any) {
-      logger.error(`Natural language query processing error: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Natural language query processing error: ${error instanceof Error ? error.message : String(error)}`
+      );
       return `Вибачте, сталась помилка при обробці вашого запиту: ${error.message}`;
     }
   }
@@ -356,7 +380,9 @@ class AIEnhanced {
       conversationMemory.delete(userId);
       logger.info(`Context cleared for user ${userId}`);
     } catch (error) {
-      logger.error(`Error clearing context: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Error clearing context: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -382,4 +408,4 @@ class AIEnhanced {
 }
 
 export const aiEnhanced = new AIEnhanced();
-export default aiEnhanced; 
+export default aiEnhanced;
