@@ -21,25 +21,29 @@ class DataFormatters {
    */
   static formatNumber(num: number | null | undefined, locale: string = 'uk-UA'): string {
     if (num === null || num === undefined) return '—';
-    
+
     const number = parseFloat(num.toString());
     if (isNaN(number)) return '—';
-    
+
     return new Intl.NumberFormat(locale).format(number);
   }
 
   /**
    * Форматування валюти
    */
-  static formatCurrency(amount: number | null | undefined, currency: string = 'UAH', locale: string = 'uk-UA'): string {
+  static formatCurrency(
+    amount: number | null | undefined,
+    currency: string = 'UAH',
+    locale: string = 'uk-UA'
+  ): string {
     if (amount === null || amount === undefined) return '—';
-    
+
     const number = parseFloat(amount.toString());
     if (isNaN(number)) return '—';
-    
+
     return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: currency
+      currency: currency,
     }).format(number);
   }
 
@@ -48,16 +52,16 @@ class DataFormatters {
    */
   static formatDate(date: Date | string | null | undefined, locale: string = 'uk-UA'): string {
     if (!date) return '—';
-    
+
     const dateObj = new Date(date);
     if (isNaN(dateObj.getTime())) return '—';
-    
+
     return new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     }).format(dateObj);
   }
 
@@ -84,11 +88,11 @@ class DataFormatters {
    */
   static formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Б';
-    
+
     const k = 1024;
     const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
@@ -102,11 +106,11 @@ class DataFormatters {
 
     // Обмежуємо кількість рядків
     const limitedData = data.slice(0, maxRows);
-    
+
     // Створюємо заголовок таблиці
     let table = '| ' + headers.join(' | ') + ' |\n';
     table += '|' + headers.map(() => '---').join('|') + '|\n';
-    
+
     // Додаємо дані
     for (const row of limitedData) {
       const formattedRow = row.map(cell => {
@@ -115,11 +119,11 @@ class DataFormatters {
       });
       table += '| ' + formattedRow.join(' | ') + ' |\n';
     }
-    
+
     if (data.length > maxRows) {
       table += `\n... та ще ${data.length - maxRows} рядків`;
     }
-    
+
     return table;
   }
 
@@ -128,11 +132,11 @@ class DataFormatters {
    */
   static formatProgress(current: number, total: number, width: number = 20): string {
     if (total === 0) return '[' + '█'.repeat(width) + '] 0%';
-    
+
     const percentage = Math.min(100, (current / total) * 100);
     const filled = Math.round((percentage / 100) * width);
     const empty = width - filled;
-    
+
     const bar = '█'.repeat(filled) + '░'.repeat(empty);
     return `[${bar}] ${Math.round(percentage)}%`;
   }
@@ -142,14 +146,14 @@ class DataFormatters {
    */
   static formatStatus(status: string, showIcon: boolean = true): string {
     const statusMap: { [key: string]: { icon: string; color: string } } = {
-      'success': { icon: '✅', color: 'green' },
-      'error': { icon: '❌', color: 'red' },
-      'warning': { icon: '⚠️', color: 'yellow' },
-      'info': { icon: 'ℹ️', color: 'blue' },
-      'loading': { icon: '⏳', color: 'gray' },
-      'pending': { icon: '⏸️', color: 'orange' },
+      success: { icon: '✅', color: 'green' },
+      error: { icon: '❌', color: 'red' },
+      warning: { icon: '⚠️', color: 'yellow' },
+      info: { icon: 'ℹ️', color: 'blue' },
+      loading: { icon: '⏳', color: 'gray' },
+      pending: { icon: '⏸️', color: 'orange' },
     };
-    
+
     const statusInfo = statusMap[status.toLowerCase()] || { icon: '❓', color: 'gray' };
     return showIcon ? `${statusInfo.icon} ${status}` : status;
   }
@@ -159,16 +163,14 @@ class DataFormatters {
    */
   static formatMetrics(metrics: Metrics): string {
     const lines: string[] = [];
-    
+
     for (const [key, value] of Object.entries(metrics)) {
       const formattedKey = key.replace(/([A-Z])/g, ' $1').toLowerCase();
-      const formattedValue = typeof value === 'number' 
-        ? this.formatNumber(value) 
-        : String(value);
-      
+      const formattedValue = typeof value === 'number' ? this.formatNumber(value) : String(value);
+
       lines.push(`**${formattedKey}:** ${formattedValue}`);
     }
-    
+
     return lines.join('\n');
   }
 
@@ -178,13 +180,13 @@ class DataFormatters {
   static formatError(error: Error | string, includeDetails: boolean = false): string {
     const errorMessage = error instanceof Error ? error.message : error;
     const errorStack = error instanceof Error ? error.stack : '';
-    
+
     let formatted = `❌ **Помилка:** ${errorMessage}`;
-    
+
     if (includeDetails && errorStack) {
       formatted += `\n\`\`\`\n${errorStack}\n\`\`\``;
     }
-    
+
     return formatted;
   }
 
@@ -193,7 +195,7 @@ class DataFormatters {
    */
   static formatExecutionTime(startTime: number): string {
     const duration = Date.now() - startTime;
-    
+
     if (duration < 1000) {
       return `${duration}мс`;
     } else if (duration < 60000) {
@@ -212,20 +214,20 @@ class DataFormatters {
     if (!items || items.length === 0) {
       return 'Список порожній';
     }
-    
+
     const limitedItems = items.slice(0, maxItems);
     const formattedItems = limitedItems.map((item, index) => `${index + 1}. ${item}`);
-    
+
     let result = formattedItems.join('\n');
-    
+
     if (title) {
       result = `**${title}**\n${result}`;
     }
-    
+
     if (items.length > maxItems) {
       result += `\n... та ще ${items.length - maxItems} елементів`;
     }
-    
+
     return result;
   }
 
@@ -234,16 +236,16 @@ class DataFormatters {
    */
   static formatStats(stats: Stats): string {
     const lines: string[] = [];
-    
+
     lines.push(`📊 **Загальна статистика**`);
     lines.push(`• Всього запитів: ${this.formatNumber(stats.total)}`);
     lines.push(`• Успішних: ${this.formatNumber(stats.success)}`);
     lines.push(`• Помилок: ${this.formatNumber(stats.errors)}`);
     lines.push(`• Середній час: ${this.formatExecutionTime(stats.avgTime)}`);
-    
+
     const successRate = stats.total > 0 ? (stats.success / stats.total) * 100 : 0;
     lines.push(`• Відсоток успіху: ${successRate.toFixed(1)}%`);
-    
+
     return lines.join('\n');
   }
 
@@ -252,17 +254,17 @@ class DataFormatters {
    */
   static formatDateTime(date: Date | string, locale: string = 'uk-UA'): string {
     if (!date) return '—';
-    
+
     const dateObj = new Date(date);
     if (isNaN(dateObj.getTime())) return '—';
-    
+
     return new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     }).format(dateObj);
   }
 
@@ -271,7 +273,7 @@ class DataFormatters {
    */
   static formatPercentage(value: number, total: number, decimals: number = 1): string {
     if (total === 0) return '0%';
-    
+
     const percentage = (value / total) * 100;
     return `${percentage.toFixed(decimals)}%`;
   }
@@ -294,4 +296,4 @@ class DataFormatters {
 }
 
 export default DataFormatters;
-export { DataFormatters }; 
+export { DataFormatters };
