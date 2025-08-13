@@ -5,13 +5,7 @@
  */
 
 import OpenAI from 'openai';
-import type {
-  BotConfig,
-  HealthStatus,
-  ServiceStats,
-  AIResponse,
-  AIRequestOptions
-} from '@/types';
+import type { BotConfig, HealthStatus, ServiceStats, AIResponse, AIRequestOptions } from '@/types';
 
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
@@ -202,7 +196,9 @@ export class AIService extends BaseServiceClass {
               error: error instanceof Error ? error.message : String(error),
               duration: `${duration}ms`,
             });
-            throw new Error(`OpenAI error: ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(
+              `OpenAI error: ${error instanceof Error ? error.message : String(error)}`
+            );
           }
         },
         async isHealthy(): Promise<boolean> {
@@ -231,7 +227,10 @@ export class AIService extends BaseServiceClass {
       async generate(prompt: string, options: AIRequestOptions = {}): Promise<AIResponse> {
         const startTime = Date.now();
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), AI_SERVICE_CONSTANTS.REQUEST_TIMEOUT);
+        const timeoutId = setTimeout(
+          () => controller.abort(),
+          AI_SERVICE_CONSTANTS.REQUEST_TIMEOUT
+        );
 
         try {
           logger.debug('🔄 Ollama запит...', {
@@ -284,7 +283,9 @@ export class AIService extends BaseServiceClass {
             error: error instanceof Error ? error.message : String(error),
             duration: `${duration}ms`,
           });
-          throw new Error(`Ollama error: ${error instanceof Error ? error.message : String(error)}`);
+          throw new Error(
+            `Ollama error: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       },
       async isHealthy(): Promise<boolean> {
@@ -570,7 +571,11 @@ export class AIService extends BaseServiceClass {
   /**
    * Збереження в контекст з валідацією
    */
-  public saveToContext(userId: string, role: 'user' | 'assistant' | 'system', content: string): void {
+  public saveToContext(
+    userId: string,
+    role: 'user' | 'assistant' | 'system',
+    content: string
+  ): void {
     try {
       let context = this.conversationMemory.get(userId);
 
@@ -816,9 +821,10 @@ export class AIService extends BaseServiceClass {
           availableProviders: Object.keys(this.providers),
           conversationContexts: this.conversationMemory.size,
           totalRequests: this.stats.totalRequests,
-          successRate: this.stats.totalRequests > 0
-            ? (this.stats.successfulRequests / this.stats.totalRequests) * 100
-            : 0,
+          successRate:
+            this.stats.totalRequests > 0
+              ? (this.stats.successfulRequests / this.stats.totalRequests) * 100
+              : 0,
           averageResponseTime: this.stats.averageResponseTime,
         },
       };
@@ -869,10 +875,10 @@ export class AIService extends BaseServiceClass {
   protected onGetStats(): Partial<AIServiceStats> {
     return {
       ...this.stats,
-      successRate: this.stats.totalRequests > 0
-        ? (this.stats.successfulRequests / this.stats.totalRequests) * 100
-        : 0,
+      successRate:
+        this.stats.totalRequests > 0
+          ? (this.stats.successfulRequests / this.stats.totalRequests) * 100
+          : 0,
     };
   }
 }
- 
