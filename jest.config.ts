@@ -11,7 +11,14 @@ const config: Config.InitialOptions = {
     '**/?(*.)+(spec|test).js'
   ],
   transform: {
-    '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.jest.json' }],
+    '^.+\\.ts$': [
+      'ts-jest',
+      {
+        tsconfig: '<rootDir>/tsconfig.jest.json',
+        diagnostics: false,
+        isolatedModules: true,
+      },
+    ],
   },
   collectCoverageFrom: [
     'src/**/*.ts',

@@ -18,6 +18,7 @@ import { sanitizeInput } from '@/utils/security';
 import type { GoogleService } from '@/services/GoogleService';
 import { t } from '@/i18n';
 import { buildSearchPaginationRows } from '@/ui/components';
+import type { SearchIndex, SearchQuery } from '@/search/SearchIndex';
 
 // Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
@@ -179,7 +180,13 @@ export class SearchCommand extends BaseCommand {
 
     try {
       // Легасі-шлях для сумісності з існуючими тестами: використовує serviceContainer.get('google'|'cache')
-      if (!this.googleService && (interaction as any)?.client?.serviceContainer?.get) {
+      // ВАЖЛИВО: не виконуємо цей шлях, якщо доступний персистентний searchIndex — пріоритет SQLite
+      if (
+        !this.googleService &&
+        (interaction as any)?.client?.serviceContainer?.get &&
+        !(typeof (interaction as any).client.serviceContainer.get === 'function' &&
+          (interaction as any).client.serviceContainer.get('searchIndex'))
+      ) {
         const getSvc = (interaction as any).client.serviceContainer.get.bind((interaction as any).client.serviceContainer) as (name: string) => any;
         const google = getSvc('google');
         const cache = getSvc('cache');
@@ -230,7 +237,61 @@ export class SearchCommand extends BaseCommand {
         logger.info(t('search.log.start'), meta);
       }
 
-      // Виконання пошуку
+      // Спроба використати персистентний SQLite-індекс, якщо доступний
+      try {
+        const searchIndex = ((interaction as any)?.client?.serviceContainer?.get?.('searchIndex') as SearchIndex) || undefined;
+        if (searchIndex) {
+          // Маппинг фильтров в SearchQuery
+          const tags: string[] = [];
+          if (searchParams.documentType && searchParams.documentType !== 'all') tags.push(searchParams.documentType);
+          if (searchParams.unit) tags.push(searchParams.unit);
+          if (searchParams.priority && searchParams.priority !== 'all') tags.push(searchParams.priority);
+          const modifiedFrom = searchParams.dateFrom ? (this.parseDate(searchParams.dateFrom)?.getTime() || undefined) : undefined;
+          const modifiedTo = searchParams.dateTo ? (this.parseDate(searchParams.dateTo)?.getTime() || undefined) : undefined;
+
+          const filters: any = {};
+          if (typeof modifiedFrom === 'number') filters.modifiedFrom = modifiedFrom;
+          if (typeof modifiedTo === 'number') filters.modifiedTo = modifiedTo;
+          if (tags.length) filters.tags = tags;
+
+          const q: SearchQuery = {
+            text: String(searchParams.query || ''),
+            limit: Math.max(1, Math.min(SEARCH_CONFIG.MAX_RESULTS, searchParams.limit || SEARCH_CONFIG.DEFAULT_LIMIT)),
+            ...(Object.keys(filters).length ? { filters } : {}),
+          };
+          const res = await searchIndex.search(q);
+          const hits = Array.isArray(res?.hits) ? res.hits : [];
+          if (hits.length) {
+            const lines = hits.map(h => {
+              const title = h.name || h.fileId;
+              const snip = h.snippet ? ` — ${String(h.snippet).replace(/\n/g, ' ').slice(0, 120)}${String(h.snippet).length > 120 ? '…' : ''}` : '';
+              return `• ${title}${snip}`;
+            });
+            const embed = new EmbedBuilder()
+              .setColor('#4CAF50')
+              .setTitle('🔍 Результати пошуку (SQLite)')
+              .setDescription(`**Запит:** ${searchParams.query}`)
+              .addFields(
+                { name: '📊 Знайдено (оцінено)', value: String(res.total ?? hits.length), inline: true },
+                { name: '⚡ Джерело', value: 'SQLite FTS', inline: true },
+              )
+              .setTimestamp();
+            const body = lines.slice(0, q.limit || 10).join('\n');
+            if (body.length > 0) {
+              embed.addFields({ name: `📋 Результати (${Math.min(lines.length, q.limit || 10)})`, value: body.length > 1024 ? body.slice(0, 1021) + '...' : body });
+            }
+            await interaction.editReply({ embeds: [embed], components: [] });
+            const duration = performance.now() - startTime;
+            this.updateSearchStats(true, duration, true);
+            return;
+          }
+        }
+      } catch (e) {
+        // індекс недоступний — продовжимо штатним шляхом
+        logger.warn('SQLite SearchIndex недоступний, фоллбек на Google Sheets', { error: e instanceof Error ? e.message : String(e) });
+      }
+
+      // Виконання пошуку (фоллбек через Google Sheets)
       const searchResult = await this.performSearchWithCache(searchParams, interaction.user.id);
 
       // Параметри пагінації

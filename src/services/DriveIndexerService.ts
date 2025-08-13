@@ -51,7 +51,6 @@ export class DriveIndexerService extends BaseServiceClass {
   private isCronDisabled(): boolean {
     return (
       process.env['NODE_ENV'] === 'test' ||
-      Boolean(process.env['JEST_WORKER_ID']) ||
       String(process.env['DISABLE_CRON']).toLowerCase() === 'true'
     );
   }
