@@ -63,6 +63,80 @@ export class GoogleService extends BaseServiceClass {
   }
 
   /**
+   * Завантаження бінарного файлу з Drive (для не-Google типів, наприклад .xlsx/.xls/.pdf)
+   */
+  public async downloadDriveFile(fileId: string): Promise<Buffer> {
+    try {
+      const buffer = await this.executeWithRetry(async () => {
+        if (!this.drive) throw new Error('Drive API не ініціалізовано');
+        const res = await this.drive.files.get(
+          { fileId, alt: 'media' },
+          { responseType: 'arraybuffer' as any }
+        );
+        const data = res.data as ArrayBuffer;
+        return Buffer.from(new Uint8Array(data));
+      }, 'drive');
+
+      logger.debug('⬇️ Завантажено файл з Drive', {
+        type: 'api',
+        event: 'drive_download',
+        component: 'GoogleService',
+        fileId: fileId.substring(0, 10) + '...',
+        size: buffer.byteLength,
+      });
+
+      return buffer;
+    } catch (error) {
+      logger.error('❌ Помилка завантаження файлу з Drive', {
+        type: 'api_error',
+        event: 'drive_download_failed',
+        component: 'GoogleService',
+        error: error instanceof Error ? error.message : String(error),
+        fileId: fileId.substring(0, 10) + '...',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Експорт Google-документів (Docs/Sheets/Slides) у вказаний MIME-тип (наприклад, PDF/Excel)
+   */
+  public async exportDriveFile(fileId: string, mimeType: string): Promise<Buffer> {
+    try {
+      const buffer = await this.executeWithRetry(async () => {
+        if (!this.drive) throw new Error('Drive API не ініціалізовано');
+        const res = await this.drive.files.export(
+          { fileId, mimeType },
+          { responseType: 'arraybuffer' as any }
+        );
+        const data = res.data as ArrayBuffer;
+        return Buffer.from(new Uint8Array(data));
+      }, 'drive');
+
+      logger.debug('⬇️ Експортовано файл з Drive', {
+        type: 'api',
+        event: 'drive_export',
+        component: 'GoogleService',
+        fileId: fileId.substring(0, 10) + '...',
+        mimeType,
+        size: buffer.byteLength,
+      });
+
+      return buffer;
+    } catch (error) {
+      logger.error('❌ Помилка експорту файлу з Drive', {
+        type: 'api_error',
+        event: 'drive_export_failed',
+        component: 'GoogleService',
+        error: error instanceof Error ? error.message : String(error),
+        fileId: fileId.substring(0, 10) + '...',
+        mimeType,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Отримати метадані файлу Google Drive
    */
   public async getDriveFileMetadata(fileId: string): Promise<drive_v3.Schema$File> {
@@ -213,7 +287,7 @@ export class GoogleService extends BaseServiceClass {
       query = '',
       limit = 100,
       pageToken,
-      maxDepth = 2,
+      maxDepth = 20,
     } = opts;
 
     const cacheKey = `drive:list:${folderId}:${type}:${query}:${recursive}:${maxDepth}:${pageToken ?? ''}:${limit}`;
@@ -235,38 +309,108 @@ export class GoogleService extends BaseServiceClass {
       this.stats.cacheMisses++;
     }
 
-    // Побудова MIME фільтра
-    const mimeFilter =
+    // Побудова MIME фільтрів
+    // filesMimeFilter — для файлів поточного типу
+    // foldersMimeFilter — для визначення підпапок (включаючи ярлики на папки)
+    const filesMimeFilter =
       type === 'sheet'
-        ? " and mimeType='application/vnd.google-apps.spreadsheet'"
+        ?
+            " and (" +
+            [
+              "mimeType='application/vnd.google-apps.spreadsheet'",
+              "mimeType='application/vnd.google-apps.shortcut'",
+              "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+              "mimeType='application/vnd.ms-excel'",
+            ].join(' or ') +
+            ")"
         : type === 'folder'
           ? " and mimeType='application/vnd.google-apps.folder'"
           : '';
+    const foldersMimeFilter =
+      " and (mimeType='application/vnd.google-apps.folder' or mimeType='application/vnd.google-apps.shortcut')";
 
     // Побудова name contains фільтра
     const nameFilter = query ? ` and name contains '${query.replace(/'/g, "\\'")}'` : '';
 
-    const q = `'${folderId}' in parents and trashed=false${mimeFilter}${nameFilter}`;
+    // Підготовка запитів: окремо для файлів потрібного типу та для підпапок
+    const qFiles = `'${folderId}' in parents and trashed=false${filesMimeFilter}${nameFilter}`;
+    const qFolders = `'${folderId}' in parents and trashed=false${foldersMimeFilter}`;
 
-    const firstLevel = await this.executeWithRetry(async () => {
-      if (!this.drive) throw new Error('Drive API не ініціалізовано');
-      const params: drive_v3.Params$Resource$Files$List = {
-        q,
-        fields: 'nextPageToken, files(id,name,mimeType,size,modifiedTime,parents)',
-        pageSize: Math.min(limit, 1000),
-        // Омітаємо pageToken, якщо він undefined, щоб задовольнити exactOptionalPropertyTypes
-        ...(pageToken ? { pageToken } : {}),
-      };
-      const response = await this.drive.files.list(params);
-      return response.data.files || [];
-    }, 'drive');
+    // Пагінація: вибірка усіх сторінок
+    const fetchAll = async (q: string): Promise<drive_v3.Schema$File[]> => {
+      const all: drive_v3.Schema$File[] = [];
+      let token: string | undefined = pageToken;
+      do {
+        const resp = await this.executeWithRetry(async () => {
+          if (!this.drive) throw new Error('Drive API не ініціалізовано');
+          const params: drive_v3.Params$Resource$Files$List = {
+            q,
+            fields:
+              'nextPageToken, files(id,name,mimeType,size,modifiedTime,parents,shortcutDetails(targetId,targetMimeType))',
+            pageSize: Math.min(limit, 1000),
+            ...(token ? { pageToken: token } : {}),
+          };
+          return await this.drive.files.list(params);
+        }, 'drive');
+        const files = resp.data.files || [];
+        all.push(...files);
+        token = resp.data.nextPageToken || undefined;
+      } while (token && all.length < limit);
+      return all;
+    };
 
-    let results: drive_v3.Schema$File[] = [...firstLevel];
+    const filesHere = await fetchAll(qFiles);
 
-    if (recursive && maxDepth > 0) {
-      const folders = firstLevel.filter(
-        (f: drive_v3.Schema$File) => f.mimeType === 'application/vnd.google-apps.folder'
-      );
+    // Якщо шукаємо таблиці — конвертуємо ярлики на таблиці у "віртуальні" записи з targetId та
+    // додаємо Excel-файли у результат
+    let results: drive_v3.Schema$File[] =
+      type === 'sheet'
+        ? filesHere
+            .map(f => {
+              if (f.mimeType === 'application/vnd.google-apps.shortcut') {
+                const targetId = (f as any).shortcutDetails?.targetId as string | undefined;
+                const targetMime = (f as any).shortcutDetails?.targetMimeType as string | undefined;
+                if (targetId && targetMime === 'application/vnd.google-apps.spreadsheet') {
+                  // Повертаємо об'єкт як ніби це сам spreadsheet
+                  return {
+                    id: targetId,
+                    name: f.name,
+                    mimeType: 'application/vnd.google-apps.spreadsheet',
+                    parents: f.parents,
+                  } as drive_v3.Schema$File;
+                }
+                return null;
+              }
+              // Додаємо Google Таблиці та Excel-файли
+              const isGs = f.mimeType === 'application/vnd.google-apps.spreadsheet';
+              const isXlsx =
+                f.mimeType ===
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+              const isXls = f.mimeType === 'application/vnd.ms-excel';
+              return isGs || isXlsx || isXls ? f : null;
+            })
+            .filter((x): x is drive_v3.Schema$File => Boolean(x))
+        : [...filesHere];
+
+    if (recursive && (maxDepth > 0 || maxDepth <= -1)) {
+      // Отримуємо підпапки в поточній папці (включаючи ярлики на папки)
+      const foldersLevel = await fetchAll(qFolders);
+      const folders = foldersLevel
+        .map<{ id: string; name: string | undefined } | null>(f => {
+          if (f.mimeType === 'application/vnd.google-apps.folder') {
+            return { id: f.id!, name: f.name ?? undefined };
+          }
+          if (
+            f.mimeType === 'application/vnd.google-apps.shortcut' &&
+            (f as any).shortcutDetails?.targetMimeType === 'application/vnd.google-apps.folder'
+          ) {
+            const targetId = (f as any).shortcutDetails?.targetId as string | undefined;
+            if (targetId) return { id: targetId, name: f.name ?? undefined };
+          }
+          return null;
+        })
+        .filter((x): x is { id: string; name: string | undefined } => x !== null);
+
       for (const folder of folders) {
         try {
           const sub = await this.listDriveFilesInFolder(folder.id!, {
@@ -274,7 +418,7 @@ export class GoogleService extends BaseServiceClass {
             type,
             query,
             limit,
-            maxDepth: maxDepth - 1,
+            maxDepth: maxDepth <= -1 ? -1 : maxDepth - 1,
           });
           results.push(...sub);
         } catch (err) {
@@ -286,6 +430,20 @@ export class GoogleService extends BaseServiceClass {
           });
         }
       }
+    }
+
+    // Додаткове логування, якщо результати порожні — допомагає діагностувати доступ/вміст
+    if (results.length === 0) {
+      logger.info('ℹ️ Drive list: порожній результат', {
+        type: 'system',
+        event: 'drive_list_empty',
+        component: 'GoogleService',
+        folderId,
+        query,
+        recursive,
+        maxDepth,
+        filterType: type,
+      });
     }
 
     // Кешуємо на короткий термін (30с), щоб не перевищувати квоти
