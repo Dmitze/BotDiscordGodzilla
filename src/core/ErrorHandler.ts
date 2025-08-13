@@ -191,7 +191,10 @@ class ErrorHandler {
   /**
    * Обробка помилки
    */
-  async handle(error: Error, context: ErrorContext = {}): Promise<{
+  async handle(
+    error: Error,
+    context: ErrorContext = {}
+  ): Promise<{
     handled: boolean;
     errorInfo?: ErrorInfo;
     retryable?: boolean;
@@ -281,13 +284,14 @@ class ErrorHandler {
    * Обробка необроблених rejections
    */
   handleUnhandledRejection(reason: any, promise: Promise<any>): void {
-    const meta = reason instanceof Error
-      ? {
-          errorName: reason.name,
-          errorMessage: reason.message,
-          stack: reason.stack,
-        }
-      : { errorMessage: String(reason) };
+    const meta =
+      reason instanceof Error
+        ? {
+            errorName: reason.name,
+            errorMessage: reason.message,
+            stack: reason.stack,
+          }
+        : { errorMessage: String(reason) };
     logger.error('🚨 КРИТИЧНА ПОМИЛКА - Unhandled Rejection', {
       type: 'system',
       event: 'unhandled_rejection',
@@ -353,7 +357,11 @@ class ErrorHandler {
   /**
    * Додавання сповіщення до черги
    */
-  private async queueNotification(error: Error, errorInfo: ErrorInfo, context: ErrorContext): Promise<void> {
+  private async queueNotification(
+    error: Error,
+    errorInfo: ErrorInfo,
+    context: ErrorContext
+  ): Promise<void> {
     const notification: Notification = {
       error,
       errorInfo,
@@ -383,7 +391,11 @@ class ErrorHandler {
     setInterval(async () => {
       if (this.notificationQueue.length > 0) {
         const notification = this.notificationQueue.shift()!;
-        await this.sendNotification(notification.error, notification.errorInfo, notification.context);
+        await this.sendNotification(
+          notification.error,
+          notification.errorInfo,
+          notification.context
+        );
       }
     }, 5000); // Обробка кожні 5 секунд
   }
@@ -454,7 +466,11 @@ class ErrorHandler {
   /**
    * Відправка сповіщення
    */
-  private async sendNotification(error: Error, errorInfo: ErrorInfo, context: ErrorContext): Promise<void> {
+  private async sendNotification(
+    error: Error,
+    errorInfo: ErrorInfo,
+    context: ErrorContext
+  ): Promise<void> {
     try {
       // Спроба відправити Discord сповіщення
       await this.sendDiscordNotification(error, errorInfo, context);
@@ -495,7 +511,11 @@ class ErrorHandler {
   /**
    * Відправка Discord сповіщення
    */
-  private async sendDiscordNotification(error: Error, errorInfo: ErrorInfo, context: ErrorContext): Promise<void> {
+  private async sendDiscordNotification(
+    error: Error,
+    errorInfo: ErrorInfo,
+    context: ErrorContext
+  ): Promise<void> {
     try {
       // Отримання Discord клієнта з Service Container
       const bot = this.serviceContainer?.get('bot');
@@ -573,11 +593,11 @@ class ErrorHandler {
   private getErrorColor(severity: string): number {
     switch (severity) {
       case 'critical':
-        return 0xFF0000; // Червоний
+        return 0xff0000; // Червоний
       case 'error':
-        return 0xFF6B6B; // Світло-червоний
+        return 0xff6b6b; // Світло-червоний
       case 'warn':
-        return 0xFFA500; // Помаранчевий
+        return 0xffa500; // Помаранчевий
       default:
         return 0x808080; // Сірий
     }
@@ -707,4 +727,4 @@ class ErrorHandler {
   }
 }
 
-export { ErrorHandler }; 
+export { ErrorHandler };
