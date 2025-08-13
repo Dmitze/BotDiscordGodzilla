@@ -4,7 +4,13 @@
  * TypeScript версія 3.0.0
  */
 
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import {
+  SlashCommandBuilder,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from 'discord.js';
 
 import { GoogleService } from '@/services/GoogleService';
 import { sanitizeInput, validateCommandOptions } from '@/utils/security';
@@ -16,7 +22,15 @@ interface StatisticsConfig {
   sheets: string[];
   range: string;
   columnType: 'even' | 'odd' | 'all';
-  operation: 'sum' | 'average' | 'count' | 'max' | 'min' | 'even_columns' | 'odd_columns' | 'complex_formula';
+  operation:
+    | 'sum'
+    | 'average'
+    | 'count'
+    | 'max'
+    | 'min'
+    | 'even_columns'
+    | 'odd_columns'
+    | 'complex_formula';
   groupBy?: string;
   filters?: Record<string, any>;
   customFormula?: string;
@@ -45,11 +59,12 @@ class StatisticsCommand {
    * Створення команди
    */
   public getCommandData(): SlashCommandBuilder {
-    return (new SlashCommandBuilder()
+    return new SlashCommandBuilder()
       .setName(this.name)
       .setDescription(this.description)
       .addStringOption(option =>
-        option.setName('operation')
+        option
+          .setName('operation')
           .setDescription('Тип операції для статистики')
           .setRequired(true)
           .addChoices(
@@ -64,17 +79,17 @@ class StatisticsCommand {
           )
       )
       .addStringOption(option =>
-        option.setName('sheets')
-          .setDescription('Аркуші для аналізу (через кому)')
-          .setRequired(true)
+        option.setName('sheets').setDescription('Аркуші для аналізу (через кому)').setRequired(true)
       )
       .addStringOption(option =>
-        option.setName('range')
+        option
+          .setName('range')
           .setDescription('Діапазон даних (наприклад: H6:AB6)')
           .setRequired(false)
       )
       .addStringOption(option =>
-        option.setName('column_type')
+        option
+          .setName('column_type')
           .setDescription('Тип стовпців для аналізу')
           .setRequired(false)
           .addChoices(
@@ -84,20 +99,17 @@ class StatisticsCommand {
           )
       )
       .addStringOption(option =>
-        option.setName('group_by')
-          .setDescription('Групування за стовпцем')
-          .setRequired(false)
+        option.setName('group_by').setDescription('Групування за стовпцем').setRequired(false)
       )
       .addStringOption(option =>
-        option.setName('filters')
-          .setDescription('Фільтри у форматі JSON')
-          .setRequired(false)
+        option.setName('filters').setDescription('Фільтри у форматі JSON').setRequired(false)
       )
       .addStringOption(option =>
-        option.setName('custom_formula')
+        option
+          .setName('custom_formula')
           .setDescription('Власна формула для аналізу')
           .setRequired(false)
-      )) as unknown as SlashCommandBuilder;
+      ) as unknown as SlashCommandBuilder;
   }
 
   /**
@@ -120,7 +132,7 @@ class StatisticsCommand {
       if (!validation.isValid) {
         await interaction.reply({
           content: `❌ Помилка валідації: ${validation.errors.join(', ')}`,
-          ephemeral: true
+          ephemeral: true,
         });
         return;
       }
@@ -148,12 +160,14 @@ class StatisticsCommand {
         edit.components = [buttons];
       }
       await interaction.editReply(edit);
-
     } catch (error) {
       const duration = performance.now() - startTime;
       logger.error(`Помилка команди statistics після ${duration.toFixed(2)}ms:`, {
-        type: 'command', component: 'StatisticsCommand', event: 'execute_failed',
-        userId: interaction?.user?.id, guildId: interaction?.guildId,
+        type: 'command',
+        component: 'StatisticsCommand',
+        event: 'execute_failed',
+        userId: interaction?.user?.id,
+        guildId: interaction?.guildId,
         durationMs: Number(duration.toFixed(2)),
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
@@ -171,7 +185,8 @@ class StatisticsCommand {
     const operation = interaction.options.getString('operation', true);
     const sheetsInput = interaction.options.getString('sheets', true);
     const range = interaction.options.getString('range') || 'H6:AB6';
-    const columnType = interaction.options.getString('column_type') as 'even' | 'odd' | 'all' || 'all';
+    const columnType =
+      (interaction.options.getString('column_type') as 'even' | 'odd' | 'all') || 'all';
     const groupBy = interaction.options.getString('group_by');
     const filtersInput = interaction.options.getString('filters');
     const customFormula = interaction.options.getString('custom_formula');
@@ -221,7 +236,16 @@ class StatisticsCommand {
       operation: {
         required: true,
         type: 'string',
-        enum: ['sum', 'average', 'count', 'max', 'min', 'even_columns', 'odd_columns', 'complex_formula'],
+        enum: [
+          'sum',
+          'average',
+          'count',
+          'max',
+          'min',
+          'even_columns',
+          'odd_columns',
+          'complex_formula',
+        ],
       },
     };
   }
@@ -270,11 +294,14 @@ class StatisticsCommand {
         timestamp: new Date(),
         processingTime,
       };
-
     } catch (error) {
       logger.error('Помилка отримання статистики:', {
-        type: 'command', component: 'StatisticsCommand', event: 'get_statistics_failed',
-        operation: config.operation, sheets: config.sheets, range: config.range,
+        type: 'command',
+        component: 'StatisticsCommand',
+        event: 'get_statistics_failed',
+        operation: config.operation,
+        sheets: config.sheets,
+        range: config.range,
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -286,7 +313,10 @@ class StatisticsCommand {
   /**
    * Розрахунок статистики по парних/непарних стовпцях
    */
-  private async calculateColumnStatistics(config: StatisticsConfig, isEven: boolean): Promise<number> {
+  private async calculateColumnStatistics(
+    config: StatisticsConfig,
+    isEven: boolean
+  ): Promise<number> {
     let total = 0;
 
     for (const sheetName of config.sheets) {
@@ -317,11 +347,20 @@ class StatisticsCommand {
           }
         }
 
-        logger.debug(`Оброблено аркуш ${sheetName}`, { type: 'command', component: 'StatisticsCommand', event: 'sheet_processed', sheetName, total, isEven });
-
+        logger.debug(`Оброблено аркуш ${sheetName}`, {
+          type: 'command',
+          component: 'StatisticsCommand',
+          event: 'sheet_processed',
+          sheetName,
+          total,
+          isEven,
+        });
       } catch (error) {
         logger.error(`Помилка обробки аркуша ${sheetName}:`, {
-          type: 'command', component: 'StatisticsCommand', event: 'sheet_process_failed', sheetName,
+          type: 'command',
+          component: 'StatisticsCommand',
+          event: 'sheet_process_failed',
+          sheetName,
           errorName: error instanceof Error ? error.name : undefined,
           errorMessage: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
@@ -340,7 +379,11 @@ class StatisticsCommand {
       throw new Error('Власна формула не надана');
     }
     // Функціонал складних формул наразі недоступний у сервісах. Лише валідуємо та відхиляємо.
-    logger.warn('Виконання складної формули наразі не підтримується', { type: 'command', component: 'StatisticsCommand', event: 'complex_formula_unsupported' });
+    logger.warn('Виконання складної формули наразі не підтримується', {
+      type: 'command',
+      component: 'StatisticsCommand',
+      event: 'complex_formula_unsupported',
+    });
     throw new Error('Складні формули тимчасово недоступні');
   }
 
@@ -383,10 +426,12 @@ class StatisticsCommand {
             }
           }
         }
-
       } catch (error) {
         logger.error(`Помилка обробки аркуша ${sheetName}:`, {
-          type: 'command', component: 'StatisticsCommand', event: 'sheet_process_failed', sheetName,
+          type: 'command',
+          component: 'StatisticsCommand',
+          event: 'sheet_process_failed',
+          sheetName,
           errorName: error instanceof Error ? error.name : undefined,
           errorMessage: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
@@ -394,8 +439,13 @@ class StatisticsCommand {
       }
     }
 
-    return config.operation === 'average' ? (count > 0 ? total / count : 0) :
-           config.operation === 'count' ? count : total;
+    return config.operation === 'average'
+      ? count > 0
+        ? total / count
+        : 0
+      : config.operation === 'count'
+        ? count
+        : total;
   }
 
   /**
@@ -474,7 +524,10 @@ class StatisticsCommand {
   /**
    * Створення кнопок дій
    */
-  private createActionButtons(_result: StatisticsResult, _config: StatisticsConfig): ActionRowBuilder<ButtonBuilder> | null {
+  private createActionButtons(
+    _result: StatisticsResult,
+    _config: StatisticsConfig
+  ): ActionRowBuilder<ButtonBuilder> | null {
     const row = new ActionRowBuilder<ButtonBuilder>();
 
     // Кнопка експорту
@@ -515,6 +568,11 @@ class StatisticsCommand {
         await interaction.editReply({
           content: `❌ Помилка отримання статистики: ${errorMessage}`,
         });
+      } else if (interaction.replied) {
+        await interaction.followUp({
+          content: `❌ Помилка отримання статистики: ${errorMessage}`,
+          ephemeral: true,
+        });
       } else {
         await interaction.reply({
           content: `❌ Помилка отримання статистики: ${errorMessage}`,
@@ -547,4 +605,4 @@ class StatisticsCommand {
   }
 }
 
-export default StatisticsCommand; 
+export default StatisticsCommand;
