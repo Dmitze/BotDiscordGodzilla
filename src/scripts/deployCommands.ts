@@ -3,9 +3,7 @@
  * Використовується для розгортання slash-команд
  */
 
-import { REST, Routes } from 'discord.js';
 import { config } from 'dotenv';
-import { Config } from '@/config/Config';
 
 // Завантаження змінних середовища
 config();
@@ -44,7 +42,29 @@ function maskId(id?: string): string {
 async function deployCommands(options: DeployOptions = parseArgs(process.argv.slice(2))) {
   try {
     const { dry = true } = options;
-    console.log(`🚀 Початок реєстрації команд в Discord... (dry=${dry}, mode=${options.mode || 'both'})`);
+    console.log(
+      `🚀 Початок реєстрації команд в Discord... (dry=${dry}, mode=${options.mode || 'both'})`
+    );
+
+    // Легкий dry-run: уникаємо важких імпортів/ініціалізацій
+    if (dry) {
+      const mode: Mode = options.mode || 'both';
+      const envGuild = process.env['DISCORD_GUILD_ID'] || '';
+      const targets: string[] = [];
+      if (mode === 'global' || mode === 'both') targets.push('global');
+      if ((mode === 'guild' || mode === 'both') && envGuild)
+        targets.push(`guild:${maskId(envGuild)}`);
+      console.log('🧪 Режим dry-run (light): пропущено Config.load() та створення команд');
+      console.log(`🎯 Цілі: ${targets.join(', ') || '—'}`);
+      console.log('📦 Команди: пропущено побудову (light mode)');
+      return;
+    }
+
+    // Динамічні імпорти тільки для виконання
+    const [{ REST, Routes }, { Config }] = await Promise.all([
+      import('discord.js'),
+      import('@/config/Config'),
+    ]);
 
     // Завантаження конфігурації
     const botConfig = Config.load();
@@ -67,7 +87,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
       new FileManagerCommand(botConfig),
       new OperationsCommand(botConfig),
       new AnalyticsCommand(botConfig),
-      new EnhancedSearchCommand(botConfig)
+      new EnhancedSearchCommand(botConfig),
     ];
 
     // Підготовка даних команд
@@ -78,20 +98,11 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
     const mode: Mode = options.mode || 'both';
     const guildId = options.guildId || botConfig.discord.guildId;
 
-    if (dry) {
-      console.log('🧪 Режим dry-run: реєстрація НЕ буде виконана');
-      const targets: string[] = [];
-      if (mode === 'global' || mode === 'both') targets.push('global');
-      if ((mode === 'guild' || mode === 'both') && guildId) targets.push(`guild:${maskId(guildId)}`);
-      console.log(`🎯 Цілі: ${targets.join(', ') || '—'}`);
-      console.log('📦 Команди:');
-      commands.forEach(c => console.log(`  - ${c.getName()}`));
-      return;
-    }
-
     // Валідація режиму/цілей
     if (mode === 'guild' && !guildId) {
-      console.error('❌ Помилка: для режиму "guild" необхідно вказати --guild=<ID> або налаштувати discord.guildId у конфігурації');
+      console.error(
+        '❌ Помилка: для режиму "guild" необхідно вказати --guild=<ID> або налаштувати discord.guildId у конфігурації'
+      );
       process.exit(2);
     }
 
@@ -101,30 +112,28 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
     // Реєстрація команд глобально (за режимом)
     if (mode === 'global' || mode === 'both') {
       console.log('🌍 Реєстрація команд глобально...');
-      const globalData = await rest.put(
-        Routes.applicationCommands(botConfig.discord.clientId),
-        { body: commandsData }
-      ) as any[];
+      const globalData = (await rest.put(Routes.applicationCommands(botConfig.discord.clientId), {
+        body: commandsData,
+      })) as any[];
       console.log(`✅ Успішно зареєстровано ${globalData.length} глобальних команд`);
     }
 
     // Реєстрація команд для конкретного сервера (за режимом)
     if ((mode === 'guild' || mode === 'both') && guildId) {
       console.log(`🏠 Реєстрація команд для сервера ${maskId(guildId)}...`);
-      const guildData = await rest.put(
+      const guildData = (await rest.put(
         Routes.applicationGuildCommands(botConfig.discord.clientId, guildId),
         { body: commandsData }
-      ) as any[];
+      )) as any[];
       console.log(`✅ Успішно зареєстровано ${guildData.length} команд для сервера`);
     }
 
     console.log('🎉 Реєстрація команд завершена успішно!');
     console.log('\n📊 Статистика команд:');
-    
+
     commands.forEach(command => {
       console.log(`  - ${command.getName()}: ${command.getDescription()}`);
     });
-
   } catch (error) {
     console.error('❌ Помилка реєстрації команд:', error);
     process.exit(1);
@@ -136,4 +145,4 @@ if (require.main === module) {
   deployCommands();
 }
 
-export { deployCommands }; 
+export { deployCommands };
