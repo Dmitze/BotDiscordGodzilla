@@ -51,12 +51,16 @@ class ExportHelpers {
   /**
    * Експорт в Excel з метаданими
    */
-  async exportToExcel(data: any[][], headers: string[], options: ExportOptions = {}): Promise<ExportResult> {
+  async exportToExcel(
+    data: any[][],
+    headers: string[],
+    options: ExportOptions = {}
+  ): Promise<ExportResult> {
     const {
       filename = 'export',
       sheetName = 'Дані',
       includeMetadata = DEFAULT_INCLUDE_METADATA,
-      metadata = {}
+      metadata = {},
     } = options;
 
     const workbook = XLSX.utils.book_new();
@@ -72,7 +76,7 @@ class ExportHelpers {
 
     // Налаштовуємо стилі для заголовків
     worksheet['!cols'] = headers.map(() => ({ width: 20 }));
-    
+
     // Додаємо основний аркуш
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
@@ -92,18 +96,22 @@ class ExportHelpers {
       fileSize,
       format: 'xlsx',
       rows: data.length,
-      columns: headers.length
+      columns: headers.length,
     };
   }
 
   /**
    * Експорт в CSV з метаданими
    */
-  async exportToCSV(data: any[][], headers: string[], options: ExportOptions = {}): Promise<ExportResult> {
+  async exportToCSV(
+    data: any[][],
+    headers: string[],
+    options: ExportOptions = {}
+  ): Promise<ExportResult> {
     const {
       filename = 'export',
       includeMetadata = DEFAULT_INCLUDE_METADATA,
-      metadata = {}
+      metadata = {},
     } = options;
 
     let csvContent = '';
@@ -142,7 +150,7 @@ class ExportHelpers {
       fileSize,
       format: 'csv',
       rows: data.length,
-      columns: headers.length
+      columns: headers.length,
     };
   }
 
@@ -157,7 +165,7 @@ class ExportHelpers {
       ['Час експорту', new Date().toISOString()],
       ['Версія бота', '2.1.0'],
       [''],
-      ['Параметри експорту']
+      ['Параметри експорту'],
     ];
 
     // Додаємо додаткові метадані
@@ -173,18 +181,18 @@ class ExportHelpers {
    */
   private createMetadataCSV(metadata: Record<string, any>): string {
     let csv = '';
-    
+
     // Додаємо коментарі з метаданими
     csv += `# Метадані експорту\n`;
     csv += `# Дата експорту: ${new Date().toLocaleString('uk-UA')}\n`;
     csv += `# Час експорту: ${new Date().toISOString()}\n`;
     csv += `# Версія бота: 2.1.0\n`;
-    
+
     // Додаємо додаткові метадані
     for (const [key, value] of Object.entries(metadata)) {
       csv += `# ${key}: ${value}\n`;
     }
-    
+
     csv += '\n';
     return csv;
   }
@@ -192,19 +200,24 @@ class ExportHelpers {
   /**
    * Експорт результатів пошуку
    */
-  async exportSearchResults(results: any[][], headers: string[], searchFilters: any, options: ExportOptions = {}): Promise<ExportResult> {
+  async exportSearchResults(
+    results: any[][],
+    headers: string[],
+    searchFilters: any,
+    options: ExportOptions = {}
+  ): Promise<ExportResult> {
     const metadata = {
       'Тип експорту': 'Результати пошуку',
       'Кількість результатів': results.length,
       'Фільтри пошуку': JSON.stringify(searchFilters),
-      'Користувач': options.userId || 'Невідомо',
-      'Сервер': options.guildId || 'Невідомо'
+      Користувач: options.userId || 'Невідомо',
+      Сервер: options.guildId || 'Невідомо',
     };
 
     const exportOptions = {
       ...options,
       metadata,
-      filename: `search_results_${options.userId || 'unknown'}`
+      filename: `search_results_${options.userId || 'unknown'}`,
     };
 
     if (options.format === 'csv') {
@@ -217,19 +230,23 @@ class ExportHelpers {
   /**
    * Експорт всієї таблиці
    */
-  async exportFullTable(data: any[][], headers: string[], options: ExportOptions = {}): Promise<ExportResult> {
+  async exportFullTable(
+    data: any[][],
+    headers: string[],
+    options: ExportOptions = {}
+  ): Promise<ExportResult> {
     const metadata = {
       'Тип експорту': 'Повна таблиця',
       'Кількість рядків': data.length,
       'Кількість колонок': headers.length,
-      'Користувач': options.userId || 'Невідомо',
-      'Сервер': options.guildId || 'Невідомо'
+      Користувач: options.userId || 'Невідомо',
+      Сервер: options.guildId || 'Невідомо',
     };
 
     const exportOptions = {
       ...options,
       metadata,
-      filename: `full_table_${options.userId || 'unknown'}`
+      filename: `full_table_${options.userId || 'unknown'}`,
     };
 
     if (options.format === 'csv') {
@@ -242,13 +259,18 @@ class ExportHelpers {
   /**
    * Створення звіту з аналізом даних
    */
-  async exportAnalysisReport(data: any[][], _headers: string[], analysis: AnalysisData, options: ExportOptions = {}): Promise<ExportResult> {
+  async exportAnalysisReport(
+    data: any[][],
+    _headers: string[],
+    analysis: AnalysisData,
+    options: ExportOptions = {}
+  ): Promise<ExportResult> {
     const metadata = {
       'Тип експорту': 'Звіт аналізу',
       'Кількість рядків': data.length,
       'Тип аналізу': analysis.type || 'Загальний',
       'Дата аналізу': new Date().toISOString(),
-      'Користувач': options.userId || 'Невідомо'
+      Користувач: options.userId || 'Невідомо',
     };
 
     // Створюємо дані для звіту
@@ -259,7 +281,7 @@ class ExportHelpers {
       ['Дата аналізу', new Date().toLocaleString('uk-UA')],
       ['Кількість записів', data.length],
       [''],
-      ['Результати аналізу']
+      ['Результати аналізу'],
     ];
 
     // Додаємо результати аналізу
@@ -273,7 +295,7 @@ class ExportHelpers {
       ...options,
       metadata,
       filename: `analysis_report_${options.userId || 'unknown'}`,
-      sheetName: 'Аналіз'
+      sheetName: 'Аналіз',
     };
 
     if (options.format === 'csv') {
@@ -295,7 +317,7 @@ class ExportHelpers {
       for (const file of files) {
         const filePath = path.join(this.tmpDir, file);
         const stats = fs.statSync(filePath);
-        
+
         if (now - stats.mtime.getTime() > maxAge) {
           fs.unlinkSync(filePath);
           console.log(`🗑️ Видалено старий файл: ${file}`);
@@ -323,7 +345,7 @@ class ExportHelpers {
       const stats = {
         totalFiles: files.length,
         totalSize: 0,
-        formats: {} as Record<string, number>
+        formats: {} as Record<string, number>,
       };
 
       for (const file of files) {
@@ -337,7 +359,7 @@ class ExportHelpers {
 
       return {
         ...stats,
-        totalSizeFormatted: DataFormatters.formatFileSize(stats.totalSize)
+        totalSizeFormatted: DataFormatters.formatFileSize(stats.totalSize),
       };
     } catch (error) {
       console.error('Помилка отримання статистики експорту:', error);
@@ -351,7 +373,9 @@ class ExportHelpers {
   validateFileSize(fileSize: number): boolean {
     const maxSize = DEFAULT_MAX_EXPORT_FILE_SIZE;
     if (fileSize > maxSize) {
-      throw new Error(`Файл занадто великий: ${DataFormatters.formatFileSize(fileSize)} > ${DataFormatters.formatFileSize(maxSize)}`);
+      throw new Error(
+        `Файл занадто великий: ${DataFormatters.formatFileSize(fileSize)} > ${DataFormatters.formatFileSize(maxSize)}`
+      );
     }
     return true;
   }
