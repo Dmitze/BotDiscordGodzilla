@@ -302,7 +302,7 @@ function calculatePerformanceScore(avgResponseTime, successRate, requestsPerSeco
  * Тестування пам'яті
  */
 async function testMemoryUsage() {
-  console.log('\n🧠 ТЕСТУВАННЯ ВИКОРИСТАННЯ ПАМ'ЯТІ');
+  console.log("\n🧠 ТЕСТУВАННЯ ВИКОРИСТАННЯ ПАМ'ЯТІ");
   console.log('==================================');
   
   const initialMemory = process.memoryUsage();
