@@ -66,7 +66,11 @@ export class ServiceContainer {
 
     for (const [name, service] of this.services.entries()) {
       try {
-        logger.info('🚀 Ініціалізація сервісу', { type: 'service_container', event: 'service_init_start', service: name });
+        logger.info('🚀 Ініціалізація сервісу', {
+          type: 'service_container',
+          event: 'service_init_start',
+          service: name,
+        });
         initPromises.push(service.initialize());
       } catch (error) {
         logger.error('❌ Помилка ініціалізації сервісу', {
@@ -77,12 +81,17 @@ export class ServiceContainer {
           errorMessage: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
         });
-        throw new Error(`Помилка ініціалізації сервісу ${name}: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `Помилка ініціалізації сервісу ${name}: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
 
     await Promise.all(initPromises);
-    logger.info('✅ Ініціалізація всіх сервісів завершена', { type: 'service_container', event: 'all_services_initialized' });
+    logger.info('✅ Ініціалізація всіх сервісів завершена', {
+      type: 'service_container',
+      event: 'all_services_initialized',
+    });
   }
 
   /**
@@ -179,4 +188,4 @@ export class ServiceContainer {
   public get size(): number {
     return this.services.size;
   }
-} 
+}
