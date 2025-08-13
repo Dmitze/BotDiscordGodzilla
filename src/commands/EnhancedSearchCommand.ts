@@ -3,14 +3,14 @@
  * Розширені можливості пошуку та фільтрації даних
  */
 
-import { 
-  EmbedBuilder, 
-  ActionRowBuilder, 
-  ButtonBuilder, 
+import {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
   ButtonStyle,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
-  ChatInputCommandInteraction
+  ChatInputCommandInteraction,
 } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
@@ -38,7 +38,11 @@ interface SearchResult {
 export class EnhancedSearchCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
   private readonly sheetsContext: SheetsContextService | undefined;
-  constructor(config: BotConfig, googleService?: GoogleService, sheetsContext?: SheetsContextService) {
+  constructor(
+    config: BotConfig,
+    googleService?: GoogleService,
+    sheetsContext?: SheetsContextService
+  ) {
     super(
       'розширений_пошук',
       '🔍 Покращений пошук з діапазонами та сортуванням',
@@ -143,7 +147,7 @@ export class EnhancedSearchCommand extends BaseCommand {
    */
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
-    
+
     await interaction.deferReply();
 
     try {
@@ -168,16 +172,22 @@ export class EnhancedSearchCommand extends BaseCommand {
           }
         } catch (e) {
           logger.warn('EnhancedSearch: не вдалося отримати контекст листа', {
-            component: 'EnhancedSearchCommand', event: 'context_get_failed', error: String(e),
+            component: 'EnhancedSearchCommand',
+            event: 'context_get_failed',
+            error: String(e),
           });
         }
       }
 
       // Отримуємо параметри пошуку
       const filters = this.extractFilters(interaction);
-      
+
       // Отримуємо дані з Google Sheets (з урахуванням вибраної таблиці/листа)
-      const sheetResponse = await this.getSheetData(spreadsheetName, sheetName, spreadsheetIdOverride);
+      const sheetResponse = await this.getSheetData(
+        spreadsheetName,
+        sheetName,
+        spreadsheetIdOverride
+      );
       const sheetData = sheetResponse.values;
       if (!sheetData || sheetData.length === 0) {
         return interaction.editReply('❌ Немає даних для пошуку');
@@ -188,7 +198,7 @@ export class EnhancedSearchCommand extends BaseCommand {
 
       // Виконуємо пошук
       const results = this.performSearch(data, headers, filters);
-      
+
       if (results.length === 0) {
         return interaction.editReply('🔍 Нічого не знайдено за вказаними критеріями');
       }
@@ -215,18 +225,19 @@ export class EnhancedSearchCommand extends BaseCommand {
         });
       } catch (e) {
         logger.warn('EnhancedSearch: не вдалося зберегти контекст листа', {
-          component: 'EnhancedSearchCommand', event: 'context_set_failed', error: String(e),
+          component: 'EnhancedSearchCommand',
+          event: 'context_set_failed',
+          error: String(e),
         });
       }
-      
+
       // Створюємо кнопки для навігації
       const components = this.createNavigationComponents(sortedResults.length);
 
       await interaction.editReply({
         embeds: [embed],
-        components: components
+        components: components,
       });
-
     } catch (error) {
       logger.error('Помилка покращеного пошуку', {
         error: error instanceof Error ? error.message : String(error),
@@ -239,24 +250,38 @@ export class EnhancedSearchCommand extends BaseCommand {
   /**
    * Отримання даних з Google Sheets
    */
-  private async getSheetData(spreadsheetName?: string, sheetName?: string, spreadsheetIdOverride?: string): Promise<{ values: string[][]; spreadsheetId: string; range: string; }> {
+  private async getSheetData(
+    spreadsheetName?: string,
+    sheetName?: string,
+    spreadsheetIdOverride?: string
+  ): Promise<{ values: string[][]; spreadsheetId: string; range: string }> {
     if (!this.googleService) {
       throw new Error('GoogleService недоступний');
     }
 
     // Визначаємо spreadsheetId: або з конфіга, або по імені через Drive
-    let targetSpreadsheetId: string | undefined = spreadsheetIdOverride || this.config?.google?.spreadsheetId;
+    let targetSpreadsheetId: string | undefined =
+      spreadsheetIdOverride || this.config?.google?.spreadsheetId;
     if (spreadsheetName) {
       const folderId = this.config?.google?.driveFolderId;
       if (!folderId) throw new Error('Не вказано GOOGLE_DRIVE_FOLDER_ID в конфігурації');
 
-      const matches = await this.googleService.findSpreadsheetsByNameInFolder(spreadsheetName, folderId, true, 3);
+      const matches = await this.googleService.findSpreadsheetsByNameInFolder(
+        spreadsheetName,
+        folderId,
+        true,
+        3
+      );
       if (!matches.length) {
-        throw new Error(`Таблиця з назвою, що містить "${spreadsheetName}", не знайдена у вказаній папці`);
+        throw new Error(
+          `Таблиця з назвою, що містить "${spreadsheetName}", не знайдена у вказаній папці`
+        );
       }
 
       // Пробуємо точний match по name (case-insensitive), інакше беремо першу
-      const exact = matches.find(f => (f.name || '').toLowerCase() === spreadsheetName.toLowerCase());
+      const exact = matches.find(
+        f => (f.name || '').toLowerCase() === spreadsheetName.toLowerCase()
+      );
       const chosen = exact || matches[0];
       if (!chosen || !chosen.id) {
         throw new Error('Не вдалося визначити ID вибраної таблиці');
@@ -279,18 +304,22 @@ export class EnhancedSearchCommand extends BaseCommand {
       range = `${sheetName}!A:Z`;
     }
 
-    const data = await this.getSheetDataWithTimeout(this.googleService!, targetSpreadsheetId, range);
+    const data = await this.getSheetDataWithTimeout(
+      this.googleService!,
+      targetSpreadsheetId,
+      range
+    );
     return { values: data.values ?? [], spreadsheetId: targetSpreadsheetId, range: data.range };
   }
 
-  private async getSheetDataWithTimeout(googleService: GoogleService, spreadsheetId: string, range: string = 'A:Z'): Promise<{ range: string; majorDimension: string; values: string[][]; }> {
+  private async getSheetDataWithTimeout(
+    googleService: GoogleService,
+    spreadsheetId: string,
+    range: string = 'A:Z'
+  ): Promise<{ range: string; majorDimension: string; values: string[][] }> {
     const SEARCH_TIMEOUT = 15000; // 15s для розширеного пошуку
     return Promise.race([
-      googleService.getSheetData(
-        spreadsheetId,
-        range,
-        { useCache: true, cacheTTL: 60 }
-      ),
+      googleService.getSheetData(spreadsheetId, range, { useCache: true, cacheTTL: 60 }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Таймаут отримання даних')), SEARCH_TIMEOUT)
       ),
@@ -310,7 +339,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       quantityFrom: interaction.options.getNumber('кількість_від') || undefined,
       quantityTo: interaction.options.getNumber('кількість_до') || undefined,
       sortBy: interaction.options.getString('сортування') || 'назва',
-      sortOrder: interaction.options.getString('порядок') || 'asc'
+      sortOrder: interaction.options.getString('порядок') || 'asc',
     };
 
     return filters;
@@ -319,7 +348,11 @@ export class EnhancedSearchCommand extends BaseCommand {
   /**
    * Виконання пошуку з фільтрами
    */
-  private performSearch(data: string[][], headers: string[], filters: SearchFilters): SearchResult[] {
+  private performSearch(
+    data: string[][],
+    headers: string[],
+    filters: SearchFilters
+  ): SearchResult[] {
     const results: SearchResult[] = [];
 
     for (const row of data) {
@@ -401,9 +434,14 @@ export class EnhancedSearchCommand extends BaseCommand {
   /**
    * Сортування результатів
    */
-  private sortResults(results: SearchResult[], headers: string[], sortBy: string, sortOrder: string): SearchResult[] {
+  private sortResults(
+    results: SearchResult[],
+    headers: string[],
+    sortBy: string,
+    sortOrder: string
+  ): SearchResult[] {
     const sortIndex = this.getColumnIndex(headers, sortBy);
-    
+
     if (sortIndex === -1) {
       return results.sort((a, b) => b.score - a.score);
     }
@@ -411,7 +449,7 @@ export class EnhancedSearchCommand extends BaseCommand {
     return results.sort((a, b) => {
       const aValue = parseFloat(a.row[sortIndex] || '0') || 0;
       const bValue = parseFloat(b.row[sortIndex] || '0') || 0;
-      
+
       if (sortOrder === 'desc') {
         return bValue - aValue;
       } else {
@@ -423,7 +461,12 @@ export class EnhancedSearchCommand extends BaseCommand {
   /**
    * Створення embed з результатами
    */
-  private createResultsEmbed(results: SearchResult[], headers: string[], filters: SearchFilters, ctx?: { spreadsheetId: string; range: string; }): EmbedBuilder {
+  private createResultsEmbed(
+    results: SearchResult[],
+    headers: string[],
+    filters: SearchFilters,
+    ctx?: { spreadsheetId: string; range: string }
+  ): EmbedBuilder {
     const embed = new EmbedBuilder()
       .setTitle('🔍 Результати розширеного пошуку')
       .setColor(0x00ff88)
@@ -435,7 +478,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       embed.addFields({
         name: '📋 Активні фільтри',
         value: activeFilters.join('\n'),
-        inline: false
+        inline: false,
       });
     }
 
@@ -455,7 +498,7 @@ export class EnhancedSearchCommand extends BaseCommand {
     for (let i = 0; i < displayResults.length; i++) {
       const result = displayResults[i];
       if (!result) continue;
-      
+
       const nameIndex = this.getColumnIndex(headers, 'назва');
       const priceIndex = this.getColumnIndex(headers, 'ціна');
       const quantityIndex = this.getColumnIndex(headers, 'кількість');
@@ -471,7 +514,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       embed.addFields({
         name: `📊 Знайдено результатів: ${results.length}`,
         value: resultsText,
-        inline: false
+        inline: false,
       });
     }
 
@@ -485,53 +528,51 @@ export class EnhancedSearchCommand extends BaseCommand {
     const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
     // Перший ряд кнопок
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('export_results')
-          .setLabel('📥 Експорт')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('refine_search')
-          .setLabel('🔍 Уточнити пошук')
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId('clear_filters')
-          .setLabel('🗑️ Очистити фільтри')
-          .setStyle(ButtonStyle.Danger)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('export_results')
+        .setLabel('📥 Експорт')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('refine_search')
+        .setLabel('🔍 Уточнити пошук')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('clear_filters')
+        .setLabel('🗑️ Очистити фільтри')
+        .setStyle(ButtonStyle.Danger)
+    );
 
     rows.push(row1);
 
     // Другий ряд - меню сортування
-    const row2 = new ActionRowBuilder<StringSelectMenuBuilder>()
-      .addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('sort_results')
-          .setPlaceholder('Сортування результатів')
-          .addOptions([
-            new StringSelectMenuOptionBuilder()
-              .setLabel('За назвою (А-Я)')
-              .setValue('назва_asc')
-              .setDescription('Сортування за назвою за зростанням'),
-            new StringSelectMenuOptionBuilder()
-              .setLabel('За назвою (Я-А)')
-              .setValue('назва_desc')
-              .setDescription('Сортування за назвою за спаданням'),
-            new StringSelectMenuOptionBuilder()
-              .setLabel('За ціною (від дешевих)')
-              .setValue('ціна_asc')
-              .setDescription('Сортування за ціною за зростанням'),
-            new StringSelectMenuOptionBuilder()
-              .setLabel('За ціною (від дорогих)')
-              .setValue('ціна_desc')
-              .setDescription('Сортування за ціною за спаданням'),
-            new StringSelectMenuOptionBuilder()
-              .setLabel('За кількістю')
-              .setValue('кількість_desc')
-              .setDescription('Сортування за кількістю за спаданням')
-          ])
-      );
+    const row2 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('sort_results')
+        .setPlaceholder('Сортування результатів')
+        .addOptions([
+          new StringSelectMenuOptionBuilder()
+            .setLabel('За назвою (А-Я)')
+            .setValue('назва_asc')
+            .setDescription('Сортування за назвою за зростанням'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('За назвою (Я-А)')
+            .setValue('назва_desc')
+            .setDescription('Сортування за назвою за спаданням'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('За ціною (від дешевих)')
+            .setValue('ціна_asc')
+            .setDescription('Сортування за ціною за зростанням'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('За ціною (від дорогих)')
+            .setValue('ціна_desc')
+            .setDescription('Сортування за ціною за спаданням'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('За кількістю')
+            .setValue('кількість_desc')
+            .setDescription('Сортування за кількістю за спаданням'),
+        ])
+    );
 
     rows.push(row2 as any);
 
@@ -575,4 +616,4 @@ export class EnhancedSearchCommand extends BaseCommand {
   private getColumnIndex(headers: string[], field: string): number {
     return headers.findIndex(header => header.toLowerCase() === field.toLowerCase());
   }
-} 
+}
