@@ -112,7 +112,9 @@ export class PerformanceOptimizer {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
-      throw new Error(`Помилка запуску моніторингу: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
+      throw new Error(
+        `Помилка запуску моніторингу: ${error instanceof Error ? error.message : 'Невідома помилка'}`
+      );
     }
   }
 
@@ -147,7 +149,8 @@ export class PerformanceOptimizer {
           heapUsed: memoryUsage.heapUsed,
           heapTotal: memoryUsage.heapTotal,
           external: memoryUsage.external,
-          arrayBuffers: (memoryUsage as NodeJS.MemoryUsage & { arrayBuffers?: number }).arrayBuffers ?? 0,
+          arrayBuffers:
+            (memoryUsage as NodeJS.MemoryUsage & { arrayBuffers?: number }).arrayBuffers ?? 0,
         },
         cpu: {
           usage: cpuUsage.usage,
@@ -179,7 +182,7 @@ export class PerformanceOptimizer {
           const endTime = process.hrtime.bigint();
 
           const elapsed = Number(endTime - startTime) / 1000000; // в мілісекундах
-          const usage = ((endUsage.user + endUsage.system) / 1000) / elapsed * 100;
+          const usage = ((endUsage.user + endUsage.system) / 1000 / elapsed) * 100;
 
           this.performanceData.cpu.usage = Math.min(usage, 100);
         } catch (cpuError) {
@@ -219,7 +222,7 @@ export class PerformanceOptimizer {
 
       // Перевірка пам'яті
       if (heapUsedPercent > PERFORMANCE_CONSTANTS.MEMORY_THRESHOLD) {
-        logger.warn('⚠️ Високе використання пам\'яті', {
+        logger.warn("⚠️ Високе використання пам'яті", {
           heapUsed: `${Math.round(heapUsedPercent)}%`,
           threshold: `${PERFORMANCE_CONSTANTS.MEMORY_THRESHOLD}%`,
           type: 'performance',
@@ -253,7 +256,7 @@ export class PerformanceOptimizer {
    */
   private optimizeMemory(): void {
     try {
-      logger.info('🧹 Оптимізація пам\'яті...');
+      logger.info("🧹 Оптимізація пам'яті...");
 
       // Примусова garbage collection
       if (global.gc) {
@@ -266,13 +269,15 @@ export class PerformanceOptimizer {
 
       // Очищення метрик
       if (this.metricsHistory.length > PERFORMANCE_CONSTANTS.MAX_METRICS_HISTORY / 2) {
-        this.metricsHistory = this.metricsHistory.slice(-PERFORMANCE_CONSTANTS.MAX_METRICS_HISTORY / 2);
+        this.metricsHistory = this.metricsHistory.slice(
+          -PERFORMANCE_CONSTANTS.MAX_METRICS_HISTORY / 2
+        );
         logger.debug('✅ Історія метрик очищено');
       }
 
-      logger.info('✅ Оптимізація пам\'яті завершено');
+      logger.info("✅ Оптимізація пам'яті завершено");
     } catch (error) {
-      logger.error('❌ Помилка оптимізації пам\'яті:', {
+      logger.error("❌ Помилка оптимізації пам'яті:", {
         type: 'performance',
         component: 'PerformanceOptimizer.optimizeMemory',
         error: error instanceof Error ? error.message : String(error),
@@ -439,8 +444,12 @@ export class PerformanceOptimizer {
         this.performanceData.slowOperations.push(metric);
 
         // Обмеження кількості повільних операцій
-        if (this.performanceData.slowOperations.length > PERFORMANCE_CONSTANTS.MAX_SLOW_OPERATIONS) {
-          this.performanceData.slowOperations = this.performanceData.slowOperations.slice(-PERFORMANCE_CONSTANTS.SLOW_OPERATIONS_RETAIN);
+        if (
+          this.performanceData.slowOperations.length > PERFORMANCE_CONSTANTS.MAX_SLOW_OPERATIONS
+        ) {
+          this.performanceData.slowOperations = this.performanceData.slowOperations.slice(
+            -PERFORMANCE_CONSTANTS.SLOW_OPERATIONS_RETAIN
+          );
         }
 
         logger.warn(`🐌 Повільна операція: ${operationName}`, {
@@ -690,12 +699,7 @@ export const measureOperation = <T>(
   return performanceOptimizer.measureOperation(operation, operationName, category);
 };
 
-export const cache = <T>(
-  cacheName: string,
-  key: string,
-  value: T,
-  ttl?: number
-): void => {
+export const cache = <T>(cacheName: string, key: string, value: T, ttl?: number): void => {
   performanceOptimizer.cache(cacheName, key, value, ttl);
 };
 
@@ -705,4 +709,4 @@ export const getFromCache = <T>(cacheName: string, key: string): T | null => {
 
 export const getPerformanceStats = () => performanceOptimizer.getPerformanceStats();
 export const getSystemMetrics = () => performanceOptimizer.getSystemMetrics();
-export const cleanupPerformanceOptimizer = () => performanceOptimizer.cleanup(); 
+export const cleanupPerformanceOptimizer = () => performanceOptimizer.cleanup();
