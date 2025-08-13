@@ -4,6 +4,8 @@
  */
 
 import { google, sheets_v4, drive_v3, docs_v1 } from 'googleapis';
+import pdfParse from 'pdf-parse';
+import * as mammoth from 'mammoth';
 import type { BotConfig, HealthStatus, ServiceStats, SheetData, BatchSheetData } from '@/types';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
@@ -60,80 +62,6 @@ export class GoogleService extends BaseServiceClass {
       cacheHits: 0,
       cacheMisses: 0,
     };
-  }
-
-  /**
-   * Завантаження бінарного файлу з Drive (для не-Google типів, наприклад .xlsx/.xls/.pdf)
-   */
-  public async downloadDriveFile(fileId: string): Promise<Buffer> {
-    try {
-      const buffer = await this.executeWithRetry(async () => {
-        if (!this.drive) throw new Error('Drive API не ініціалізовано');
-        const res = await this.drive.files.get(
-          { fileId, alt: 'media' },
-          { responseType: 'arraybuffer' as any }
-        );
-        const data = res.data as ArrayBuffer;
-        return Buffer.from(new Uint8Array(data));
-      }, 'drive');
-
-      logger.debug('⬇️ Завантажено файл з Drive', {
-        type: 'api',
-        event: 'drive_download',
-        component: 'GoogleService',
-        fileId: fileId.substring(0, 10) + '...',
-        size: buffer.byteLength,
-      });
-
-      return buffer;
-    } catch (error) {
-      logger.error('❌ Помилка завантаження файлу з Drive', {
-        type: 'api_error',
-        event: 'drive_download_failed',
-        component: 'GoogleService',
-        error: error instanceof Error ? error.message : String(error),
-        fileId: fileId.substring(0, 10) + '...',
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Експорт Google-документів (Docs/Sheets/Slides) у вказаний MIME-тип (наприклад, PDF/Excel)
-   */
-  public async exportDriveFile(fileId: string, mimeType: string): Promise<Buffer> {
-    try {
-      const buffer = await this.executeWithRetry(async () => {
-        if (!this.drive) throw new Error('Drive API не ініціалізовано');
-        const res = await this.drive.files.export(
-          { fileId, mimeType },
-          { responseType: 'arraybuffer' as any }
-        );
-        const data = res.data as ArrayBuffer;
-        return Buffer.from(new Uint8Array(data));
-      }, 'drive');
-
-      logger.debug('⬇️ Експортовано файл з Drive', {
-        type: 'api',
-        event: 'drive_export',
-        component: 'GoogleService',
-        fileId: fileId.substring(0, 10) + '...',
-        mimeType,
-        size: buffer.byteLength,
-      });
-
-      return buffer;
-    } catch (error) {
-      logger.error('❌ Помилка експорту файлу з Drive', {
-        type: 'api_error',
-        event: 'drive_export_failed',
-        component: 'GoogleService',
-        error: error instanceof Error ? error.message : String(error),
-        fileId: fileId.substring(0, 10) + '...',
-        mimeType,
-      });
-      throw error;
-    }
   }
 
   /**
@@ -1521,5 +1449,116 @@ export class GoogleService extends BaseServiceClass {
       }
     }
     this.stats.connectionPoolUsage = (inUseConnections / this.connectionPool.size) * 100;
+  }
+
+  /**
+   * Побудова індексу файлів у папці Drive та збереження у кеші
+   */
+  public async buildDriveIndex(
+    folderId: string,
+    opts: { ttlSeconds?: number; recursive?: boolean; maxDepth?: number } = {}
+  ): Promise<drive_v3.Schema$File[]> {
+    const { ttlSeconds = 3600, recursive = true, maxDepth = -1 } = opts;
+    const files = await this.listDriveFilesInFolder(folderId, {
+      recursive,
+      type: 'any',
+      limit: 10000,
+      maxDepth,
+    });
+    const key = `drive:index:${folderId}`;
+    try {
+      await this.cacheService.set(key, files, ttlSeconds);
+      logger.info('📇 Індекс Drive побудовано', {
+        type: 'system',
+        event: 'drive_index_built',
+        component: 'GoogleService',
+        folderId: folderId.substring(0, 10) + '...',
+        count: files.length,
+        ttl: `${ttlSeconds}s`,
+      });
+    } catch (e) {
+      logger.warn('⚠️ Не вдалося зберегти індекс Drive у кеш', {
+        type: 'system',
+        event: 'drive_index_cache_failed',
+        component: 'GoogleService',
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+    return files;
+  }
+
+  /**
+   * Прочитати індекс файлів з кешу
+   */
+  public async getDriveIndex(folderId: string): Promise<drive_v3.Schema$File[] | null> {
+    const key = `drive:index:${folderId}`;
+    try {
+      const cached = await this.cacheService.get<drive_v3.Schema$File[]>(key);
+      return cached ?? null;
+    } catch (e) {
+      logger.warn('⚠️ Не вдалося прочитати індекс Drive з кешу', {
+        type: 'system',
+        event: 'drive_index_cache_read_failed',
+        component: 'GoogleService',
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Витягти текст з Google Docs документа
+   */
+  private async extractTextFromGoogleDoc(documentId: string): Promise<string> {
+    if (!this.docs) throw new Error('Docs API не ініціалізовано');
+    const res = await this.docs.documents.get({ documentId });
+    const body = res.data.body;
+    if (!body || !body.content) return '';
+    const parts: string[] = [];
+    for (const el of body.content) {
+      const p = (el as any).paragraph;
+      if (!p || !p.elements) continue;
+      for (const run of p.elements) {
+        const tr = (run as any).textRun;
+        if (tr && tr.content) parts.push(tr.content);
+      }
+    }
+    return parts.join('');
+  }
+
+  /**
+   * Отримати текстовий контент з файлу за його MIME типом (Docs/PDF/Word)
+   */
+  public async extractTextFromFile(file: drive_v3.Schema$File): Promise<string> {
+    const mime = file.mimeType || '';
+    try {
+      if (mime === 'application/vnd.google-apps.document') {
+        return await this.extractTextFromGoogleDoc(file.id!);
+      }
+      if (mime === 'application/pdf') {
+        const buf = await this.downloadDriveFile(file.id!);
+        const parsed = await pdfParse(buf as unknown as Buffer);
+        return parsed.text || '';
+      }
+      if (
+        mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        mime === 'application/msword'
+      ) {
+        const buf = await this.downloadDriveFile(file.id!);
+        const result = await mammoth.extractRawText({ buffer: buf });
+        return result.value || '';
+      }
+      return '';
+    } catch (error) {
+      logger.error('❌ Помилка екстракції тексту з файлу', {
+        type: 'processing_error',
+        event: 'file_text_extract_failed',
+        component: 'GoogleService',
+        fileId: file.id,
+        mimeType: mime,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return '';
+    }
   }
 }
