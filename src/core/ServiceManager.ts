@@ -12,6 +12,7 @@ import { CacheService } from '../services/CacheService';
 import { MetricsService } from '../services/MetricsService';
 import { SheetsContextService } from '../services/SheetsContextService';
 import SchedulerService from '../services/SchedulerService';
+import { DriveIndexerService } from '../services/DriveIndexerService';
 import type { BotConfig } from '@/types';
 
 interface Bot {
@@ -116,6 +117,15 @@ class ServiceManager {
 
     // Sheets Context Service
     this.services.set('sheetsContext', new SheetsContextService(this.bot.config));
+
+    // Drive Indexer Service (потребує доступу до інших сервісів через getService)
+    this.services.set(
+      'driveIndexer',
+      new DriveIndexerService({
+        config: this.bot.config as BotConfig,
+        getService: (name: string) => this.getService(name),
+      } as any)
+    );
 
     // Зв'язуємо MetricsService з GoogleService (якщо обидва доступні)
     try {
