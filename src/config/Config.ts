@@ -117,6 +117,8 @@ export class Config {
         ttlTextSec: this.validateNumber(this.getEnv('DRIVE_TEXT_TTL_SEC', '21600'), 21600, 60, 604800),
         ownerAllowlist,
         hideWebLink: this.getEnv('DRIVE_HIDE_WEBLINK', 'true').toLowerCase() === 'true',
+        rateQps: this.validateNumber(this.getEnv('DRIVE_QPS', '5'), 5, 1, 100),
+        rateBurst: this.validateNumber(this.getEnv('DRIVE_BURST', '10'), 10, 1, 200),
       };
 
       logger.debug('✅ Drive конфігурація завантажена');
