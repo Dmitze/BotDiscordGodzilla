@@ -3,6 +3,7 @@
  * Використовується для розгортання slash-команд
  */
 
+import 'tsconfig-paths/register';
 import { config } from 'dotenv';
 
 // Завантаження змінних середовища
@@ -79,6 +80,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
     const { AnalyticsCommand } = await import('@/commands/AnalyticsCommand');
     const { EnhancedSearchCommand } = await import('@/commands/EnhancedSearchCommand');
     const { OCRCommand } = await import('@/commands/OCRCommand');
+    const { DriveExtractCommand } = await import('@/commands/DriveExtractCommand');
 
     const commands = [
       new SearchCommand(botConfig),
@@ -90,6 +92,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
       new AnalyticsCommand(botConfig),
       new EnhancedSearchCommand(botConfig),
       new OCRCommand(botConfig),
+      new DriveExtractCommand(botConfig),
     ];
 
     // Підготовка даних команд
