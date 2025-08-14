@@ -67,8 +67,10 @@ export class MemoryService {
       // Если всё ещё много — ужимаем содержимое
       if (ctx.tokenEstimate > this.maxTokens && ctx.turns.length) {
         const last = ctx.turns[0];
-        last.content = last.content.slice(0, Math.max(0, this.maxTokens * 4 - 64));
-        ctx.tokenEstimate = this.summaryAfter; // грубая коррекция
+        if (last) {
+          last.content = last.content.slice(0, Math.max(0, this.maxTokens * 4 - 64));
+          ctx.tokenEstimate = this.summaryAfter; // грубая коррекция
+        }
       }
     } catch (e) {
       logger.warn('memory_trim_failed', {
