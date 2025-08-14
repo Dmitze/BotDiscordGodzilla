@@ -14,6 +14,7 @@ import type {
   RedisConfig,
   MetricsConfig,
 } from '@/types';
+import type { DriveConfig } from '@/types/drive';
 import logger from '@/utils/logger';
 
 // Константи для конфігурації
@@ -39,15 +40,7 @@ const CONFIG_CONSTANTS = {
 export class Config {
   private static instance: BotConfig | null = null;
   private static readonly configCache = new Map<string, any>();
-
-  /**
-   * Завантаження конфігурації з змінних середовища (Singleton pattern)
-   */
-  public static load(): BotConfig {
-    if (this.instance) {
-      logger.debug('🔄 Повернення кешованої конфігурації');
-      return this.instance;
-    }
+  
 
     try {
       logger.info('🔧 Завантаження конфігурації...');
@@ -61,6 +54,7 @@ export class Config {
         security: this.loadSecurityConfig(),
         performance: this.loadPerformanceConfig(),
         logging: this.loadLoggingConfig(),
+        drive: this.loadDriveConfig(),
       };
 
       this.validate(config);
@@ -94,15 +88,40 @@ export class Config {
         logger.warn('⚠️ Discord токен може бути некоректним');
       }
 
+      // Флаги режимов
+      const enableChat = this.getEnv('ENABLE_CHAT', 'true').toLowerCase() === 'true';
+      const enableSlash = this.getEnv('ENABLE_SLASH', 'false').toLowerCase() === 'true';
+      const enableMessageContentIntent =
+        this.getEnv('ENABLE_MESSAGE_CONTENT_INTENT', 'true').toLowerCase() === 'true';
+
+      let parsedIntents = this.parseIntents(
+        this.getEnv('DISCORD_INTENTS', CONFIG_CONSTANTS.DEFAULT_INTENTS.join(','))
+      );
+
+      // Принудительно управляем MessageContent через флаг
+      const hasMessageContent = parsedIntents.includes('MessageContent');
+      if (enableMessageContentIntent && !hasMessageContent) {
+        parsedIntents = [...parsedIntents, 'MessageContent'];
+      }
+      if (!enableMessageContentIntent && hasMessageContent) {
+        parsedIntents = parsedIntents.filter(i => i !== 'MessageContent');
+      }
+
       const config: DiscordConfig = {
         token,
         clientId,
         guildId,
         prefix: this.getEnv('DISCORD_PREFIX', CONFIG_CONSTANTS.DEFAULT_PREFIX),
-        intents: this.parseIntents(
-          this.getEnv('DISCORD_INTENTS', CONFIG_CONSTANTS.DEFAULT_INTENTS.join(','))
-        ),
+        intents: parsedIntents,
+        enableChat,
+        enableSlash,
+        enableMessageContentIntent,
       };
+
+      // Попередження: чат включений, але MessageContent вимкнено
+      if (config.enableChat && !config.enableMessageContentIntent) {
+        logger.warn('⚠️ ENABLE_CHAT=true, але ENABLE_MESSAGE_CONTENT_INTENT=false — чат-режим не працюватиме.');
+      }
 
       logger.debug('✅ Discord конфігурація завантажена');
       return config;
@@ -495,7 +514,10 @@ export class Config {
     // Валідація Discord
     if (!config.discord.token) errors.push('DISCORD_TOKEN is required');
     if (!config.discord.clientId) errors.push('DISCORD_CLIENT_ID is required');
-    if (!config.discord.guildId) errors.push('DISCORD_GUILD_ID is required');
+    // guildId обов'язковий лише коли ENABLE_SLASH=true
+    if (config.discord.enableSlash && !config.discord.guildId) {
+      errors.push('DISCORD_GUILD_ID is required when ENABLE_SLASH=true');
+    }
 
     // Валідація Google
     if (!config.google.spreadsheetId) errors.push('GOOGLE_SPREADSHEET_ID is required');
@@ -532,6 +554,35 @@ export class Config {
   }
 
   /**
+   * Завантаження конфігурації
+   */
+  public static load(): BotConfig {
+    try {
+      logger.info('🔄 Завантаження конфігурації...');
+
+      const config: BotConfig = {
+        discord: this.loadDiscordConfig(),
+        google: this.loadGoogleConfig(),
+        ai: this.loadAIConfig(),
+        redis: this.loadRedisConfig(),
+        metrics: this.loadMetricsConfig(),
+        performance: this.loadPerformanceConfig(),
+        logging: this.loadLoggingConfig(),
+        drive: this.loadDriveConfig(),
+      };
+
+      this.validate(config);
+
+      this.logConfigurationSummary(config);
+
+      return config;
+    } catch (error) {
+      logger.error('❌ Помилка завантаження конфігурації:', error as any);
+      throw error;
+    }
+  }
+
+  /**
    * Логування підсумку конфігурації
    */
   private static logConfigurationSummary(config: BotConfig): void {
@@ -547,6 +598,12 @@ export class Config {
           spreadsheetId: config.google.spreadsheetId,
           sheetName: config.google.sheetName,
           hasCredentials: !!config.google.credentials,
+        },
+        drive: {
+          folderId: config.drive.folderId,
+          pageSize: config.drive.pageSize,
+          allowedMime: config.drive.allowedMime[0] === '*' ? '*' : config.drive.allowedMime.length,
+          hideWebLink: config.drive.hideWebLink,
         },
         ai: {
           provider: config.ai.provider,
@@ -566,8 +623,6 @@ export class Config {
       logger.error('❌ Помилка логування підсумку конфігурації:', error as any);
     }
   }
-
-  /**
    * Отримання обов'язкової змінної середовища
    */
   private static getRequiredEnv(key: string): string {
