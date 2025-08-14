@@ -82,16 +82,45 @@ export class Bot extends BaseServiceClass {
       slowCommands: 0,
     };
 
-    // Створення Discord клієнта з розширеними intents
+    // Вираховуємо intents з конфігурації
+    const intentMap: Record<string, number> = {
+      Guilds: GatewayIntentBits.Guilds,
+      GuildMessages: GatewayIntentBits.GuildMessages,
+      DirectMessages: GatewayIntentBits.DirectMessages,
+      GuildMembers: GatewayIntentBits.GuildMembers,
+      GuildPresences: GatewayIntentBits.GuildPresences,
+      MessageContent: GatewayIntentBits.MessageContent,
+      GuildMessageReactions: GatewayIntentBits.GuildMessageReactions,
+      GuildMessageTyping: GatewayIntentBits.GuildMessageTyping,
+      DirectMessageReactions: GatewayIntentBits.DirectMessageReactions,
+      DirectMessageTyping: GatewayIntentBits.DirectMessageTyping,
+    };
+
+    const requestedIntentNames = Array.isArray(config.discord.intents)
+      ? config.discord.intents
+      : [];
+    const intentsResolved = requestedIntentNames
+      .map(name => intentMap[name])
+      .filter((v): v is number => typeof v === 'number');
+
+    // Fail-fast: чат включен, но нет MessageContent
+    if (config.discord.enableChat && !requestedIntentNames.includes('MessageContent')) {
+      const meta = {
+        type: 'bot',
+        event: 'missing_intent',
+        enableChat: config.discord.enableChat,
+        enableMessageContentIntent: config.discord.enableMessageContentIntent,
+        intents: requestedIntentNames,
+      } as const;
+      logger.error(
+        'ENABLE_CHAT=true, но MessageContent не включен в intents. Включите ENABLE_MESSAGE_CONTENT_INTENT=true и добавьте MessageContent в DISCORD_INTENTS.',
+        meta
+      );
+      throw new Error('Чат-режим требует разрешения Message Content Intent');
+    }
+
     this.client = new Client({
-      intents: [
-        // Мінімально необхідні інтенти для слеш-команд та базових подій
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.DirectMessages,
-        // Для чат-режиму по вільному тексту (вимаг. дозволу в Dev Portal)
-        GatewayIntentBits.MessageContent,
-      ],
+      intents: intentsResolved,
       failIfNotExists: false,
     });
 
@@ -202,16 +231,20 @@ export class Bot extends BaseServiceClass {
       logger.info('⏳ Очікування готовності клієнта...');
       await this.waitForReady();
 
-      // Підключаємо чат-роутер після готовності клієнта
-      try {
-        this.chatRouter.bind();
-      } catch (e) {
-        logger.error('❌ Неможливо підключити ChatRouter', {
-          type: 'bot',
-          event: 'chat_bind_failed',
-          error: e instanceof Error ? e.message : String(e),
-        });
-        // Не зупиняємо весь бот, але логгуємо критично
+      // Підключаємо чат-роутер після готовності клієнта (тільки якщо чат увімкнено)
+      if (this.config.discord.enableChat) {
+        try {
+          this.chatRouter.bind();
+        } catch (e) {
+          logger.error('❌ Неможливо підключити ChatRouter', {
+            type: 'bot',
+            event: 'chat_bind_failed',
+            error: e instanceof Error ? e.message : String(e),
+          });
+          // Не зупиняємо весь бот, але логгуємо критично
+        }
+      } else {
+        logger.info('💤 Chat mode disabled — ChatRouter не підключено');
       }
 
       // Запуск health check
