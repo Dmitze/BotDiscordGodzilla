@@ -41,7 +41,20 @@ export class Config {
   private static instance: BotConfig | null = null;
   private static readonly configCache = new Map<string, any>();
   
-
+  /**
+   * Повертає поточну конфігурацію з кешу або виконує завантаження
+   */
+  public static get(): BotConfig {
+    if (this.instance) {
+      return this.instance;
+    }
+    return this.load();
+  }
+  
+  /**
+   * Завантаження конфігурації (Singleton)
+   */
+  public static load(): BotConfig {
     try {
       logger.info('🔧 Завантаження конфігурації...');
 
@@ -73,6 +86,48 @@ export class Config {
   }
 
   /**
+   * Завантаження Drive конфігурації
+   */
+  private static loadDriveConfig(): DriveConfig {
+    try {
+      logger.debug('🗂️ Завантаження Drive конфігурації...');
+
+      const csv = (v: string) =>
+        v.trim() === ''
+          ? []
+          : v
+              .split(',')
+              .map(s => s.trim())
+              .filter(Boolean);
+
+      const allowedMimeRaw = this.getEnv('DRIVE_ALLOWED_MIME', '*');
+      const allowedMime = allowedMimeRaw === '*' ? ['*'] : csv(allowedMimeRaw);
+
+      const ownerAllowlist = csv(this.getEnv('DRIVE_OWNER_ALLOWLIST', ''));
+
+      const config: DriveConfig = {
+        folderId: this.getRequiredEnv('GOOGLE_DRIVE_FOLDER_ID'),
+        pageSize: this.validateNumber(this.getEnv('DRIVE_PAGE_SIZE', '25'), 25, 5, 100),
+        allowedMime,
+        fileMaxSizeMb: this.validateNumber(this.getEnv('FILE_MAX_SIZE_MB', '8'), 8, 1, 24),
+        enableTextIndex: this.getEnv('DRIVE_ENABLE_TEXT_INDEX', 'false').toLowerCase() === 'true',
+        indexCron: this.getEnv('DRIVE_INDEX_CRON', '*/30 * * * *'),
+        maxConcurrency: this.validateNumber(this.getEnv('DRIVE_MAX_CONCURRENCY', '3'), 3, 1, 10),
+        ttlListSec: this.validateNumber(this.getEnv('DRIVE_LIST_TTL_SEC', '60'), 60, 10, 3600),
+        ttlTextSec: this.validateNumber(this.getEnv('DRIVE_TEXT_TTL_SEC', '21600'), 21600, 60, 604800),
+        ownerAllowlist,
+        hideWebLink: this.getEnv('DRIVE_HIDE_WEBLINK', 'true').toLowerCase() === 'true',
+      };
+
+      logger.debug('✅ Drive конфігурація завантажена');
+      return config;
+    } catch (error) {
+      logger.error('❌ Помилка завантаження Drive конфігурації:', error as any);
+      throw error;
+    }
+  }
+
+  /**
    * Завантаження Discord конфігурації
    */
   private static loadDiscordConfig(): DiscordConfig {
@@ -81,7 +136,7 @@ export class Config {
 
       const token = this.getRequiredEnv('DISCORD_TOKEN');
       const clientId = this.getRequiredEnv('DISCORD_CLIENT_ID');
-      const guildId = this.getRequiredEnv('DISCORD_GUILD_ID');
+      const guildId = this.getEnv('DISCORD_GUILD_ID', '');
 
       // Валідація токена
       if (!token.startsWith('MTA') && !token.startsWith('OTk')) {
@@ -556,31 +611,7 @@ export class Config {
   /**
    * Завантаження конфігурації
    */
-  public static load(): BotConfig {
-    try {
-      logger.info('🔄 Завантаження конфігурації...');
-
-      const config: BotConfig = {
-        discord: this.loadDiscordConfig(),
-        google: this.loadGoogleConfig(),
-        ai: this.loadAIConfig(),
-        redis: this.loadRedisConfig(),
-        metrics: this.loadMetricsConfig(),
-        performance: this.loadPerformanceConfig(),
-        logging: this.loadLoggingConfig(),
-        drive: this.loadDriveConfig(),
-      };
-
-      this.validate(config);
-
-      this.logConfigurationSummary(config);
-
-      return config;
-    } catch (error) {
-      logger.error('❌ Помилка завантаження конфігурації:', error as any);
-      throw error;
-    }
-  }
+  public static loadLegacy(): BotConfig { return this.load(); }
 
   /**
    * Логування підсумку конфігурації
@@ -623,11 +654,35 @@ export class Config {
       logger.error('❌ Помилка логування підсумку конфігурації:', error as any);
     }
   }
+  /**
    * Отримання обов'язкової змінної середовища
    */
   private static getRequiredEnv(key: string): string {
     const value = process.env[key];
     if (!value) {
+      // М'який режим для Google-ключів у локальному smoke-запуску
+      const allowGoogleStubs = ((process.env['ALLOW_GOOGLE_STUBS'] as string) || '').toLowerCase() === 'true';
+      const softGoogleKeys = new Set<string>([
+        'GOOGLE_API_KEY',
+        'GOOGLE_APPLICATION_CREDENTIALS',
+        'GOOGLE_SPREADSHEET_ID',
+        'GOOGLE_DRIVE_FOLDER_ID',
+        'GOOGLE_APP_SCRIPT_URL',
+      ]);
+
+      if (allowGoogleStubs && softGoogleKeys.has(key)) {
+        const stubMap: Record<string, string> = {
+          GOOGLE_API_KEY: 'AIzaStub',
+          GOOGLE_APPLICATION_CREDENTIALS: '',
+          GOOGLE_SPREADSHEET_ID: 'stub-spreadsheet-id',
+          GOOGLE_DRIVE_FOLDER_ID: 'stub-drive-folder-id',
+          GOOGLE_APP_SCRIPT_URL: 'http://localhost/stub-app-script',
+        };
+        const stub = stubMap[key] ?? 'stub';
+        logger.warn(`⚠️ [SOFT] ${key} не задан, використовую заглушку для локального smoke-тесту`);
+        return stub;
+      }
+
       const error = `Required environment variable ${key} is not set`;
       logger.error(`❌ ${error}`);
       throw new Error(error);
