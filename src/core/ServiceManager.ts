@@ -116,6 +116,18 @@ class ServiceManager {
 
     // Sheets Context Service
     this.services.set('sheetsContext', new SheetsContextService(this.bot.config));
+
+    // Зв'язуємо MetricsService з GoogleService (якщо обидва доступні)
+    try {
+      const google = this.services.get('google');
+      const metrics = this.services.get('metrics');
+      if (google && metrics && typeof google['setMetricsService'] === 'function') {
+        google['setMetricsService'](metrics);
+        logger.debug('🔗 Підключено MetricsService до GoogleService');
+      }
+    } catch (e) {
+      logger.warn('Не вдалося підключити MetricsService до GoogleService', { error: (e as Error).message });
+    }
   }
 
   /**
