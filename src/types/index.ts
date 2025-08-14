@@ -2,6 +2,7 @@
 // Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
 
 // Конфігурація
+import type { DriveConfig } from './drive';
 export interface BotConfig {
   discord: DiscordConfig;
   google: GoogleConfig;
@@ -11,6 +12,7 @@ export interface BotConfig {
   security: SecurityConfig;
   performance: PerformanceConfig;
   logging: LoggingConfig;
+  drive: DriveConfig;
 }
 
 export interface DiscordConfig {
@@ -19,6 +21,9 @@ export interface DiscordConfig {
   guildId: string;
   prefix: string;
   intents: string[];
+  enableChat?: boolean;
+  enableSlash?: boolean;
+  enableMessageContentIntent?: boolean;
 }
 
 export interface GoogleConfig {
