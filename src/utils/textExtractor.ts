@@ -1,7 +1,7 @@
 import type { DriveFile } from '@/types/drive';
 import { basename } from 'path';
 import logger from '@/utils/logger';
-import { sanitizeInput } from '@/utils/aiEnhanced';
+import { sanitizeInput } from '@/utils/security';
 import type { GoogleService } from '@/services/GoogleService';
 import pdfParse from 'pdf-parse';
 import * as mammoth from 'mammoth';
@@ -14,7 +14,17 @@ export interface ExtractResult {
 }
 
 // Поддерживаемые MIME для локального парсинга из буфера
-const MIME = {
+const MIME: {
+  TEXT: string[];
+  JSON: string[];
+  CSV: string[];
+  PDF: string[];
+  DOCX: string[];
+  DOC: string[];
+  GOOGLE_DOC: string[];
+  GOOGLE_SHEET: string[];
+  GOOGLE_SLIDES: string[];
+} = {
   TEXT: ['text/plain', 'text/markdown'],
   JSON: ['application/json'],
   CSV: ['text/csv'],
@@ -24,7 +34,7 @@ const MIME = {
   GOOGLE_DOC: ['application/vnd.google-apps.document'],
   GOOGLE_SHEET: ['application/vnd.google-apps.spreadsheet'],
   GOOGLE_SLIDES: ['application/vnd.google-apps.presentation'],
-} as const;
+};
 
 /**
  * Унифицированный роутер извлечения текста для файлов Google Drive
@@ -145,6 +155,6 @@ async function tryParseDocx(buf: Buffer, warnings: string[]): Promise<string> {
 }
 
 function sanitizeAndTrim(text: string): string {
-  const cleaned = sanitizeInput(text ?? '', { inputType: 'text' }).sanitized || '';
-  return cleaned.trim();
+  const cleaned = sanitizeInput(text ?? '');
+  return (cleaned || '').trim();
 }
