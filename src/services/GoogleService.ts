@@ -1,3 +1,4 @@
+/// <reference path="../types/pdf-parse.d.ts" />
 /**
  * Google Service з Connection Pool та оптимізацією
  * Покращена продуктивність та стабільність
@@ -6,6 +7,7 @@
 import { google } from 'googleapis';
 import type { sheets_v4, drive_v3, docs_v1 } from 'googleapis';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
+import type { MetricsService } from './MetricsService';
 import type { Readable } from 'stream';
 import { createHash } from 'crypto';
 import pdfParse from 'pdf-parse';
@@ -53,6 +55,10 @@ export class GoogleService extends BaseServiceClass {
   private readonly retryDelay = 1000;
   private stats: GoogleServiceStats;
   private cacheService: CacheService;
+  private metrics?: MetricsService;
+  // Простейший token-bucket для rate limit всего Google API
+  private rlTokens = 0;
+  private rlLastRefill = Date.now();
 
   constructor(config: BotConfig) {
     super('GoogleService', config);
@@ -67,6 +73,47 @@ export class GoogleService extends BaseServiceClass {
       cacheHits: 0,
       cacheMisses: 0,
     };
+    // Инициализация токенов бурстом
+    const { burst } = this.getRateConfig();
+    this.rlTokens = burst;
+  }
+
+  /** Подключение MetricsService (вызывается из ServiceManager) */
+  public setMetricsService(ms: MetricsService): void {
+    this.metrics = ms;
+  }
+
+  /** Получение параметров rate-limit из конфига с дефолтами */
+  private getRateConfig(): { qps: number; burst: number } {
+    const qps = this.config.drive?.rateQps ?? 5;
+    const burst = this.config.drive?.rateBurst ?? 10;
+    return { qps: Math.max(1, qps), burst: Math.max(1, burst) };
+  }
+
+  /** Ожидание до доступности токена по token-bucket; возвращает задержку в мс */
+  private async throttle(apiType: string): Promise<number> {
+    const { qps, burst } = this.getRateConfig();
+    const now = Date.now();
+    const elapsedSec = (now - this.rlLastRefill) / 1000;
+    // Пополнение токенов
+    this.rlTokens = Math.min(burst, this.rlTokens + elapsedSec * qps);
+    this.rlLastRefill = now;
+
+    if (this.rlTokens >= 1) {
+      this.rlTokens -= 1;
+      return 0;
+    }
+
+    const need = 1 - this.rlTokens;
+    const waitMs = Math.ceil((need / qps) * 1000);
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+    // Списываем токен после ожидания
+    this.rlTokens = Math.max(0, this.rlTokens + (waitMs / 1000) * qps - 1);
+    // Метрика "throttled"
+    try {
+      this.metrics?.updateGoogleApiMetrics(apiType, 'throttle', 'throttled', waitMs);
+    } catch {}
+    return waitMs;
   }
 
   /**
@@ -1008,12 +1055,16 @@ export class GoogleService extends BaseServiceClass {
   private async executeWithRetry<T>(
     operation: () => Promise<T>,
     apiType: string,
-    maxRetries: number = this.retryAttempts
+    maxRetries: number = this.retryAttempts,
+    endpoint: string = 'unknown'
   ): Promise<T> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
+        // Rate-limit перед взятием соединения
+        await this.throttle(apiType);
+
         const connection = this.getConnection(apiType);
         if (!connection) {
           throw new Error(`Немає доступних з'єднань для ${apiType}`);
@@ -1026,11 +1077,22 @@ export class GoogleService extends BaseServiceClass {
         this.releaseConnection(apiType);
         this.updateStats(true, duration);
 
+        // Метрики: успешный запрос
+        try {
+          this.metrics?.updateGoogleApiMetrics(apiType, endpoint, 'success', duration);
+        } catch {}
+
         return result;
       } catch (error) {
         lastError = error as Error;
         this.releaseConnection(apiType);
         this.updateStats(false, 0);
+
+        // Метрики: ошибка попытки
+        try {
+          const errDuration = 0;
+          this.metrics?.updateGoogleApiMetrics(apiType, endpoint, 'error', errDuration);
+        } catch {}
 
         if (attempt < maxRetries) {
           const delay = this.retryDelay * Math.pow(2, attempt);
