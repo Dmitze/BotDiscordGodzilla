@@ -3,13 +3,8 @@
  * Централізоване управління всіма командами
  */
 
-import {
-  Collection,
-  ChatInputCommandInteraction,
-  GuildMember,
-  EmbedBuilder,
-  Events,
-} from 'discord.js';
+import { Collection, EmbedBuilder, Events } from 'discord.js';
+import type { ChatInputCommandInteraction, GuildMember, Interaction, Client } from 'discord.js';
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
@@ -42,16 +37,18 @@ interface ICommand {
   execute(args: { interaction: ChatInputCommandInteraction }): Promise<void> | void;
 }
 
+type BotLike = { client: Client; getService?: (name: string) => unknown };
+
 export class CommandManager {
   // Nodemon touch: ensure restart after hotfix
-  private bot: any;
+  private bot: BotLike;
   private config: BotConfig;
   private commands: Collection<string, ICommand>;
 
   private commandCategories: Map<string, string[]>;
   private stats: CommandStats;
 
-  constructor(bot: any, config: BotConfig) {
+  constructor(bot: BotLike, config: BotConfig) {
     this.bot = bot;
     this.config = config;
     this.commands = new Collection();
@@ -69,6 +66,14 @@ export class CommandManager {
    */
   async initialize(): Promise<void> {
     try {
+      if (!this.config.discord.enableSlash) {
+        logger.info('🚫 Slash-команды отключены (enableSlash=false) — пропускаю инициализацию CommandManager', {
+          type: 'command_manager',
+          event: 'init_skipped',
+        });
+        return;
+      }
+
       logger.info('📋 Ініціалізація менеджера команд...', {
         type: 'command_manager',
         event: 'init_start',
@@ -100,6 +105,8 @@ export class CommandManager {
    */
   private async loadCommands(): Promise<void> {
     try {
+      // keep async semantics for future IO; satisfies lint rule
+      await Promise.resolve();
       // Отримуємо сервіси через Bot.getService() (проксі до ServiceManager/ServiceContainer)
       // Це гарантує доступ до сервісів, створених у ServiceManager
       const googleService = (this.bot?.getService?.('google') ?? undefined) as
@@ -218,8 +225,15 @@ export class CommandManager {
    * Реєстрація обробників подій
    */
   private registerEventHandlers(): void {
+    if (!this.config.discord.enableSlash) {
+      logger.debug('Slash-команды отключены — обработчики не регистрируются', {
+        type: 'command_manager',
+        event: 'handlers_skipped',
+      });
+      return;
+    }
     // Реєструємо обробник на Discord клієнті, а не на екземплярі Bot
-    this.bot.client.on(Events.InteractionCreate, async (interaction: any) => {
+    this.bot.client.on(Events.InteractionCreate, async (interaction: Interaction) => {
       if (interaction.isChatInputCommand()) {
         await this.handleCommand(interaction);
       }
