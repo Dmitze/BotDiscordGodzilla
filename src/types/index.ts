@@ -18,7 +18,7 @@ export interface BotConfig {
 export interface DiscordConfig {
   token: string;
   clientId: string;
-  guildId: string;
+  guildId?: string;
   prefix: string;
   intents: string[];
   enableChat?: boolean;
