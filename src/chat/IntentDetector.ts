@@ -18,27 +18,15 @@ export class IntentDetector {
     if (!q) return { type: 'UNKNOWN', confidence: 0 };
 
     try {
-      // HELP
-      if (/^help$|^помощ/i.test(q)) return { type: 'HELP', confidence: 0.9 };
+      if (this.isHelp(q)) return { type: 'HELP', confidence: 0.9 };
 
-      // ANALYZE_SHEET
-      if (/(проанализируй|анализ|подсчитай|сколько|сумма|средн|медиан|таблиц)/i.test(q)) {
-        // Пытаемся вытащить имя листа/таблицы в кавычках
-        const m = q.match(/["'«](.+?)["'»]/);
-        const name = m?.[1];
-        return { type: 'ANALYZE_SHEET', confidence: 0.75, params: name ? { sheet: name } : {} };
-      }
+      const sheet = this.tryExtractSheet(q);
+      if (sheet) return { type: 'ANALYZE_SHEET', confidence: 0.75, params: sheet };
 
-      // ANALYZE_FILE
-      if (/(файл|документ|drive|google drive|pdf|docx|doc)/i.test(q)) {
-        const idMatch = q.match(/[a-z0-9_-]{20,}/i);
-        return { type: 'ANALYZE_FILE', confidence: 0.7, params: idMatch ? { id: idMatch[0] } : {} };
-      }
+      const file = this.tryExtractFile(q);
+      if (file) return { type: 'ANALYZE_FILE', confidence: 0.7, params: file };
 
-      // QNA_GENERAL
-      if (/[?]|(что|как|почему|зачем|когда|где)\s/i.test(q)) {
-        return { type: 'QNA_GENERAL', confidence: 0.6 };
-      }
+      if (this.isQna(q)) return { type: 'QNA_GENERAL', confidence: 0.6 };
 
       return { type: 'UNKNOWN', confidence: 0.2 };
     } catch (e) {
@@ -49,5 +37,30 @@ export class IntentDetector {
       });
       return { type: 'UNKNOWN', confidence: 0 };
     }
+  }
+
+  private isHelp(q: string): boolean {
+    return /^help$|^помощ/i.test(q);
+  }
+
+  private tryExtractSheet(q: string): Record<string, string> | undefined {
+    if (/(проанализируй|анализ|подсчитай|сколько|сумма|средн|медиан|таблиц)/i.test(q)) {
+      const m = q.match(/["'«](.+?)["'»]/);
+      const name = m?.[1];
+      return name ? { sheet: name } : {};
+    }
+    return undefined;
+  }
+
+  private tryExtractFile(q: string): Record<string, string> | undefined {
+    if (/(файл|документ|drive|google drive|pdf|docx|doc)/i.test(q)) {
+      const idMatch = q.match(/[a-z0-9_-]{20,}/i);
+      return idMatch ? { id: idMatch[0] } : {};
+    }
+    return undefined;
+  }
+
+  private isQna(q: string): boolean {
+    return /[?]|(что|как|почему|зачем|когда|где)\s/i.test(q);
   }
 }
