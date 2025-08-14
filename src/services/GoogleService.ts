@@ -1,4 +1,3 @@
-/// <reference path="../types/pdf-parse.d.ts" />
 /**
  * Google Service з Connection Pool та оптимізацією
  * Покращена продуктивність та стабільність
@@ -6,6 +5,8 @@
 
 import { google } from 'googleapis';
 import type { sheets_v4, drive_v3, docs_v1 } from 'googleapis';
+// Импортируем ambient-типизацию для pdf-parse, вместо triple-slash
+import '@/types/pdf-parse';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import type { MetricsService } from './MetricsService';
 import type { Readable } from 'stream';
@@ -46,7 +47,7 @@ interface GoogleServiceOptions {
 }
 
 export class GoogleService extends BaseServiceClass {
-  private auth: any = null;
+  private auth: InstanceType<typeof google.auth.JWT> | null = null;
   private sheets: sheets_v4.Sheets | null = null;
   private drive: drive_v3.Drive | null = null;
   private docs: docs_v1.Docs | null = null;
@@ -56,9 +57,9 @@ export class GoogleService extends BaseServiceClass {
   private stats: GoogleServiceStats;
   private cacheService: CacheService;
   private metrics?: MetricsService;
-  // Простейший token-bucket для rate limit всего Google API
-  private rlTokens = 0;
-  private rlLastRefill = Date.now();
+  // Token-bucket per apiType (drive|sheets|docs)
+  private rlTokens = new Map<string, number>();
+  private rlLastRefill = new Map<string, number>();
 
   constructor(config: BotConfig) {
     super('GoogleService', config);
@@ -73,9 +74,12 @@ export class GoogleService extends BaseServiceClass {
       cacheHits: 0,
       cacheMisses: 0,
     };
-    // Инициализация токенов бурстом
+    // Инициализация токенов бурстом для известных apiType
     const { burst } = this.getRateConfig();
-    this.rlTokens = burst;
+    ['drive', 'sheets', 'docs'].forEach(t => {
+      this.rlTokens.set(t, burst);
+      this.rlLastRefill.set(t, Date.now());
+    });
   }
 
   /** Подключение MetricsService (вызывается из ServiceManager) */
@@ -94,25 +98,32 @@ export class GoogleService extends BaseServiceClass {
   private async throttle(apiType: string): Promise<number> {
     const { qps, burst } = this.getRateConfig();
     const now = Date.now();
-    const elapsedSec = (now - this.rlLastRefill) / 1000;
+    const last = this.rlLastRefill.get(apiType) ?? now;
+    const prevTokens = this.rlTokens.get(apiType) ?? burst;
+    const elapsedSec = (now - last) / 1000;
     // Пополнение токенов
-    this.rlTokens = Math.min(burst, this.rlTokens + elapsedSec * qps);
-    this.rlLastRefill = now;
+    let tokens = Math.min(burst, prevTokens + elapsedSec * qps);
+    this.rlLastRefill.set(apiType, now);
 
-    if (this.rlTokens >= 1) {
-      this.rlTokens -= 1;
+    if (tokens >= 1) {
+      tokens -= 1;
+      this.rlTokens.set(apiType, tokens);
       return 0;
     }
 
-    const need = 1 - this.rlTokens;
+    const need = 1 - tokens;
     const waitMs = Math.ceil((need / qps) * 1000);
     await new Promise(resolve => setTimeout(resolve, waitMs));
     // Списываем токен после ожидания
-    this.rlTokens = Math.max(0, this.rlTokens + (waitMs / 1000) * qps - 1);
+    const afterTokens = Math.max(0, tokens + (waitMs / 1000) * qps - 1);
+    this.rlTokens.set(apiType, afterTokens);
+    this.rlLastRefill.set(apiType, Date.now());
     // Метрика "throttled"
     try {
       this.metrics?.updateGoogleApiMetrics(apiType, 'throttle', 'throttled', waitMs);
-    } catch {}
+    } catch (/* istanbul ignore next */ _e) {
+      // noop: метрики не критичны
+    }
     return waitMs;
   }
 
@@ -120,34 +131,36 @@ export class GoogleService extends BaseServiceClass {
    * Нормализация Google Drive файла к внутреннему типу DriveFile
    */
   private toDriveFile(file: drive_v3.Schema$File): DriveFile {
-    const ownersRaw = (file.owners || []) as Array<{ displayName?: string; emailAddress?: string }>;
-    const owners: string[] = ownersRaw
-      .map(o => o?.emailAddress || o?.displayName)
-      .filter((v): v is string => typeof v === 'string' && v.length > 0);
-
-    const df: DriveFile = {
+    const owners = this.getOwnerNamesOrEmails(file);
+    const base: DriveFile = {
       id: String(file.id || ''),
       name: String(file.name || ''),
       mimeType: String(file.mimeType || ''),
     };
+    const opt = this.buildDriveFileOptional(file, owners);
+    return { ...base, ...opt } as DriveFile;
+  }
 
-    if (file.size) df.size = Number(file.size);
-    if (file.modifiedTime) df.modifiedTime = file.modifiedTime;
-    if (owners.length > 0) df.owners = owners;
-    if (file.parents) df.parents = file.parents as string[];
-    const webViewLink = (file as { webViewLink?: string }).webViewLink;
-    if (webViewLink && !this.config.drive?.hideWebLink) df.webViewLink = webViewLink;
-    const iconLink = (file as { iconLink?: string }).iconLink;
-    if (iconLink) df.iconLink = iconLink;
-    const isShortcut = file.mimeType === 'application/vnd.google-apps.shortcut';
-    if (isShortcut) df.isShortcut = true;
-    const sd = (file as { shortcutDetails?: { targetId?: string; targetMimeType?: string } }).shortcutDetails;
-    if (sd?.targetId) {
-      df.shortcutDetails = { targetId: String(sd.targetId) };
-      if (sd.targetMimeType) df.shortcutDetails.targetMimeType = sd.targetMimeType;
-    }
+  /**
+   * Извлекает список владельцев (email/displayName) с фильтрацией пустых значений
+   */
+  private getOwnerNamesOrEmails(file: drive_v3.Schema$File): string[] {
+    const ownersRaw = Array.isArray(file.owners) ? file.owners : [];
+    return ownersRaw
+      .map(o => (o?.emailAddress ? o.emailAddress : o?.displayName))
+      .filter((v): v is string => typeof v === 'string' && v.length > 0);
+  }
 
-    return df;
+  /**
+   * Безопасно мапит shortcutDetails в наш внутренний вид
+   */
+  private mapShortcutDetails(file: drive_v3.Schema$File): { targetId: string; targetMimeType?: string } | undefined {
+    const targetId = file.shortcutDetails?.targetId;
+    if (typeof targetId !== 'string' || targetId.length === 0) return undefined;
+    const out: { targetId: string; targetMimeType?: string } = { targetId };
+    const mime = file.shortcutDetails?.targetMimeType;
+    if (typeof mime === 'string') out.targetMimeType = mime;
+    return out;
   }
 
   /**
@@ -162,19 +175,10 @@ export class GoogleService extends BaseServiceClass {
    * Список файлов по запросу DriveListQuery с пагинацией и кэшем
    */
   public async listDriveFiles(query: DriveListQuery): Promise<DriveListResult> {
-    const {
-      folderId,
-      query: nameContains = '',
-      mimeIncludes = [],
-      ownerAllowlist = [],
-      pageSize,
-      pageToken,
-      recursive = false,
-      maxDepth = 20,
-    } = query;
+    const { folderId, query: nameContains = '', mimeIncludes = [], ownerAllowlist = [], pageSize, pageToken } = query;
 
-    const size = Math.max(5, Math.min(100, pageSize ?? this.config.drive.pageSize));
-    const cacheKey = `drive:list:v2:${folderId}:${nameContains}:${(mimeIncludes || []).join('.')}:${(ownerAllowlist || []).join('.')}:${size}:${pageToken ?? ''}:${recursive}:${maxDepth}`;
+    const size = this.getDriveListPageSize(pageSize);
+    const cacheKey = this.buildDriveListCacheKey(query, size);
 
     // Кэшованный ответ
     try {
@@ -189,7 +193,8 @@ export class GoogleService extends BaseServiceClass {
         });
         return cached;
       }
-    } catch {
+    } catch (/* istanbul ignore next */ _e) {
+      // noop: промах кеша не критичен для выполнения
       this.stats.cacheMisses++;
     }
 
@@ -197,12 +202,152 @@ export class GoogleService extends BaseServiceClass {
     const needMimeFilter = !(allowedMimeCfg.length === 1 && allowedMimeCfg[0] === '*');
 
     // Построение Drive query (q)
+    const q = this.buildDriveQuery(folderId, nameContains, mimeIncludes, allowedMimeCfg, needMimeFilter);
+
+    const params = this.buildFilesListParams(q, size, pageToken ?? undefined);
+    const start = Date.now();
+    const res = await this.executeDriveFilesList(params);
+
+    const duration = Date.now() - start;
+    const filesRaw: drive_v3.Schema$File[] = Array.isArray(res.data.files) ? res.data.files : [];
+    const result = this.createDriveListResult(filesRaw, ownerAllowlist, res.data.nextPageToken);
+
+    await this.cacheDriveListResult(cacheKey, result);
+
+    this.logDriveListSuccess({
+      folderId,
+      result,
+      duration,
+      pageTokenPresent: Boolean(pageToken),
+    });
+
+    // Рекурсивная ветка (упрощённо): не разворачиваем здесь глубину, оставим на будущий индексатор
+    // Можно реализовать отдельным сервисом, чтобы не блокировать текущий шаг.
+
+    return result;
+  }
+
+  // -------- Helpers for toDriveFile --------
+  private buildDriveFileOptional(
+    file: drive_v3.Schema$File,
+    owners: string[],
+  ): Partial<DriveFile> {
+    const webViewLink = (file as { webViewLink?: string | null }).webViewLink ?? undefined;
+    const iconLink = (file as { iconLink?: string | null }).iconLink ?? undefined;
+    const hideWeb = Boolean(this.config.drive?.hideWebLink);
+
+    const out: Partial<DriveFile> = {};
+    if (file.size) out.size = Number(file.size);
+    if (file.modifiedTime) out.modifiedTime = file.modifiedTime;
+    if (owners.length > 0) out.owners = owners;
+    if (file.parents) out.parents = file.parents;
+    if (webViewLink && !hideWeb) out.webViewLink = webViewLink;
+    if (iconLink) out.iconLink = iconLink;
+    if (file.mimeType === 'application/vnd.google-apps.shortcut') out.isShortcut = true;
+    const sd = this.mapShortcutDetails(file);
+    if (sd) out.shortcutDetails = sd;
+    return out;
+  }
+
+  // -------- Helpers for listDriveFiles --------
+  private getDriveListPageSize(pageSize: number | undefined): number {
+    return Math.max(5, Math.min(100, pageSize ?? this.config.drive.pageSize));
+  }
+
+  private buildDriveListCacheKey(q: DriveListQuery, size: number): string {
+    const { folderId, query, mimeIncludes = [], ownerAllowlist = [], pageToken, recursive = false, maxDepth = 20 } = q;
+    return `drive:list:v2:${folderId}:${query ?? ''}:${mimeIncludes.join('.')}:${ownerAllowlist.join('.')}:${size}:${pageToken ?? ''}:${recursive}:${maxDepth}`;
+  }
+
+  private getDriveListFields(): string {
+    return [
+      'nextPageToken',
+      "files(id,name,mimeType,size,modifiedTime,parents,webViewLink,iconLink,shortcutDetails,targetId,owners(displayName,emailAddress))",
+    ].join(',');
+  }
+
+  private buildFilesListParams(q: string, size: number, pageToken?: string): drive_v3.Params$Resource$Files$List {
+    const params: drive_v3.Params$Resource$Files$List = {
+      q,
+      pageSize: size,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+      fields: this.getDriveListFields(),
+      corpora: 'allDrives',
+    };
+    if (pageToken) params.pageToken = pageToken;
+    return params;
+  }
+
+  private async executeDriveFilesList(params: drive_v3.Params$Resource$Files$List) {
+    return this.executeWithRetry(async () => {
+      if (!this.drive) throw new Error('Drive API не инициализовано');
+      return this.drive.files.list(params);
+    }, 'drive', undefined, 'drive.files.list');
+  }
+
+  private createDriveListResult(filesRaw: drive_v3.Schema$File[], ownerAllowlist: string[], nextPageToken?: string): DriveListResult {
+    let files = filesRaw.map(f => this.toDriveFile(f));
+    files = this.filterFilesByOwners(files, ownerAllowlist);
+    const result: DriveListResult = { files };
+    if (nextPageToken) result.nextPageToken = nextPageToken;
+    return result;
+  }
+
+  /**
+   * Пост-фильтр по списку разрешённых владельцев
+   */
+  private filterFilesByOwners(files: DriveFile[], ownerAllowlist?: string[]): DriveFile[] {
+    if (!ownerAllowlist || ownerAllowlist.length === 0) return files;
+    const allow = new Set(ownerAllowlist.map(s => s.toLowerCase()));
+    return files.filter(f => (f.owners || []).some(o => allow.has(o.toLowerCase())));
+  }
+
+  /**
+   * Кэширование результата листинга Drive с безопасной обработкой ошибок
+   */
+  private async cacheDriveListResult(cacheKey: string, result: DriveListResult): Promise<void> {
+    try {
+      const ttl = this.config.drive.ttlListSec ?? 60;
+      await this.cacheService.set(cacheKey, result, ttl);
+    } catch (/* istanbul ignore next */ _e) {
+      // noop: кэширование не критично
+    }
+  }
+
+  /**
+   * Структурное логирование успешного листинга Drive
+   */
+  private logDriveListSuccess(args: { folderId: string; result: DriveListResult; duration: number; pageTokenPresent: boolean }): void {
+    const { folderId, result, duration, pageTokenPresent } = args;
+    logger.info('📄 Листинг Drive завершён', {
+      type: 'api_request',
+      event: 'drive_list_success',
+      component: 'GoogleService',
+      folderId,
+      count: result.files.length,
+      duration,
+      pageToken: pageTokenPresent ? 'yes' : 'no',
+      nextPageToken: result.nextPageToken ? 'yes' : 'no',
+    });
+  }
+
+  /**
+   * Сборка строки фильтра q для Drive API
+   */
+  private buildDriveQuery(
+    folderId: string,
+    nameContains: string,
+    mimeIncludes: string[],
+    allowedMimeCfg: string[],
+    needMimeFilter: boolean,
+  ): string {
     const qParts: string[] = [
       `'${folderId}' in parents`,
       'trashed = false',
     ];
     if (nameContains) {
-      // Простейший contains; Drive API чувствителен к регистру, но для начала достаточно
+      // Простейший contains; Drive API чувствителен к регистру, но достаточно для начала
       const esc = nameContains.replace(/['\\]/g, '\\$&');
       qParts.push(`name contains '${esc}'`);
     }
@@ -214,63 +359,7 @@ export class GoogleService extends BaseServiceClass {
       const ors = allowedMimeCfg.map(m => `mimeType='${m}'`).join(' or ');
       qParts.push(`(${ors})`);
     }
-
-    const q = qParts.join(' and ');
-
-    const fields = [
-      'nextPageToken',
-      "files(id,name,mimeType,size,modifiedTime,parents,webViewLink,iconLink,shortcutDetails,targetId,owners(displayName,emailAddress))",
-    ].join(',');
-
-    const start = Date.now();
-    const res = await this.executeWithRetry(async () => {
-      if (!this.drive) throw new Error('Drive API не инициализовано');
-      const params: drive_v3.Params$Resource$Files$List = {
-        q,
-        pageSize: size,
-        supportsAllDrives: true,
-        includeItemsFromAllDrives: true,
-        fields,
-        corpora: 'allDrives',
-      };
-      if (pageToken) params.pageToken = pageToken;
-      return this.drive.files.list(params);
-    }, 'drive');
-
-    const duration = Date.now() - start;
-    const filesRaw = (res.data.files || []) as drive_v3.Schema$File[];
-    let files = filesRaw.map(f => this.toDriveFile(f));
-
-    // ownerAllowlist пост-фильтр, если задан
-    if (ownerAllowlist && ownerAllowlist.length > 0) {
-      const allow = new Set(ownerAllowlist.map(s => s.toLowerCase()));
-      files = files.filter(f => (f.owners || []).some(o => allow.has(o.toLowerCase())));
-    }
-
-    const result: DriveListResult = { files };
-    if (res.data.nextPageToken) result.nextPageToken = res.data.nextPageToken;
-
-    // Кэшируем
-    try {
-      const ttl = this.config.drive.ttlListSec ?? 60;
-      await this.cacheService.set(cacheKey, result, ttl);
-    } catch {}
-
-    logger.info('📄 Листинг Drive завершён', {
-      type: 'api_request',
-      event: 'drive_list_success',
-      component: 'GoogleService',
-      folderId,
-      count: result.files.length,
-      duration,
-      pageToken: pageToken ? 'yes' : 'no',
-      nextPageToken: result.nextPageToken ? 'yes' : 'no',
-    });
-
-    // Рекурсивная ветка (упрощённо): не разворачиваем здесь глубину, оставим на будущий индексатор
-    // Можно реализовать отдельным сервисом, чтобы не блокировать текущий шаг.
-
-    return result;
+    return qParts.join(' and ');
   }
 
   /**
@@ -294,13 +383,15 @@ export class GoogleService extends BaseServiceClass {
       // Типовой контракт: alt='media' возвращает поток
       const r = await this.drive.files.get({ fileId, alt: 'media' as unknown as string } as drive_v3.Params$Resource$Files$Get);
       return r as unknown as { data: Readable };
-    }, 'drive');
+    }, 'drive', undefined, 'drive.files.get.media');
 
     const buf = await this.streamToBuffer(resp.data as unknown as NodeJS.ReadableStream);
     try {
       const ttl = this.config.drive.ttlTextSec ?? 300;
       await this.cacheService.set(cacheKey, buf, ttl);
-    } catch {}
+    } catch (/* istanbul ignore next */ _e) {
+      // noop: ошибка записи в кеш не критична
+    }
 
     logger.info('⬇️ Файл загружен из Drive', {
       type: 'api_request',
@@ -334,13 +425,15 @@ export class GoogleService extends BaseServiceClass {
       if (!this.drive) throw new Error('Drive API не инициализовано');
       const r = await this.drive.files.export({ fileId, mimeType: mimeOut } as drive_v3.Params$Resource$Files$Export);
       return r as unknown as { data: Readable };
-    }, 'drive');
+    }, 'drive', undefined, 'drive.files.export');
 
     const buf = await this.streamToBuffer(resp.data as unknown as NodeJS.ReadableStream);
     try {
       const ttl = this.config.drive.ttlTextSec ?? 300;
       await this.cacheService.set(cacheKey, buf, ttl);
-    } catch {}
+    } catch (/* istanbul ignore next */ _e) {
+      // noop: ошибка записи в кеш не критична
+    }
 
     logger.info('📤 Файл экспортирован из Drive', {
       type: 'api_request',
@@ -415,12 +508,14 @@ export class GoogleService extends BaseServiceClass {
     try {
       const mime = file.mimeType || '';
       if (!/^image\//i.test(mime)) return '';
-      const buf = await this.downloadDriveFile(file.id!);
+      if (!file.id) return '';
+      const fileId = file.id;
+      const buf = await this.downloadDriveFile(fileId);
 
       // Ключ кэша на основе fileId + modifiedTime (если есть) + хэш контента
-      const modified = (file as any).modifiedTime || '';
+      const modified = file.modifiedTime ?? '';
       const hash = createHash('sha1').update(buf).digest('hex');
-      const cacheKey = `ocr:image:${file.id}:${modified}:${hash}`;
+      const cacheKey = `ocr:image:${fileId}:${modified}:${hash}`;
 
       const ttl = this.config.google.ocrCacheTTL ?? this.config.performance.cacheTTL ?? 3600;
       const cached = await this.cacheService.get<string>(cacheKey);
@@ -460,13 +555,16 @@ export class GoogleService extends BaseServiceClass {
    * OCR через Google Vision (по умолчанию)
    */
   private async ocrWithVision(buf: Buffer): Promise<string> {
+    type VisionEntityAnnotation = { description?: string | null };
     const client = new ImageAnnotatorClient();
     const [result] = await client.textDetection({ image: { content: buf } });
-    const annotations = result?.textAnnotations ?? [];
+    const annotations = (result?.textAnnotations ?? []) as VisionEntityAnnotation[];
     const first = annotations[0];
-    if (first && (first as any).description) return String((first as any).description);
+    if (first?.description && typeof first.description === 'string') {
+      return first.description;
+    }
     const descriptions = annotations
-      .map(a => (a && 'description' in a ? ((a as any).description as string | undefined) : undefined))
+      .map(a => (typeof a?.description === 'string' ? a.description : undefined))
       .filter((d): d is string => typeof d === 'string' && d.length > 0);
     return descriptions.join('\n');
   }
@@ -479,40 +577,42 @@ export class GoogleService extends BaseServiceClass {
   private async ocrWithTesseract(buf: Buffer): Promise<string> {
     try {
       // Динамический импорт, чтобы не ломать окружение без зависимости
-      const { createWorker } = await import('tesseract.js');
+      const mod = await import('tesseract.js');
+      type TesseractWorker = {
+        loadLanguage(langs: string): Promise<void>;
+        initialize(langs: string): Promise<void>;
+        recognize(image: Buffer): Promise<{ data: { text?: string } }>;
+        terminate(): Promise<void>;
+      };
+      type CreateWorker = (opts?: { langPath?: string; cachePath?: string; logger?: (m: unknown) => void }) => Promise<TesseractWorker>;
+      const createWorker = mod.createWorker as unknown as CreateWorker;
 
       const langs = this.config.google.tesseractLangs || 'eng';
       const langPath = this.config.google.tesseractLangPath;
 
-      const worker = await createWorker({
-        // logger: m => logger.debug('tesseract', { progress: m.progress }),
-        langPath, // если задан, tesseract.js загрузит traineddata локально
-        cachePath: undefined,
-      } as any);
+      const workerOpts: { langPath?: string; logger?: (m: unknown) => void } = {};
+      if (typeof langPath === 'string') workerOpts.langPath = langPath;
+      // workerOpts.logger = m => logger.debug('tesseract', { progress: (m as any).progress });
+      const worker = await createWorker(workerOpts);
 
       try {
-        await (worker as any).loadLanguage(langs);
-        await (worker as any).initialize(langs);
+        await worker.loadLanguage(langs);
+        await worker.initialize(langs);
 
-        const { data } = (await (worker as any).recognize(buf)) as any;
-        const text: string = data?.text ?? '';
+        const { data } = await worker.recognize(buf);
+        const text = typeof data?.text === 'string' ? data.text : '';
         return text;
       } finally {
-        await (worker as any).terminate();
+        await worker.terminate();
       }
-    } catch (err) {
-      logger.error('❌ Помилка Tesseract OCR', {
-        type: 'processing_error',
-        event: 'tesseract_ocr_failed',
+    } catch (e) {
+      logger.warn('⚠️ OCR (tesseract) не доступен или завершился с ошибкой', {
+        type: 'system',
+        event: 'tesseract_ocr_unavailable',
         component: 'GoogleService',
-        error: err instanceof Error ? err.message : String(err),
+        errorMessage: e instanceof Error ? e.message : String(e),
       });
-      // Фоллбек на Vision, если доступно
-      try {
-        return await this.ocrWithVision(buf);
-      } catch {
-        return '';
-      }
+      return '';
     }
   }
 
@@ -528,7 +628,7 @@ export class GoogleService extends BaseServiceClass {
           fields: 'id,name,mimeType,size,modifiedTime,owners(displayName),parents',
         });
         return res.data;
-      }, 'drive');
+      }, 'drive', undefined, 'drive.files.get');
       return file;
     } catch (error) {
       logger.error('❌ Помилка отримання метаданих файлу Drive', {
@@ -554,7 +654,7 @@ export class GoogleService extends BaseServiceClass {
           { responseType: 'arraybuffer' }
         );
         return Buffer.from(res.data as any);
-      }, 'drive');
+      }, 'drive', undefined, 'drive.files.get.media');
       return data;
     } catch (error) {
       logger.error('❌ Помилка завантаження файла Drive', {
@@ -580,7 +680,7 @@ export class GoogleService extends BaseServiceClass {
           { responseType: 'arraybuffer' }
         );
         return Buffer.from(res.data as any);
-      }, 'drive');
+      }, 'drive', undefined, 'drive.files.export');
       return data;
     } catch (error) {
       logger.error('❌ Помилка експорту файла Drive', {
@@ -613,10 +713,10 @@ export class GoogleService extends BaseServiceClass {
       await this.initializeAuth();
 
       // Ініціалізація API клієнтів
-      await this.initializeAPIs();
+      this.initializeAPIs();
 
       // Створення connection pool
-      await this.initializeConnectionPool();
+      this.initializeConnectionPool();
 
       logger.info('✅ Google Service ініціалізовано', {
         type: 'system',
@@ -689,111 +789,23 @@ export class GoogleService extends BaseServiceClass {
       this.stats.cacheMisses++;
     }
 
-    // Побудова MIME фільтрів
-    // filesMimeFilter — для файлів поточного типу
-    // foldersMimeFilter — для визначення підпапок (включаючи ярлики на папки)
-    const filesMimeFilter =
-      type === 'sheet'
-        ?
-            " and (" +
-            [
-              "mimeType='application/vnd.google-apps.spreadsheet'",
-              "mimeType='application/vnd.google-apps.shortcut'",
-              "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
-              "mimeType='application/vnd.ms-excel'",
-            ].join(' or ') +
-            ")"
-        : type === 'folder'
-          ? " and mimeType='application/vnd.google-apps.folder'"
-          : '';
-    const foldersMimeFilter =
-      " and (mimeType='application/vnd.google-apps.folder' or mimeType='application/vnd.google-apps.shortcut')";
+    // Побудова запитів
+    const { qFiles, qFolders } = this.buildListInFolderQueries(folderId, type, query);
 
-    // Побудова name contains фільтра
-    const nameFilter = query ? ` and name contains '${query.replace(/'/g, "\\'")}'` : '';
-
-    // Підготовка запитів: окремо для файлів потрібного типу та для підпапок
-    const qFiles = `'${folderId}' in parents and trashed=false${filesMimeFilter}${nameFilter}`;
-    const qFolders = `'${folderId}' in parents and trashed=false${foldersMimeFilter}`;
-
-    // Пагінація: вибірка усіх сторінок
-    const fetchAll = async (q: string): Promise<drive_v3.Schema$File[]> => {
-      const all: drive_v3.Schema$File[] = [];
-      let token: string | undefined = pageToken;
-      do {
-        const resp = await this.executeWithRetry(async () => {
-          if (!this.drive) throw new Error('Drive API не ініціалізовано');
-          const params: drive_v3.Params$Resource$Files$List = {
-            q,
-            fields:
-              'nextPageToken, files(id,name,mimeType,size,modifiedTime,parents,shortcutDetails(targetId,targetMimeType))',
-            pageSize: Math.min(limit, 1000),
-            ...(token ? { pageToken: token } : {}),
-          };
-          return await this.drive.files.list(params);
-        }, 'drive');
-        const files = resp.data.files || [];
-        all.push(...files);
-        token = resp.data.nextPageToken || undefined;
-      } while (token && all.length < limit);
-      return all;
-    };
-
-    const filesHere = await fetchAll(qFiles);
+    const filesHere = await this.fetchAllDriveList(qFiles, limit, pageToken);
 
     // Якщо шукаємо таблиці — конвертуємо ярлики на таблиці у "віртуальні" записи з targetId та
     // додаємо Excel-файли у результат
-    let results: drive_v3.Schema$File[] =
-      type === 'sheet'
-        ? filesHere
-            .map(f => {
-              if (f.mimeType === 'application/vnd.google-apps.shortcut') {
-                const targetId = (f as any).shortcutDetails?.targetId as string | undefined;
-                const targetMime = (f as any).shortcutDetails?.targetMimeType as string | undefined;
-                if (targetId && targetMime === 'application/vnd.google-apps.spreadsheet') {
-                  // Повертаємо об'єкт як ніби це сам spreadsheet
-                  return {
-                    id: targetId,
-                    name: f.name,
-                    mimeType: 'application/vnd.google-apps.spreadsheet',
-                    parents: f.parents,
-                  } as drive_v3.Schema$File;
-                }
-                return null;
-              }
-              // Додаємо Google Таблиці та Excel-файли
-              const isGs = f.mimeType === 'application/vnd.google-apps.spreadsheet';
-              const isXlsx =
-                f.mimeType ===
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-              const isXls = f.mimeType === 'application/vnd.ms-excel';
-              return isGs || isXlsx || isXls ? f : null;
-            })
-            .filter((x): x is drive_v3.Schema$File => Boolean(x))
-        : [...filesHere];
+    const results: drive_v3.Schema$File[] = type === 'sheet' ? this.mapSheetFiles(filesHere) : [...filesHere];
 
     if (recursive && (maxDepth > 0 || maxDepth <= -1)) {
       // Отримуємо підпапки в поточній папці (включаючи ярлики на папки)
-      const foldersLevel = await fetchAll(qFolders);
-      const folders = foldersLevel
-        .map<{ id: string; name: string | undefined } | null>(f => {
-          if (f.mimeType === 'application/vnd.google-apps.folder') {
-            return { id: f.id!, name: f.name ?? undefined };
-          }
-          if (
-            f.mimeType === 'application/vnd.google-apps.shortcut' &&
-            (f as any).shortcutDetails?.targetMimeType === 'application/vnd.google-apps.folder'
-          ) {
-            const targetId = (f as any).shortcutDetails?.targetId as string | undefined;
-            if (targetId) return { id: targetId, name: f.name ?? undefined };
-          }
-          return null;
-        })
-        .filter((x): x is { id: string; name: string | undefined } => x !== null);
+      const foldersLevel = await this.fetchAllDriveList(qFolders, limit, pageToken);
+      const folders = this.extractFoldersFromLevel(foldersLevel);
 
       for (const folder of folders) {
         try {
-          const sub = await this.listDriveFilesInFolder(folder.id!, {
+          const sub = await this.listDriveFilesInFolder(folder.id, {
             recursive: true,
             type,
             query,
@@ -829,9 +841,124 @@ export class GoogleService extends BaseServiceClass {
     // Кешуємо на короткий термін (30с), щоб не перевищувати квоти
     try {
       await this.cacheService.set(cacheKey, results, 30);
-    } catch {}
+    } catch (/* istanbul ignore next */ _e) {
+      // noop: ошибка записи в кеш не критична
+    }
 
     return results;
+  }
+
+  /**
+   * Построение запросов files/folders для listDriveFilesInFolder
+   */
+  private buildListInFolderQueries(
+    folderId: string,
+    type: 'sheet' | 'folder' | 'any',
+    query: string
+  ): { qFiles: string; qFolders: string } {
+    // MIME фильтры
+    const filesMimeFilter =
+      type === 'sheet'
+        ?
+            " and (" +
+            [
+              "mimeType='application/vnd.google-apps.spreadsheet'",
+              "mimeType='application/vnd.google-apps.shortcut'",
+              "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+              "mimeType='application/vnd.ms-excel'",
+            ].join(' or ') +
+            ")"
+        : type === 'folder'
+          ? " and mimeType='application/vnd.google-apps.folder'"
+          : '';
+    const foldersMimeFilter =
+      " and (mimeType='application/vnd.google-apps.folder' or mimeType='application/vnd.google-apps.shortcut')";
+
+    // name contains фильтр
+    const nameFilter = query ? ` and name contains '${query.replace(/'/g, "\\'")}'` : '';
+
+    const base = `'${folderId}' in parents and trashed=false`;
+    const qFiles = `${base}${filesMimeFilter}${nameFilter}`;
+    const qFolders = `${base}${foldersMimeFilter}`;
+    return { qFiles, qFolders };
+  }
+
+  /**
+   * Выбрать все страницы результата files.list по запросу q
+   */
+  private async fetchAllDriveList(
+    q: string,
+    limit: number,
+    startPageToken?: string
+  ): Promise<drive_v3.Schema$File[]> {
+    const all: drive_v3.Schema$File[] = [];
+    let token: string | undefined = startPageToken;
+    do {
+      const resp = await this.executeWithRetry(async () => {
+        if (!this.drive) throw new Error('Drive API не ініціалізовано');
+        const params: drive_v3.Params$Resource$Files$List = {
+          q,
+          fields:
+            'nextPageToken, files(id,name,mimeType,size,modifiedTime,parents,shortcutDetails(targetId,targetMimeType))',
+          pageSize: Math.min(limit, 1000),
+          ...(token ? { pageToken: token } : {}),
+        };
+        return await this.drive.files.list(params);
+      }, 'drive', undefined, 'drive.files.list');
+      const files = resp.data.files || [];
+      all.push(...files);
+      token = resp.data.nextPageToken || undefined;
+    } while (token && all.length < limit);
+    return all;
+  }
+
+  /**
+   * Нормализация списка файлов под тип 'sheet': разворачивает ярлыки на spreadsheets, добавляет Excel
+   */
+  private mapSheetFiles(files: drive_v3.Schema$File[]): drive_v3.Schema$File[] {
+    return files
+      .map(f => {
+        if (f.mimeType === 'application/vnd.google-apps.shortcut') {
+          const targetId = f.shortcutDetails?.targetId;
+          const targetMime = f.shortcutDetails?.targetMimeType;
+          if (typeof targetId === 'string' && targetMime === 'application/vnd.google-apps.spreadsheet') {
+            return {
+              id: targetId,
+              name: f.name,
+              mimeType: 'application/vnd.google-apps.spreadsheet',
+              parents: f.parents,
+            } as drive_v3.Schema$File;
+          }
+          return null;
+        }
+        const isGs = f.mimeType === 'application/vnd.google-apps.spreadsheet';
+        const isXlsx = f.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        const isXls = f.mimeType === 'application/vnd.ms-excel';
+        return isGs || isXlsx || isXls ? f : null;
+      })
+      .filter((x): x is drive_v3.Schema$File => Boolean(x));
+  }
+
+  /**
+   * Выделение подпапок из уровня результатов, включая ярлыки на папки
+   */
+  private extractFoldersFromLevel(level: drive_v3.Schema$File[]): Array<{ id: string; name?: string }> {
+    return level
+      .map<{ id: string; name?: string } | null>(f => {
+        if (f.mimeType === 'application/vnd.google-apps.folder') {
+          if (!f.id) return null;
+          return f.name ? { id: f.id, name: f.name } : { id: f.id };
+        }
+        if (
+          f.mimeType === 'application/vnd.google-apps.shortcut' &&
+          f.shortcutDetails?.targetMimeType === 'application/vnd.google-apps.folder'
+        ) {
+          const targetId = f.shortcutDetails?.targetId;
+          if (typeof targetId === 'string') return f.name ? { id: targetId, name: f.name } : { id: targetId };
+        }
+        return null;
+      })
+      .filter((x): x is { id: string; name?: string } => x !== null);
   }
 
   /**
@@ -854,11 +981,13 @@ export class GoogleService extends BaseServiceClass {
       const res = await this.sheets.spreadsheets.get({ spreadsheetId });
       const sheets = res.data.sheets || [];
       return sheets.map(s => s.properties?.title || '').filter(Boolean);
-    }, 'sheets');
+    }, 'sheets', undefined, 'sheets.spreadsheets.get');
 
     try {
       await this.cacheService.set(cacheKey, titles, 60);
-    } catch {}
+    } catch (/* istanbul ignore next */ _e) {
+      // noop: ошибка записи в кеш не критична
+    }
     return titles;
   }
 
@@ -893,7 +1022,7 @@ export class GoogleService extends BaseServiceClass {
       }
 
       // Створення JWT автентифікації
-      this.auth = new google.auth.JWT(
+      const jwt = new google.auth.JWT(
         this.config.google.credentials.client_email,
         undefined,
         this.config.google.credentials.private_key,
@@ -905,7 +1034,8 @@ export class GoogleService extends BaseServiceClass {
       );
 
       // Авторизація
-      await this.auth.authorize();
+      await jwt.authorize();
+      this.auth = jwt;
       logger.info('✅ Google автентифікація успішна', {
         type: 'system',
         event: 'google_auth_success',
@@ -938,8 +1068,9 @@ export class GoogleService extends BaseServiceClass {
   /**
    * Ініціалізація API клієнтів
    */
-  private async initializeAPIs(): Promise<void> {
+  private initializeAPIs(): void {
     try {
+      if (!this.auth) throw new Error('Auth client is not initialized');
       // Google Sheets API
       this.sheets = google.sheets({ version: 'v4', auth: this.auth });
 
@@ -981,7 +1112,7 @@ export class GoogleService extends BaseServiceClass {
   /**
    * Ініціалізація Connection Pool
    */
-  private async initializeConnectionPool(): Promise<void> {
+  private initializeConnectionPool(): void {
     try {
       const apiTypes = ['sheets', 'drive', 'docs'];
 
@@ -1080,7 +1211,9 @@ export class GoogleService extends BaseServiceClass {
         // Метрики: успешный запрос
         try {
           this.metrics?.updateGoogleApiMetrics(apiType, endpoint, 'success', duration);
-        } catch {}
+        } catch (/* istanbul ignore next */ _e) {
+          // noop: метрики не критичны
+        }
 
         return result;
       } catch (error) {
@@ -1092,7 +1225,9 @@ export class GoogleService extends BaseServiceClass {
         try {
           const errDuration = 0;
           this.metrics?.updateGoogleApiMetrics(apiType, endpoint, 'error', errDuration);
-        } catch {}
+        } catch (/* istanбул ignore next */ _e) {
+          // noop: ошибка записи в кеш не критична
+        }
 
         if (attempt < maxRetries) {
           const delay = this.retryDelay * Math.pow(2, attempt);
@@ -1169,7 +1304,7 @@ export class GoogleService extends BaseServiceClass {
           majorDimension: response.data.majorDimension || 'ROWS',
           values: response.data.values || [],
         };
-      }, 'sheets');
+      }, 'sheets', undefined, 'sheets.spreadsheets.values.get');
 
       // Збереження в кеш
       if (useCache) {
@@ -1259,7 +1394,7 @@ export class GoogleService extends BaseServiceClass {
             values,
           },
         });
-      }, 'sheets');
+      }, 'sheets', undefined, 'sheets.spreadsheets.values.update');
 
       // Очищення кешу
       if (clearCache) {
@@ -1350,7 +1485,8 @@ export class GoogleService extends BaseServiceClass {
               return response.data.valueRanges || [];
             },
             'sheets',
-            maxRetries
+            maxRetries,
+            'sheets.spreadsheets.values.batchGet'
           );
 
           results.push(
@@ -1483,7 +1619,8 @@ export class GoogleService extends BaseServiceClass {
               });
             },
             'sheets',
-            maxRetries
+            maxRetries,
+            'sheets.spreadsheets.values.batchUpdate'
           );
 
           // Очищення кешу
@@ -1624,7 +1761,7 @@ export class GoogleService extends BaseServiceClass {
         });
 
         return response.data.files || [];
-      }, 'drive');
+      }, 'drive', undefined, 'drive.files.list');
 
       return result;
     } catch (error) {
@@ -1670,7 +1807,7 @@ export class GoogleService extends BaseServiceClass {
         });
 
         return response.data;
-      }, 'drive');
+      }, 'drive', undefined, 'drive.files.get');
 
       return result;
     } catch (error) {
@@ -1714,7 +1851,7 @@ export class GoogleService extends BaseServiceClass {
         // Парсинг контенту документа
         const content = this.parseDocumentContent(response.data);
         return content;
-      }, 'docs');
+      }, 'docs', undefined, 'docs.documents.get');
 
       return result;
     } catch (error) {
@@ -1980,17 +2117,24 @@ export class GoogleService extends BaseServiceClass {
     if (!this.docs) throw new Error('Docs API не ініціалізовано');
     const res = await this.docs.documents.get({ documentId });
     const body = res.data.body;
-    if (!body || !body.content) return '';
+    if (!body || !Array.isArray(body.content)) return '';
     const parts: string[] = [];
     for (const el of body.content) {
-      const p = (el as any).paragraph;
-      if (!p || !p.elements) continue;
-      for (const run of p.elements) {
-        const tr = (run as any).textRun;
-        if (tr && tr.content) parts.push(tr.content);
+      if (!this.isParagraphElementContainer(el)) continue;
+      const elements = el.paragraph.elements ?? [];
+      for (const run of elements) {
+        const text = run.textRun?.content;
+        if (typeof text === 'string' && text.length > 0) parts.push(text);
       }
     }
     return parts.join('');
+  }
+
+  /** Type guard: элемент тела Google Docs, который содержит параграф с элементами */
+  private isParagraphElementContainer(
+    el: docs_v1.Schema$StructuralElement | undefined
+  ): el is docs_v1.Schema$StructuralElement & { paragraph: { elements?: docs_v1.Schema$ParagraphElement[] } } {
+    return Boolean(el && el.paragraph && Array.isArray(el.paragraph.elements));
   }
 
   /**
@@ -1999,22 +2143,10 @@ export class GoogleService extends BaseServiceClass {
   public async extractTextFromFile(file: drive_v3.Schema$File): Promise<string> {
     const mime = file.mimeType || '';
     try {
-      if (mime === 'application/vnd.google-apps.document') {
-        return await this.extractTextFromGoogleDoc(file.id!);
-      }
-      if (mime === 'application/pdf') {
-        const buf = await this.downloadDriveFile(file.id!);
-        const parsed = await pdfParse(buf as unknown as Buffer);
-        return parsed.text || '';
-      }
-      if (
-        mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        mime === 'application/msword'
-      ) {
-        const buf = await this.downloadDriveFile(file.id!);
-        const result = await mammoth.extractRawText({ buffer: buf });
-        return result.value || '';
-      }
+      if (!file.id) return '';
+      if (mime === 'application/vnd.google-apps.document') return await this.extractTextFromGoogleDoc(file.id);
+      if (mime === 'application/pdf') return await this.extractFromPdf(file.id);
+      if (this.isWordMime(mime)) return await this.extractFromDocWord(file.id);
       return '';
     } catch (error) {
       logger.error('❌ Помилка екстракції тексту з файлу', {
@@ -2022,10 +2154,34 @@ export class GoogleService extends BaseServiceClass {
         event: 'file_text_extract_failed',
         component: 'GoogleService',
         fileId: file.id,
-        mimeType: mime,
+        mime,
         error: error instanceof Error ? error.message : String(error),
       });
       return '';
     }
+  }
+
+  /**
+   * MIME-предикат для Word-документов
+   */
+  private isWordMime(mime: string): boolean {
+    return (
+      mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      mime === 'application/msword'
+    );
+  }
+
+  /** Извлечение текста из PDF */
+  private async extractFromPdf(fileId: string): Promise<string> {
+    const buf = await this.downloadFile(fileId);
+    const parsed = await pdfParse(buf);
+    return parsed.text || '';
+  }
+
+  /** Извлечение текста из DOC/DOCX */
+  private async extractFromDocWord(fileId: string): Promise<string> {
+    const buf = await this.downloadFile(fileId);
+    const result = await mammoth.extractRawText({ buffer: buf });
+    return result.value || '';
   }
 }
