@@ -54,3 +54,21 @@ pnpm-lock.yaml
 # 📸 Кеші та збережені дані
 # =========================
 .cache/
+
+
+# 🔐 Конфігурація та секрети
+.env
+secrets/
+
+# 📦 Збірка та залежності
+node_modules/
+dist/
+
+# 📝 Логи
+data/logs/*.log
+
+# 🧪 Тестові артефакти (опціонально)
+*.test.ts
+coverage/
+
+node_modules/
