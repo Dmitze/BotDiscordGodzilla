@@ -3,12 +3,15 @@
  * Покращена продуктивність та стабільність
  */
 
-import { google, sheets_v4, drive_v3, docs_v1 } from 'googleapis';
+import { google } from 'googleapis';
+import type { sheets_v4, drive_v3, docs_v1 } from 'googleapis';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
+import type { Readable } from 'stream';
 import { createHash } from 'crypto';
 import pdfParse from 'pdf-parse';
 import * as mammoth from 'mammoth';
 import type { BotConfig, HealthStatus, ServiceStats, SheetData, BatchSheetData } from '@/types';
+import type { DriveListQuery, DriveListResult, DriveFile } from '@/types/drive';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
 import logger from '@/utils/logger';
@@ -64,6 +67,261 @@ export class GoogleService extends BaseServiceClass {
       cacheHits: 0,
       cacheMisses: 0,
     };
+  }
+
+  /**
+   * Нормализация Google Drive файла к внутреннему типу DriveFile
+   */
+  private toDriveFile(file: drive_v3.Schema$File): DriveFile {
+    const ownersRaw = (file.owners || []) as Array<{ displayName?: string; emailAddress?: string }>;
+    const owners: string[] = ownersRaw
+      .map(o => o?.emailAddress || o?.displayName)
+      .filter((v): v is string => typeof v === 'string' && v.length > 0);
+
+    const df: DriveFile = {
+      id: String(file.id || ''),
+      name: String(file.name || ''),
+      mimeType: String(file.mimeType || ''),
+    };
+
+    if (file.size) df.size = Number(file.size);
+    if (file.modifiedTime) df.modifiedTime = file.modifiedTime;
+    if (owners.length > 0) df.owners = owners;
+    if (file.parents) df.parents = file.parents as string[];
+    const webViewLink = (file as { webViewLink?: string }).webViewLink;
+    if (webViewLink && !this.config.drive?.hideWebLink) df.webViewLink = webViewLink;
+    const iconLink = (file as { iconLink?: string }).iconLink;
+    if (iconLink) df.iconLink = iconLink;
+    const isShortcut = file.mimeType === 'application/vnd.google-apps.shortcut';
+    if (isShortcut) df.isShortcut = true;
+    const sd = (file as { shortcutDetails?: { targetId?: string; targetMimeType?: string } }).shortcutDetails;
+    if (sd?.targetId) {
+      df.shortcutDetails = { targetId: String(sd.targetId) };
+      if (sd.targetMimeType) df.shortcutDetails.targetMimeType = sd.targetMimeType;
+    }
+
+    return df;
+  }
+
+  /**
+   * Обёртка над getDriveFileMetadata с нормализацией в DriveFile
+   */
+  public async getDriveFile(fileId: string): Promise<DriveFile> {
+    const raw = await this.getDriveFileMetadata(fileId);
+    return this.toDriveFile(raw);
+  }
+
+  /**
+   * Список файлов по запросу DriveListQuery с пагинацией и кэшем
+   */
+  public async listDriveFiles(query: DriveListQuery): Promise<DriveListResult> {
+    const {
+      folderId,
+      query: nameContains = '',
+      mimeIncludes = [],
+      ownerAllowlist = [],
+      pageSize,
+      pageToken,
+      recursive = false,
+      maxDepth = 20,
+    } = query;
+
+    const size = Math.max(5, Math.min(100, pageSize ?? this.config.drive.pageSize));
+    const cacheKey = `drive:list:v2:${folderId}:${nameContains}:${(mimeIncludes || []).join('.')}:${(ownerAllowlist || []).join('.')}:${size}:${pageToken ?? ''}:${recursive}:${maxDepth}`;
+
+    // Кэшованный ответ
+    try {
+      const cached = await this.cacheService.get<DriveListResult>(cacheKey);
+      if (cached) {
+        this.stats.cacheHits++;
+        logger.debug('✅ Кэш листинга Drive', {
+          type: 'system',
+          event: 'cache_hit',
+          component: 'GoogleService',
+          folderId,
+        });
+        return cached;
+      }
+    } catch {
+      this.stats.cacheMisses++;
+    }
+
+    const allowedMimeCfg = this.config.drive.allowedMime || ['*'];
+    const needMimeFilter = !(allowedMimeCfg.length === 1 && allowedMimeCfg[0] === '*');
+
+    // Построение Drive query (q)
+    const qParts: string[] = [
+      `'${folderId}' in parents`,
+      'trashed = false',
+    ];
+    if (nameContains) {
+      // Простейший contains; Drive API чувствителен к регистру, но для начала достаточно
+      const esc = nameContains.replace(/['\\]/g, '\\$&');
+      qParts.push(`name contains '${esc}'`);
+    }
+    if (mimeIncludes && mimeIncludes.length > 0) {
+      const ors = mimeIncludes.map(m => `mimeType='${m}'`).join(' or ');
+      qParts.push(`(${ors})`);
+    }
+    if (needMimeFilter) {
+      const ors = allowedMimeCfg.map(m => `mimeType='${m}'`).join(' or ');
+      qParts.push(`(${ors})`);
+    }
+
+    const q = qParts.join(' and ');
+
+    const fields = [
+      'nextPageToken',
+      "files(id,name,mimeType,size,modifiedTime,parents,webViewLink,iconLink,shortcutDetails,targetId,owners(displayName,emailAddress))",
+    ].join(',');
+
+    const start = Date.now();
+    const res = await this.executeWithRetry(async () => {
+      if (!this.drive) throw new Error('Drive API не инициализовано');
+      const params: drive_v3.Params$Resource$Files$List = {
+        q,
+        pageSize: size,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+        fields,
+        corpora: 'allDrives',
+      };
+      if (pageToken) params.pageToken = pageToken;
+      return this.drive.files.list(params);
+    }, 'drive');
+
+    const duration = Date.now() - start;
+    const filesRaw = (res.data.files || []) as drive_v3.Schema$File[];
+    let files = filesRaw.map(f => this.toDriveFile(f));
+
+    // ownerAllowlist пост-фильтр, если задан
+    if (ownerAllowlist && ownerAllowlist.length > 0) {
+      const allow = new Set(ownerAllowlist.map(s => s.toLowerCase()));
+      files = files.filter(f => (f.owners || []).some(o => allow.has(o.toLowerCase())));
+    }
+
+    const result: DriveListResult = { files };
+    if (res.data.nextPageToken) result.nextPageToken = res.data.nextPageToken;
+
+    // Кэшируем
+    try {
+      const ttl = this.config.drive.ttlListSec ?? 60;
+      await this.cacheService.set(cacheKey, result, ttl);
+    } catch {}
+
+    logger.info('📄 Листинг Drive завершён', {
+      type: 'api_request',
+      event: 'drive_list_success',
+      component: 'GoogleService',
+      folderId,
+      count: result.files.length,
+      duration,
+      pageToken: pageToken ? 'yes' : 'no',
+      nextPageToken: result.nextPageToken ? 'yes' : 'no',
+    });
+
+    // Рекурсивная ветка (упрощённо): не разворачиваем здесь глубину, оставим на будущий индексатор
+    // Можно реализовать отдельным сервисом, чтобы не блокировать текущий шаг.
+
+    return result;
+  }
+
+  /**
+   * Загрузка бинарного содержимого файла (Drive files.get alt=media → Buffer)
+   */
+  public async downloadFile(fileId: string): Promise<Buffer> {
+    const cacheKey = `drive:file:bin:${fileId}`;
+    try {
+      const cached = await this.cacheService.get<Buffer>(cacheKey);
+      if (cached) {
+        this.stats.cacheHits++;
+        return cached;
+      }
+    } catch {
+      this.stats.cacheMisses++;
+    }
+
+    const start = Date.now();
+    const resp = await this.executeWithRetry(async () => {
+      if (!this.drive) throw new Error('Drive API не инициализовано');
+      // Типовой контракт: alt='media' возвращает поток
+      const r = await this.drive.files.get({ fileId, alt: 'media' as unknown as string } as drive_v3.Params$Resource$Files$Get);
+      return r as unknown as { data: Readable };
+    }, 'drive');
+
+    const buf = await this.streamToBuffer(resp.data as unknown as NodeJS.ReadableStream);
+    try {
+      const ttl = this.config.drive.ttlTextSec ?? 300;
+      await this.cacheService.set(cacheKey, buf, ttl);
+    } catch {}
+
+    logger.info('⬇️ Файл загружен из Drive', {
+      type: 'api_request',
+      event: 'drive_download_success',
+      component: 'GoogleService',
+      fileId,
+      size: buf.byteLength,
+      duration: Date.now() - start,
+    });
+
+    return buf;
+  }
+
+  /**
+   * Экспорт родных документов Google (Docs/Sheets/Slides) в другой MIME (pdf/txt/csv/…)
+   */
+  public async exportFile(fileId: string, mimeOut: string): Promise<Buffer> {
+    const cacheKey = `drive:file:export:${fileId}:${mimeOut}`;
+    try {
+      const cached = await this.cacheService.get<Buffer>(cacheKey);
+      if (cached) {
+        this.stats.cacheHits++;
+        return cached;
+      }
+    } catch {
+      this.stats.cacheMisses++;
+    }
+
+    const start = Date.now();
+    const resp = await this.executeWithRetry(async () => {
+      if (!this.drive) throw new Error('Drive API не инициализовано');
+      const r = await this.drive.files.export({ fileId, mimeType: mimeOut } as drive_v3.Params$Resource$Files$Export);
+      return r as unknown as { data: Readable };
+    }, 'drive');
+
+    const buf = await this.streamToBuffer(resp.data as unknown as NodeJS.ReadableStream);
+    try {
+      const ttl = this.config.drive.ttlTextSec ?? 300;
+      await this.cacheService.set(cacheKey, buf, ttl);
+    } catch {}
+
+    logger.info('📤 Файл экспортирован из Drive', {
+      type: 'api_request',
+      event: 'drive_export_success',
+      component: 'GoogleService',
+      fileId,
+      mimeOut,
+      size: buf.byteLength,
+      duration: Date.now() - start,
+    });
+
+    return buf;
+  }
+
+  /**
+   * Безопасно собрать поток в Buffer
+   */
+  private async streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+    return new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (d: unknown) => {
+        if (Buffer.isBuffer(d)) chunks.push(d);
+        else if (typeof d === 'string') chunks.push(Buffer.from(d));
+        else chunks.push(Buffer.from(String(d)));
+      });
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+      stream.on('error', reject);
+    });
   }
 
   /**
