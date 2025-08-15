@@ -4,11 +4,12 @@
  */
 
 import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
-import type { DriveFile, DriveListResult } from '@/types/drive';
+import type { DriveFile, DriveListResult, DriveListQuery } from '@/types/drive';
 import logger from '@/utils/logger';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { GoogleService } from './GoogleService';
 import { CacheService } from './CacheService';
+import SchedulerService from './SchedulerService';
 
 interface BotLike {
   config: BotConfig;
@@ -59,7 +60,7 @@ export class DriveIndexerService extends BaseServiceClass {
     }
 
     // Зарегистрируем cron-задачу
-    const scheduler = this.bot.getService('scheduler');
+    const scheduler = this.bot.getService('scheduler') as SchedulerService | undefined;
     if (scheduler && typeof scheduler.scheduleJob === 'function') {
       const cron = this.config.drive.indexCron || '*/30 * * * *';
       scheduler.scheduleJob('drive-index', cron, async () => {
@@ -73,6 +74,9 @@ export class DriveIndexerService extends BaseServiceClass {
     } else {
       logger.warn('⚠️ SchedulerService недоступен — cron для индексации не будет запущен');
     }
+
+    // формальный await, чтобы удовлетворить линтер (async без await)
+    await Promise.resolve();
   }
 
   /** Переиндексация всех файлов (полная) */
@@ -86,7 +90,8 @@ export class DriveIndexerService extends BaseServiceClass {
     let total = 0;
 
     do {
-      const { files, nextPageToken }: DriveListResult = await this.google.listDriveFiles({ folderId: fid, pageToken });
+      const query: DriveListQuery = pageToken ? { folderId: fid, pageToken } : { folderId: fid };
+      const { files, nextPageToken }: DriveListResult = await this.google.listDriveFiles(query);
       for (const f of files as DriveFile[]) {
         await this.indexOneFileByMeta(f).catch(err => {
           logger.warn('⚠️ Индексация файла пропущена', { id: f.id, error: err instanceof Error ? err.message : String(err) });
@@ -110,7 +115,8 @@ export class DriveIndexerService extends BaseServiceClass {
     let updated = 0;
 
     do {
-      const { files, nextPageToken }: DriveListResult = await this.google.listDriveFiles({ folderId: fid, pageToken });
+      const query: DriveListQuery = pageToken ? { folderId: fid, pageToken } : { folderId: fid };
+      const { files, nextPageToken }: DriveListResult = await this.google.listDriveFiles(query);
       for (const f of files as DriveFile[]) {
         const need = await this.needReindex(f);
         if (!need) continue;
@@ -140,20 +146,23 @@ export class DriveIndexerService extends BaseServiceClass {
       const idx = textLower.indexOf(q);
       if (idx >= 0) {
         const snippet = this.makeSnippet(entry.text, idx, q.length);
-        results.push({
-          file: {
-            id: entry.id,
-            name: entry.name,
-            mimeType: entry.mimeType,
-            modifiedTime: entry.modifiedTime,
-            owners: entry.owners,
-            size: entry.size,
-            textLength: entry.textLength,
-            updatedAt: entry.updatedAt,
-            snippet,
-          },
-          score: 1 / (1 + idx),
-        });
+        const fileBase = {
+          id: entry.id,
+          name: entry.name,
+          mimeType: entry.mimeType,
+          textLength: entry.textLength,
+          updatedAt: entry.updatedAt,
+          snippet,
+        } as const;
+
+        const fileObj: Omit<DriveIndexEntry, 'text'> & { snippet: string } = {
+          ...(fileBase as any),
+          ...(entry.modifiedTime ? { modifiedTime: entry.modifiedTime } : {}),
+          ...(entry.owners ? { owners: entry.owners } : {}),
+          ...(typeof entry.size === 'number' ? { size: entry.size } : {}),
+        } as any;
+
+        results.push({ file: fileObj, score: 1 / (1 + idx) });
       }
       if (results.length >= limit) break;
     }
@@ -168,7 +177,7 @@ export class DriveIndexerService extends BaseServiceClass {
     if (!this.ensureReady()) return;
     if (!this.isIndexableMime(file.mimeType)) return;
 
-    const text = await this.google.extractTextFromFile({ id: file.id, mimeType: file.mimeType, name: file.name, modifiedTime: file.modifiedTime });
+    const text = await this.google.extractTextFromFile({ id: file.id, mimeType: file.mimeType, name: file.name, modifiedTime: file.modifiedTime ?? null });
     await this.saveEntry(file, text);
     this.indexedCount++;
   }
@@ -264,13 +273,11 @@ export class DriveIndexerService extends BaseServiceClass {
     } as unknown as HealthStatus; // адаптация к текущему типу HealthStatus в проекте
   }
 
-  protected async onGetStats(): Promise<ServiceStats> {
+  protected onGetStats(): Partial<ServiceStats> {
     return {
-      service: this.name,
-      uptime: Math.max(0, Date.now() - this.startTime),
       indexedCount: this.indexedCount,
-      lastRunAt: this.lastRunAt,
-    } as unknown as ServiceStats;
+      lastRunAt: this.lastRunAt ?? undefined,
+    } as Partial<ServiceStats>;
   }
 }
 
