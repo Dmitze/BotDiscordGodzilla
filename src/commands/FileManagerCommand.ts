@@ -3,7 +3,13 @@
  * Включає пошук, читання та аналіз файлів
  */
 
-import { AttachmentBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { AttachmentBuilder, EmbedBuilder } from 'discord.js';
+import type {
+  ChatInputCommandInteraction,
+  SlashCommandBuilder,
+  SlashCommandStringOption,
+  SlashCommandSubcommandBuilder,
+} from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
@@ -11,6 +17,7 @@ import type { drive_v3 } from 'googleapis';
 import type { GoogleService } from '@/services/GoogleService';
 import type { AIService } from '@/services/AIService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
+import { t } from '@/i18n';
 
 interface FileSearchOptions {
   query: string;
@@ -34,98 +41,109 @@ interface FileReportOptions {
 interface FileResult {
   success: boolean;
   message: string;
-  data?: any;
+  data?: unknown;
   file?: Buffer;
   fileName?: string;
 }
 
+type CommandOptionUnion =
+  | ({ kind: 'пошук' } & FileSearchOptions)
+  | ({ kind: 'читати' } & FileReadOptions)
+  | ({ kind: 'аналіз' } & FileAnalysisOptions)
+  | ({ kind: 'звіт' } & FileReportOptions);
+
 interface ValidationResult {
   isValid: boolean;
   errors: string[];
-  data?: any;
+  data?: CommandOptionUnion;
 }
 
 export class FileManagerCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super('файли', '📁 Робота з файлами в Google Drive', config, {}, (builder: any) => {
-      return builder
-        .addSubcommand((subcommand: any) =>
-          subcommand
+    super('файли', t('files.command.description'), config, {}, (builder: SlashCommandBuilder) => {
+      builder
+        .addSubcommand((sub: SlashCommandSubcommandBuilder) => {
+          sub
             .setName('пошук')
-            .setDescription('Пошук файлів у Google Drive')
-            .addStringOption((option: any) =>
+            .setDescription(t('files.sub.search.description'))
+            .addStringOption((option: SlashCommandStringOption) =>
               option
                 .setName('запит')
-                .setDescription('Назва файлу для пошуку')
+                .setDescription(t('files.opt.query.description'))
                 .setRequired(true)
                 .setMaxLength(200)
             )
-            .addStringOption((option: any) =>
+            .addStringOption((option: SlashCommandStringOption) =>
               option
                 .setName('папка')
-                .setDescription('ID папки для пошуку (опціонально)')
+                .setDescription(t('files.opt.folder.description'))
                 .setRequired(false)
                 .setMaxLength(50)
-            )
-        )
-        .addSubcommand((subcommand: any) =>
-          subcommand
+            );
+          return sub;
+        })
+        .addSubcommand((sub: SlashCommandSubcommandBuilder) => {
+          sub
             .setName('читати')
-            .setDescription('Читати вміст файлу')
-            .addStringOption((option: any) =>
+            .setDescription(t('files.sub.read.description'))
+            .addStringOption((option: SlashCommandStringOption) =>
               option
                 .setName('id')
-                .setDescription('ID файлу в Google Drive')
+                .setDescription(t('files.opt.id.description'))
                 .setRequired(true)
                 .setMaxLength(50)
-            )
-        )
-        .addSubcommand((subcommand: any) =>
-          subcommand
+            );
+          return sub;
+        })
+        .addSubcommand((sub: SlashCommandSubcommandBuilder) => {
+          sub
             .setName('аналіз')
-            .setDescription('AI-аналіз вмісту файлу')
-            .addStringOption((option: any) =>
+            .setDescription(t('files.sub.analyze.description'))
+            .addStringOption((option: SlashCommandStringOption) =>
               option
                 .setName('id')
-                .setDescription('ID файлу в Google Drive')
+                .setDescription(t('files.opt.id.description'))
                 .setRequired(true)
                 .setMaxLength(50)
             )
-            .addStringOption((option: any) =>
+            .addStringOption((option: SlashCommandStringOption) =>
               option
                 .setName('тип')
-                .setDescription('Тип аналізу')
+                .setDescription(t('files.opt.type.description'))
                 .setRequired(false)
                 .addChoices(
-                  { name: 'Короткий зміст', value: 'summary' },
-                  { name: 'Детальний аналіз', value: 'detailed' },
-                  { name: 'Ключові моменти', value: 'key_points' }
+                  { name: t('files.choices.analysis.summary'), value: 'summary' },
+                  { name: t('files.choices.analysis.detailed'), value: 'detailed' },
+                  { name: t('files.choices.analysis.key_points'), value: 'key_points' }
                 )
-            )
-        )
-        .addSubcommand((subcommand: any) =>
-          subcommand
+            );
+          return sub;
+        })
+        .addSubcommand((sub: SlashCommandSubcommandBuilder) => {
+          sub
             .setName('звіт')
-            .setDescription('Створити звіт на основі файлу')
-            .addStringOption((option: any) =>
+            .setDescription(t('files.sub.report.description'))
+            .addStringOption((option: SlashCommandStringOption) =>
               option
                 .setName('id')
-                .setDescription('ID файлу в Google Drive')
+                .setDescription(t('files.opt.id.description'))
                 .setRequired(true)
                 .setMaxLength(50)
             )
-            .addStringOption((option: any) =>
+            .addStringOption((option: SlashCommandStringOption) =>
               option
                 .setName('формат')
-                .setDescription('Формат звіту')
+                .setDescription(t('files.opt.format.description'))
                 .setRequired(false)
                 .addChoices(
-                  { name: 'Текст', value: 'txt' },
-                  { name: 'PDF', value: 'pdf' },
-                  { name: 'Word', value: 'docx' }
+                  { name: t('files.choices.reportFormat.txt'), value: 'txt' },
+                  { name: t('files.choices.reportFormat.pdf'), value: 'pdf' },
+                  { name: t('files.choices.reportFormat.docx'), value: 'docx' }
                 )
-            )
-        );
+            );
+          return sub;
+        });
+      return builder;
     });
   }
 
@@ -150,7 +168,7 @@ export class FileManagerCommand extends BaseCommand {
 
       if (!validation.isValid) {
         await interaction.reply({
-          content: `❌ Помилка валідації:\n${validation.errors.join('\n')}`,
+          content: t('files.validation.failed', { errors: validation.errors.join('\n') }),
           ephemeral: true,
         });
         return;
@@ -171,19 +189,19 @@ export class FileManagerCommand extends BaseCommand {
       let result: FileResult;
       switch (subcommand) {
         case 'пошук':
-          result = await this.handleSearch(interaction, validation.data as FileSearchOptions);
+          result = await this.handleSearch(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'пошук' }>) as FileSearchOptions);
           break;
         case 'читати':
-          result = await this.handleRead(interaction, validation.data as FileReadOptions);
+          result = await this.handleRead(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'читати' }>) as FileReadOptions);
           break;
         case 'аналіз':
-          result = await this.handleAnalyze(interaction, validation.data as FileAnalysisOptions);
+          result = await this.handleAnalyze(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'аналіз' }>) as FileAnalysisOptions);
           break;
         case 'звіт':
-          result = await this.handleReport(interaction, validation.data as FileReportOptions);
+          result = await this.handleReport(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'звіт' }>) as FileReportOptions);
           break;
         default:
-          throw new Error(`Невідома підкоманда: ${subcommand}`);
+          throw new Error(t('files.error.unknownSubcommand', { subcommand }));
       }
 
       // Відправка результату
@@ -209,8 +227,7 @@ export class FileManagerCommand extends BaseCommand {
         })(),
       });
 
-      const errorMessage =
-        '❌ Помилка при роботі з файлами. Спробуйте ще раз або зверніться до адміністратора.';
+      const errorMessage = t('files.error.process');
 
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
@@ -234,49 +251,56 @@ export class FileManagerCommand extends BaseCommand {
   /**
    * Витяг параметрів з interaction
    */
-  private extractOptions(interaction: ChatInputCommandInteraction, subcommand: string): any {
-    const options: any = {};
-
+  private extractOptions(
+    interaction: ChatInputCommandInteraction,
+    subcommand: string
+  ): CommandOptionUnion {
     switch (subcommand) {
-      case 'пошук':
-        options.query = interaction.options.getString('запит');
-        options.folder = interaction.options.getString('папка');
-        break;
+      case 'пошук': {
+        const query = interaction.options.getString('запит') || '';
+        const folderVal = interaction.options.getString('папка');
+        const base: { kind: 'пошук' } & FileSearchOptions = { kind: 'пошук', query } as any;
+        if (folderVal) {
+          (base as any).folder = folderVal;
+        }
+        return base;
+      }
       case 'читати':
+        return {
+          kind: 'читати',
+          fileId: interaction.options.getString('id') || '',
+        } as { kind: 'читати' } & FileReadOptions;
       case 'аналіз':
+        return {
+          kind: 'аналіз',
+          fileId: interaction.options.getString('id') || '',
+          analysisType: (interaction.options.getString('тип') as FileAnalysisOptions['analysisType']) || 'summary',
+        } as { kind: 'аналіз' } & FileAnalysisOptions;
       case 'звіт':
-        options.fileId = interaction.options.getString('id');
-        break;
+        return {
+          kind: 'звіт',
+          fileId: interaction.options.getString('id') || '',
+          format: (interaction.options.getString('формат') as FileReportOptions['format']) || 'txt',
+        } as { kind: 'звіт' } & FileReportOptions;
+      default:
+        return { kind: 'пошук', query: '', folder: undefined };
     }
-
-    if (subcommand === 'аналіз') {
-      options.analysisType = interaction.options.getString('тип') || 'summary';
-    }
-
-    if (subcommand === 'звіт') {
-      options.format = interaction.options.getString('формат') || 'txt';
-    }
-
-    return options;
   }
 
-  /**
-   * Валідація параметрів
-   */
-  private validateOptions(options: any, subcommand: string): ValidationResult {
+  private validateOptions(options: CommandOptionUnion, subcommand: string): ValidationResult {
     const errors: string[] = [];
 
     switch (subcommand) {
       case 'пошук':
-        if (!options.query || options.query.length < 2) {
-          errors.push('Запит повинен містити мінімум 2 символи');
+        if (!('query' in options) || !options.query || options.query.length < 2) {
+          errors.push(t('files.validation.queryTooShort'));
         }
         break;
       case 'читати':
       case 'аналіз':
       case 'звіт':
-        if (!options.fileId || options.fileId.length < 10) {
-          errors.push('ID файлу повинен містити мінімум 10 символів');
+        if (!('fileId' in options) || !options.fileId || options.fileId.length < 10) {
+          errors.push(t('files.validation.fileIdTooShort'));
         }
         break;
     }
@@ -297,15 +321,14 @@ export class FileManagerCommand extends BaseCommand {
   ): Promise<FileResult> {
     const svc = this.getGoogleService(interaction);
     if (!svc) {
-      return { success: false, message: '❌ GoogleService недоступний' };
+      return { success: false, message: t('files.error.serviceUnavailable') };
     }
 
     const folderId = options.folder || this.config.google?.driveFolderId;
     if (!folderId) {
       return {
         success: false,
-        message:
-          '❌ Не вказано ID папки. Додайте параметр "папка" або налаштуйте driveFolderId у конфігурації.',
+        message: t('files.error.missingFolderId'),
       };
     }
 
@@ -320,7 +343,7 @@ export class FileManagerCommand extends BaseCommand {
     if (!files.length) {
       return {
         success: true,
-        message: `🔍 Пошук: "${options.query}"\nПапка: ${folderId}\n\nНічого не знайдено.`,
+        message: t('files.result.searchEmpty', { query: options.query, folderId }),
       };
     }
 
@@ -336,8 +359,14 @@ export class FileManagerCommand extends BaseCommand {
       return `${idx + 1}. ${icon} ${f.name} — ${f.id}`;
     });
 
-    const more = files.length > 20 ? `\n…та ще ${files.length - 20}` : '';
-    const msg = `🔍 **Результати пошуку**\nЗапит: ${options.query}\nПапка: ${folderId}\nЗнайдено: ${files.length}\n\n${lines.join('\n')}${more}`;
+    const more = files.length > 20 ? t('files.result.more', { rest: files.length - 20 }) : '';
+    const msg = t('files.result.searchList', {
+      query: options.query,
+      folderId,
+      count: files.length,
+      lines: lines.join('\n'),
+      more,
+    });
     return { success: true, message: msg };
   }
 
@@ -349,11 +378,11 @@ export class FileManagerCommand extends BaseCommand {
     options: FileReadOptions
   ): Promise<FileResult> {
     const svc = this.getGoogleService(interaction);
-    if (!svc) return { success: false, message: '❌ GoogleService недоступний' };
+    if (!svc) return { success: false, message: t('files.error.serviceUnavailable') };
 
     const meta = await svc.getDriveFileMetadata(options.fileId);
     if (!meta || !meta.mimeType)
-      return { success: false, message: '❌ Неможливо отримати метадані файлу' };
+      return { success: false, message: t('files.error.metadata') };
 
     const isGApp = meta.mimeType.startsWith('application/vnd.google-apps');
     let fileBuf: Buffer;
@@ -386,7 +415,7 @@ export class FileManagerCommand extends BaseCommand {
 
     return {
       success: true,
-      message: `📄 **Файл завантажено**\n\nНазва: ${meta.name}\nТип: ${meta.mimeType}`,
+      message: t('files.result.fileDownloaded', { name: String(meta.name), mimeType: String(meta.mimeType) }),
       file: fileBuf,
       fileName,
     };
