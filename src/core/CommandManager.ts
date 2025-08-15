@@ -64,6 +64,39 @@ export class CommandManager {
   }
 
   /**
+   * Обработка автодополнения
+   */
+  private async handleAutocomplete(interaction: import('discord.js').AutocompleteInteraction): Promise<void> {
+    try {
+      const command = this.commands.get(interaction.commandName) as unknown;
+      const maybe = command as { autocomplete?: (args: { interaction: import('discord.js').AutocompleteInteraction; query?: string }) => Promise<void> | void } | undefined;
+      if (!maybe || typeof maybe.autocomplete !== 'function') {
+        // Команда не поддерживает автодополнение
+        await interaction.respond([]);
+        return;
+      }
+
+      // Получаем текущее поле и значение
+      const focused = interaction.options.getFocused(true);
+      const query = typeof focused?.value === 'string' ? focused.value : String(focused?.value ?? '');
+
+      await maybe.autocomplete({ interaction, query });
+    } catch (error) {
+      logger.error('❌ Ошибка автодополнения', {
+        type: 'command_manager',
+        event: 'autocomplete_error',
+        commandName: interaction.commandName,
+        errorMessage: String(error),
+      });
+      try {
+        await interaction.respond([]);
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  /**
    * Ініціалізація менеджера команд
    */
   async initialize(): Promise<void> {
@@ -238,8 +271,35 @@ export class CommandManager {
     }
     // Реєструємо обробник на Discord клієнті, а не на екземплярі Bot
     this.bot.client.on(Events.InteractionCreate, async (interaction: Interaction) => {
-      if (interaction.isChatInputCommand()) {
-        await this.handleCommand(interaction);
+      try {
+        if (interaction.isChatInputCommand()) {
+          await this.handleCommand(interaction);
+          return;
+        }
+
+        // Поддержка автодополнения для опций команд
+        if ('isAutocomplete' in interaction && typeof (interaction as any).isAutocomplete === 'function' && (interaction as any).isAutocomplete()) {
+          await this.handleAutocomplete(interaction as any);
+          return;
+        }
+
+        // Компоненты (кнопки и т.п.) для пагинации /doc blocks
+        if ('isButton' in interaction && typeof (interaction as any).isButton === 'function' && (interaction as any).isButton()) {
+          const customId = (interaction as any).customId as string | undefined;
+          if (customId && customId.startsWith('docblk|')) {
+            const cmd = this.commands.get('doc') as unknown as { handleComponent?: (args: { interaction: any; componentType?: 'button' | 'select' | 'modal' }) => Promise<void> } | undefined;
+            if (cmd && typeof cmd.handleComponent === 'function') {
+              await cmd.handleComponent({ interaction: interaction as any, componentType: 'button' });
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        logger.error('❌ Ошибка верхнего уровня в обработчике InteractionCreate', {
+          type: 'command_manager',
+          event: 'interaction_error',
+          errorMessage: String(error),
+        });
       }
     });
   }
