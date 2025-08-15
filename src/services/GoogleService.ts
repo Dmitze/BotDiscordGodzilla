@@ -5,11 +5,9 @@
 
 import { google } from 'googleapis';
 import type { sheets_v4, drive_v3, docs_v1 } from 'googleapis';
-// Импортируем ambient-типизацию для pdf-parse, вместо triple-slash
-import '@/types/pdf-parse';
+import type { DocBlock } from '@/types/docs';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import type { MetricsService } from './MetricsService';
-import type { Readable } from 'stream';
 import { createHash } from 'crypto';
 import pdfParse from 'pdf-parse';
 import * as mammoth from 'mammoth';
@@ -18,6 +16,8 @@ import type { DriveListQuery, DriveListResult, DriveFile } from '@/types/drive';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
 import logger from '@/utils/logger';
+import { DocsService } from './google/DocsService';
+import { SheetsService } from './google/SheetsService';
 
 interface GoogleServiceStats extends ServiceStats {
   requests: number;
@@ -42,7 +42,7 @@ interface GoogleServiceOptions {
   retryFailed?: boolean;
   cacheResults?: boolean;
   maxRetries?: number;
-  valueInputOption?: string;
+  valueInputOption?: 'RAW' | 'USER_ENTERED';
   clearCache?: boolean;
 }
 
@@ -57,6 +57,8 @@ export class GoogleService extends BaseServiceClass {
   private stats: GoogleServiceStats;
   private cacheService: CacheService;
   private metrics?: MetricsService;
+  private docsService?: DocsService;
+  private sheetsService?: SheetsService;
   // Token-bucket per apiType (drive|sheets|docs)
   private rlTokens = new Map<string, number>();
   private rlLastRefill = new Map<string, number>();
@@ -82,9 +84,61 @@ export class GoogleService extends BaseServiceClass {
     });
   }
 
+  /**
+   * Структурированное содержимое Google Docs
+   */
+  public async getDocumentBlocks(documentId: string): Promise<DocBlock[]> {
+    try {
+      const result = await this.executeWithRetry(async () => {
+        if (!this.docs) throw new Error('Docs API не ініціалізовано');
+        const response = await this.docs.documents.get({ documentId });
+        return this.getDocsService().extractBlocksFromDoc(response.data);
+      }, 'docs', undefined, 'docs.documents.get');
+      return result;
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error('❌ Помилка отримання структурованого контенту документа', {
+          type: 'api_error',
+          event: 'docs_blocks_failed',
+          component: 'GoogleService',
+          service: 'docs',
+          documentId,
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+        });
+      } else {
+        logger.error('❌ Помилка отримання структурованого контенту документа', {
+          type: 'api_error',
+          event: 'docs_blocks_failed',
+          component: 'GoogleService',
+          service: 'docs',
+          documentId,
+          errorMessage: String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
   /** Подключение MetricsService (вызывается из ServiceManager) */
   public setMetricsService(ms: MetricsService): void {
     this.metrics = ms;
+    // Лениво инициализируем под-сервисы, чтобы они могли писать метрики
+    this.docsService = new DocsService(this.metrics);
+    this.sheetsService = new SheetsService(this.metrics);
+  }
+
+  /** Получить сервис Google Docs parser (без сетевых вызовов) */
+  public getDocsService(): DocsService {
+    if (!this.docsService) this.docsService = new DocsService(this.metrics);
+    return this.docsService;
+  }
+
+  /** Получить сервис Google Sheets helper (без сетевых вызовов) */
+  public getSheetsService(): SheetsService {
+    if (!this.sheetsService) this.sheetsService = new SheetsService(this.metrics);
+    return this.sheetsService;
   }
 
   /** Получение параметров rate-limit из конфига с дефолтами */
@@ -210,7 +264,7 @@ export class GoogleService extends BaseServiceClass {
 
     const duration = Date.now() - start;
     const filesRaw: drive_v3.Schema$File[] = Array.isArray(res.data.files) ? res.data.files : [];
-    const result = this.createDriveListResult(filesRaw, ownerAllowlist, res.data.nextPageToken);
+    const result = this.createDriveListResult(filesRaw, ownerAllowlist, res.data.nextPageToken ?? undefined);
 
     await this.cacheDriveListResult(cacheKey, result);
 
@@ -256,13 +310,18 @@ export class GoogleService extends BaseServiceClass {
 
   private buildDriveListCacheKey(q: DriveListQuery, size: number): string {
     const { folderId, query, mimeIncludes = [], ownerAllowlist = [], pageToken, recursive = false, maxDepth = 20 } = q;
-    return `drive:list:v2:${folderId}:${query ?? ''}:${mimeIncludes.join('.')}:${ownerAllowlist.join('.')}:${size}:${pageToken ?? ''}:${recursive}:${maxDepth}`;
+    // Включаем текущую конфигурацию allowedMime в ключ кэша, чтобы разные фильтры MIME не делили один и тот же кэш
+    const allowedMimeCfg = (this.config.drive.allowedMime && this.config.drive.allowedMime.length > 0)
+      ? this.config.drive.allowedMime
+      : ['*'];
+    const allowedKey = allowedMimeCfg.join('.');
+    return `drive:list:v2:${folderId}:${query ?? ''}:${mimeIncludes.join('.')}:${ownerAllowlist.join('.')}:${allowedKey}:${size}:${pageToken ?? ''}:${recursive}:${maxDepth}`;
   }
 
   private getDriveListFields(): string {
     return [
       'nextPageToken',
-      "files(id,name,mimeType,size,modifiedTime,parents,webViewLink,iconLink,shortcutDetails,targetId,owners(displayName,emailAddress))",
+      "files(id,name,mimeType,size,modifiedTime,parents,webViewLink,iconLink,shortcutDetails(targetId,targetMimeType),owners(displayName,emailAddress))",
     ].join(',');
   }
 
@@ -380,12 +439,15 @@ export class GoogleService extends BaseServiceClass {
     const start = Date.now();
     const resp = await this.executeWithRetry(async () => {
       if (!this.drive) throw new Error('Drive API не инициализовано');
-      // Типовой контракт: alt='media' возвращает поток
-      const r = await this.drive.files.get({ fileId, alt: 'media' as unknown as string } as drive_v3.Params$Resource$Files$Get);
-      return r as unknown as { data: Readable };
+      // Важно: просим поток
+      const r = await this.drive.files.get({
+        fileId,
+        alt: 'media' as unknown as string,
+      } as drive_v3.Params$Resource$Files$Get, { responseType: 'stream' });
+      return r as unknown as { data: unknown };
     }, 'drive', undefined, 'drive.files.get.media');
 
-    const buf = await this.streamToBuffer(resp.data as unknown as NodeJS.ReadableStream);
+    const buf = await this.dataToBuffer(resp.data as unknown as any);
     try {
       const ttl = this.config.drive.ttlTextSec ?? 300;
       await this.cacheService.set(cacheKey, buf, ttl);
@@ -423,11 +485,14 @@ export class GoogleService extends BaseServiceClass {
     const start = Date.now();
     const resp = await this.executeWithRetry(async () => {
       if (!this.drive) throw new Error('Drive API не инициализовано');
-      const r = await this.drive.files.export({ fileId, mimeType: mimeOut } as drive_v3.Params$Resource$Files$Export);
-      return r as unknown as { data: Readable };
+      const r = await this.drive.files.export(
+        { fileId, mimeType: mimeOut } as drive_v3.Params$Resource$Files$Export,
+        { responseType: 'stream' },
+      );
+      return r as unknown as { data: unknown };
     }, 'drive', undefined, 'drive.files.export');
 
-    const buf = await this.streamToBuffer(resp.data as unknown as NodeJS.ReadableStream);
+    const buf = await this.dataToBuffer(resp.data as unknown as any);
     try {
       const ttl = this.config.drive.ttlTextSec ?? 300;
       await this.cacheService.set(cacheKey, buf, ttl);
@@ -456,12 +521,33 @@ export class GoogleService extends BaseServiceClass {
       const chunks: Buffer[] = [];
       stream.on('data', (d: unknown) => {
         if (Buffer.isBuffer(d)) chunks.push(d);
+        else if (d instanceof Uint8Array) chunks.push(Buffer.from(d));
         else if (typeof d === 'string') chunks.push(Buffer.from(d));
         else chunks.push(Buffer.from(String(d)));
       });
       stream.on('end', () => resolve(Buffer.concat(chunks)));
       stream.on('error', reject);
     });
+  }
+
+  private async dataToBuffer(data: unknown): Promise<Buffer> {
+    // Если это уже Buffer
+    if (Buffer.isBuffer(data)) return data;
+    // Node stream
+    if (data && typeof data === 'object' && typeof (data as any).on === 'function') {
+      return this.streamToBuffer(data as unknown as NodeJS.ReadableStream);
+    }
+    // Uint8Array / ArrayBuffer
+    if (data instanceof Uint8Array) return Buffer.from(data);
+    if (typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) return Buffer.from(new Uint8Array(data));
+    // Строка
+    if (typeof data === 'string') return Buffer.from(data);
+    // Нечто JSON-подобное
+    try {
+      return Buffer.from(JSON.stringify(data ?? ''));
+    } catch {
+      return Buffer.from(String(data ?? ''));
+    }
   }
 
   /**
@@ -1250,9 +1336,10 @@ export class GoogleService extends BaseServiceClass {
     const { useCache = true, cacheTTL = 300, forceRefresh = false } = options;
 
     try {
+      const normRange = this.getSheetsService().normalizeRange(range);
       // Перевірка кешу
       if (useCache && !forceRefresh) {
-        const cacheKey = `sheets:${spreadsheetId}:${range}`;
+        const cacheKey = `sheets:${spreadsheetId}:${normRange}`;
         try {
           const cached = await this.cacheService.get<SheetData>(cacheKey);
           if (cached) {
@@ -1262,7 +1349,7 @@ export class GoogleService extends BaseServiceClass {
               event: 'cache_hit',
               component: 'GoogleService',
               spreadsheetId: spreadsheetId.substring(0, 10) + '...',
-              range,
+              range: normRange,
               rowsCount: cached.values.length,
             });
             return cached;
@@ -1296,19 +1383,16 @@ export class GoogleService extends BaseServiceClass {
 
         const response = await this.sheets.spreadsheets.values.get({
           spreadsheetId,
-          range,
+          range: normRange,
         });
 
-        return {
-          range: response.data.range || range,
-          majorDimension: response.data.majorDimension || 'ROWS',
-          values: response.data.values || [],
-        };
+        // Унифицированная нормализация через SheetsService
+        return this.getSheetsService().toSheetDataFromGet(response.data, normRange);
       }, 'sheets', undefined, 'sheets.spreadsheets.values.get');
 
       // Збереження в кеш
       if (useCache) {
-        const cacheKey = `sheets:${spreadsheetId}:${range}`;
+        const cacheKey = `sheets:${spreadsheetId}:${normRange}`;
         try {
           // CacheService expects TTL in seconds; do not convert to ms
           await this.cacheService.set(cacheKey, result, cacheTTL);
@@ -1317,7 +1401,7 @@ export class GoogleService extends BaseServiceClass {
             event: 'cache_write',
             component: 'GoogleService',
             spreadsheetId: spreadsheetId.substring(0, 10) + '...',
-            range,
+            range: normRange,
             rowsCount: result.values.length,
             ttl: `${cacheTTL}s`,
           });
@@ -1383,22 +1467,24 @@ export class GoogleService extends BaseServiceClass {
     const { valueInputOption = 'RAW', clearCache = true } = options;
 
     try {
+      const normRange = this.getSheetsService().normalizeRange(range);
+      const normValues = this.getSheetsService().normalizeWriteValues(values);
       await this.executeWithRetry(async () => {
         if (!this.sheets) throw new Error('Sheets API не ініціалізовано');
 
         await this.sheets.spreadsheets.values.update({
           spreadsheetId,
-          range,
+          range: normRange,
           valueInputOption,
           requestBody: {
-            values,
+            values: normValues,
           },
         });
       }, 'sheets', undefined, 'sheets.spreadsheets.values.update');
 
       // Очищення кешу
       if (clearCache) {
-        const cacheKey = `sheets:${spreadsheetId}:${range}`;
+        const cacheKey = `sheets:${spreadsheetId}:${normRange}`;
         try {
           await this.cacheService.delete(cacheKey);
           logger.debug('🗑️ Кеш Sheets очищено', {
@@ -1406,7 +1492,7 @@ export class GoogleService extends BaseServiceClass {
             event: 'cache_delete',
             component: 'GoogleService',
             spreadsheetId: spreadsheetId.substring(0, 10) + '...',
-            range,
+            range: normRange,
           });
         } catch (cacheError) {
           if (cacheError instanceof Error) {
@@ -1467,7 +1553,8 @@ export class GoogleService extends BaseServiceClass {
     const { batchSize = 10, retryFailed = true, maxRetries = 3 } = options;
 
     try {
-      const chunks = this.chunkArray(ranges, batchSize);
+      const normRanges = ranges.map(r => this.getSheetsService().normalizeRange(r));
+      const chunks = this.chunkArray(normRanges, batchSize);
       const results: SheetData[] = [];
       const failedRanges: string[] = [];
 
@@ -1482,7 +1569,9 @@ export class GoogleService extends BaseServiceClass {
                 ranges: chunk,
               });
 
-              return response.data.valueRanges || [];
+              // Делегируем парсинг структуре SheetsService
+              const parsed = this.getSheetsService().parseBatchGet(response.data);
+              return parsed.valueRanges;
             },
             'sheets',
             maxRetries,
@@ -1491,9 +1580,9 @@ export class GoogleService extends BaseServiceClass {
 
           results.push(
             ...result.map(vr => ({
-              range: vr.range ?? '',
-              majorDimension: vr.majorDimension ?? 'ROWS',
-              values: vr.values ?? [],
+              range: vr.range,
+              majorDimension: 'ROWS',
+              values: (vr.values || []).map(row => row.map(cell => (cell == null ? '' : String(cell)))),
             }))
           );
         } catch (error) {
@@ -1592,10 +1681,11 @@ export class GoogleService extends BaseServiceClass {
     data: Array<{ range: string; values: string[][] }>,
     options: GoogleServiceOptions = {}
   ): Promise<void> {
-    const { batchSize = 10, retryFailed = true, maxRetries = 3, clearCache = true } = options;
+    const { batchSize = 10, retryFailed = true, maxRetries = 3, clearCache = true, valueInputOption = 'RAW' } = options;
 
     try {
-      const chunks = this.chunkArray(data, batchSize);
+      const normData = data.map(d => ({ range: this.getSheetsService().normalizeRange(d.range), values: d.values }));
+      const chunks = this.chunkArray(normData, batchSize);
       const failedBatches: Array<{ range: string; values: string[][] }> = [];
 
       for (const chunk of chunks) {
@@ -1605,17 +1695,14 @@ export class GoogleService extends BaseServiceClass {
               if (!this.sheets) throw new Error('Sheets API не ініціалізовано');
 
               // Використовуємо values.batchUpdate, щоб не залежати від sheetId
-              const valueUpdates = chunk.map(item => ({
-                range: item.range,
-                values: item.values,
-              }));
+              const requestBody = this.getSheetsService().buildBatchUpdate({
+                valueInputOption: valueInputOption === 'USER_ENTERED' ? 'USER_ENTERED' : 'RAW',
+                data: chunk.map(it => ({ range: it.range, values: this.getSheetsService().normalizeWriteValues(it.values) })),
+              });
 
               await this.sheets.spreadsheets.values.batchUpdate({
                 spreadsheetId,
-                requestBody: {
-                  data: valueUpdates,
-                  valueInputOption: 'RAW',
-                },
+                requestBody,
               });
             },
             'sheets',
@@ -1848,8 +1935,8 @@ export class GoogleService extends BaseServiceClass {
           documentId,
         });
 
-        // Парсинг контенту документа
-        const content = this.parseDocumentContent(response.data);
+        // Парсинг контенту документа через узкий DocsService
+        const content = this.getDocsService().extractTextFromDoc(response.data);
         return content;
       }, 'docs', undefined, 'docs.documents.get');
 
@@ -1880,28 +1967,7 @@ export class GoogleService extends BaseServiceClass {
     }
   }
 
-  /**
-   * Парсинг контенту документа
-   */
-  private parseDocumentContent(document: docs_v1.Schema$Document): string {
-    if (!document.body?.content) {
-      return '';
-    }
-
-    let content = '';
-    for (const element of document.body.content) {
-      if (element.paragraph) {
-        for (const element2 of element.paragraph.elements || []) {
-          if (element2.textRun?.content) {
-            content += element2.textRun.content;
-          }
-        }
-        content += '\n';
-      }
-    }
-
-    return content.trim();
-  }
+  
 
   /**
    * Отримання статистики з'єднань
