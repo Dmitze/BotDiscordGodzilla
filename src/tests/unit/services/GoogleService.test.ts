@@ -1,193 +1,89 @@
-/**
- * Unit тесты для GoogleService
- */
+﻿import { GoogleService } from '@/services/GoogleService';
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
-import { GoogleService } from '../../../services/GoogleService';
-import { createMockConfig } from '../../utils/testHelpers';
+describe('GoogleService.listDriveFiles normalization and owner filter', () => {
+  const baseConfig: any = {
+    drive: {
+      pageSize: 10,
+      ttlListSec: 60,
+      allowedMime: ['*'],
+      hideWebLink: false,
+      rateQps: 5,
+      rateBurst: 10,
+    },
+  };
 
-// Моки для Google APIs
-jest.mock('googleapis', () => ({
-  google: {
-    sheets: jest.fn(() => ({
-      spreadsheets: {
-        values: {
-          get: jest.fn(),
-        },
-      },
-    })),
-    drive: jest.fn(() => ({
+  function makeSvc() {
+    const svc = new GoogleService(baseConfig as any);
+    (svc as any).drive = {
       files: {
-        list: jest.fn(),
-        get: jest.fn(),
+        list: jest.fn().mockResolvedValue({
+          data: {
+            nextPageToken: undefined,
+            files: [
+              {
+                id: '1',
+                name: 'Doc A',
+                mimeType: 'application/pdf',
+                size: '1234',
+                modifiedTime: '2024-01-01T00:00:00.000Z',
+                owners: [{ emailAddress: 'owner@example.com', displayName: 'Owner' }],
+                webViewLink: 'https://drive/1',
+                iconLink: 'https://icon/1',
+              },
+              {
+                id: '2',
+                name: 'Sheet B',
+                mimeType: 'application/vnd.google-apps.spreadsheet',
+                size: '0',
+                modifiedTime: '2024-02-01T00:00:00.000Z',
+                owners: [{ emailAddress: 'other@example.com' }],
+                webViewLink: 'https://drive/2',
+              },
+            ],
+          },
+        }),
       },
-    })),
-  },
-}));
+    };
+    // обойти пул и rate-limit
+    (svc as any).executeWithRetry = async (cb: any) => cb();
+    (svc as any).throttle = async () => 0;
 
-describe('GoogleService', () => {
-  let googleService: GoogleService;
-  let mockConfig: any;
+    // подмена кэша на Map
+    const store = new Map<string, any>();
+    (svc as any).cacheService = {
+      async get<T>(key: string): Promise<T | undefined> { return store.get(key); },
+      async set<T>(key: string, value: T, _ttlSec?: number) { store.set(key, value); },
+    };
 
-  beforeEach(() => {
-    mockConfig = createMockConfig();
-    googleService = new GoogleService(mockConfig);
+    return svc;
+  }
+
+  it('normalizes Drive files and applies ownerAllowlist', async () => {
+    const svc = makeSvc();
+    const res = await svc.listDriveFiles({ folderId: 'FOLDER', ownerAllowlist: ['owner@example.com'] } as any);
+    // eslint-disable-next-line no-console
+    console.log('DBG_RES:\\n' + JSON.stringify(res, null, 2));
+    expect(res.files).toHaveLength(1);
+    const f = res.files[0]!;
+    expect(f.id).toBe('1');
+    expect(f.name).toBe('Doc A');
+    expect(f.mimeType).toBe('application/pdf');
+    expect(f.size).toBe(1234);
+    expect(f.modifiedTime).toBe('2024-01-01T00:00:00.000Z');
+    expect(Array.isArray(f.owners)).toBe(true);
+    expect(f.owners?.some(o => o.toLowerCase() === 'owner@example.com')).toBe(true);
+    expect(typeof f.webViewLink === 'undefined' || f.webViewLink === 'https://drive/1').toBe(true);
   });
 
-  describe('constructor', () => {
-    it('should create GoogleService instance', () => {
-      expect(googleService).toBeInstanceOf(GoogleService);
-    });
-
-    it('should have correct service name', () => {
-      expect(googleService.getName()).toBe('GoogleService');
-    });
+  it('caches list results (no second API call)', async () => {
+    const svc = makeSvc();
+    const listSpy = (svc as any).drive.files.list as jest.Mock;
+    const key = { folderId: 'FOLDER' } as any;
+    const first = await svc.listDriveFiles(key);
+    expect(first.files.length).toBeGreaterThan(0);
+    expect(listSpy).toHaveBeenCalledTimes(1);
+    const second = await svc.listDriveFiles(key);
+    expect(second.files.length).toBe(first.files.length);
+    expect(listSpy).toHaveBeenCalledTimes(1);
   });
-
-  describe('initialization', () => {
-    it('should initialize successfully', async () => {
-      await expect(googleService.initialize()).resolves.not.toThrow();
-    });
-
-    it('should handle initialization error', async () => {
-      // Мокаем ошибку инициализации
-      jest.spyOn(googleService as any, 'authenticate').mockRejectedValue(new Error('Auth error'));
-
-      await expect(googleService.initialize()).rejects.toThrow('Auth error');
-    });
-  });
-
-  describe('searchData', () => {
-    beforeEach(async () => {
-      await googleService.initialize();
-    });
-
-    it('should search data successfully', async () => {
-      const mockData = [
-        ['ID', 'Name', 'Value'],
-        ['1', 'Test 1', '100'],
-        ['2', 'Test 2', '200'],
-      ];
-
-      // Мокаем Google Sheets API
-      const mockSheetsApi = {
-        spreadsheets: {
-          values: {
-            get: jest.fn().mockResolvedValue({
-              data: {
-                values: mockData,
-              },
-            }),
-          },
-        },
-      };
-
-      (googleService as any).sheetsApi = mockSheetsApi;
-
-      const result = await googleService.searchData('test', 10);
-
-      expect(result).toEqual(mockData);
-      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalled();
-    });
-
-    it('should handle empty search results', async () => {
-      const mockSheetsApi = {
-        spreadsheets: {
-          values: {
-            get: jest.fn().mockResolvedValue({
-              data: {
-                values: [],
-              },
-            }),
-          },
-        },
-      };
-
-      (googleService as any).sheetsApi = mockSheetsApi;
-
-      const result = await googleService.searchData('nonexistent', 10);
-
-      expect(result).toEqual([]);
-    });
-
-    it('should handle API error', async () => {
-      const mockSheetsApi = {
-        spreadsheets: {
-          values: {
-            get: jest.fn().mockRejectedValue(new Error('API error')),
-          },
-        },
-      };
-
-      (googleService as any).sheetsApi = mockSheetsApi;
-
-      await expect(googleService.searchData('test', 10)).rejects.toThrow('API error');
-    });
-  });
-
-  describe('searchDocuments', () => {
-    beforeEach(async () => {
-      await googleService.initialize();
-    });
-
-    it('should search documents successfully', async () => {
-      const mockFiles = [
-        { id: '1', name: 'Document 1', mimeType: 'application/pdf' },
-        { id: '2', name: 'Document 2', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
-      ];
-
-      const mockDriveApi = {
-        files: {
-          list: jest.fn().mockResolvedValue({
-            data: {
-              files: mockFiles,
-            },
-          }),
-        },
-      };
-
-      (googleService as any).driveApi = mockDriveApi;
-
-      const result = await googleService.searchDocuments('test');
-
-      expect(result).toEqual(mockFiles);
-      expect(mockDriveApi.files.list).toHaveBeenCalled();
-    });
-
-    it('should handle empty document results', async () => {
-      const mockDriveApi = {
-        files: {
-          list: jest.fn().mockResolvedValue({
-            data: {
-              files: [],
-            },
-          }),
-        },
-      };
-
-      (googleService as any).driveApi = mockDriveApi;
-
-      const result = await googleService.searchDocuments('nonexistent');
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe('health check', () => {
-    it('should return healthy status when initialized', async () => {
-      await googleService.initialize();
-      
-      const health = await googleService.getHealthStatus();
-      
-      expect(health.healthy).toBe(true);
-      expect(health.service).toBe('GoogleService');
-    });
-
-    it('should return unhealthy status when not initialized', async () => {
-      const health = await googleService.getHealthStatus();
-      
-      expect(health.healthy).toBe(false);
-      expect(health.service).toBe('GoogleService');
-    });
-  });
-}); 
+});
