@@ -65,14 +65,14 @@ async function runOne(gs: GoogleService, file: DriveFile): Promise<void> {
     });
 
     const res = await extractTextFromDriveFile(gs, meta);
-    const preview = summarizeText(res.text, 600);
+    const preview = summarizeText(res.text, 1000);
 
     logger.info('✅ Извлечение завершено', {
       name: meta.name,
       mime: res.mimeType,
       textBytes: Buffer.byteLength(res.text, 'utf8'),
       warnings: res.warnings,
-      previewSample: preview.slice(0, 200).replace(/\n/g, ' ⏎ '),
+      previewSample: preview.slice(0, 800).replace(/\n/g, ' ⏎ '),
     });
   } catch (e) {
     logger.error('❌ Ошибка при обработке файла', {
