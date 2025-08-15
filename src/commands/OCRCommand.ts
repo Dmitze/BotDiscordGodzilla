@@ -1,8 +1,10 @@
-import { Attachment, SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder } from 'discord.js';
+import type { Attachment } from 'discord.js';
 import { BaseCommand } from '@/commands/BaseCommand';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
+import { t } from '@/i18n';
 
 export class OCRCommand extends BaseCommand {
   private readonly google: GoogleService | null;
@@ -10,7 +12,7 @@ export class OCRCommand extends BaseCommand {
   constructor(config: BotConfig, google?: GoogleService) {
     super(
       'ocr',
-      'Распознать текст на изображении (офлайн Tesseract или Vision по конфигу)',
+      t('ocr.command.description'),
       config,
       {
         category: 'documents',
@@ -21,13 +23,13 @@ export class OCRCommand extends BaseCommand {
           .addAttachmentOption(opt =>
             opt
               .setName('image')
-              .setDescription('Загрузите изображение для OCR')
+              .setDescription(t('ocr.opt.image.description'))
               .setRequired(false)
           )
           .addStringOption(opt =>
             opt
               .setName('drive_id')
-              .setDescription('ID файла изображения в Google Drive')
+              .setDescription(t('ocr.opt.drive_id.description'))
               .setRequired(false)
           );
         return builder;
@@ -46,12 +48,12 @@ export class OCRCommand extends BaseCommand {
       const driveId = interaction.options.getString('drive_id');
 
       if (!attachment && !driveId) {
-        await interaction.editReply('Пожалуйста, укажите либо вложение image, либо drive_id.');
+        await interaction.editReply(t('ocr.error.needInput'));
         return;
       }
 
       if (!this.google) {
-        await interaction.editReply('GoogleService недоступен. Обратитесь к администратору.');
+        await interaction.editReply(t('ocr.error.serviceUnavailable'));
         return;
       }
 
@@ -60,7 +62,7 @@ export class OCRCommand extends BaseCommand {
       if (attachment) {
         const url = attachment.url;
         const res = await fetch(url);
-        if (!res.ok) throw new Error(`Не удалось скачать изображение: ${res.status} ${res.statusText}`);
+        if (!res.ok) throw new Error(t('ocr.error.downloadFail', { status: String(res.status), statusText: res.statusText }));
         const buf = Buffer.from(await res.arrayBuffer());
         text = await this.google.extractTextFromBuffer(buf);
       } else if (driveId) {
@@ -68,16 +70,16 @@ export class OCRCommand extends BaseCommand {
         text = await this.google.extractTextFromImage(file);
       }
 
-      const result = text?.trim() || '[пусто]';
+      const result = text?.trim() || t('ocr.result.empty');
       const provider = this.config.google.ocrProvider ?? 'vision';
-      await interaction.editReply(`Провайдер: ${provider}\n\n${result.slice(0, 1900)}`);
+      await interaction.editReply(`${t('ocr.result.provider', { provider })}\n\n${result.slice(0, 1900)}`);
     } catch (error) {
       logger.error('Ошибка выполнения OCR команды', {
         type: 'command',
         command: 'ocr',
         error: error instanceof Error ? error.message : String(error),
       });
-      await interaction.editReply('❌ Ошибка при распознавании. Попробуйте другое изображение.');
+      await interaction.editReply(t('ocr.error.process'));
     }
   }
 }
