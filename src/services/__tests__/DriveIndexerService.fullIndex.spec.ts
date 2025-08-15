@@ -49,6 +49,7 @@ describe('DriveIndexerService - full index', () => {
   test('skips non-indexable mime types', async () => {
     const google = createGoogleMock();
     const cache = createCacheMock();
+    const metrics = createMetricsMock();
 
     const f1 = clone(fileDoc);
     const f2 = { id: 'img1', name: 'Image', mimeType: 'image/png', modifiedTime: '2025-08-13T13:00:00Z' };
@@ -58,7 +59,7 @@ describe('DriveIndexerService - full index', () => {
 
     google.extractTextFromFile.mockImplementation(async ({ id }: any) => `T_${id}`);
 
-    const bot = createBotMock(google as any, cache as any);
+    const bot = createBotMock(google as any, cache as any, { services: { metrics } });
     const indexer = await initIndexer(bot);
 
     await indexer.reindexAll('root');
