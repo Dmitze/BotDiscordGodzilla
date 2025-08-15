@@ -21,6 +21,7 @@
     "status-commands": "node build/scripts/deploy-production.js status",
     "lint": "eslint src/**/*.{js,ts}",
     "lint:fix": "eslint src/**/*.{js,ts} --fix",
+    "lint:cmds": "eslint -c .eslintrc.cjs src/commands --ext .ts -f unix",
     "format": "prettier --write src/**/*.{js,ts}",
     "format:check": "prettier --check src/**/*.{js,ts}",
     "type-check": "tsc --noEmit",
