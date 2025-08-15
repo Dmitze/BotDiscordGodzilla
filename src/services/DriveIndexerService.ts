@@ -41,6 +41,7 @@ export class DriveIndexerService extends BaseServiceClass {
   private bot: BotLike;
   private google!: GoogleService;
   private cache!: CacheService;
+  private metrics?: { incCounter?: (...args: any[]) => void; observeHistogram?: (...args: any[]) => void };
   private indexedCount = 0;
   private lastRunAt: number | null = null;
 
@@ -53,6 +54,13 @@ export class DriveIndexerService extends BaseServiceClass {
     // Получим зависимости
     this.google = this.bot.getService('google') as GoogleService;
     this.cache = this.bot.getService('cache') as CacheService;
+    // Метрики опционально
+    try {
+      const m = this.bot.getService('metrics');
+      if (m) this.metrics = m as any;
+    } catch {
+      // ignore if metrics not registered
+    }
 
     if (!this.config.drive?.enableTextIndex) {
       logger.info('🔎 Индексация Drive отключена (DRIVE_ENABLE_TEXT_INDEX=false)');
@@ -86,6 +94,8 @@ export class DriveIndexerService extends BaseServiceClass {
     if (!fid) throw new Error('Не указан folderId для индексации');
 
     logger.info('📚 Запуск полной индексации Drive', { folderId: fid });
+    const start = Date.now();
+    this.metrics?.incCounter?.('drive_index_runs_total', { mode: 'full' });
     let pageToken: string | undefined = undefined;
     let total = 0;
 
@@ -101,6 +111,9 @@ export class DriveIndexerService extends BaseServiceClass {
       pageToken = nextPageToken;
     } while (pageToken);
 
+    const durationMs = Date.now() - start;
+    this.metrics?.observeHistogram?.('drive_index_duration_seconds', durationMs / 1000, { mode: 'full' });
+    this.metrics?.incCounter?.('drive_index_files_indexed_total', { mode: 'full', total });
     logger.info('✅ Полная индексация завершена', { total });
   }
 
@@ -111,6 +124,8 @@ export class DriveIndexerService extends BaseServiceClass {
     if (!fid) return;
 
     logger.info('🔄 Запуск инкрементальной индексации', { folderId: fid });
+    const start = Date.now();
+    this.metrics?.incCounter?.('drive_index_runs_total', { mode: 'incremental' });
     let pageToken: string | undefined = undefined;
     let updated = 0;
 
@@ -128,6 +143,9 @@ export class DriveIndexerService extends BaseServiceClass {
       pageToken = nextPageToken;
     } while (pageToken);
 
+    const durationMs = Date.now() - start;
+    this.metrics?.observeHistogram?.('drive_index_duration_seconds', durationMs / 1000, { mode: 'incremental' });
+    this.metrics?.incCounter?.('drive_index_files_indexed_total', { mode: 'incremental', total: updated });
     logger.info('✅ Инкрементальная индексация завершена', { updated });
   }
 
@@ -175,11 +193,15 @@ export class DriveIndexerService extends BaseServiceClass {
   /** Индексация одного файла по метаданным (без повторного запроса метаданных) */
   public async indexOneFileByMeta(file: DriveFile): Promise<void> {
     if (!this.ensureReady()) return;
-    if (!this.isIndexableMime(file.mimeType)) return;
+    if (!this.isIndexableMime(file.mimeType)) {
+      this.metrics?.incCounter?.('drive_index_skipped_total', { reason: 'non_indexable_mime', mime: file.mimeType });
+      return;
+    }
 
     const text = await this.google.extractTextFromFile({ id: file.id, mimeType: file.mimeType, name: file.name, modifiedTime: file.modifiedTime ?? null });
     await this.saveEntry(file, text);
     this.indexedCount++;
+    this.metrics?.incCounter?.('drive_index_file_indexed', { mime: file.mimeType });
   }
 
   /** Индексация одного файла по id (сама достанет метаданные) */
