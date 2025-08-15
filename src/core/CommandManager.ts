@@ -22,6 +22,7 @@ import { EnhancedSearchCommand } from '@/commands/EnhancedSearchCommand';
 import { SelectSheetCommand } from '@/commands/SelectSheetCommand';
 import { OCRCommand } from '@/commands/OCRCommand';
 import { DriveExtractCommand } from '@/commands/DriveExtractCommand';
+import { DocCommand } from '@/commands/DocCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -130,6 +131,7 @@ export class CommandManager {
         new SelectSheetCommand(this.config, googleService, sheetsContext),
         new OCRCommand(this.config, googleService),
         new DriveExtractCommand(this.config, googleService),
+        new DocCommand(this.config, googleService),
       ];
 
       // Реєструємо команди
