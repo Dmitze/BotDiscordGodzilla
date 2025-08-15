@@ -9,7 +9,7 @@ describe('DriveIndexerService - pagination handling', () => {
     google.listDriveFiles
       .mockResolvedValueOnce({ files: [fileDoc], nextPageToken: 'T2' })
       .mockResolvedValueOnce({ files: [filePdf], nextPageToken: 'T3' })
-      .mockResolvedValueOnce({ files: [fileWord], nextPageToken: undefined });
+      .mockResolvedValueOnce({ files: [fileWord] });
 
     google.extractTextFromFile.mockImplementation(async ({ id }: any) => `TEXT_${id}`);
 
