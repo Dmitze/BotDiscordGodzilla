@@ -52,9 +52,7 @@
     "build",
     "docs",
     "examples",
-    "legacy",
-    "**/*.test.ts",
-    "**/*.spec.ts"
+    "legacy"
   ],
   "ts-node": {
     "esm": false,
