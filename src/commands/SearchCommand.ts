@@ -4,19 +4,14 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import {
-  SlashCommandBuilder,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ChatInputCommandInteraction,
-} from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import type { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import type { BotConfig, SheetData, SearchParams } from '@/types';
 import { BaseCommand, type CommandExecuteOptions } from './BaseCommand';
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
 import type { GoogleService } from '@/services/GoogleService';
+import { t } from '@/i18n';
 
 // Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
@@ -74,13 +69,13 @@ export class SearchCommand extends BaseCommand {
   constructor(config: BotConfig, googleService?: GoogleService) {
     super(
       'пошук',
-      '🔍 Гнучкий пошук по документах ЗСУ',
+      t('search.command.description'),
       config,
       {
         category: 'search',
         cooldown: 5000, // 5 секунд
         permissions: ['ViewChannel'],
-        usage: '/пошук запит:текст [опції]',
+        usage: t('search.command.usage'),
         examples: [
           '/пошук запит:особовий склад тип_документа:накази',
           '/пошук запит:техніка дата_від:01.01.2024 дата_до:31.12.2024',
@@ -92,57 +87,57 @@ export class SearchCommand extends BaseCommand {
           .addStringOption(option =>
             option
               .setName('запит')
-              .setDescription('Що шукати? (наприклад: "особовий склад", "техніка", "зброя")')
+              .setDescription(t('search.opt.query.description'))
               .setRequired(true)
               .setMaxLength(SEARCH_CONFIG.MAX_QUERY_LENGTH)
           )
           .addStringOption(option =>
             option
               .setName('тип_документа')
-              .setDescription('Тип документа для пошуку')
+              .setDescription(t('search.opt.type.description'))
               .addChoices(
-                { name: 'Всі документи', value: 'all' },
-                { name: 'Накази', value: 'orders' },
-                { name: 'Доповіді', value: 'reports' },
-                { name: 'Звіти', value: 'statistics' },
-                { name: 'Плани', value: 'plans' },
-                { name: 'Інструкції', value: 'instructions' },
-                { name: 'Протоколи', value: 'protocols' },
-                { name: 'Картки', value: 'cards' },
-                { name: 'Журнали', value: 'journals' }
+                { name: t('search.choices.type.all'), value: 'all' },
+                { name: t('search.choices.type.orders'), value: 'orders' },
+                { name: t('search.choices.type.reports'), value: 'reports' },
+                { name: t('search.choices.type.statistics'), value: 'statistics' },
+                { name: t('search.choices.type.plans'), value: 'plans' },
+                { name: t('search.choices.type.instructions'), value: 'instructions' },
+                { name: t('search.choices.type.protocols'), value: 'protocols' },
+                { name: t('search.choices.type.cards'), value: 'cards' },
+                { name: t('search.choices.type.journals'), value: 'journals' }
               )
           )
           .addStringOption(option =>
             option
               .setName('дата_від')
-              .setDescription('Дата від (формат: ДД.ММ.РРРР)')
+              .setDescription(t('search.opt.dateFrom.description'))
               .setMaxLength(10)
           )
           .addStringOption(option =>
             option
               .setName('дата_до')
-              .setDescription('Дата до (формат: ДД.ММ.РРРР)')
+              .setDescription(t('search.opt.dateTo.description'))
               .setMaxLength(10)
           )
           .addStringOption(option =>
-            option.setName('підрозділ').setDescription('Підрозділ для пошуку').setMaxLength(100)
+            option.setName('підрозділ').setDescription(t('search.opt.unit.description')).setMaxLength(100)
           )
           .addStringOption(option =>
             option
               .setName('пріоритет')
-              .setDescription('Пріоритет документа')
+              .setDescription(t('search.opt.priority.description'))
               .addChoices(
-                { name: 'Всі', value: 'all' },
-                { name: 'Критичний', value: 'critical' },
-                { name: 'Високий', value: 'high' },
-                { name: 'Середній', value: 'medium' },
-                { name: 'Низький', value: 'low' }
+                { name: t('search.choices.priority.all'), value: 'all' },
+                { name: t('search.choices.priority.critical'), value: 'critical' },
+                { name: t('search.choices.priority.high'), value: 'high' },
+                { name: t('search.choices.priority.medium'), value: 'medium' },
+                { name: t('search.choices.priority.low'), value: 'low' }
               )
           )
           .addIntegerOption(option =>
             option
               .setName('ліміт')
-              .setDescription(`Кількість результатів (макс. ${SEARCH_CONFIG.MAX_RESULTS})`)
+              .setDescription(t('search.opt.limit.description', { max: SEARCH_CONFIG.MAX_RESULTS }))
               .setMinValue(1)
               .setMaxValue(SEARCH_CONFIG.MAX_RESULTS)
           ) as unknown as SlashCommandBuilder;
@@ -177,7 +172,7 @@ export class SearchCommand extends BaseCommand {
           filters: searchParams,
         };
         if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
-        logger.info('Початок пошуку', meta);
+        logger.info(t('search.log.start'), meta);
       }
 
       // Виконання пошуку
@@ -212,7 +207,7 @@ export class SearchCommand extends BaseCommand {
           cacheHit: searchResult.cacheHit,
         };
         if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
-        logger.info('Пошук успішно завершено', meta);
+        logger.info(t('search.log.success'), meta);
       }
     } catch (error) {
       const duration = performance.now() - startTime;
@@ -229,7 +224,7 @@ export class SearchCommand extends BaseCommand {
           duration: `${duration.toFixed(2)}ms`,
         };
         if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
-        logger.error('Помилка пошуку', meta);
+        logger.error(t('search.log.error'), meta);
       }
 
       await this.handleSearchError(interaction, error);
@@ -253,16 +248,16 @@ export class SearchCommand extends BaseCommand {
     // Валідація запиту
     const sanitizedQuery = sanitizeInput(query, 'command');
     if (!sanitizedQuery.isValid) {
-      throw new Error(`Некорректний запит: ${sanitizedQuery.errors.join(', ')}`);
+      throw new Error(t('search.error.invalidQuery', { errors: sanitizedQuery.errors.join(', ') }));
     }
 
     // Валідація дат
     if (dateFrom && !this.isValidDate(dateFrom)) {
-      throw new Error('Некорректний формат дати "від" (використовуйте ДД.ММ.РРРР)');
+      throw new Error(t('search.error.invalidDateFrom'));
     }
 
     if (dateTo && !this.isValidDate(dateTo)) {
-      throw new Error('Некорректний формат дати "до" (використовуйте ДД.ММ.РРРР)');
+      throw new Error(t('search.error.invalidDateTo'));
     }
 
     // Перевірка діапазону дат
@@ -270,7 +265,7 @@ export class SearchCommand extends BaseCommand {
       const fromDate = this.parseDate(dateFrom);
       const toDate = this.parseDate(dateTo);
       if (fromDate && toDate && toDate < fromDate) {
-        throw new Error('Дата "до" не може бути раніше дати "від"');
+        throw new Error(t('search.error.dateRange'));
       }
     }
 
@@ -278,7 +273,7 @@ export class SearchCommand extends BaseCommand {
     if (unit) {
       const sanitizedUnit = sanitizeInput(unit, 'command');
       if (!sanitizedUnit.isValid) {
-        throw new Error(`Некорректний підрозділ: ${sanitizedUnit.errors.join(', ')}`);
+        throw new Error(t('search.error.invalidUnit', { errors: sanitizedUnit.errors.join(', ') }));
       }
     }
 
@@ -307,7 +302,7 @@ export class SearchCommand extends BaseCommand {
     const cached = this.searchCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < SEARCH_CONFIG.CACHE_TTL * 1000) {
       this.searchStats.cacheHits++;
-      logger.debug('Результат знайдено в кеші', {
+      logger.debug(t('search.log.cacheHit'), {
         type: 'performance',
         component: 'SearchCommand',
         cacheKey,
@@ -347,14 +342,14 @@ export class SearchCommand extends BaseCommand {
       // Отримання сервісів
       const googleService = this.googleService;
       if (!googleService) {
-        throw new Error('Google сервіс не налаштовано');
+        throw new Error(t('search.error.noService'));
       }
 
       // Отримання даних з Google Sheets
       const sheetData = await this.getSheetDataWithTimeout(googleService);
 
       if (!sheetData || !sheetData.values || sheetData.values.length === 0) {
-        throw new Error('Немає даних для пошуку');
+        throw new Error(t('search.error.noData'));
       }
 
       const values = sheetData.values as string[][];
@@ -394,7 +389,7 @@ export class SearchCommand extends BaseCommand {
   private async getSheetDataWithTimeout(googleService: GoogleService): Promise<SheetData> {
     const spreadsheetId: string | undefined = this.config?.google?.spreadsheetId;
     if (!spreadsheetId) {
-      throw new Error('Не вказано spreadsheetId в конфігурації');
+      throw new Error(t('search.error.noSpreadsheet'));
     }
     return Promise.race([
       googleService.getSheetData(spreadsheetId, 'A:Z', {
