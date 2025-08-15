@@ -9,6 +9,7 @@ import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
 import * as xlsx from 'xlsx';
 import { AnalyticsService } from '@/services/AnalyticsService';
+import { t } from '@/i18n';
 
 interface AIQueryResult {
   response: string;
@@ -38,21 +39,19 @@ export class AIAssistantCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
 
   constructor(config: BotConfig, googleService?: GoogleService) {
-    super('ai', '🤖 AI-асистент для роботи з Google Sheets', config, {}, (builder: any) => {
+    super('ai', t('ai.command.description'), config, {}, (builder: any) => {
       return builder
         .addStringOption((option: any) =>
           option
             .setName('запит')
-            .setDescription(
-              'Що ви хочете зробити? (наприклад: "знайди товари iPhone", "проаналізуй залишки")'
-            )
+            .setDescription(t('ai.opt.query.description'))
             .setRequired(true)
             .setMaxLength(1000)
         )
         .addStringOption((option: any) =>
           option
             .setName('контекст')
-            .setDescription('Додатковий контекст для AI')
+            .setDescription(t('ai.opt.context.description'))
             .setRequired(false)
             .setMaxLength(500)
         );
@@ -86,7 +85,7 @@ export class AIAssistantCommand extends BaseCommand {
       const validation = this.validateCommandOptions(commandOptions);
       if (!validation.isValid) {
         await interaction.editReply({
-          content: `❌ Помилка валідації:\n${validation.errors.join('\n')}`,
+          content: t('ai.validation.failed', { errors: validation.errors.join('\n') }),
         });
         return;
       }
@@ -110,25 +109,27 @@ export class AIAssistantCommand extends BaseCommand {
       );
 
       // Формування відповіді
-      let response = `🤖 **AI-асистент**\n\n`;
+      let response = `🤖 **${t('ai.reply.title')}**\n\n`;
 
       if (result.confidence < 0.7) {
-        response += `⚠️ **Низька впевненість** (${Math.round(result.confidence * 100)}%)\n`;
+        response += t('ai.reply.lowConfidence', { pct: Math.round(result.confidence * 100) });
+        response += '\n';
       }
 
-      response += `**Ваш запит:** ${commandOptions.query}\n\n`;
-      response += `**Відповідь:**\n${result.response}`;
+      response += t('ai.reply.query', { query: String(commandOptions.query) });
+      response += '\n\n';
+      response += t('ai.reply.answer', { answer: result.response });
 
       // Додавання контексту якщо є
       if (commandOptions.context) {
-        response += `\n\n**Контекст:** ${commandOptions.context}`;
+        response += '\n\n' + t('ai.reply.context', { context: String(commandOptions.context) });
       }
 
       // Додавання додаткової інформації
       if (result.actionData) {
-        response += `\n\n**Дія:** ${result.actionData.type}`;
+        response += `\n\n` + t('ai.reply.action', { action: result.actionData.type });
         if (result.actionData.format) {
-          response += ` (формат: ${result.actionData.format})`;
+          response += ` ` + t('ai.reply.format', { format: result.actionData.format });
         }
       }
 
@@ -163,8 +164,7 @@ export class AIAssistantCommand extends BaseCommand {
         stack: error instanceof Error ? error.stack : undefined,
       });
 
-      const errorMessage =
-        '❌ Помилка при обробці AI-запиту. Спробуйте ще раз або зверніться до адміністратора.';
+      const errorMessage = t('ai.error.process');
 
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
@@ -199,10 +199,7 @@ export class AIAssistantCommand extends BaseCommand {
           command: interaction.commandName,
         });
 
-        await interaction.reply({
-          content: `🚫 Доступ заборонено: ${result.reason}`,
-          ephemeral: true,
-        });
+        await interaction.reply({ content: t('ai.error.accessDenied', { reason: result.reason || '' }), ephemeral: true });
         return false;
       }
 
@@ -229,7 +226,7 @@ export class AIAssistantCommand extends BaseCommand {
         severity: 'high',
       });
       // За замовчуванням не пускати у разі помилки
-      await interaction.reply({ content: '❌ Помилка перевірки прав доступу', ephemeral: true });
+      await interaction.reply({ content: t('ai.error.permissionCheck'), ephemeral: true });
       return false;
     }
   }
@@ -305,21 +302,11 @@ export class AIAssistantCommand extends BaseCommand {
     const intentOcrImage = /(картин|изображен|image|photo|png|jpg|jpeg)/i.test(q) && /(ocr|текст|прочитай|извле(ки|чи))/i.test(q);
     if (intentOcrImage) {
       if (!this.googleService) {
-        return {
-          response: 'Сервіс Google не ініціалізовано. Перевірте конфігурацію сервісів.',
-          confidence: 0.6,
-          action: 'ocr_image',
-          actionData: { type: 'analyze', format: 'text' },
-        };
+        return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
       }
       const folderId = this.config.google.driveFolderId;
       if (!folderId) {
-        return {
-          response: 'Не налаштовано GOOGLE_DRIVE_FOLDER_ID. Додайте ID папки у .env.',
-          confidence: 0.7,
-          action: 'ocr_image',
-          actionData: { type: 'analyze', format: 'text' },
-        };
+        return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
       }
       const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || []).filter(w => w.length >= 2).slice(0, 5);
       const nameQuery = nameTokens.join(' ').trim();
@@ -330,30 +317,30 @@ export class AIAssistantCommand extends BaseCommand {
       const isImage = (mt?: string) => !!(mt && /^image\//i.test(mt));
       const candidates = (index || []).filter(f => isImage(f.mimeType ?? undefined) && matchesName(f.name ?? undefined));
       if (!candidates.length) {
-        return { response: 'Не знайдено відповідних зображень у папці.', confidence: 0.85, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+        return { response: t('ai.ocr.noImages'), confidence: 0.85, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
       }
       for (const f of candidates.slice(0, 5)) {
         try {
           const text = await this.googleService.extractTextFromImage(f as any);
           if (!text.trim()) continue;
           const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
-          return { response: `Файл: ${f.name} (id: ${f.id})\n\n${preview}`, confidence: 0.9, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+          return { response: t('ai.ocr.result', { name: String(f.name ?? ''), id: String(f.id ?? ''), preview }), confidence: 0.9, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
         } catch (e) {
           logger.warn('OCR error', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: f.id, err: e instanceof Error ? e.message : String(e) });
         }
       }
-      return { response: 'Не вдалося прочитати текст на зображеннях.', confidence: 0.7, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+      return { response: t('ai.ocr.cannotRead'), confidence: 0.7, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
     }
 
     // Інтент: базова аналітика по таблицях (группировка/подсчёт по статусам, опционально за месяц)
     const intentAnalytics = /(группируй|сгруппируй|групу(ва|пу)й|посчитай|підрахуй)/i.test(q) && /(статус|status)/i.test(q);
     if (intentAnalytics) {
       if (!this.googleService) {
-        return { response: 'Сервіс Google не ініціалізовано.', confidence: 0.6, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+        return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
       }
       const folderId = this.config.google.driveFolderId;
       if (!folderId) {
-        return { response: 'Не налаштовано GOOGLE_DRIVE_FOLDER_ID. Додайте ID папки у .env.', confidence: 0.7, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+        return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
       }
       const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || []).filter(w => w.length >= 2).slice(0, 5);
       const nameQuery = nameTokens.join(' ').trim();
@@ -368,7 +355,7 @@ export class AIAssistantCommand extends BaseCommand {
         return mt === 'application/vnd.google-apps.spreadsheet' || mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || mt === 'application/vnd.ms-excel';
       });
       if (!tableLike.length) {
-        return { response: 'Не знайдено таблиць для аналітики.', confidence: 0.85, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+        return { response: t('ai.analytics.noTables'), confidence: 0.85, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
       }
 
       const readGoogleSheet = async (spreadsheetId: string): Promise<Array<Record<string, any>>> => {
