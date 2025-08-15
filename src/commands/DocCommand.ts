@@ -11,6 +11,7 @@ import type { BotConfig } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
 import logger from '@/utils/logger';
 import type { DocBlock } from '@/types/docs';
+import { t } from '@/i18n';
 
 export class DocCommand extends BaseCommand {
   private readonly google: GoogleService | null;
@@ -18,7 +19,7 @@ export class DocCommand extends BaseCommand {
   constructor(config: BotConfig, google?: GoogleService) {
     super(
       'doc',
-      'Работа с Google Docs',
+      t('doc.command.description'),
       config,
       {
         category: 'documents',
@@ -29,18 +30,18 @@ export class DocCommand extends BaseCommand {
           .addSubcommand(sub =>
             sub
               .setName('blocks')
-              .setDescription('Показать структурированные блоки Google Docs')
+              .setDescription(t('doc.sub.blocks.description'))
               .addStringOption(opt =>
                 opt
                   .setName('documentid')
-                  .setDescription('ID или ссылка на документ Google Docs')
+                  .setDescription(t('doc.opt.documentid.description'))
                   .setRequired(true)
                   .setAutocomplete(true)
               )
               .addIntegerOption(opt =>
                 opt
                   .setName('limit')
-                  .setDescription('Сколько блоков отобразить (1-25)')
+                  .setDescription(t('doc.opt.limit.description'))
                   .setRequired(false)
                   .setMinValue(1)
                   .setMaxValue(25)
@@ -48,7 +49,7 @@ export class DocCommand extends BaseCommand {
               .addStringOption(opt =>
                 opt
                   .setName('format')
-                  .setDescription('Формат вывода: short | full | headings')
+                  .setDescription(t('doc.opt.format.description'))
                   .setRequired(false)
                   .addChoices(
                     { name: 'short', value: 'short' },
@@ -69,20 +70,14 @@ export class DocCommand extends BaseCommand {
 
     const sub = interaction.options.getSubcommand();
     if (sub !== 'blocks') {
-      await interaction.reply({ content: 'Неизвестная подкоманда', ephemeral: true });
+      await interaction.reply({ content: t('doc.unknownSub'), ephemeral: true });
       return;
     }
 
     const documentInput = interaction.options.getString('documentid', true);
     const documentId = extractDocId(documentInput);
     if (!documentId) {
-      await interaction.reply({
-        content:
-          'Не удалось распознать ID документа. Укажите чистый ID или ссылку формата:\n' +
-          '- https://docs.google.com/document/d/<ID>/edit\n' +
-          'Где <ID> — строка между "/d/" и "/edit".',
-        ephemeral: true,
-      });
+      await interaction.reply({ content: t('doc.id.invalid'), ephemeral: true });
       return;
     }
     const limit = interaction.options.getInteger('limit') ?? 10;
@@ -92,7 +87,7 @@ export class DocCommand extends BaseCommand {
 
     try {
       if (!this.google) {
-        await interaction.editReply('GoogleService недоступен. Обратитесь к администратору.');
+        await interaction.editReply(t('doc.google.unavailable'));
         return;
       }
 
@@ -116,7 +111,7 @@ export class DocCommand extends BaseCommand {
         documentId,
         error: error instanceof Error ? error.message : String(error),
       });
-      await interaction.editReply('❌ Ошибка при получении блоков документа. Проверьте ID и доступ.');
+      await interaction.editReply(t('doc.error.fetchBlocks'));
     }
   }
 
@@ -175,12 +170,12 @@ export class DocCommand extends BaseCommand {
       // Ограничение времени жизни: 10 минут
       const nowSec = Math.floor(Date.now() / 1000);
       if (ts && nowSec - ts > 10 * 60) {
-        await interaction.reply({ content: '⏳ Сессия просмотра истекла. Запустите команду снова.', ephemeral: true });
+        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
         return;
       }
 
       if (!this.google) {
-        await interaction.reply({ content: 'GoogleService недоступен', ephemeral: true });
+        await interaction.reply({ content: t('doc.google.unavailable'), ephemeral: true });
         return;
       }
 
@@ -200,7 +195,7 @@ export class DocCommand extends BaseCommand {
         error: error instanceof Error ? error.message : String(error),
       });
       if (!interaction.deferred && !interaction.replied) {
-        await interaction.reply({ content: '❌ Ошибка обновления страницы', ephemeral: true });
+        await interaction.reply({ content: t('doc.error.updatePage'), ephemeral: true });
       }
     }
   }
@@ -232,9 +227,9 @@ function extractDocId(input: string): string | null {
 type FormatMode = 'short' | 'full' | 'headings';
 
 function toPreview(text: string | undefined, max = 300): string {
-  const t = (text || '').trim();
-  if (!t) return '[пусто]';
-  const s = t.replace(/\s+/g, ' ');
+  const str = (text || '').trim();
+  if (!str) return t('doc.kinds.empty');
+  const s = str.replace(/\s+/g, ' ');
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
 
@@ -249,23 +244,23 @@ function formatBlock(b: DocBlock, indexBase: number, mode: FormatMode): { name: 
     case 'full': {
       switch (b.kind) {
         case 'heading':
-          return { name: `${idx}. heading h${b.level}`, value: toPreview(b.text, 900) };
+          return { name: `${idx}. ${t('doc.kinds.heading', { level: b.level })}`, value: toPreview(b.text, 900) };
         case 'listItem':
-          return { name: `${idx}. listItem${b.listId ? ` (${b.listId})` : ''}`, value: `• ${toPreview(b.text, 900)}` };
+          return { name: `${idx}. ${t('doc.kinds.listItem')}${b.listId ? ` (${b.listId})` : ''}`, value: `• ${toPreview(b.text, 900)}` };
         case 'paragraph':
-          return { name: `${idx}. paragraph`, value: toPreview(b.text, 900) };
+          return { name: `${idx}. ${t('doc.kinds.paragraph')}`, value: toPreview(b.text, 900) };
         case 'table': {
           const rowsCount = b.rows.length;
           const firstRow = b.rows[0];
           const colsCount = firstRow && Array.isArray(firstRow.cells) ? firstRow.cells.length : 0;
-          const header = `${rowsCount}x${colsCount}`;
+          const header = t('doc.kinds.table', { rows: rowsCount, cols: colsCount });
           const firstRowText = rowsCount > 0 && colsCount > 0 && firstRow
             ? firstRow.cells.map(c => c.text).join(' | ')
-            : '[empty table]';
+            : t('doc.kinds.emptyTable');
           return { name: `${idx}. table ${header}`, value: toPreview(firstRowText, 900) };
         }
         case 'footnote':
-          return { name: `${idx}. footnote ${b.id}`, value: toPreview(b.text, 600) };
+          return { name: `${idx}. ${t('doc.kinds.footnote', { id: b.id })}`, value: toPreview(b.text, 600) };
       }
       // exhaustive
     }
@@ -273,23 +268,23 @@ function formatBlock(b: DocBlock, indexBase: number, mode: FormatMode): { name: 
     default: {
       switch (b.kind) {
         case 'heading':
-          return { name: `${idx}. heading h${b.level}`, value: `📝 ${toPreview(b.text, 300)}` };
+          return { name: `${idx}. ${t('doc.kinds.heading', { level: b.level })}`, value: `📝 ${toPreview(b.text, 300)}` };
         case 'listItem':
-          return { name: `${idx}. listItem${b.listId ? ` (${b.listId})` : ''}`, value: `• ${toPreview(b.text, 300)}` };
+          return { name: `${idx}. ${t('doc.kinds.listItem')}${b.listId ? ` (${b.listId})` : ''}`, value: `• ${toPreview(b.text, 300)}` };
         case 'paragraph':
-          return { name: `${idx}. paragraph`, value: toPreview(b.text, 300) };
+          return { name: `${idx}. ${t('doc.kinds.paragraph')}`, value: toPreview(b.text, 300) };
         case 'table': {
           const rowsCount = b.rows.length;
           const firstRow = b.rows[0];
           const colsCount = firstRow && Array.isArray(firstRow.cells) ? firstRow.cells.length : 0;
-          const header = `${rowsCount}x${colsCount}`;
+          const header = t('doc.kinds.table', { rows: rowsCount, cols: colsCount });
           const firstRowText = rowsCount > 0 && colsCount > 0 && firstRow
             ? firstRow.cells.map(c => c.text).join(' | ')
-            : '[empty table]';
+            : t('doc.kinds.emptyTable');
           return { name: `${idx}. table ${header}`, value: toPreview(firstRowText, 300) };
         }
         case 'footnote':
-          return { name: `${idx}. footnote ${b.id}`, value: toPreview(b.text, 200) };
+          return { name: `${idx}. ${t('doc.kinds.footnote', { id: b.id })}`, value: toPreview(b.text, 200) };
       }
       // exhaustive
     }
@@ -311,8 +306,8 @@ function buildBlocksPage(args: {
   const slice = blocks.slice(start, start + pageSize);
 
   const embed = new EmbedBuilder()
-    .setTitle('Структура документа Google Docs')
-    .setDescription(`documentId: ${documentId}\nВсего блоков: ${total}\nСтраница: ${safePage}/${totalPages} (по ${pageSize})\nФормат: ${format}`)
+    .setTitle(t('doc.embed.title'))
+    .setDescription(t('doc.embed.desc', { documentId, total, page: safePage, totalPages, pageSize, format }))
     .setColor(0x3b82f6);
 
   let idx = start + 1;
