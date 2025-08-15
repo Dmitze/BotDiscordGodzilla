@@ -1,5 +1,7 @@
 // no specific types needed here to avoid builder type narrowing issues
 import { BaseCommand } from './BaseCommand';
+import { t } from '@/i18n';
+import type { SlashCommandBuilder, SlashCommandStringOption } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
@@ -16,32 +18,34 @@ export class SelectSheetCommand extends BaseCommand {
   ) {
     super(
       'select_sheet',
-      '📁 Вибір Google таблиці та листа для контексту пошуку',
+      t('sheets.command.description'),
       config,
       {},
-      (builder: any) =>
+      (builder: SlashCommandBuilder) => {
         builder
-          .setDescription('Встановити/показати/очистити контекст таблиці та листа')
-          .addStringOption((opt: any) =>
+          .setDescription(t('sheets.opt.mode.description'))
+          .addStringOption((opt: SlashCommandStringOption) =>
             opt
               .setName('mode')
-              .setDescription('Дія: встановити, показати або очистити')
+              .setDescription(t('sheets.opt.mode.description'))
               .setRequired(false)
               .addChoices(
-                { name: 'встановити', value: 'set' },
-                { name: 'показати', value: 'show' },
-                { name: 'очистити', value: 'clear' }
+                { name: t('sheets.choices.mode.set'), value: 'set' },
+                { name: t('sheets.choices.mode.show'), value: 'show' },
+                { name: t('sheets.choices.mode.clear'), value: 'clear' }
               )
           )
-          .addStringOption((opt: any) =>
+          .addStringOption((opt: SlashCommandStringOption) =>
             opt
               .setName('spreadsheet')
-              .setDescription('Назва таблиці (у папці) або ID')
+              .setDescription(t('sheets.opt.spreadsheet.description'))
               .setRequired(false)
           )
-          .addStringOption((opt: any) =>
-            opt.setName('sheet').setDescription('Назва листа в таблиці').setRequired(false)
-          )
+          .addStringOption((opt: SlashCommandStringOption) =>
+            opt.setName('sheet').setDescription(t('sheets.opt.sheet.description')).setRequired(false)
+          );
+        return builder;
+      }
     );
     this.googleService = googleService;
     this.sheetsContext = sheetsContext;
@@ -61,7 +65,7 @@ export class SelectSheetCommand extends BaseCommand {
         if (interaction.guildId) key.guildId = interaction.guildId;
         const removed = await this.sheetsContext?.clearContext(key as any);
         await interaction.editReply(
-          removed ? '✅ Контекст очищено' : 'ℹ️ Немає збереженого контексту'
+          removed ? t('sheets.reply.cleared') : t('sheets.reply.noContext')
         );
         return;
       }
@@ -74,22 +78,22 @@ export class SelectSheetCommand extends BaseCommand {
         if (interaction.guildId) key.guildId = interaction.guildId;
         const ctx = await this.sheetsContext?.getContext(key as any);
         if (!ctx) {
-          await interaction.editReply('ℹ️ Контекст не встановлено');
+          await interaction.editReply(t('sheets.reply.noContext'));
           return;
         }
         await interaction.editReply(
-          `📄 Поточний контекст:\nSpreadsheet: ${ctx.spreadsheetId}\nSheet: ${ctx.sheetName || '—'}`
+          t('sheets.reply.current', { spreadsheetId: ctx.spreadsheetId, sheetName: ctx.sheetName || '—' })
         );
         return;
       }
 
       if (!this.googleService) {
-        throw new Error('GoogleService недоступний');
+        throw new Error(t('sheets.error.serviceUnavailable'));
       }
 
       const folderId = this.config?.google?.driveFolderId;
       if (!folderId) {
-        throw new Error('Не вказано GOOGLE_DRIVE_FOLDER_ID в конфігурації');
+        throw new Error(t('sheets.error.missingFolderId'));
       }
 
       const spreadsheetInput = interaction.options.getString('spreadsheet') || '';
@@ -110,9 +114,9 @@ export class SelectSheetCommand extends BaseCommand {
             3
           );
           if (matches.length === 0)
-            throw new Error(`Таблицю за ім'ям "${spreadsheetInput}" не знайдено у папці`);
+            throw new Error(t('sheets.error.notFoundByName', { name: spreadsheetInput }));
           if (matches.length > 1) {
-            logger.warn('SelectSheet: знайдено кілька відповідників, обираємо перший', {
+            logger.warn(t('sheets.log.multiMatchWarn'), {
               component: 'SelectSheetCommand',
               count: matches.length,
               query: spreadsheetInput,
@@ -123,7 +127,7 @@ export class SelectSheetCommand extends BaseCommand {
       }
 
       if (!spreadsheetId) {
-        throw new Error('Не вказано таблицю. Задайте параметр "таблиця" (назва або ID).');
+        throw new Error(t('sheets.error.missingSpreadsheet'));
       }
 
       // Валідуємо sheetName, якщо задано
@@ -131,7 +135,7 @@ export class SelectSheetCommand extends BaseCommand {
         const sheets = await this.googleService.listSheets(spreadsheetId);
         const exists = sheets.some(s => s.toLowerCase() === sheetName!.toLowerCase());
         if (!exists) {
-          throw new Error(`Лист "${sheetName}" не знайдено у вибраній таблиці`);
+          throw new Error(t('sheets.error.sheetNotFound', { sheet: sheetName }));
         }
       }
 
@@ -147,7 +151,7 @@ export class SelectSheetCommand extends BaseCommand {
       });
 
       await interaction.editReply(
-        `✅ Контекст встановлено:\nSpreadsheet: ${spreadsheetId}\nSheet: ${sheetName || '—'}`
+        t('sheets.reply.set', { spreadsheetId, sheetName: sheetName || '—' })
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -156,7 +160,7 @@ export class SelectSheetCommand extends BaseCommand {
         event: 'command_failed',
         errorMessage: message,
       });
-      await interaction.editReply(`❌ Помилка: ${message}`);
+      await interaction.editReply(t('sheets.error.failed', { message }));
     }
   }
 }
