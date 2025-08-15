@@ -1,4 +1,4 @@
-import { createBotMock, createCacheMock, createGoogleMock, initIndexer } from './__utils__/driveIndexerTestHelpers';
+import { createBotMock, createCacheMock, createGoogleMock, createMetricsMock, initIndexer } from './__utils__/driveIndexerTestHelpers';
 import { fileDoc, filePdf, clone } from '../../tests/fixtures/drive/files';
 
 const KEY = (id: string) => `drive:index:file:${id}`;
@@ -7,6 +7,7 @@ describe('DriveIndexerService - incremental index', () => {
   test('indexes only new/changed files by modifiedTime', async () => {
     const google = createGoogleMock();
     const cache = createCacheMock();
+    const metrics = createMetricsMock();
 
     // seed cache: fileDoc already indexed with same modifiedTime => skip
     await cache.set(KEY('doc1'), {
@@ -18,12 +19,12 @@ describe('DriveIndexerService - incremental index', () => {
     changedPdf.modifiedTime = '2025-08-20T10:00:00Z';
 
     google.listDriveFiles
-      .mockResolvedValueOnce({ files: [fileDoc, changedPdf], nextPageToken: undefined });
+      .mockResolvedValueOnce({ files: [fileDoc, changedPdf] });
 
     google.extractTextFromFile
       .mockImplementation(async ({ id }: any) => `NEW_${id}`);
 
-    const bot = createBotMock(google as any, cache as any);
+    const bot = createBotMock(google as any, cache as any, { services: { metrics } });
     const indexer = await initIndexer(bot);
 
     await indexer.reindexIncremental('root');
@@ -40,5 +41,11 @@ describe('DriveIndexerService - incremental index', () => {
 
     const keys = await cache.get<string[]>('drive:index:keys');
     expect(keys).toEqual(expect.arrayContaining(['doc1', 'pdf1']));
+
+    // metrics
+    expect(metrics.incCounter).toHaveBeenCalledWith('drive_index_runs_total', { mode: 'incremental' });
+    expect(metrics.observeHistogram).toHaveBeenCalledWith('drive_index_duration_seconds', expect.any(Number), { mode: 'incremental' });
+    expect(metrics.incCounter).toHaveBeenCalledWith('drive_index_files_indexed_total', { mode: 'incremental', total: 1 });
+    expect(metrics.incCounter).toHaveBeenCalledWith('drive_index_file_indexed', { mime: filePdf.mimeType });
   });
 });
