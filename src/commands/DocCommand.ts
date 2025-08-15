@@ -1,8 +1,6 @@
-import type { SlashCommandBuilder } from 'discord.js';
-import { EmbedBuilder } from 'discord.js';
-import { BaseCommand } from '@/commands/BaseCommand';
+import { EmbedBuilder, type SlashCommandBuilder } from 'discord.js';
+import { BaseCommand, type CommandExecuteOptions } from '@/commands/BaseCommand';
 import type { BotConfig } from '@/types';
-import type { CommandExecuteOptions } from '@/commands/BaseCommand';
 import type { GoogleService } from '@/services/GoogleService';
 import logger from '@/utils/logger';
 import type { DocBlock } from '@/types/docs';
@@ -17,7 +15,7 @@ export class DocCommand extends BaseCommand {
       config,
       {
         category: 'documents',
-        usage: '/doc blocks <documentId> [limit]'
+        usage: '/doc blocks <documentId|url> [limit]'
       },
       (builder: SlashCommandBuilder) => {
         builder
@@ -28,7 +26,7 @@ export class DocCommand extends BaseCommand {
               .addStringOption(opt =>
                 opt
                   .setName('documentid')
-                  .setDescription('ID документа Google Docs')
+                  .setDescription('ID или ссылка на документ Google Docs')
                   .setRequired(true)
               )
               .addIntegerOption(opt =>
@@ -56,7 +54,18 @@ export class DocCommand extends BaseCommand {
       return;
     }
 
-    const documentId = interaction.options.getString('documentid', true);
+    const documentInput = interaction.options.getString('documentid', true);
+    const documentId = extractDocId(documentInput);
+    if (!documentId) {
+      await interaction.reply({
+        content:
+          'Не удалось распознать ID документа. Укажите чистый ID или ссылку формата:\n' +
+          '- https://docs.google.com/document/d/<ID>/edit\n' +
+          'Где <ID> — строка между "/d/" и "/edit".',
+        ephemeral: true,
+      });
+      return;
+    }
     const limit = interaction.options.getInteger('limit') ?? 10;
 
     await interaction.deferReply({ ephemeral: false });
@@ -101,10 +110,10 @@ export class DocCommand extends BaseCommand {
           case 'table': {
             const rowsCount = b.rows.length;
             const firstRow = b.rows[0];
-            const colsCount = firstRow?.cells?.length ?? 0;
+            const colsCount = firstRow && Array.isArray(firstRow.cells) ? firstRow.cells.length : 0;
             name = `${i + 1}. table ${rowsCount}x${colsCount}`;
-            if (rowsCount > 0 && colsCount > 0) {
-              const firstRowText = firstRow!.cells.map(c => c.text).join(' | ');
+            if (rowsCount > 0 && colsCount > 0 && firstRow) {
+              const firstRowText = firstRow.cells.map(c => c.text).join(' | ');
               value = toPreview(firstRowText, 300);
             } else {
               value = '[empty table]';
@@ -136,4 +145,26 @@ export class DocCommand extends BaseCommand {
       await interaction.editReply('❌ Ошибка при получении блоков документа. Проверьте ID и доступ.');
     }
   }
+}
+
+// Извлекает ID документа из полной ссылки или возвращает строку, если она похожа на ID
+function extractDocId(input: string): string | null {
+  const trimmed = input.trim();
+  // Прямой ID (обычно base64-like: буквы, цифры, -, _)
+  if (/^[a-zA-Z0-9-_]{20,}$/.test(trimmed)) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    // Формат: https://docs.google.com/document/d/<ID>/...
+    const m = url.pathname.match(/\/document\/d\/([a-zA-Z0-9-_]+)/);
+    if (m && m[1]) return m[1];
+    // Альтернатива: https://docs.google.com/document/u/0/d/<ID>/...
+    const m2 = url.pathname.match(/\/document\/u\/\d+\/d\/([a-zA-Z0-9-_]+)/);
+    if (m2 && m2[1]) return m2[1];
+    // Редкий формат: /open?id=<ID>
+    const openId = url.searchParams.get('id');
+    if (openId && /^[a-zA-Z0-9-_]{20,}$/.test(openId)) return openId;
+  } catch {
+    // not a URL
+  }
+  return null;
 }
