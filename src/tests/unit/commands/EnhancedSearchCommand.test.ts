@@ -27,7 +27,7 @@ describe('EnhancedSearchCommand', () => {
     });
 
     it('should have correct description', () => {
-      expect(enhancedSearchCommand.getDescription()).toBe('Розширений пошук з фільтрами та сортуванням');
+      expect(enhancedSearchCommand.getDescription()).toBe('🔍 Покращений пошук з діапазонами та сортуванням');
     });
   });
 
@@ -55,7 +55,7 @@ describe('EnhancedSearchCommand', () => {
       mockInteraction.options.getInteger.mockReturnValueOnce(100).mockReturnValueOnce(500);
 
       // Выполнение
-      await enhancedSearchCommand.execute(mockInteraction);
+      await enhancedSearchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.options.getString).toHaveBeenCalledWith('номенклатура');
@@ -79,7 +79,7 @@ describe('EnhancedSearchCommand', () => {
       mockInteraction.options.getString.mockReturnValueOnce('test').mockReturnValueOnce('price').mockReturnValueOnce('desc');
 
       // Выполнение
-      await enhancedSearchCommand.execute(mockInteraction);
+      await enhancedSearchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.options.getString).toHaveBeenCalledWith('запит');
@@ -103,7 +103,7 @@ describe('EnhancedSearchCommand', () => {
       mockInteraction.options.getString.mockReturnValueOnce('test').mockReturnValueOnce('2024-01-01').mockReturnValueOnce('2024-01-31');
 
       // Выполнение
-      await enhancedSearchCommand.execute(mockInteraction);
+      await enhancedSearchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.options.getString).toHaveBeenCalledWith('запит');
@@ -127,7 +127,7 @@ describe('EnhancedSearchCommand', () => {
       mockInteraction.options.getInteger.mockReturnValue(10);
 
       // Выполнение
-      await enhancedSearchCommand.execute(mockInteraction);
+      await enhancedSearchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.options.getString).toHaveBeenCalledWith('запит');
@@ -140,7 +140,7 @@ describe('EnhancedSearchCommand', () => {
       mockInteraction.options.getString.mockReturnValue('');
 
       // Выполнение
-      await enhancedSearchCommand.execute(mockInteraction);
+      await enhancedSearchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.reply).toHaveBeenCalledWith(
@@ -161,7 +161,7 @@ describe('EnhancedSearchCommand', () => {
       mockInteraction.options.getString.mockReturnValue('test');
 
       // Выполнение
-      await enhancedSearchCommand.execute(mockInteraction);
+      await enhancedSearchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.reply).toHaveBeenCalledWith(
@@ -182,7 +182,7 @@ describe('EnhancedSearchCommand', () => {
       mockInteraction.options.getString.mockReturnValue('неіснуючий');
 
       // Выполнение
-      await enhancedSearchCommand.execute(mockInteraction);
+      await enhancedSearchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.reply).toHaveBeenCalledWith(
@@ -208,7 +208,7 @@ describe('EnhancedSearchCommand', () => {
       mockInteraction.options.getString.mockReturnValueOnce('electronics').mockReturnValueOnce('2024-01-01').mockReturnValueOnce('2024-01-31');
 
       // Выполнение
-      await enhancedSearchCommand.execute(mockInteraction);
+      await enhancedSearchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockGoogleService.enhancedSearch).toHaveBeenCalledWith(
@@ -242,7 +242,7 @@ describe('EnhancedSearchCommand', () => {
       mockInteraction.options.getInteger.mockReturnValue(1);
 
       // Выполнение
-      await enhancedSearchCommand.execute(mockInteraction);
+      await enhancedSearchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.options.getInteger).toHaveBeenCalledWith('сторінка');
