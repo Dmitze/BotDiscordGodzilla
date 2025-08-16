@@ -23,11 +23,11 @@ describe('AIAssistantCommand', () => {
     });
 
     it('should have correct name', () => {
-      expect(aiAssistantCommand.getName()).toBe('ai_асистент');
+      expect(aiAssistantCommand.getName()).toBe('ai');
     });
 
     it('should have correct description', () => {
-      expect(aiAssistantCommand.getDescription()).toBe('AI-асистент для відповідей на запитання');
+      expect(aiAssistantCommand.getDescription()).toBe('🤖 AI-асистент для роботи з Google Sheets');
     });
   });
 
@@ -35,7 +35,7 @@ describe('AIAssistantCommand', () => {
     it('should return SlashCommandBuilder', () => {
       const data = aiAssistantCommand.getData();
       expect(data).toBeDefined();
-      expect(data.name).toBe('ai_асистент');
+      expect(data.name).toBe('ai');
     });
   });
 
@@ -50,7 +50,7 @@ describe('AIAssistantCommand', () => {
       mockInteraction.options.getString.mockReturnValue('Привіт, як справи?');
 
       // Выполнение
-      await aiAssistantCommand.execute(mockInteraction);
+      await aiAssistantCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.options.getString).toHaveBeenCalledWith('запит');
@@ -62,7 +62,7 @@ describe('AIAssistantCommand', () => {
       mockInteraction.options.getString.mockReturnValue('');
 
       // Выполнение
-      await aiAssistantCommand.execute(mockInteraction);
+      await aiAssistantCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.reply).toHaveBeenCalledWith(
@@ -83,7 +83,7 @@ describe('AIAssistantCommand', () => {
       mockInteraction.options.getString.mockReturnValue('тест');
 
       // Выполнение
-      await aiAssistantCommand.execute(mockInteraction);
+      await aiAssistantCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.reply).toHaveBeenCalledWith(
@@ -105,7 +105,7 @@ describe('AIAssistantCommand', () => {
       mockInteraction.options.getString.mockReturnValue('тест');
 
       // Выполнение
-      await aiAssistantCommand.execute(mockInteraction);
+      await aiAssistantCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.reply).toHaveBeenCalled();
