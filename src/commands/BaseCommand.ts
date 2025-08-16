@@ -172,7 +172,15 @@ export abstract class BaseCommand {
   /**
    * Виконання команди з детальним логуванням та обробкою помилок
    */
-  public async execute(options: CommandExecuteOptions): Promise<void> {
+  public async execute(
+    arg: CommandExecuteOptions | ChatInputCommandInteraction
+  ): Promise<void> {
+    // Backward-compatible adapter: tests may call execute(interaction)
+    const options: CommandExecuteOptions =
+      (arg as ChatInputCommandInteraction)?.user !== undefined
+        ? { interaction: arg as ChatInputCommandInteraction }
+        : (arg as CommandExecuteOptions);
+
     const startTime = performance.now();
     const userId = options.interaction.user.id;
 
