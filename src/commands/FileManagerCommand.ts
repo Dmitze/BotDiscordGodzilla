@@ -6,6 +6,10 @@
 import {
   AttachmentBuilder,
   EmbedBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ActionRowBuilder,
+  type MessageActionRowComponentBuilder,
   type ChatInputCommandInteraction,
   type SlashCommandBuilder,
   type SlashCommandStringOption,
@@ -15,7 +19,6 @@ import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 import { redact } from '@/utils/redact';
-import type { drive_v3 } from 'googleapis';
 import type { GoogleService } from '@/services/GoogleService';
 import type { AIService } from '@/services/AIService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
@@ -61,6 +64,15 @@ interface ValidationResult {
 }
 
 export class FileManagerCommand extends BaseCommand {
+  // Runtime search sessions for pagination/toggles
+  private static sessions = new Map<string, {
+    query: string;
+    folderId: string;
+    pageSize: number;
+    changesOnly: boolean;
+    baseline: number; // used to alter sessionKey for reset baseline
+  }>();
+
   constructor(config: BotConfig) {
     super('файли', t('files.command.description'), config, {}, (builder: SlashCommandBuilder) => {
       builder
@@ -81,6 +93,68 @@ export class FileManagerCommand extends BaseCommand {
                 .setDescription(t('files.opt.folder.description'))
                 .setRequired(false)
                 .setMaxLength(50)
+            )
+            .addStringOption(opt =>
+              opt
+                .setName('mime')
+                .setDescription('Фільтр за MIME (точний збіг)')
+                .setRequired(false)
+                .setMaxLength(100)
+            )
+            .addStringOption(opt =>
+              opt
+                .setName('власник')
+                .setDescription('Фільтр за власником (email/ім’я, contains)')
+                .setRequired(false)
+                .setMaxLength(100)
+            )
+            .addStringOption(opt =>
+              opt
+                .setName('від')
+                .setDescription('Дата від (YYYY-MM-DD)')
+                .setRequired(false)
+                .setMaxLength(10)
+            )
+            .addStringOption(opt =>
+              opt
+                .setName('до')
+                .setDescription('Дата до (YYYY-MM-DD)')
+                .setRequired(false)
+                .setMaxLength(10)
+            )
+            .addIntegerOption(opt =>
+              opt
+                .setName('розмір_мін')
+                .setDescription('Мінімальний розмір, МБ')
+                .setRequired(false)
+                .setMinValue(0)
+                .setMaxValue(10_000)
+            )
+            .addIntegerOption(opt =>
+              opt
+                .setName('розмір_макс')
+                .setDescription('Максимальний розмір, МБ')
+                .setRequired(false)
+                .setMinValue(0)
+                .setMaxValue(10_000)
+            )
+            .addIntegerOption(opt =>
+              opt
+                .setName('ліміт')
+                .setDescription('Скільки елементів на сторінку (1-25)')
+                .setRequired(false)
+                .setMinValue(1)
+                .setMaxValue(25)
+            )
+            .addStringOption(opt =>
+              opt
+                .setName('сортування')
+                .setDescription('Сортувати за: name | modifiedTime')
+                .setRequired(false)
+                .addChoices(
+                  { name: 'name', value: 'name' },
+                  { name: 'modifiedTime', value: 'modifiedTime' },
+                )
             );
           return sub;
         })
@@ -188,11 +262,12 @@ export class FileManagerCommand extends BaseCommand {
       await interaction.deferReply();
 
       // Виконання підкоманди
-      let result: FileResult;
+      let result: FileResult | undefined;
       switch (subcommand) {
         case 'пошук':
-          result = await this.handleSearch(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'пошук' }>) as FileSearchOptions);
-          break;
+          await this.handleSearch(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'пошук' }>) as FileSearchOptions);
+          // handleSearch сам керує відповіддю і компонентами
+          return;
         case 'читати':
           result = await this.handleRead(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'читати' }>) as FileReadOptions);
           break;
@@ -323,74 +398,266 @@ export class FileManagerCommand extends BaseCommand {
   ): Promise<FileResult> {
     const svc = this.getGoogleService(interaction);
     if (!svc) {
+      await interaction.editReply({ content: t('files.error.serviceUnavailable') });
       return { success: false, message: t('files.error.serviceUnavailable') };
     }
 
-    const folderId = options.folder || this.config.google?.driveFolderId;
+    const folderId = options.folder || this.config.google?.driveFolderId || this.config.drive?.folderId || '';
     if (!folderId) {
-      return {
-        success: false,
-        message: t('files.error.missingFolderId'),
-      };
+      await interaction.editReply({ content: t('files.error.missingFolderId') });
+      return { success: false, message: t('files.error.missingFolderId') };
     }
 
-    const files: drive_v3.Schema$File[] = await svc.listDriveFilesInFolder(folderId, {
-      recursive: true,
-      type: 'any',
+    const pageSize = Math.max(1, Math.min(25, interaction.options.getInteger('ліміт') ?? 10));
+    const sid = Math.random().toString(36).slice(2, 10);
+    FileManagerCommand.sessions.set(sid, {
       query: options.query,
-      limit: 50,
-      maxDepth: 4,
+      folderId,
+      pageSize,
+      changesOnly: false,
+      baseline: Math.floor(Date.now() / 1000),
     });
 
-    // Apply Drive policies: MIME and owner allowlist
-    const driveCfg = this.config.drive;
-    let filtered = files;
-    let filteredOutCount = 0;
-    if (driveCfg) {
-      filtered = files.filter(f => {
-        const mime = String(f.mimeType || '');
-        const owners = (f.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
-        const mimeOk = this.isMimeAllowed(mime, driveCfg.allowedMime || []);
-        const ownerOk = this.isOwnerAllowed(owners, driveCfg.ownerAllowlist || []);
-        const ok = mimeOk && ownerOk;
-        if (!ok) filteredOutCount++;
-        return ok;
-      });
+    const { embed, components } = await this.buildSearchPage({
+      interaction,
+      sid,
+      page: 1,
+    });
+
+    await interaction.editReply({ embeds: [embed], components });
+    return { success: true, message: 'ok' };
+  }
+
+  private async buildSearchPage(args: { interaction: ChatInputCommandInteraction; sid: string; page: number }): Promise<{ embed: EmbedBuilder; components: ActionRowBuilder<MessageActionRowComponentBuilder>[] }> {
+    const { interaction, sid, page } = args;
+    const session = FileManagerCommand.sessions.get(sid);
+    const svc = this.getGoogleService(interaction);
+    if (!session || !svc) {
+      const embed = new EmbedBuilder().setDescription(t('files.error.serviceUnavailable')).setColor(0xef4444);
+      return { embed, components: [] };
     }
 
-    if (!filtered.length) {
-      return {
-        success: true,
-        message: t('files.result.searchEmpty', { query: options.query, folderId }),
-      };
+    const listRes = await svc.listDriveFiles({
+      folderId: session.folderId,
+      query: session.query,
+      pageSize: 100, // fetch more, paginate client-side for UX
+      mimeIncludes: this.config.drive?.allowedMime && this.config.drive.allowedMime.length ? this.config.drive.allowedMime : [],
+      ownerAllowlist: this.config.drive?.ownerAllowlist ?? [],
+      highlightChanges: true,
+      sessionKey: `${interaction.channelId}:${session.baseline}`,
+    });
+
+    const files = listRes.files;
+    const driveCfg = this.config.drive;
+    let filteredOutCount = 0;
+    const allowed = files.filter(f => {
+      const mime = String(f.mimeType || '');
+      const owners = (f.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+      const mimeOk = this.isMimeAllowed(mime, driveCfg?.allowedMime || []);
+      const ownerOk = this.isOwnerAllowed(owners, driveCfg?.ownerAllowlist || []);
+      const ok = mimeOk && ownerOk;
+      if (!ok) filteredOutCount++;
+      return ok;
+    });
+
+    // changes-only filter
+    const ch = listRes.changes;
+    let toShow = allowed;
+    const addedSet = new Set<string>(ch?.addedIds ?? []);
+    const modifiedSet = new Set<string>((ch?.modified ?? []).map(m => m.id));
+    if (session.changesOnly) {
+      toShow = allowed.filter(f => addedSet.has(f.id) || modifiedSet.has(f.id));
     }
+
+    // extra filters from interaction options
+    const mimeFilter = interaction.options.getString('mime') || undefined;
+    const ownerFilter = interaction.options.getString('власник') || undefined;
+    const fromStr = interaction.options.getString('від') || undefined;
+    const toStr = interaction.options.getString('до') || undefined;
+    const sizeMinMb = interaction.options.getInteger('розмір_мін') ?? undefined;
+    const sizeMaxMb = interaction.options.getInteger('розмір_макс') ?? undefined;
+
+    const fromTime = fromStr ? Date.parse(fromStr) : undefined;
+    const toTime = toStr ? Date.parse(toStr) : undefined;
+    toShow = toShow.filter(f => {
+      // mime exact
+      if (mimeFilter && String(f.mimeType || '') !== mimeFilter) return false;
+      // owner contains
+      if (ownerFilter) {
+        const owners = (f.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+        const hasOwner = owners.some((o: string) => String(o).toLowerCase().includes(ownerFilter.toLowerCase()));
+        if (!hasOwner) return false;
+      }
+      // date range by modifiedTime
+      if (fromTime || toTime) {
+        const mt = Date.parse(String((f as any).modifiedTime || (f as any).modified_at || 0));
+        if (Number.isFinite(fromTime as number) && mt < (fromTime as number)) return false;
+        if (Number.isFinite(toTime as number) && mt > (toTime as number) + 24 * 3600 * 1000 - 1) return false;
+      }
+      // size range in MB
+      if (sizeMinMb != null || sizeMaxMb != null) {
+        const sizeBytes = Number((f as any).size || 0) || 0;
+        const sizeMb = sizeBytes / (1024 * 1024);
+        if (sizeMinMb != null && sizeMb < sizeMinMb) return false;
+        if (sizeMaxMb != null && sizeMb > sizeMaxMb) return false;
+      }
+      return true;
+    });
+
+    // client-side sort by optional param — read from options
+    const sort = (interaction.options.getString('сортування') ?? 'name') as 'name' | 'modifiedTime';
+    toShow.sort((a, b) => {
+      if (sort === 'modifiedTime') {
+        const at = Date.parse(String((a as any).modifiedTime || 0));
+        const bt = Date.parse(String((b as any).modifiedTime || 0));
+        return bt - at;
+      }
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+
+    const total = toShow.length;
+    const totalPages = Math.max(1, Math.ceil(total / session.pageSize));
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const start = (safePage - 1) * session.pageSize;
+    const slice = toShow.slice(start, start + session.pageSize);
 
     const largeMark = ` (${t('files.search.largeMark')})`;
-    const lines = filtered.slice(0, 20).map((f, idx) => {
+    const lines: string[] = [];
+    let idx = start + 1;
+    for (const f of slice) {
       const icon =
-        f.mimeType === 'application/vnd.google-apps.folder'
-          ? '📁'
-          : f.mimeType === 'application/vnd.google-apps.spreadsheet'
-            ? '📊'
-            : f.mimeType === 'application/vnd.google-apps.document'
-              ? '📄'
-              : '📦';
+        f.mimeType === 'application/vnd.google-apps.folder' ? '📁'
+        : f.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📊'
+        : f.mimeType === 'application/vnd.google-apps.document' ? '📄' : '📦';
       const sizeBytes = Number((f as any).size || 0) || 0;
       const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
       const mark = tooLarge ? largeMark : '';
-      return `${idx + 1}. ${icon} ${f.name}${mark} — ${f.id}`;
-    });
+      const change = addedSet.has(f.id) ? '🆕 ' : (modifiedSet.has(f.id) ? '✏️ ' : '');
+      lines.push(`${idx}. ${change}${icon} ${f.name}${mark} — ${f.id}`);
+      idx++;
+    }
 
-    const more = filtered.length > 20 ? t('files.result.more', { rest: filtered.length - 20 }) : '';
+    const more = total > session.pageSize ? t('files.result.more', { rest: total - session.pageSize }) : '';
     const msg = t('files.result.searchList', {
-      query: options.query,
-      folderId,
-      count: filtered.length,
+      query: session.query,
+      folderId: session.folderId,
+      count: total,
       lines: lines.join('\n'),
       more,
     });
+
     const policyNote = filteredOutCount > 0 ? `\n\n${t('files.search.filteredByPolicy', { count: filteredOutCount })}` : '';
-    return { success: true, message: `${msg}${policyNote}` };
+    let changesNote = '';
+    if (ch && (ch.addedIds.length || ch.removedIds.length || ch.modified.length)) {
+      changesNote = `\n\n${t('files.search.changesSummary', { added: ch.addedIds.length, removed: ch.removedIds.length, modified: ch.modified.length })}`;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle('📁 ' + this.getSubcommandTitle('пошук'))
+      .setDescription(`${msg}${policyNote}${changesNote}`)
+      .setColor(0x22c55e)
+      .setTimestamp()
+      .setFooter({ text: `Сторінка ${safePage}/${totalPages}` });
+
+    const ts = Math.floor(Date.now() / 1000);
+    const row1 = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: 1, ts }))
+        .setLabel(t('files.search.buttons.first')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === 1),
+      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: Math.max(1, safePage - 1), ts }))
+        .setLabel(t('files.search.buttons.prev')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === 1),
+      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: Math.min(totalPages, safePage + 1), ts }))
+        .setLabel(t('files.search.buttons.next')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === totalPages),
+      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: totalPages, ts }))
+        .setLabel(t('files.search.buttons.last')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === totalPages),
+    );
+
+    const row2 = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: safePage, ts, action: 'toggle' }))
+        .setLabel(t('files.search.buttons.showChangesOnly')).setStyle(session.changesOnly ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: 1, ts, action: 'reset' }))
+        .setLabel(t('files.search.buttons.resetBaseline')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: safePage, ts, action: 'close' }))
+        .setLabel(t('files.search.buttons.close')).setStyle(ButtonStyle.Danger),
+    );
+
+    return { embed, components: [row1, row2] };
+  }
+
+  private buildCustomId(args: { sid: string; page: number; ts: number; action?: 'toggle' | 'reset' | 'close' }): string {
+    const { sid, page, ts, action } = args;
+    return `filesrch|sid=${sid}|p=${page}|${action ? `a=${action}|` : ''}t=${ts}`;
+  }
+
+  private parseCustomId(customId: string): { sid: string; page: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } | null {
+    if (!customId.startsWith('filesrch|')) return null;
+    const parts = customId.split('|').slice(1);
+    const map = new Map(parts.map(kv => {
+      const i = kv.indexOf('=');
+      return i > 0 ? [kv.slice(0, i), kv.slice(i + 1)] as const : [kv, ''];
+    }));
+    const sid = map.get('sid');
+    const p = Number(map.get('p') || '1');
+    const a = map.get('a') as any;
+    const t = Number(map.get('t') || '');
+    if (!sid) return null;
+    const res: { sid: string; page: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } = {
+      sid,
+      page: Number.isFinite(p) ? p : 1,
+    };
+    if (a === 'toggle' || a === 'reset' || a === 'close') res.action = a;
+    if (Number.isFinite(t)) res.ts = t;
+    return res;
+  }
+
+  protected override async onComponent(options: import('@/commands/BaseCommand').CommandComponentOptions): Promise<void> {
+    const interaction = options.interaction;
+    if (!('isButton' in interaction) || !(interaction as any).isButton()) return;
+    try {
+      const parsed = this.parseCustomId((interaction as any).customId as string);
+      if (!parsed) return;
+      const { sid, page, action, ts } = parsed;
+
+      // expire after 10 minutes
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (ts && nowSec - ts > 10 * 60) {
+        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+        return;
+      }
+
+      const session = FileManagerCommand.sessions.get(sid);
+      if (!session) {
+        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+        return;
+      }
+
+      if (action === 'close') {
+        FileManagerCommand.sessions.delete(sid);
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply({ components: [] });
+        } else {
+          await interaction.update({ components: [] });
+        }
+        return;
+      }
+
+      if (action === 'toggle') {
+        session.changesOnly = !session.changesOnly;
+      } else if (action === 'reset') {
+        session.baseline = Math.floor(Date.now() / 1000);
+      }
+
+      const { embed, components } = await this.buildSearchPage({ interaction: interaction as any, sid, page });
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ embeds: [embed], components });
+      } else {
+        await interaction.update({ embeds: [embed], components });
+      }
+    } catch (error) {
+      logger.error('FileManager component error', { error: String(error) });
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.reply({ content: t('doc.error.updatePage'), ephemeral: true });
+      }
+    }
   }
 
   /**
