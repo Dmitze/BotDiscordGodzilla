@@ -27,7 +27,7 @@ describe('SearchCommand', () => {
     });
 
     it('should have correct description', () => {
-      expect(searchCommand.getDescription()).toBe('Пошук інформації в Google Sheets');
+      expect(searchCommand.getDescription()).toBe('🔍 Гнучкий пошук по документах');
     });
   });
 
@@ -57,7 +57,7 @@ describe('SearchCommand', () => {
       mockInteraction.options.getString.mockReturnValue('тест');
 
       // Выполнение
-      await searchCommand.execute(mockInteraction);
+      await searchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.options.getString).toHaveBeenCalledWith('запит');
@@ -82,7 +82,7 @@ describe('SearchCommand', () => {
       mockInteraction.options.getString.mockReturnValue('неіснуючий');
 
       // Выполнение
-      await searchCommand.execute(mockInteraction);
+      await searchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.reply).toHaveBeenCalledWith(
@@ -110,7 +110,7 @@ describe('SearchCommand', () => {
       mockInteraction.options.getString.mockReturnValue('тест');
 
       // Выполнение
-      await searchCommand.execute(mockInteraction);
+      await searchCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.reply).toHaveBeenCalledWith(
