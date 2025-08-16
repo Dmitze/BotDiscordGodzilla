@@ -3,16 +3,18 @@
  * Включає пошук, читання та аналіз файлів
  */
 
-import { AttachmentBuilder, EmbedBuilder } from 'discord.js';
-import type {
-  ChatInputCommandInteraction,
-  SlashCommandBuilder,
-  SlashCommandStringOption,
-  SlashCommandSubcommandBuilder,
+import {
+  AttachmentBuilder,
+  EmbedBuilder,
+  type ChatInputCommandInteraction,
+  type SlashCommandBuilder,
+  type SlashCommandStringOption,
+  type SlashCommandSubcommandBuilder,
 } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
+import { redact } from '@/utils/redact';
 import type { drive_v3 } from 'googleapis';
 import type { GoogleService } from '@/services/GoogleService';
 import type { AIService } from '@/services/AIService';
@@ -283,7 +285,7 @@ export class FileManagerCommand extends BaseCommand {
           format: (interaction.options.getString('формат') as FileReportOptions['format']) || 'txt',
         } as { kind: 'звіт' } & FileReportOptions;
       default:
-        return { kind: 'пошук', query: '', folder: undefined };
+        return { kind: 'пошук', query: '' } as { kind: 'пошук' } & FileSearchOptions;
     }
   }
 
@@ -340,14 +342,31 @@ export class FileManagerCommand extends BaseCommand {
       maxDepth: 4,
     });
 
-    if (!files.length) {
+    // Apply Drive policies: MIME and owner allowlist
+    const driveCfg = this.config.drive;
+    let filtered = files;
+    let filteredOutCount = 0;
+    if (driveCfg) {
+      filtered = files.filter(f => {
+        const mime = String(f.mimeType || '');
+        const owners = (f.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+        const mimeOk = this.isMimeAllowed(mime, driveCfg.allowedMime || []);
+        const ownerOk = this.isOwnerAllowed(owners, driveCfg.ownerAllowlist || []);
+        const ok = mimeOk && ownerOk;
+        if (!ok) filteredOutCount++;
+        return ok;
+      });
+    }
+
+    if (!filtered.length) {
       return {
         success: true,
         message: t('files.result.searchEmpty', { query: options.query, folderId }),
       };
     }
 
-    const lines = files.slice(0, 20).map((f, idx) => {
+    const largeMark = ` (${t('files.search.largeMark')})`;
+    const lines = filtered.slice(0, 20).map((f, idx) => {
       const icon =
         f.mimeType === 'application/vnd.google-apps.folder'
           ? '📁'
@@ -356,18 +375,22 @@ export class FileManagerCommand extends BaseCommand {
             : f.mimeType === 'application/vnd.google-apps.document'
               ? '📄'
               : '📦';
-      return `${idx + 1}. ${icon} ${f.name} — ${f.id}`;
+      const sizeBytes = Number((f as any).size || 0) || 0;
+      const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
+      const mark = tooLarge ? largeMark : '';
+      return `${idx + 1}. ${icon} ${f.name}${mark} — ${f.id}`;
     });
 
-    const more = files.length > 20 ? t('files.result.more', { rest: files.length - 20 }) : '';
+    const more = filtered.length > 20 ? t('files.result.more', { rest: filtered.length - 20 }) : '';
     const msg = t('files.result.searchList', {
       query: options.query,
       folderId,
-      count: files.length,
+      count: filtered.length,
       lines: lines.join('\n'),
       more,
     });
-    return { success: true, message: msg };
+    const policyNote = filteredOutCount > 0 ? `\n\n${t('files.search.filteredByPolicy', { count: filteredOutCount })}` : '';
+    return { success: true, message: `${msg}${policyNote}` };
   }
 
   /**
@@ -383,6 +406,20 @@ export class FileManagerCommand extends BaseCommand {
     const meta = await svc.getDriveFileMetadata(options.fileId);
     if (!meta || !meta.mimeType)
       return { success: false, message: t('files.error.metadata') };
+
+    // Policies
+    const driveCfg = this.config.drive;
+    if (driveCfg?.allowedMime && driveCfg.allowedMime.length && !this.isMimeAllowed(meta.mimeType, driveCfg.allowedMime)) {
+      return { success: false, message: t('files.policy.disallowedMime') };
+    }
+    if (driveCfg?.ownerAllowlist && driveCfg.ownerAllowlist.length) {
+      const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+      if (!this.isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
+        return { success: false, message: t('files.policy.deniedOwner') };
+      }
+    }
+    const sizeBytes = Number((meta as any).size || 0) || 0;
+    const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
 
     const isGApp = meta.mimeType.startsWith('application/vnd.google-apps');
     let fileBuf: Buffer;
@@ -409,8 +446,28 @@ export class FileManagerCommand extends BaseCommand {
       }
     } else {
       // Звичайний файл
-      fileBuf = await svc.downloadDriveFile(options.fileId);
+      if (!tooLarge) {
+        fileBuf = await svc.downloadDriveFile(options.fileId);
+      } else {
+        fileBuf = Buffer.alloc(0);
+      }
       fileName = meta.name || `${options.fileId}`;
+    }
+
+    if (tooLarge) {
+      const linkAllowed = !(driveCfg?.hideWebLink);
+      const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+      const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
+      const summary = t('files.summary.largeFile', {
+        name: String(meta.name || ''),
+        mimeType: String(meta.mimeType || ''),
+        size: sizeMb,
+      });
+      const linkText = linkAllowed && link ? `\n${t('files.summary.link')}: ${link}` : '';
+      return {
+        success: true,
+        message: `${summary}${linkText}`,
+      };
     }
 
     return {
@@ -432,21 +489,55 @@ export class FileManagerCommand extends BaseCommand {
 
     const anyClient = interaction.client as any;
     const ai = anyClient?.serviceContainer?.get?.('ai') as AIService | undefined;
-    const google = this.getGoogleService(interaction);
+    const googleSvc = this.getGoogleService(interaction);
     const sheetsContext = anyClient?.serviceContainer?.get?.('sheetsContext') as
       | SheetsContextService
       | undefined;
 
+    // Перевірка політик і розміру
+    if (!googleSvc) {
+      return { success: false, message: t('files.error.serviceUnavailable') };
+    }
+
+    const meta = await googleSvc.getDriveFileMetadata(options.fileId);
+    const driveCfg = this.config.drive;
+    const mime = String(meta.mimeType || '');
+    if (driveCfg?.allowedMime && !this.isMimeAllowed(mime, driveCfg.allowedMime)) {
+      return { success: false, message: t('files.policy.disallowedMime') };
+    }
+    if (driveCfg?.ownerAllowlist?.length) {
+      const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+      if (!this.isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
+        return { success: false, message: t('files.policy.deniedOwner') };
+      }
+    }
+
+    const sizeBytes = Number((meta as any).size || 0) || 0;
+    const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
+
+    // Для надто великих не виконуємо важкі операції — повертаємо зведення
+    if (tooLarge && !mime.startsWith('application/vnd.google-apps')) {
+      const linkAllowed = !(driveCfg?.hideWebLink);
+      const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+      const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
+      const summary = t('files.summary.largeFile', {
+        name: String(meta.name || ''),
+        mimeType: String(meta.mimeType || ''),
+        size: sizeMb,
+      });
+      const linkText = linkAllowed && link ? `\n${t('files.summary.link')}: ${link}` : '';
+      return { success: true, message: `${summary}${linkText}` };
+    }
+
     // Отримуємо текстову витримку з файлу для аналізу (offline)
     let contextText = '';
     try {
-      if (google) {
-        const meta = await google.getDriveFileMetadata(options.fileId);
+      if (googleSvc) {
         if (meta.mimeType === 'application/vnd.google-apps.document') {
-          const buf = await google.exportDriveFile(options.fileId, 'text/plain');
+          const buf = await googleSvc.exportDriveFile(options.fileId, 'text/plain');
           contextText = buf.toString('utf8').slice(0, 4000);
         } else if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
-          const buf = await google.exportDriveFile(options.fileId, 'text/csv');
+          const buf = await googleSvc.exportDriveFile(options.fileId, 'text/csv');
           contextText = buf.toString('utf8').slice(0, 4000);
         } else {
           contextText = `File: ${meta.name} (${meta.mimeType})`;
@@ -495,13 +586,49 @@ export class FileManagerCommand extends BaseCommand {
     options: FileReportOptions
   ): Promise<FileResult> {
     const google = this.getGoogleService(interaction);
-    if (!google) return { success: false, message: '❌ GoogleService недоступний' };
+    if (!google) return { success: false, message: t('files.error.serviceUnavailable') };
 
     const meta = await google.getDriveFileMetadata(options.fileId);
+    const driveCfg = this.config.drive;
+    const mime = String(meta.mimeType || '');
+    if (driveCfg?.allowedMime && !this.isMimeAllowed(mime, driveCfg.allowedMime)) {
+      return { success: false, message: t('files.policy.disallowedMime') };
+    }
+    if (driveCfg?.ownerAllowlist?.length) {
+      const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+      if (!this.isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
+        return { success: false, message: t('files.policy.deniedOwner') };
+      }
+    }
+
+    const sizeBytes = Number((meta as any).size || 0) || 0;
+    const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
     const baseName = (meta.name || 'report').replace(/\.[^/.]+$/, '');
 
     // Збираємо коротку інформацію про файл як вміст звіту
     let content = `Звіт по файлу\nНазва: ${meta.name}\nТип: ${meta.mimeType}\nОновлено: ${meta.modifiedTime}`;
+    if (tooLarge && !mime.startsWith('application/vnd.google-apps')) {
+      const linkAllowed = !(driveCfg?.hideWebLink);
+      const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+      const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
+      const summary = t('files.summary.largeFile', {
+        name: String(meta.name || ''),
+        mimeType: String(meta.mimeType || ''),
+        size: sizeMb,
+      });
+      content += `\n\n${summary}` + (linkAllowed && link ? `\n${t('files.summary.link')}: ${link}` : '');
+      // Повертаємо короткий звіт у запитаному форматі без важких експортів
+      if (options.format === 'txt') {
+        return { success: true, message: '📋 Звіт сформовано (TXT)', file: Buffer.from(content, 'utf8'), fileName: `${baseName}-report.txt` };
+      }
+      if (options.format === 'pdf') {
+        const pdf = await this.renderPdf(content, baseName);
+        return { success: true, message: '📋 Звіт сформовано (PDF)', file: pdf, fileName: `${baseName}-report.pdf` };
+      }
+      const docx = await this.renderDocx(content, baseName);
+      return { success: true, message: '📋 Звіт сформовано (DOCX)', file: docx, fileName: `${baseName}-report.docx` };
+    }
+
     try {
       if (meta.mimeType === 'application/vnd.google-apps.document') {
         const buf = await google.exportDriveFile(options.fileId, 'text/plain');
@@ -641,10 +768,10 @@ export class FileManagerCommand extends BaseCommand {
    * Логування події безпеки
    */
   private logSecurityEvent(eventType: string, data: Record<string, any>): void {
-    logger.info('security_event', {
+    logger.info('security_event', redact({
       eventType,
       ...data,
-    });
+    }));
   }
 
   /**
@@ -656,12 +783,30 @@ export class FileManagerCommand extends BaseCommand {
       const svc = anyClient?.serviceContainer?.get?.('google');
       return svc as GoogleService | undefined;
     } catch (e) {
-      logger.warn('FileManager: не вдалося отримати GoogleService', {
+      logger.warn('FileManager: не вдалося отримати GoogleService', redact({
         component: 'FileManagerCommand',
         event: 'service_resolve_failed',
         error: String(e),
-      });
+      }));
       return undefined;
     }
+  }
+
+  // Policy helpers
+  private isMimeAllowed(mime: string, allowed: string[]): boolean {
+    if (!allowed.length) return true;
+    if (allowed.includes('*')) return true;
+    return allowed.includes(mime);
+  }
+
+  private isOwnerAllowed(owners: string[], allowlist: string[]): boolean {
+    if (!allowlist.length) return true;
+    const lower = owners.map((o) => o.toLowerCase());
+    return lower.some((o) => allowlist.some((a) => o.includes(a.toLowerCase())));
+  }
+
+  private isTooLarge(bytes: number, limitMb: number): boolean {
+    if (!limitMb || limitMb <= 0) return false;
+    return bytes > limitMb * 1024 * 1024;
   }
 }
