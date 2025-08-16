@@ -43,7 +43,7 @@ describe('DocumentsCommand', () => {
     it('should handle search subcommand', async () => {
       // Настройка моков
       const mockGoogleService = {
-        searchDocuments: jest.fn().mockResolvedValue([
+        searchDocuments: (jest.fn() as any).mockResolvedValue([
           { id: '1', name: 'Document 1', type: 'pdf' },
           { id: '2', name: 'Document 2', type: 'docx' },
         ]),
@@ -66,7 +66,7 @@ describe('DocumentsCommand', () => {
     it('should handle export subcommand', async () => {
       // Настройка моков
       const mockGoogleService = {
-        exportData: jest.fn().mockResolvedValue('exported_data'),
+        exportData: (jest.fn() as any).mockResolvedValue('exported_data'),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockGoogleService);
@@ -101,7 +101,7 @@ describe('DocumentsCommand', () => {
     it('should handle service error', async () => {
       // Настройка моков с ошибкой
       const mockGoogleService = {
-        searchDocuments: jest.fn().mockRejectedValue(new Error('Service error')),
+        searchDocuments: (jest.fn() as any).mockRejectedValue(new Error('Service error')),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockGoogleService);
