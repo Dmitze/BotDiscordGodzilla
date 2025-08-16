@@ -2,17 +2,21 @@
  * Additionally exposes Intl helpers that use a region-aware locale.
  */
 import uk from './uk.json';
+import en from './en.json';
 
 // Narrow dictionary types to avoid any/unsafe
-type DictLeaf = string;
+type DictLeaf = string | string[];
 export interface Dictionary {
   [key: string]: DictLeaf | Dictionary;
 }
 
-export type LocaleKey = 'uk';
-export type LocaleInput = 'uk' | 'uk-UA';
+export type LocaleKey = 'uk' | 'en';
+export type LocaleInput = 'uk' | 'uk-UA' | 'en' | 'en-US';
 
-const locales: Record<LocaleKey, Dictionary> = { uk: uk as unknown as Dictionary };
+const locales: Record<LocaleKey, Dictionary> = {
+  uk: uk as unknown as Dictionary,
+  en: en as unknown as Dictionary,
+};
 
 // The dictionary locale (for resource lookups)
 let dictLocale: LocaleKey = 'uk';
@@ -20,8 +24,9 @@ let dictLocale: LocaleKey = 'uk';
 let uiLocale: LocaleInput = 'uk';
 
 function resolveDictLocale(input: LocaleInput): LocaleKey {
-  // Map 'uk-UA' -> 'uk' dictionary
+  // Map region to base: 'uk-UA' -> 'uk', 'en-US' -> 'en'
   if (input === 'uk' || input === 'uk-UA') return 'uk';
+  if (input === 'en' || input === 'en-US') return 'en';
   return 'uk';
 }
 
@@ -41,17 +46,18 @@ export function getDictLocale(): LocaleKey {
 // For Intl, prefer a region-aware locale. For Ukrainian we standardize to 'uk-UA'.
 export function getIntlLocale(): string {
   if (uiLocale === 'uk' || uiLocale === 'uk-UA') return 'uk-UA';
-  return uiLocale;
+  if (uiLocale === 'en' || uiLocale === 'en-US') return 'en-US';
+  return String(uiLocale);
 }
 
-function getDeep(obj: Dictionary, path: string): string | Dictionary | undefined {
+function getDeep(obj: Dictionary, path: string): DictLeaf | Dictionary | undefined {
   return path
     .split('.')
     .reduce<DictLeaf | Dictionary | undefined>((acc, key) => {
       if (!acc || typeof acc !== 'object') return undefined;
       const next = (acc as Dictionary)[key];
       return next as DictLeaf | Dictionary | undefined;
-    }, obj) as string | Dictionary | undefined;
+    }, obj) as DictLeaf | Dictionary | undefined;
 }
 
 function interpolate(template: string, vars?: Record<string, string | number>): string {
@@ -65,8 +71,18 @@ function interpolate(template: string, vars?: Record<string, string | number>): 
 
 export function t(key: string, vars?: Record<string, string | number>): string {
   const dict = locales[dictLocale];
-  const raw = getDeep(dict, key);
+  let raw = getDeep(dict, key);
+
+  // Fallback to Ukrainian if missing in selected locale
+  if (raw === undefined) {
+    raw = getDeep(locales.uk, key);
+  }
+
   if (typeof raw === 'string') return interpolate(raw, vars);
+  if (Array.isArray(raw)) {
+    const pick = raw[Math.floor(Math.random() * raw.length)] || '';
+    return interpolate(pick, vars);
+  }
   return key; // fallback to key when missing
 }
 
