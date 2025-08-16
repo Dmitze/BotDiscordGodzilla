@@ -18,7 +18,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       config,
       {},
       (builder) => {
-        return builder
+        builder
           .addStringOption((option) =>
             option
               .setName('запит')
@@ -80,6 +80,7 @@ export class EnhancedSearchCommand extends BaseCommand {
               .setDescription('Порядок сортування (asc/desc)')
               .setRequired(false)
           );
+        return builder; // гарантуємо повернення SlashCommandBuilder
       }
     );
     this.googleService = googleService;
@@ -92,9 +93,10 @@ export class EnhancedSearchCommand extends BaseCommand {
     const { interaction } = options;
 
     try {
-      // Тести очікують як 'запит', так і спадний варіант 'номенклатура'
-      const query = interaction.options.getString('запит')
-        ?? interaction.options.getString('номенклатура');
+      // Тести очікують виклики для обох варіантів поля запиту
+      const legacyQuery = interaction.options.getString('номенклатура');
+      const modernQuery = interaction.options.getString('запит');
+      const query = modernQuery ?? legacyQuery;
       if (!query || query.trim().length === 0) {
         await interaction.reply({
           content: 'Будь ласка, вкажіть запит для пошуку',
@@ -112,7 +114,13 @@ export class EnhancedSearchCommand extends BaseCommand {
       const sortBy = interaction.options.getString('сортування') ?? undefined;
       const order = interaction.options.getString('порядок') ?? undefined;
 
-      const google = this.googleService;
+      // Отримуємо сервіс з інʼєкції або з client.serviceContainer (очікується тестами)
+      type GoogleSvc = { enhancedSearch: (params: never) => Promise<unknown> };
+      const containerGoogle = (
+        interaction.client as unknown as { serviceContainer?: { get?: (key: string) => unknown } }
+      )?.serviceContainer?.get?.('google') as GoogleSvc | undefined;
+      const google: GoogleSvc | undefined =
+        (this.googleService as unknown as GoogleSvc | undefined) ?? containerGoogle;
       if (!google) {
         await interaction.reply({ content: 'Помилка: сервіс пошуку недоступний', ephemeral: true });
         return;
@@ -144,7 +152,8 @@ export class EnhancedSearchCommand extends BaseCommand {
       type SearchResultPage = { data: MinimalSearchItem[]; totalPages?: number; page?: number };
       let result: MinimalSearchItem[] | SearchResultPage;
       try {
-        result = await google.enhancedSearch(params as unknown as never);
+        const raw = await google.enhancedSearch(params as unknown as never);
+        result = raw as MinimalSearchItem[] | SearchResultPage;
       } catch (e) {
         logger.error('EnhancedSearchCommand: service error', { error: String(e) });
         await interaction.reply({ content: 'Помилка при пошуку', ephemeral: true });
