@@ -12,7 +12,7 @@ const makeInteraction = (sub: string, opts: Record<string, string | null> = {}) 
     },
     client: {
       serviceContainer: {
-        get: (key: string) => undefined,
+        get: (_key: string) => undefined,
       },
     },
     deferReply: jest.fn(async () => { interaction.deferred = true; }),
@@ -24,13 +24,12 @@ const makeInteraction = (sub: string, opts: Record<string, string | null> = {}) 
 };
 
 const baseConfig = (): BotConfig => ({
-  env: 'test',
   discord: { token: '', clientId: '', guildId: '' } as any,
   google: { credentials: { client_email: 'x', private_key: 'y' } as any, driveFolderId: 'root-folder' } as any,
   ai: { provider: 'none', openai: {} as any, ollama: {} as any } as any,
   server: {} as any,
   cache: {} as any,
-});
+} as unknown as BotConfig);
 
 // Minimal GoogleService mock
 const makeGoogleMock = () => {
