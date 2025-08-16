@@ -514,6 +514,47 @@ export class GoogleService extends BaseServiceClass {
   }
 
   /**
+   * Расчёт и кеширование SHA-256 для файла Drive по fileId
+   */
+  public async getFileChecksum(fileId: string): Promise<string> {
+    const cacheKey = `drive:file:checksum:${fileId}`;
+    try {
+      const cached = await this.cacheService.get<string>(cacheKey);
+      if (cached) {
+        this.stats.cacheHits++;
+        return cached;
+      }
+    } catch {
+      this.stats.cacheMisses++;
+    }
+    const buf = await this.downloadFile(fileId);
+    const hash = createHash('sha256').update(buf).digest('hex');
+    try {
+      const ttl = this.config.drive.ttlTextSec ?? 300;
+      await this.cacheService.set(cacheKey, hash, ttl);
+    } catch { /* istanbul ignore next */ }
+    return hash;
+  }
+
+  /**
+   * Загрузка бинарного содержимого вместе с контрольной суммой
+   */
+  public async downloadFileWithHash(fileId: string): Promise<{ buffer: Buffer; checksum: string }> {
+    const buffer = await this.downloadFile(fileId);
+    const checksum = createHash('sha256').update(buffer).digest('hex');
+    return { buffer, checksum };
+  }
+
+  /**
+   * Экспорт файла вместе с контрольной суммой
+   */
+  public async exportFileWithHash(fileId: string, mimeOut: string): Promise<{ buffer: Buffer; checksum: string }> {
+    const buffer = await this.exportFile(fileId, mimeOut);
+    const checksum = createHash('sha256').update(buffer).digest('hex');
+    return { buffer, checksum };
+  }
+
+  /**
    * Безопасно собрать поток в Buffer
    */
   private async streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
