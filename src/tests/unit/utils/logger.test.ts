@@ -1,37 +1,56 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Unit тесты для утилиты logger
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
-import logger from '../../../utils/logger';
+import { jest, describe, it, expect, beforeEach, beforeAll } from '@jest/globals';
 import type { Logger as LoggerType, LogEntry } from '../../../utils/logger';
+import type * as Winston from 'winston';
 
-// Мокаем winston
-jest.mock('winston', () => ({
-  createLogger: jest.fn(() => ({
-    log: jest.fn(),
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-  })),
-  format: {
-    combine: jest.fn(),
-    timestamp: jest.fn(),
-    errors: jest.fn(),
-    json: jest.fn(),
-    colorize: jest.fn(),
-    simple: jest.fn(),
-  },
-  transports: {
-    Console: jest.fn(),
-    File: jest.fn(),
-  },
-}));
+// Екземпляр логера буде імпортований після встановлення моків
+let typedLogger: LoggerType;
+
+beforeAll(async () => {
+  // Мокаем winston ДО імпорту логера, щоб сінглтон використав мок
+  // Зверніть увагу: logger.ts імпортує winston як default
+  // Тому надаємо default-об'єкт з потрібними властивостями
+  // та також дублікуємо їх як іменовані експорти на випадок звернення
+  jest.unstable_mockModule('winston', () => {
+    const mockedLogger = {
+      log: jest.fn(),
+      info: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      close: jest.fn(),
+    };
+    const emptyFormat = {} as unknown as Winston.Logform.Format;
+    const emptyTransport = {} as unknown as Winston.transport;
+    const mocked = {
+      createLogger: jest.fn<() => Winston.Logger>(() => mockedLogger as unknown as Winston.Logger),
+      format: {
+        combine: jest.fn<() => Winston.Logform.Format>(() => emptyFormat),
+        timestamp: jest.fn<() => Winston.Logform.Format>(() => emptyFormat),
+        errors: jest.fn<() => Winston.Logform.Format>(() => emptyFormat),
+        json: jest.fn<() => Winston.Logform.Format>(() => emptyFormat),
+        colorize: jest.fn<() => Winston.Logform.Format>(() => emptyFormat),
+        simple: jest.fn<() => Winston.Logform.Format>(() => emptyFormat),
+        printf: jest.fn<() => Winston.Logform.Format>(() => emptyFormat),
+      },
+      transports: {
+        Console: jest.fn<() => Winston.transport>(() => emptyTransport),
+        File: jest.fn<() => Winston.transport>(() => emptyTransport),
+      },
+    };
+    return { __esModule: true, default: mocked, ...mocked };
+  });
+
+  const mod = await import('../../../utils/logger');
+  typedLogger = mod.default as unknown as LoggerType;
+});
 
 describe('Logger Utils', () => {
-  const typedLogger: LoggerType = logger as unknown as LoggerType;
-
   beforeEach(() => {
     // Очищаем моки
     jest.clearAllMocks();
@@ -117,8 +136,9 @@ describe('Logger Utils', () => {
       const buf = typedLogger.getLogBuffer();
       const last = buf[buf.length - 1] as LogEntry;
       expect(last.message).toBe('User action');
-      expect((last.meta as any)['userId']).toBe('123');
-      expect((last.meta as any)['action']).toBe('search');
+      const meta = last.meta as Record<string, unknown>;
+      expect(meta['userId']).toBe('123');
+      expect(meta['action']).toBe('search');
     });
 
     it('should log performance data', () => {
@@ -127,8 +147,9 @@ describe('Logger Utils', () => {
       const buf = typedLogger.getLogBuffer();
       const last = buf[buf.length - 1] as LogEntry;
       expect(last.message).toBe('Performance metric');
-      expect((last.meta as any)['duration']).toBe(150);
-      expect((last.meta as any)['operation']).toBe('search');
+      const meta = last.meta as Record<string, unknown>;
+      expect(meta['duration']).toBe(150);
+      expect(meta['operation']).toBe('search');
     });
   });
 
@@ -138,7 +159,7 @@ describe('Logger Utils', () => {
       typedLogger.debug('Debug message');
       typedLogger.info('Info message');
       const buf = typedLogger.getLogBuffer();
-      const messages = (buf as LogEntry[]).map((e) => e.message);
+      const messages = buf.map((e) => e.message);
       expect(messages).toContain('Debug message');
       expect(messages).toContain('Info message');
     });
@@ -179,8 +200,9 @@ describe('Logger Utils', () => {
       const buf = typedLogger.getLogBuffer();
       const last = buf[buf.length - 1] as LogEntry;
       expect(last.message).toBe('Operation completed');
-      expect((last.meta as any)['duration']).toBe(100);
-      expect((last.meta as any)['operation']).toBe('test');
+      const meta = last.meta as Record<string, unknown>;
+      expect(meta['duration']).toBe(100);
+      expect(meta['operation']).toBe('test');
     });
   });
 });
