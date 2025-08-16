@@ -411,3 +411,68 @@ class Pagination {
 
 export default Pagination;
 export { Pagination };
+
+// Test-friendly helpers expected by unit tests
+// Create an embed-like plain object with fields and footer range text
+export function createPaginationEmbed(
+  data: any[] | null | undefined,
+  pageIndex: number,
+  itemsPerPage: number,
+  title = 'Результати'
+): { title: string; fields: { name: string; value: string; inline?: boolean }[]; footer?: { text: string } } {
+  const items: any[] = Array.isArray(data) ? data : [];
+  const total = items.length;
+  const safePerPage = Math.max(0, itemsPerPage | 0);
+
+  // Negative page index: empty and footer like "0 з N"
+  if (pageIndex < 0 || safePerPage <= 0 || total === 0) {
+    return {
+      title,
+      fields: [],
+      footer: { text: total === 0 ? '0 з 0' : `0 з ${total}` },
+    };
+  }
+
+  const start = pageIndex * safePerPage;
+  if (start >= total) {
+    return {
+      title,
+      fields: [],
+      footer: { text: `0 з ${total}` },
+    };
+  }
+
+  const end = Math.min(start + safePerPage, total);
+  const pageItems = items.slice(start, end);
+  const fields = pageItems.map((item, idx) => ({
+    name: String(item?.name ?? `Елемент ${start + idx + 1}`),
+    value: String(item?.value ?? (item?.id ?? '—')),
+    inline: true,
+  }));
+
+  return {
+    title,
+    fields,
+    footer: { text: `${start + 1}-${end} з ${total}` },
+  };
+}
+
+// Create a row-like plain object with four buttons and prefixed custom_ids
+export function createPaginationRow(
+  pageIndex: number,
+  totalPages: number,
+  prefix = 'pagination'
+): { components: { data: { custom_id: string }; disabled: boolean }[] } {
+  const isSingle = totalPages <= 1;
+  const isFirst = pageIndex <= 0;
+  const isLast = pageIndex >= totalPages - 1;
+
+  const components = [
+    { data: { custom_id: `${prefix}_prev` }, disabled: isSingle || isFirst },
+    { data: { custom_id: `${prefix}_next` }, disabled: isSingle || isLast },
+    { data: { custom_id: `${prefix}_first` }, disabled: isSingle || isFirst },
+    { data: { custom_id: `${prefix}_last` }, disabled: isSingle || isLast },
+  ];
+
+  return { components };
+}
