@@ -23,6 +23,7 @@ import type { GoogleService } from '@/services/GoogleService';
 import type { AIService } from '@/services/AIService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
 import { t } from '@/i18n';
+import { sanitizeTextForChat, buildPaginatedChunks, summarizeTlDr } from '@/utils/fileProcessor';
 
 interface FileSearchOptions {
   query: string;
@@ -71,6 +72,14 @@ export class FileManagerCommand extends BaseCommand {
     pageSize: number;
     changesOnly: boolean;
     baseline: number; // used to alter sessionKey for reset baseline
+  }>();
+
+  // Runtime text reading sessions for pagination
+  private static textSessions = new Map<string, {
+    fileId: string;
+    fileName: string;
+    chunks: string[];
+    createdAt: number; // unix seconds
   }>();
 
   constructor(config: BotConfig) {
@@ -318,8 +327,9 @@ export class FileManagerCommand extends BaseCommand {
           // handleSearch сам керує відповіддю і компонентами
           return;
         case 'читати':
-          result = await this.handleRead(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'читати' }>) as FileReadOptions);
-          break;
+          await this.handleReadTextFlow(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'читати' }>) as FileReadOptions);
+          // обробка відповіді виконана всередині
+          return;
         case 'аналіз':
           result = await this.handleAnalyze(interaction, (validation.data as Extract<CommandOptionUnion, { kind: 'аналіз' }>) as FileAnalysisOptions);
           break;
@@ -662,7 +672,43 @@ export class FileManagerCommand extends BaseCommand {
     const interaction = options.interaction;
     if (!('isButton' in interaction) || !(interaction as any).isButton()) return;
     try {
-      const parsed = this.parseCustomId((interaction as any).customId as string);
+      const customId = (interaction as any).customId as string;
+
+      // Text reading pagination handler
+      const txtParsed = this.parseTextCustomId(customId);
+      if (txtParsed) {
+        const { sid, page, ts, action } = txtParsed;
+        const nowSec = Math.floor(Date.now() / 1000);
+        if (ts && nowSec - ts > 10 * 60) {
+          await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+          return;
+        }
+        const session = FileManagerCommand.textSessions.get(sid);
+        if (!session) {
+          await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+          return;
+        }
+        if (action === 'close') {
+          FileManagerCommand.textSessions.delete(sid);
+          if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ components: [] });
+          } else {
+            await interaction.update({ components: [] });
+          }
+          return;
+        }
+
+        const { embed, components } = this.buildTextPage({ sid, page, fileName: session.fileName, chunks: session.chunks });
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply({ embeds: [embed], components });
+        } else {
+          await interaction.update({ embeds: [embed], components });
+        }
+        return;
+      }
+
+      // Search pagination handler
+      const parsed = this.parseCustomId(customId);
       if (!parsed) return;
       const { sid, page, action, ts } = parsed;
 
@@ -710,89 +756,174 @@ export class FileManagerCommand extends BaseCommand {
   }
 
   /**
-   * Обробка читання файлу
+   * Потік читання тексту з файлу з TL;DR та пагінацією
    */
-  private async handleRead(
+  private async handleReadTextFlow(
     interaction: ChatInputCommandInteraction,
     options: FileReadOptions
-  ): Promise<FileResult> {
+  ): Promise<void> {
     const svc = this.getGoogleService(interaction);
-    if (!svc) return { success: false, message: t('files.error.serviceUnavailable') };
-
-    const meta = await svc.getDriveFileMetadata(options.fileId);
-    if (!meta || !meta.mimeType)
-      return { success: false, message: t('files.error.metadata') };
-
-    // Policies
-    const driveCfg = this.config.drive;
-    if (driveCfg?.allowedMime && driveCfg.allowedMime.length && !this.isMimeAllowed(meta.mimeType, driveCfg.allowedMime)) {
-      return { success: false, message: t('files.policy.disallowedMime') };
-    }
-    if (driveCfg?.ownerAllowlist && driveCfg.ownerAllowlist.length) {
-      const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
-      if (!this.isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
-        return { success: false, message: t('files.policy.deniedOwner') };
-      }
-    }
-    const sizeBytes = Number((meta as any).size || 0) || 0;
-    const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
-
-    const isGApp = meta.mimeType.startsWith('application/vnd.google-apps');
-    let fileBuf: Buffer;
-    let fileName: string;
-
-    if (isGApp) {
-      // Експорт для Google типів
-      if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
-        fileBuf = await svc.exportDriveFile(
-          options.fileId,
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        );
-        fileName = `${meta.name || 'spreadsheet'}.xlsx`;
-      } else if (meta.mimeType === 'application/vnd.google-apps.document') {
-        fileBuf = await svc.exportDriveFile(options.fileId, 'application/pdf');
-        fileName = `${meta.name || 'document'}.pdf`;
-      } else if (meta.mimeType === 'application/vnd.google-apps.presentation') {
-        fileBuf = await svc.exportDriveFile(options.fileId, 'application/pdf');
-        fileName = `${meta.name || 'presentation'}.pdf`;
-      } else {
-        // За замовчуванням пробуємо PDF
-        fileBuf = await svc.exportDriveFile(options.fileId, 'application/pdf');
-        fileName = `${meta.name || 'file'}.pdf`;
-      }
-    } else {
-      // Звичайний файл
-      if (!tooLarge) {
-        fileBuf = await svc.downloadDriveFile(options.fileId);
-      } else {
-        fileBuf = Buffer.alloc(0);
-      }
-      fileName = meta.name || `${options.fileId}`;
+    if (!svc) {
+      await interaction.editReply({ content: t('files.error.serviceUnavailable') });
+      return;
     }
 
-    if (tooLarge) {
-      const linkAllowed = !(driveCfg?.hideWebLink);
-      const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
-      const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
-      const summary = t('files.summary.largeFile', {
-        name: String(meta.name || ''),
-        mimeType: String(meta.mimeType || ''),
-        size: sizeMb,
+    try {
+      const meta = await svc.getDriveFileMetadata(options.fileId);
+      if (!meta || !meta.mimeType) {
+        await interaction.editReply({ content: t('files.error.metadata') });
+        return;
+      }
+
+      const driveCfg = this.config.drive;
+      if (driveCfg?.allowedMime && driveCfg.allowedMime.length && !this.isMimeAllowed(meta.mimeType, driveCfg.allowedMime)) {
+        await interaction.editReply({ content: t('files.policy.disallowedMime') });
+        return;
+      }
+      if (driveCfg?.ownerAllowlist && driveCfg.ownerAllowlist.length) {
+        const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+        if (!this.isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
+          await interaction.editReply({ content: t('files.policy.deniedOwner') });
+          return;
+        }
+      }
+
+      // Пытаемся извлечь текст безопасно
+      const extracted = await (svc as GoogleService).extractTextForChat(options.fileId);
+      const safeText = String(extracted?.text || '').trim();
+
+      // Если текст пуст — fallback к сообщению о большом файле/ссылке
+      if (!safeText) {
+        const sizeBytes = Number((meta as any).size || 0) || 0;
+        const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
+        if (tooLarge) {
+          const linkAllowed = !(driveCfg?.hideWebLink);
+          const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+          const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
+          const summary = t('files.summary.largeFile', {
+            name: String(meta.name || ''),
+            mimeType: String(meta.mimeType || ''),
+            size: sizeMb,
+          });
+          const linkText = linkAllowed && link ? `\n${t('files.summary.link')}: ${link}` : '';
+          await interaction.editReply({ content: `${summary}${linkText}` });
+          return;
+        }
+        await interaction.editReply({ content: t('files.error.noText') });
+        return;
+      }
+
+      const fileName = String(meta.name || options.fileId);
+      const quick = sanitizeTextForChat(safeText, 1800);
+
+      // Если вмещается в один короткий ответ — просто отдаем
+      if (quick.length >= safeText.length) {
+        const embed = new EmbedBuilder()
+          .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
+          .setDescription(quick)
+          .setColor(0x22c55e)
+          .setTimestamp();
+        await interaction.editReply({ embeds: [embed] });
+        return;
+      }
+
+      // Иначе — TL;DR + кнопка «Показати ще», после нажатия — пагінація
+      const tldr = summarizeTlDr(safeText, { budget: 800, minSentLen: 40 });
+      const chunks = buildPaginatedChunks(safeText, { maxChunkLen: 1800 });
+      const sid = this.generateSessionId('txt');
+      FileManagerCommand.textSessions.set(sid, {
+        fileId: options.fileId,
+        fileName,
+        chunks,
+        createdAt: Math.floor(Date.now() / 1000),
       });
-      const linkText = linkAllowed && link ? `\n${t('files.summary.link')}: ${link}` : '';
-      return {
-        success: true,
-        message: `${summary}${linkText}`,
-      };
-    }
 
-    return {
-      success: true,
-      message: t('files.result.fileDownloaded', { name: String(meta.name), mimeType: String(meta.mimeType) }),
-      file: fileBuf,
-      fileName,
-    };
+      const ts = Math.floor(Date.now() / 1000);
+      const openBtn = new ButtonBuilder()
+        .setCustomId(this.buildTextCustomId({ sid, page: 1, ts }))
+        .setLabel('Показати ще')
+        .setStyle(ButtonStyle.Primary);
+      const closeBtn = new ButtonBuilder()
+        .setCustomId(this.buildTextCustomId({ sid, page: 1, ts, action: 'close' }))
+        .setLabel(t('files.search.buttons.close'))
+        .setStyle(ButtonStyle.Danger);
+      const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(openBtn, closeBtn);
+
+      const embed = new EmbedBuilder()
+        .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
+        .setDescription(tldr)
+        .setColor(0x22c55e)
+        .setTimestamp();
+      await interaction.editReply({ embeds: [embed], components: [row] });
+    } catch (error) {
+      logger.error('FileManager read flow error', { error: String(error) });
+      await interaction.editReply({ content: t('files.error.process') });
+    }
   }
+
+  private buildTextPage(args: { sid: string; page: number; fileName: string; chunks: string[] }): { embed: EmbedBuilder; components: ActionRowBuilder<MessageActionRowComponentBuilder>[] } {
+    const { sid, page, fileName, chunks } = args;
+    const totalPages = Math.max(1, chunks.length);
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const body = chunks[safePage - 1] || '';
+    const ts = Math.floor(Date.now() / 1000);
+    const embed = new EmbedBuilder()
+      .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
+      .setDescription(body)
+      .setColor(0x22c55e)
+      .setTimestamp()
+      .setFooter({ text: `Сторінка ${safePage}/${totalPages}` });
+
+    const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: 1, ts }))
+        .setLabel(t('files.search.buttons.first')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === 1),
+      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: Math.max(1, safePage - 1), ts }))
+        .setLabel(t('files.search.buttons.prev')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === 1),
+      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: Math.min(totalPages, safePage + 1), ts }))
+        .setLabel(t('files.search.buttons.next')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === totalPages),
+      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: totalPages, ts }))
+        .setLabel(t('files.search.buttons.last')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === totalPages),
+    );
+    const row2 = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: safePage, ts, action: 'close' }))
+        .setLabel(t('files.search.buttons.close')).setStyle(ButtonStyle.Danger),
+    );
+    return { embed, components: [row, row2] };
+  }
+
+  private buildTextCustomId(args: { sid: string; page: number; ts: number; action?: 'close' }): string {
+    const { sid, page, ts, action } = args;
+    return `filetxt|sid=${sid}|p=${page}|${action ? `a=${action}|` : ''}t=${ts}`;
+  }
+
+  private parseTextCustomId(customId: string): { sid: string; page: number; ts?: number; action?: 'close' } | null {
+    if (!customId.startsWith('filetxt|')) return null;
+    const parts = customId.split('|').slice(1);
+    const map = new Map(parts.map(kv => {
+      const i = kv.indexOf('=');
+      return i > 0 ? [kv.slice(0, i), kv.slice(i + 1)] as const : [kv, ''];
+    }));
+    const sid = map.get('sid');
+    const p = Number(map.get('p') || '1');
+    const a = map.get('a') as any;
+    const t = Number(map.get('t') || '');
+    if (!sid) return null;
+    const res: { sid: string; page: number; ts?: number; action?: 'close' } = {
+      sid,
+      page: Number.isFinite(p) ? p : 1,
+    };
+    if (a === 'close') res.action = a;
+    if (Number.isFinite(t)) res.ts = t;
+    return res;
+  }
+
+  private generateSessionId(prefix: string): string {
+    const rnd = Math.random().toString(36).slice(2, 8);
+    const ts = Math.floor(Date.now() / 1000).toString(36);
+    return `${prefix}${ts}${rnd}`;
+  }
+
+  
 
   /**
    * Обробка аналізу файлу
