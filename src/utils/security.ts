@@ -375,25 +375,29 @@ export class SecurityManager {
     return this._isInitialized;
   }
 
-  // PII masking utility
+  // PII masking utility delegates to pure function
   public maskPII(input: string): string {
-    if (!input) return input;
-    let out = input;
-    const emailRegex = /([a-zA-Z0-9._%+-])([a-zA-Z0-9._%+-]*)(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
-    out = out.replace(emailRegex, (_m, first: string, middle: string, domain: string) => {
-      const maskedMiddle = middle.length > 0 ? '*'.repeat(Math.min(middle.length, 6)) : '***';
-      return `${first}${maskedMiddle}${domain}`;
-    });
-    const phoneRegex = /(?<!\d)([+]?\d[\d\s().-]{6,}\d)(?!\d)/g;
-    out = out.replace(phoneRegex, (match: string) => {
-      const digits = match.replace(/\D/g, '');
-      if (digits.length < 7) return match;
-      return '*'.repeat(Math.max(0, digits.length - 4)) + digits.slice(-4);
-    });
-    return out;
+    return maskPII(input);
   }
 }
 
+// Pure, reusable PII masking function (no dependencies, safe for tests/mocks)
+export function maskPII(input: string): string {
+  if (!input) return input;
+  let out = input;
+  const emailRegex = /([a-zA-Z0-9._%+-])([a-zA-Z0-9._%+-]*)(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+  out = out.replace(emailRegex, (_m, first: string, middle: string, domain: string) => {
+    const maskedMiddle = middle.length > 0 ? '*'.repeat(Math.min(middle.length, 6)) : '***';
+    return `${first}${maskedMiddle}${domain}`;
+  });
+  const phoneRegex = /(?<!\d)([+]?\d[\d\s().-]{6,}\d)(?!\d)/g;
+  out = out.replace(phoneRegex, (match: string) => {
+    const digits = match.replace(/\D/g, '');
+    if (digits.length < 7) return match;
+    return '*'.repeat(Math.max(0, digits.length - 4)) + digits.slice(-4);
+  });
+  return out;
+}
 // Singleton and convenience exports
 export const securityManager = new SecurityManager();
 export const validateInput = (
@@ -435,4 +439,4 @@ export const validateCommandOptions = (
   return validateInput(input, { inputType: 'command' });
 };
 
-export const maskPII = (text: string): string => securityManager.maskPII(text);
+// Named export already provided above
