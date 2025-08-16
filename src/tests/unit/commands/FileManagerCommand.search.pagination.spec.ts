@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 // No runtime imports needed from discord.js for this test
 import { FileManagerCommand } from '@/commands/FileManagerCommand';
+import * as Base from '@/commands/BaseCommand';
 import type { BotConfig } from '@/types';
 
 jest.mock('@/i18n', () => ({
@@ -24,6 +25,10 @@ jest.mock('@/i18n', () => ({
     return k;
   }
 }));
+
+beforeAll(() => {
+  jest.spyOn((Base as any).BaseCommand.prototype as any, 'startCleanupInterval').mockImplementation(() => {});
+});
 
 // minimal DriveFile type to satisfy tests
 interface DriveFile {
