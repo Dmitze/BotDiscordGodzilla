@@ -43,11 +43,11 @@ describe('SearchCommand', () => {
     it('should handle basic search', async () => {
       // Настройка моков
       const mockGoogleService = {
-        searchData: jest.fn().mockResolvedValue([['test', 'data']]),
+        searchData: (jest.fn() as any).mockResolvedValue([['test', 'data']]),
       };
       const mockCacheService = {
-        get: jest.fn().mockResolvedValue(null),
-        set: jest.fn().mockResolvedValue(true),
+        get: (jest.fn() as any).mockResolvedValue(null),
+        set: (jest.fn() as any).mockResolvedValue(true),
       };
 
       mockInteraction.client.serviceContainer.get
@@ -68,11 +68,11 @@ describe('SearchCommand', () => {
     it('should handle empty results', async () => {
       // Настройка моков с пустыми результатами
       const mockGoogleService = {
-        searchData: jest.fn().mockResolvedValue([]),
+        searchData: (jest.fn() as any).mockResolvedValue([]),
       };
       const mockCacheService = {
-        get: jest.fn().mockResolvedValue(null),
-        set: jest.fn().mockResolvedValue(true),
+        get: (jest.fn() as any).mockResolvedValue(null),
+        set: (jest.fn() as any).mockResolvedValue(true),
       };
 
       mockInteraction.client.serviceContainer.get
@@ -96,10 +96,10 @@ describe('SearchCommand', () => {
     it('should handle service errors', async () => {
       // Настройка моков с ошибкой
       const mockGoogleService = {
-        searchData: jest.fn().mockRejectedValue(new Error('Service error')),
+        searchData: (jest.fn() as any).mockRejectedValue(new Error('Service error')),
       };
       const mockCacheService = {
-        get: jest.fn().mockResolvedValue(null),
+        get: (jest.fn() as any).mockResolvedValue(null),
         set: jest.fn(),
       };
 
