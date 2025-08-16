@@ -17,7 +17,7 @@ import {
 import { basename, dirname, extname, join } from 'path';
 import { handleError } from './errorHandler';
 import logger from './logger';
-import { validateInput } from './security';
+import { validateInput, sanitizeInput } from './security';
 
 // Константи для обробки файлів
 const FILE_PROCESSOR_CONSTANTS = {
@@ -642,3 +642,35 @@ export const writeFile = (
 export const getFileProcessorStats = () => fileProcessor.getStats();
 export const cleanupFileProcessor = () => fileProcessor.cleanup();
 export default fileProcessor;
+
+/**
+ * Нормализация текста: переносы в \n, табы → 2 пробела, схлопывание пробелов, удаление невидимых символов
+ */
+export function normalizeText(input: string): string {
+  const s = String(input ?? '');
+  // Приводим переносы к \n
+  let out = s.replace(/\r\n?|\u2028|\u2029/g, '\n');
+  // Табуляции → два пробела
+  out = out.replace(/\t/g, '  ');
+  // Удаляем Zero-Width и прочие невидимые
+  out = out.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  // Схлопываем более 2 пустых строк подряд
+  out = out.replace(/\n{3,}/g, '\n\n');
+  // Ограничиваем повторяющиеся пробелы
+  out = out.replace(/ {3,}/g, '  ');
+  return out;
+}
+
+/**
+ * Санитизация безопасного вывода в чат Discord с ограничением длины
+ * По умолчанию ~1800 символов, чтобы не упираться в лимиты и оставить место под служебный текст
+ */
+export function sanitizeTextForChat(input: string, maxLen = 1800): string {
+  const cleaned = sanitizeInput(normalizeText(String(input ?? '')));
+  if (cleaned.length <= maxLen) return cleaned.trim();
+  // Обрезаем по границе абзаца/предложения, если возможно
+  const slice = cleaned.slice(0, maxLen);
+  const lastBreak = Math.max(slice.lastIndexOf('\n\n'), slice.lastIndexOf('\n'), slice.lastIndexOf('. '));
+  const base = lastBreak > 300 ? slice.slice(0, lastBreak + 1) : slice;
+  return base.trimEnd() + '\n…';
+}
