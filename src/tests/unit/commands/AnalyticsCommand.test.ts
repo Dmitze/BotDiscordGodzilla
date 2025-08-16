@@ -43,7 +43,7 @@ describe('AnalyticsCommand', () => {
     it('should handle report subcommand', async () => {
       // Настройка моков
       const mockAnalyticsService = {
-        generateReport: jest.fn().mockResolvedValue({
+        generateReport: (jest.fn() as any).mockResolvedValue({
           type: 'daily',
           data: { users: 100, commands: 500 },
           timestamp: new Date(),
@@ -69,7 +69,7 @@ describe('AnalyticsCommand', () => {
     it('should handle statistics subcommand', async () => {
       // Настройка моков
       const mockAnalyticsService = {
-        getStatistics: jest.fn().mockResolvedValue({
+        getStatistics: (jest.fn() as any).mockResolvedValue({
           totalUsers: 1000,
           totalCommands: 5000,
           popularCommands: ['пошук', 'ai_асистент'],
@@ -94,7 +94,7 @@ describe('AnalyticsCommand', () => {
     it('should handle trends subcommand', async () => {
       // Настройка моков
       const mockAnalyticsService = {
-        getTrends: jest.fn().mockResolvedValue({
+        getTrends: (jest.fn() as any).mockResolvedValue({
           period: '7d',
           trends: [
             { date: '2024-01-01', users: 100, commands: 500 },
@@ -120,7 +120,7 @@ describe('AnalyticsCommand', () => {
     it('should handle insights subcommand', async () => {
       // Настройка моков
       const mockAnalyticsService = {
-        getInsights: jest.fn().mockResolvedValue({
+        getInsights: (jest.fn() as any).mockResolvedValue({
           insights: [
             'Популярність команди /пошук зросла на 25%',
             'Середній час відповіді AI зменшився на 15%',
@@ -162,7 +162,7 @@ describe('AnalyticsCommand', () => {
     it('should handle service error', async () => {
       // Настройка моков с ошибкой
       const mockAnalyticsService = {
-        generateReport: jest.fn().mockRejectedValue(new Error('Analytics service error')),
+        generateReport: (jest.fn() as any).mockRejectedValue(new Error('Analytics service error')),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockAnalyticsService);
@@ -184,7 +184,7 @@ describe('AnalyticsCommand', () => {
     it('should handle empty report data', async () => {
       // Настройка моков с пустыми данными
       const mockAnalyticsService = {
-        generateReport: jest.fn().mockResolvedValue({
+        generateReport: (jest.fn() as any).mockResolvedValue({
           type: 'daily',
           data: {},
           timestamp: new Date(),
@@ -210,7 +210,7 @@ describe('AnalyticsCommand', () => {
     it('should handle export functionality', async () => {
       // Настройка моков для экспорта
       const mockAnalyticsService = {
-        generateReport: jest.fn().mockResolvedValue({
+        generateReport: (jest.fn() as any).mockResolvedValue({
           type: 'daily',
           data: { users: 100, commands: 500 },
           timestamp: new Date(),
