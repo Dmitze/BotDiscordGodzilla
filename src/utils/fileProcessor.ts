@@ -17,7 +17,7 @@ import {
 import { basename, dirname, extname, join } from 'path';
 import { handleError } from './errorHandler';
 import logger from './logger';
-import { validateInput, sanitizeInput } from './security';
+import { validateInput, sanitizeInput, maskPII } from './security';
 
 // Константи для обробки файлів
 const FILE_PROCESSOR_CONSTANTS = {
@@ -667,10 +667,101 @@ export function normalizeText(input: string): string {
  */
 export function sanitizeTextForChat(input: string, maxLen = 1800): string {
   const cleaned = sanitizeInput(normalizeText(String(input ?? '')));
-  if (cleaned.length <= maxLen) return cleaned.trim();
+  const masked = maskPII(cleaned);
+  if (masked.length <= maxLen) return masked.trim();
   // Обрезаем по границе абзаца/предложения, если возможно
-  const slice = cleaned.slice(0, maxLen);
+  const slice = masked.slice(0, maxLen);
   const lastBreak = Math.max(slice.lastIndexOf('\n\n'), slice.lastIndexOf('\n'), slice.lastIndexOf('. '));
   const base = lastBreak > 300 ? slice.slice(0, lastBreak + 1) : slice;
-  return base.trimEnd() + '\n…';
+  return base.trimEnd() + '…';
+}
+
+/**
+ * Розбиття великого тексту на безпечні фрагменти для Discord
+ * - Прагнемо ділити по межах абзаців/речень
+ * - Гарантуємо, що кожен фрагмент ≤ maxChunkLen
+ */
+export function chunkTextForDiscord(input: string, opts?: { maxChunkLen?: number }): string[] {
+  const maxChunkLen = Math.max(100, Math.min(1900, opts?.maxChunkLen ?? 1800));
+  const base = sanitizeInput(normalizeText(String(input ?? ''))).trim();
+  const text = maskPII(base);
+  if (!text) return [];
+
+  const chunks: string[] = [];
+  let cursor = 0;
+  while (cursor < text.length) {
+    const end = Math.min(text.length, cursor + maxChunkLen);
+    let slice = text.slice(cursor, end);
+    if (slice.length === maxChunkLen && end < text.length) {
+      // шукати гарну межу всередині слайсу
+      const lastPara = slice.lastIndexOf('\n\n');
+      const lastLine = slice.lastIndexOf('\n');
+      const lastSent = slice.lastIndexOf('. ');
+      const boundary = Math.max(lastPara, lastLine, lastSent);
+      if (boundary > maxChunkLen * 0.4) {
+        slice = slice.slice(0, boundary + 1);
+      }
+    }
+    chunks.push(slice.trim());
+    cursor += slice.length;
+  }
+  return chunks;
+}
+
+/**
+ * Побудова пагінованих фрагментів із футером "i/N"
+ */
+export function buildPaginatedChunks(input: string, opts?: { maxChunkLen?: number }): string[] {
+  const parts = chunkTextForDiscord(input, opts);
+  if (parts.length <= 1) return parts;
+  const total = parts.length;
+  return parts.map((p, i) => `${p}\n\n_${i + 1}/${total}_`);
+}
+
+/**
+ * Простий TL;DR для великих документів (екстрактивне резюме)
+ * - Розбиваємо на речення, ранжуємо за довжиною та позицією
+ * - Беремо top-K в межах budget символів
+ */
+export function summarizeTlDr(
+  input: string,
+  opts?: { budget?: number; minSentLen?: number }
+): string {
+  const budget = Math.max(200, Math.min(1200, opts?.budget ?? 800));
+  const minSentLen = Math.max(20, Math.min(400, opts?.minSentLen ?? 40));
+  const text = normalizeText(String(input ?? '')).trim();
+  if (!text) return '';
+  // Якщо текст і так короткий — повертаємо безопасний слайс
+  if (text.length <= budget) return sanitizeTextForChat(text, budget);
+
+  // Наївний поділ на речення
+  const sentences = text
+    .split(/(?<=[\.\!\?])\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length >= minSentLen && /[a-zA-Zа-яА-ЯёЁІіЇїЄє0-9]/.test(s));
+
+  if (sentences.length === 0) return sanitizeTextForChat(text, budget);
+
+  // Ранжування: комбінація довжини (до певної межі) і позиційного вагу
+  const maxLenRef = Math.min(300, Math.max(120, Math.floor(budget / 4)));
+  const scored = sentences.map((s, idx) => {
+    const lenScore = Math.min(s.length, maxLenRef) / maxLenRef; // 0..1
+    const posScore = 1 - idx / sentences.length; // початкові речення важливіші
+    const capsBonus = /^[A-ZА-ЯІЇЄ]/.test(s) ? 0.05 : 0; // бонус за "початок абзацу/речення"
+    return { s, score: lenScore * 0.6 + posScore * 0.35 + capsBonus };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  const picked: string[] = [];
+  let used = 0;
+  for (const it of scored) {
+    if (used + it.s.length + 1 > budget) continue;
+    picked.push(it.s);
+    used += it.s.length + 1;
+    if (used >= budget * 0.9) break;
+  }
+
+  if (picked.length === 0) return sanitizeTextForChat(text, budget);
+  const summary = picked.join(' ');
+  return sanitizeTextForChat(summary, budget);
 }
