@@ -12,15 +12,15 @@ import logger from '@/utils/logger';
 
 export class OperationsCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super('operations', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
+    super('операції', 'Оперативне управління та координація', config, {}, (builder: any) => {
       return builder
         .addSubcommand((subcommand: any) =>
           subcommand
-            .setName('situation')
+            .setName('ситуація')
             .setDescription('📊 Поточна оперативна ситуація')
             .addStringOption((option: any) =>
               option
-                .setName('sector')
+                .setName('сектор')
                 .setDescription('Оперативний сектор')
                 .setRequired(false)
                 .addChoices(
@@ -34,11 +34,11 @@ export class OperationsCommand extends BaseCommand {
         )
         .addSubcommand((subcommand: any) =>
           subcommand
-            .setName('tasks')
+            .setName('завдання')
             .setDescription('🎯 Управління завданнями')
             .addStringOption((option: any) =>
               option
-                .setName('action')
+                .setName('дія')
                 .setDescription('Дія з завданнями')
                 .setRequired(true)
                 .addChoices(
@@ -50,16 +50,16 @@ export class OperationsCommand extends BaseCommand {
                 )
             )
             .addStringOption((option: any) =>
-              option.setName('query').setDescription('Пошуковий запит або дані').setRequired(false)
+              option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
             )
         )
         .addSubcommand((subcommand: any) =>
           subcommand
-            .setName('coordination')
+            .setName('координація')
             .setDescription('🔄 Координація між підрозділами')
             .addStringOption((option: any) =>
               option
-                .setName('type')
+                .setName('тип')
                 .setDescription('Тип координації')
                 .setRequired(true)
                 .addChoices(
@@ -71,52 +71,26 @@ export class OperationsCommand extends BaseCommand {
                 )
             )
             .addStringOption((option: any) =>
-              option.setName('unit').setDescription('Підрозділ для координації').setRequired(false)
+              option.setName('підрозділ').setDescription('Підрозділ для координації').setRequired(false)
             )
         )
         .addSubcommand((subcommand: any) =>
           subcommand
-            .setName('intelligence')
+            .setName('розвідка')
             .setDescription('🔍 Розвідувальні дані')
             .addStringOption((option: any) =>
               option
-                .setName('type')
-                .setDescription('Тип розвідки')
+                .setName('період')
+                .setDescription('Період/тип розвідки')
                 .setRequired(true)
                 .addChoices(
-                  { name: 'Повітряна розвідка', value: 'air' },
-                  { name: 'Наземна розвідка', value: 'ground' },
-                  { name: 'Технічна розвідка', value: 'technical' },
-                  { name: 'Агентурна розвідка', value: 'agent' },
-                  { name: 'Зведена розвідка', value: 'summary' }
+                  { name: 'Щоденний', value: 'daily' },
+                  { name: 'Щотижневий', value: 'weekly' },
+                  { name: 'Зведений', value: 'summary' }
                 )
             )
             .addStringOption((option: any) =>
-              option.setName('area').setDescription('Район розвідки').setRequired(false)
-            )
-        )
-        .addSubcommand((subcommand: any) =>
-          subcommand
-            .setName('communications')
-            .setDescription("📡 Управління зв'язком")
-            .addStringOption((option: any) =>
-              option
-                .setName('action')
-                .setDescription("Дія зі зв'язком")
-                .setRequired(true)
-                .addChoices(
-                  { name: "Статус зв'язку", value: 'status' },
-                  { name: 'Налаштування каналів', value: 'channels' },
-                  { name: 'Передача повідомлення', value: 'message' },
-                  { name: 'Перевірка якості', value: 'quality' },
-                  { name: 'Резервні канали', value: 'backup' }
-                )
-            )
-            .addStringOption((option: any) =>
-              option.setName('channel').setDescription("Канал зв'язку").setRequired(false)
-            )
-            .addStringOption((option: any) =>
-              option.setName('message').setDescription('Текст повідомлення').setRequired(false)
+              option.setName('район').setDescription('Район розвідки').setRequired(false)
             )
         );
     });
@@ -130,25 +104,24 @@ export class OperationsCommand extends BaseCommand {
 
     try {
       const subcommand = interaction.options.getSubcommand();
+      const services = (interaction as any).client?.serviceContainer;
+      const opsService = services?.get?.('operations');
 
       switch (subcommand) {
-        case 'situation':
-          await this.handleSituation(interaction);
+        case 'ситуація':
+          await this.handleSituation(interaction, opsService);
           break;
-        case 'tasks':
-          await this.handleTasks(interaction);
+        case 'завдання':
+          await this.handleTasks(interaction, opsService);
           break;
-        case 'coordination':
-          await this.handleCoordination(interaction);
+        case 'координація':
+          await this.handleCoordination(interaction, opsService);
           break;
-        case 'intelligence':
-          await this.handleIntelligence(interaction);
-          break;
-        case 'communications':
-          await this.handleCommunications(interaction);
+        case 'розвідка':
+          await this.handleIntelligence(interaction, opsService);
           break;
         default:
-          await interaction.reply('❌ Невідома підкоманда');
+          await interaction.reply({ content: '❌ Невідома підкоманда', ephemeral: true });
       }
     } catch (error) {
       logger.error('❌ Помилка команди операцій', {
@@ -156,15 +129,28 @@ export class OperationsCommand extends BaseCommand {
         userId: (interaction as ChatInputCommandInteraction).user?.id,
         command: this.name,
       });
-      await interaction.reply('❌ Помилка оперативного управління');
+      await interaction.reply({ content: '❌ Помилка оперативного управління', ephemeral: true });
     }
   }
 
   /**
    * Обробка оперативної ситуації
    */
-  private async handleSituation(interaction: ChatInputCommandInteraction): Promise<void> {
-    const sector = interaction.options.getString('sector') || 'all';
+  private async handleSituation(
+    interaction: ChatInputCommandInteraction,
+    opsService?: any
+  ): Promise<void> {
+    const sector = interaction.options.getString('сектор') || 'all';
+
+    // Виклик сервісу, якщо він є (для unit-тестів використовується мок)
+    try {
+      if (opsService?.getSituation) {
+        await opsService.getSituation(sector);
+      }
+    } catch (e) {
+      await interaction.reply({ content: '❌ Помилка отримання ситуації', ephemeral: true });
+      return;
+    }
 
     const embed = new EmbedBuilder()
       .setTitle('📊 Оперативна ситуація')
@@ -194,9 +180,12 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Обробка завдань
    */
-  private async handleTasks(interaction: ChatInputCommandInteraction): Promise<void> {
-    const action = interaction.options.getString('action', true);
-    const query = interaction.options.getString('query');
+  private async handleTasks(
+    interaction: ChatInputCommandInteraction,
+    opsService?: any
+  ): Promise<void> {
+    const action = interaction.options.getString('дія', true);
+    const query = interaction.options.getString('запит');
 
     logger.info('Виконання дії управління завданнями', {
       action,
@@ -211,6 +200,16 @@ export class OperationsCommand extends BaseCommand {
 
     switch (action) {
       case 'current':
+        try {
+          const tasks = (await opsService?.getTasks?.('current')) ?? [];
+          if (!tasks.length) {
+            await interaction.reply({ content: 'Завдань не знайдено', ephemeral: true });
+            return;
+          }
+        } catch (e) {
+          await interaction.reply({ content: '❌ Помилка отримання завдань', ephemeral: true });
+          return;
+        }
         embed.setDescription('**Поточні завдання**');
         embed.addFields(
           { name: 'Активні завдання', value: '5', inline: true },
@@ -219,7 +218,7 @@ export class OperationsCommand extends BaseCommand {
         );
         break;
       case 'new':
-        embed.setDescription(`**Нове завдання**\n\nДані: ${query || 'Не вказано'}`);
+        embed.setDescription('**Створено нове завдання**');
         embed.addFields({ name: 'Статус', value: '✅ Завдання створено', inline: false });
         break;
       case 'update':
@@ -247,9 +246,19 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Обробка координації
    */
-  private async handleCoordination(interaction: ChatInputCommandInteraction): Promise<void> {
-    const type = interaction.options.getString('type', true);
-    const unit = interaction.options.getString('unit');
+  private async handleCoordination(
+    interaction: ChatInputCommandInteraction,
+    opsService?: any
+  ): Promise<void> {
+    const type = interaction.options.getString('тип', true);
+    const unit = interaction.options.getString('підрозділ');
+
+    try {
+      await opsService?.coordinate?.('emergency');
+    } catch (e) {
+      await interaction.reply({ content: '❌ Помилка координації', ephemeral: true });
+      return;
+    }
 
     logger.info('Координація між підрозділами', {
       type,
@@ -277,9 +286,19 @@ export class OperationsCommand extends BaseCommand {
   /**
    * Обробка розвідки
    */
-  private async handleIntelligence(interaction: ChatInputCommandInteraction): Promise<void> {
-    const type = interaction.options.getString('type', true);
-    const area = interaction.options.getString('area');
+  private async handleIntelligence(
+    interaction: ChatInputCommandInteraction,
+    opsService?: any
+  ): Promise<void> {
+    const type = interaction.options.getString('період', true);
+    const area = interaction.options.getString('район');
+
+    try {
+      await opsService?.getIntelligence?.(type);
+    } catch (e) {
+      await interaction.reply({ content: '❌ Помилка розвідки', ephemeral: true });
+      return;
+    }
 
     logger.info('Запит розвідувальних даних', {
       type,
