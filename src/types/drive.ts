@@ -45,6 +45,17 @@ export interface DriveListQuery {
   pageToken?: string;
   recursive?: boolean;
   maxDepth?: number; // при recursive=true, по умолчанию 20
+  // Новые фильтры
+  dateFrom?: string; // ISO: modifiedTime >= dateFrom
+  dateTo?: string;   // ISO: modifiedTime <= dateTo
+  sizeMin?: number;  // bytes: size >= sizeMin
+  sizeMax?: number;  // bytes: size <= sizeMax
+  // Сортировка
+  sortBy?: 'name' | 'modifiedTime' | 'size';
+  sortDir?: 'asc' | 'desc';
+  // Подсветка изменений относительно предыдущего запроса в рамках сессии
+  highlightChanges?: boolean;
+  sessionKey?: string; // идентификатор чата/пользователя/контекста
 }
 
 // Результат листинга/поиска с пагинацией
@@ -52,4 +63,13 @@ export interface DriveListResult {
   files: DriveFile[];
   nextPageToken?: string;
   total?: number; // если доступно (обычно нет без отдельного запроса)
+  // Сводка изменений (опционально)
+  changes?: {
+    addedIds: string[];
+    removedIds: string[];
+    modified: Array<{
+      id: string;
+      fields: Array<'name' | 'mimeType' | 'size' | 'modifiedTime' | 'owners' | 'parents' | 'webViewLink'>;
+    }>;
+  };
 }
