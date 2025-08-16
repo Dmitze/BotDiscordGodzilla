@@ -12,6 +12,26 @@ jest.mock('../utils/security', () => {
     warnings: [],
   });
   const sanitizeInput = (input: string) => input;
+  // Простий, чистий хелпер для маскування PII у тестах
+  // Не створює таймерів, сумісний з юніт/інтеграційними тестами
+  const maskPII = (input: string): string => {
+    if (!input) return input;
+    let out = input;
+    // Маскуємо email: залишаємо перший символ локальної частини, решту замінюємо на * до домену
+    const emailRegex = /([a-zA-Z0-9._%+-])([a-zA-Z0-9._%+-]*)(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    out = out.replace(emailRegex, (_m, first: string, middle: string, domain: string) => {
+      const maskedMiddle = middle.length > 0 ? '*'.repeat(Math.min(middle.length, 6)) : '***';
+      return `${first}${maskedMiddle}${domain}`;
+    });
+    // Маскуємо телефони: залишаємо останні 4 цифри, решту замінюємо на *
+    const phoneRegex = /(?<!\d)([+]?\d[\d\s().-]{6,}\d)(?!\d)/g;
+    out = out.replace(phoneRegex, (match: string) => {
+      const digits = match.replace(/\D/g, '');
+      if (digits.length < 7) return match;
+      return '*'.repeat(Math.max(0, digits.length - 4)) + digits.slice(-4);
+    });
+    return out;
+  };
   const checkRateLimit = (_userId: string) => ({
     allowed: true,
     remaining: 10,
@@ -43,6 +63,7 @@ jest.mock('../utils/security', () => {
     getSuspiciousActivities: () => securityManager.getSuspiciousActivities(),
     cleanupSecurityManager: () => securityManager.cleanup(),
     sanitizeInput,
+    maskPII,
     default: securityManager,
   };
 });
