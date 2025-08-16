@@ -17,64 +17,64 @@ export class EnhancedSearchCommand extends BaseCommand {
       '🔍 Покращений пошук з діапазонами та сортуванням',
       config,
       {},
-      (builder: any) => {
+      (builder) => {
         return builder
-          .addStringOption((option: any) =>
+          .addStringOption((option) =>
             option
               .setName('запит')
               .setDescription('Текст запиту пошуку')
               .setRequired(false)
               .setMaxLength(200)
           )
-          .addIntegerOption((option: any) =>
+          .addIntegerOption((option) =>
             option
               .setName('ціна_від')
               .setDescription('Мінімальна ціна')
               .setRequired(false)
               .setMinValue(0)
           )
-          .addIntegerOption((option: any) =>
+          .addIntegerOption((option) =>
             option
               .setName('ціна_до')
               .setDescription('Максимальна ціна')
               .setRequired(false)
               .setMinValue(0)
           )
-          .addStringOption((option: any) =>
+          .addStringOption((option) =>
             option
               .setName('дата_від')
               .setDescription('Початкова дата (YYYY-MM-DD)')
               .setRequired(false)
               .setMaxLength(20)
           )
-          .addStringOption((option: any) =>
+          .addStringOption((option) =>
             option
               .setName('дата_до')
               .setDescription('Кінцева дата (YYYY-MM-DD)')
               .setRequired(false)
               .setMaxLength(20)
           )
-          .addIntegerOption((option: any) =>
+          .addIntegerOption((option) =>
             option
               .setName('ліміт')
               .setDescription('Максимальна кількість результатів')
               .setRequired(false)
               .setMinValue(1)
           )
-          .addIntegerOption((option: any) =>
+          .addIntegerOption((option) =>
             option
               .setName('сторінка')
               .setDescription('Номер сторінки результатів')
               .setRequired(false)
               .setMinValue(1)
           )
-          .addStringOption((option: any) =>
+          .addStringOption((option) =>
             option
               .setName('сортування')
               .setDescription('Поле для сортування')
               .setRequired(false)
           )
-          .addStringOption((option: any) =>
+          .addStringOption((option) =>
             option
               .setName('порядок')
               .setDescription('Порядок сортування (asc/desc)')
@@ -112,27 +112,39 @@ export class EnhancedSearchCommand extends BaseCommand {
       const sortBy = interaction.options.getString('сортування') ?? undefined;
       const order = interaction.options.getString('порядок') ?? undefined;
 
-      const service: any = interaction.client?.serviceContainer?.get?.('google');
-      const google = service || this.googleService;
-
-      if (!google || typeof (google as any).enhancedSearch !== 'function') {
+      const google = this.googleService;
+      if (!google) {
         await interaction.reply({ content: 'Помилка: сервіс пошуку недоступний', ephemeral: true });
         return;
       }
 
-      const params: Record<string, any> = { query };
-      if (priceFrom !== undefined) params['priceFrom'] = priceFrom;
-      if (priceTo !== undefined) params['priceTo'] = priceTo;
-      if (dateFrom !== undefined) params['dateFrom'] = dateFrom;
-      if (dateTo !== undefined) params['dateTo'] = dateTo;
-      if (limit !== undefined) params['limit'] = limit;
-      if (page !== undefined) params['page'] = page;
-      if (sortBy !== undefined) params['sortBy'] = sortBy;
-      if (order !== undefined) params['order'] = order;
+      type SearchParams = {
+        query: string;
+        priceFrom?: number;
+        priceTo?: number;
+        dateFrom?: string;
+        dateTo?: string;
+        limit?: number;
+        page?: number;
+        sortBy?: string;
+        order?: string;
+      };
 
-      let result: any;
+      const params: SearchParams = { query };
+      if (priceFrom !== undefined) params.priceFrom = priceFrom;
+      if (priceTo !== undefined) params.priceTo = priceTo;
+      if (dateFrom !== undefined) params.dateFrom = dateFrom;
+      if (dateTo !== undefined) params.dateTo = dateTo;
+      if (limit !== undefined) params.limit = limit;
+      if (page !== undefined) params.page = page;
+      if (sortBy !== undefined) params.sortBy = sortBy;
+      if (order !== undefined) params.order = order;
+
+      type MinimalSearchItem = { id?: string; name?: string };
+      type SearchResultPage = { data: MinimalSearchItem[]; totalPages?: number; page?: number };
+      let result: MinimalSearchItem[] | SearchResultPage;
       try {
-        result = await (google as any).enhancedSearch(params);
+        result = await google.enhancedSearch(params as unknown as never);
       } catch (e) {
         logger.error('EnhancedSearchCommand: service error', { error: String(e) });
         await interaction.reply({ content: 'Помилка при пошуку', ephemeral: true });
@@ -140,14 +152,16 @@ export class EnhancedSearchCommand extends BaseCommand {
       }
 
       // Підтримка двох форматів відповіді: масив або обʼєкт з пагінацією
-      let items: any[] = Array.isArray(result) ? result : result?.data || [];
+      const items: MinimalSearchItem[] = Array.isArray(result) ? result : result?.data || [];
       if (!items || items.length === 0) {
         await interaction.reply({ content: 'Результатів не знайдено', ephemeral: true });
         return;
       }
 
       // Формуємо коротку відповідь
-      const lines = items.slice(0, limit ?? 10).map((it: any) => `• ${it.name ?? it.id ?? 'запис'}`);
+      const lines = items
+        .slice(0, limit ?? 10)
+        .map((it) => `• ${it.name ?? it.id ?? 'запис'}`);
       let content = lines.join('\n');
       if (!Array.isArray(result) && result?.totalPages && result?.page) {
         content = `Сторінка ${result.page} з ${result.totalPages}\n` + content;
