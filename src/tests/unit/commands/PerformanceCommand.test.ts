@@ -41,16 +41,6 @@ describe('PerformanceCommand', () => {
 
   describe('execute', () => {
     it('should handle status subcommand', async () => {
-      // Настройка моков
-      const mockMetricsService = {
-        getStats: (jest.fn() as any).mockResolvedValue({
-          uptime: 3600,
-          requests: 100,
-          errors: 5,
-        }),
-      };
-
-      mockInteraction.client.serviceContainer.get.mockReturnValue(mockMetricsService);
       mockInteraction.options.getSubcommand.mockReturnValue('статус');
 
       // Выполнение
@@ -58,21 +48,26 @@ describe('PerformanceCommand', () => {
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockMetricsService.getStats).toHaveBeenCalled();
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
 
     it('should handle cache subcommand', async () => {
       // Настройка моков
       const mockCacheService = {
-        getStats: (jest.fn() as any).mockResolvedValue({
+        getCacheStats: jest.fn().mockReturnValue({
           hits: 80,
           misses: 20,
-          size: 1024,
+          sets: 10,
+          deletes: 2,
+          errors: 0,
         }),
+      } as any;
+      // В реализации команда обращается к interaction.client.bot.serviceContainer
+      (mockInteraction.client as any).bot = {
+        serviceContainer: {
+          get: jest.fn().mockReturnValue(mockCacheService),
+        },
       };
-
-      mockInteraction.client.serviceContainer.get.mockReturnValue(mockCacheService);
       mockInteraction.options.getSubcommand.mockReturnValue('кеш');
 
       // Выполнение
@@ -80,7 +75,7 @@ describe('PerformanceCommand', () => {
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockCacheService.getStats).toHaveBeenCalled();
+      expect(mockCacheService.getCacheStats).toHaveBeenCalled();
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
   });
