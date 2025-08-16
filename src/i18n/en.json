@@ -1,5 +1,19 @@
 {
   "files": {
+    "search": {
+      "largeMark": "large",
+      "filteredByPolicy": "⚠️ Some items ({{count}}) are hidden by access policies",
+      "changesSummary": "Changes since last query: +{{added}}, -{{removed}}, ~{{modified}}",
+      "buttons": {
+        "first": "⏮",
+        "prev": "◀",
+        "next": "▶",
+        "last": "⏭",
+        "showChangesOnly": "Changes only",
+        "resetBaseline": "Reset baseline",
+        "close": "Close"
+      }
+    },
     "policy": {
       "disallowedMime": "🚫 Access denied: file type is not allowed by security policy",
       "deniedOwner": "🚫 Access denied: file owner is not in the allowlist"
