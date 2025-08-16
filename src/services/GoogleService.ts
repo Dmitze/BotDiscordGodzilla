@@ -18,6 +18,8 @@ import { CacheService } from './CacheService';
 import logger from '@/utils/logger';
 import { DocsService } from './google/DocsService';
 import { SheetsService } from './google/SheetsService';
+import { sanitizeTextForChat, normalizeText } from '@/utils/fileProcessor';
+import { validateInput } from '@/utils/security';
 
 interface GoogleServiceStats extends ServiceStats {
   requests: number;
@@ -82,6 +84,134 @@ export class GoogleService extends BaseServiceClass {
       this.rlTokens.set(t, burst);
       this.rlLastRefill.set(t, Date.now());
     });
+  }
+
+  /**
+   * Извлечение текста для чата с валидацией/санитизацией, хэш-контролем и фоллбек-парсерами
+   * Возвращает текст, источник (parser/export/ocr), контрольную сумму и modifiedTime
+   */
+  public async extractTextForChat(fileId: string): Promise<{
+    text: string;
+    checksum: string;
+    modifiedTime?: string;
+    source: 'export' | 'parser' | 'ocr' | 'raw';
+    warnings: string[];
+  }> {
+    const meta = await this.getDriveFileMetadata(fileId);
+    const mime = String(meta.mimeType || '');
+    const modified = meta.modifiedTime ?? '';
+
+    // Используем модификацию и потенциальный контент-хэш для кэш-ключа
+    const baseCacheKey = `extract:text:${fileId}:${modified}:${mime}`;
+    try {
+      const cached = await this.cacheService.get<{ text: string; checksum: string; modifiedTime?: string; source: 'export' | 'parser' | 'ocr' | 'raw'; warnings: string[] }>(baseCacheKey);
+      if (cached?.text) {
+        this.stats.cacheHits++;
+        return cached;
+      }
+    } catch {
+      this.stats.cacheMisses++;
+    }
+
+    const warnings: string[] = [];
+    let buffer: Buffer | null = null;
+    let text = '';
+    let source: 'export' | 'parser' | 'ocr' | 'raw' = 'raw';
+
+    // Маршрутизация парсеров
+    try {
+      if (mime === 'application/vnd.google-apps.document') {
+        // Google Docs → экспорт в text/plain
+        const buf = await this.exportFile(fileId, 'text/plain');
+        buffer = buf;
+        text = buf.toString('utf8');
+        source = 'export';
+      } else if (mime === 'application/vnd.google-apps.spreadsheet') {
+        // Google Sheets → экспорт в CSV
+        const buf = await this.exportFile(fileId, 'text/csv');
+        buffer = buf;
+        text = buf.toString('utf8');
+        source = 'export';
+      } else if (mime === 'application/pdf') {
+        // PDF → pdf-parse, при сбое → OCR
+        const buf = await this.downloadFile(fileId);
+        buffer = buf;
+        try {
+          const parsed = await pdfParse(buf);
+          text = parsed.text || '';
+          source = 'parser';
+        } catch (e) {
+          warnings.push('pdf-parse failed, fallback to OCR');
+          text = await this.extractTextFromBuffer(buf);
+          source = 'ocr';
+        }
+      } else if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mime === 'application/msword') {
+        // DOCX/DOC → mammoth (doc → предварительная совместимость ограничена)
+        const buf = await this.downloadFile(fileId);
+        buffer = buf;
+        try {
+          // mammoth в Node ожидает объект { buffer: Buffer }
+          const { value } = await mammoth.extractRawText({ buffer: buf });
+          text = value || '';
+          source = 'parser';
+        } catch (e) {
+          warnings.push('mammoth failed, fallback to raw text');
+          text = buf.toString('utf8');
+          source = 'raw';
+        }
+      } else if (/^image\//i.test(mime)) {
+        // Изображения → OCR
+        const file = await this.getDriveFileMetadata(fileId);
+        text = await this.extractTextFromImage(file);
+        source = 'ocr';
+      } else if (mime === 'text/plain' || mime === 'text/markdown' || mime === 'application/json' || mime === 'text/csv') {
+        // Текстовые форматы → прямое чтение
+        const buf = await this.downloadFile(fileId);
+        buffer = buf;
+        text = buf.toString('utf8');
+        source = 'raw';
+      } else {
+        // Неизвестный/бинарный формат → попытка экспортировать в текст, затем OCR как крайний случай
+        try {
+          const buf = await this.exportFile(fileId, 'text/plain');
+          buffer = buf;
+          text = buf.toString('utf8');
+          source = 'export';
+        } catch (e) {
+          warnings.push('export to text/plain failed, fallback to OCR');
+          const buf = await this.downloadFile(fileId);
+          buffer = buf;
+          text = await this.extractTextFromBuffer(buf);
+          source = 'ocr';
+        }
+      }
+    } catch (error) {
+      logger.error('❌ Помилка витягання тексту', {
+        type: 'processing_error',
+        event: 'extract_text_failed',
+        component: 'GoogleService',
+        fileId,
+        mime,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      text = '';
+    }
+
+    // Нормализация и очистка
+    text = normalizeText(text);
+    const val = validateInput(text, { inputType: 'message' });
+    if (!val.isValid) warnings.push(`sanitization: ${val.errors.join(', ')}`);
+    const safe = sanitizeTextForChat(text);
+
+    // Контрольная сумма
+    const checksum = buffer ? createHash('sha256').update(buffer).digest('hex') : createHash('sha256').update(safe).digest('hex');
+
+    const result = { text: safe, checksum, modifiedTime: modified, source, warnings } as const;
+    try {
+      const ttl = this.config.drive.ttlTextSec ?? 300;
+      await this.cacheService.set(baseCacheKey, result, ttl);
+    } catch { /* istanbul ignore next */ }
+    return result;
   }
 
   /**
@@ -229,7 +359,22 @@ export class GoogleService extends BaseServiceClass {
    * Список файлов по запросу DriveListQuery с пагинацией и кэшем
    */
   public async listDriveFiles(query: DriveListQuery): Promise<DriveListResult> {
-    const { folderId, query: nameContains = '', mimeIncludes = [], ownerAllowlist = [], pageSize, pageToken } = query;
+    const {
+      folderId,
+      query: nameContains = '',
+      mimeIncludes = [],
+      ownerAllowlist = [],
+      pageSize,
+      pageToken,
+      dateFrom,
+      dateTo,
+      sizeMin,
+      sizeMax,
+      sortBy,
+      sortDir,
+      highlightChanges,
+      sessionKey,
+    } = query;
 
     const size = this.getDriveListPageSize(pageSize);
     const cacheKey = this.buildDriveListCacheKey(query, size);
@@ -256,7 +401,7 @@ export class GoogleService extends BaseServiceClass {
     const needMimeFilter = !(allowedMimeCfg.length === 1 && allowedMimeCfg[0] === '*');
 
     // Построение Drive query (q)
-    const q = this.buildDriveQuery(folderId, nameContains, mimeIncludes, allowedMimeCfg, needMimeFilter);
+    const q = this.buildDriveQuery(folderId, nameContains, mimeIncludes, allowedMimeCfg, needMimeFilter, dateFrom, dateTo);
 
     const params = this.buildFilesListParams(q, size, pageToken ?? undefined);
     const start = Date.now();
@@ -264,7 +409,50 @@ export class GoogleService extends BaseServiceClass {
 
     const duration = Date.now() - start;
     const filesRaw: drive_v3.Schema$File[] = Array.isArray(res.data.files) ? res.data.files : [];
-    const result = this.createDriveListResult(filesRaw, ownerAllowlist, res.data.nextPageToken ?? undefined);
+    let result = this.createDriveListResult(filesRaw, ownerAllowlist, res.data.nextPageToken ?? undefined);
+
+    // Пост-фильтры по размеру
+    if (typeof sizeMin === 'number' || typeof sizeMax === 'number') {
+      const min = typeof sizeMin === 'number' ? sizeMin : -Infinity;
+      const max = typeof sizeMax === 'number' ? sizeMax : Infinity;
+      result.files = result.files.filter(f => {
+        const sz = typeof f.size === 'number' ? f.size : undefined;
+        if (sz == null) return false; // если требуется фильтр по размеру, отсутствующие размеры исключаем
+        return sz >= min && sz <= max;
+      });
+    }
+
+    // Сортировка
+    if (sortBy) {
+      const dir = sortDir === 'desc' ? -1 : 1;
+      const cmp = (a: DriveFile, b: DriveFile): number => {
+        if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '') * dir;
+        if (sortBy === 'size') return ((a.size ?? -1) - (b.size ?? -1)) * dir;
+        // modifiedTime
+        const da = a.modifiedTime ? Date.parse(a.modifiedTime) : 0;
+        const db = b.modifiedTime ? Date.parse(b.modifiedTime) : 0;
+        return (da - db) * dir;
+      };
+      result.files = [...result.files].sort(cmp);
+    }
+
+    // Подсветка изменений между запросами одной сессии
+    if (highlightChanges && sessionKey) {
+      const snapKey = `drive:list:snap:${sessionKey}:${folderId}:${this.hashFiltersForSnapshot({ nameContains, mimeIncludes, ownerAllowlist, dateFrom, dateTo, sizeMin, sizeMax, sortBy, sortDir })}`;
+      try {
+        const prev = await this.cacheService.get<DriveFile[]>(snapKey);
+        if (Array.isArray(prev)) {
+          const changes = this.computeDriveListChanges(prev, result.files);
+          if (changes.addedIds.length || changes.removedIds.length || changes.modified.length) {
+            result = { ...result, changes };
+          }
+        }
+      } catch { /* ignore cache read */ }
+      try {
+        // сохраняем текущий снимок на короткое время
+        await this.cacheService.set(snapKey, result.files, this.config.drive.ttlListSec ?? 300);
+      } catch { /* ignore cache write */ }
+    }
 
     await this.cacheDriveListResult(cacheKey, result);
 
@@ -309,13 +497,13 @@ export class GoogleService extends BaseServiceClass {
   }
 
   private buildDriveListCacheKey(q: DriveListQuery, size: number): string {
-    const { folderId, query, mimeIncludes = [], ownerAllowlist = [], pageToken, recursive = false, maxDepth = 20 } = q;
+    const { folderId, query, mimeIncludes = [], ownerAllowlist = [], pageToken, recursive = false, maxDepth = 20, dateFrom, dateTo, sizeMin, sizeMax, sortBy, sortDir, highlightChanges, sessionKey } = q;
     // Включаем текущую конфигурацию allowedMime в ключ кэша, чтобы разные фильтры MIME не делили один и тот же кэш
     const allowedMimeCfg = (this.config.drive.allowedMime && this.config.drive.allowedMime.length > 0)
       ? this.config.drive.allowedMime
       : ['*'];
     const allowedKey = allowedMimeCfg.join('.');
-    return `drive:list:v2:${folderId}:${query ?? ''}:${mimeIncludes.join('.')}:${ownerAllowlist.join('.')}:${allowedKey}:${size}:${pageToken ?? ''}:${recursive}:${maxDepth}`;
+    return `drive:list:v3:${folderId}:${query ?? ''}:${mimeIncludes.join('.')}:${ownerAllowlist.join('.')}:${allowedKey}:${size}:${pageToken ?? ''}:${recursive}:${maxDepth}:${dateFrom ?? ''}:${dateTo ?? ''}:${sizeMin ?? ''}:${sizeMax ?? ''}:${sortBy ?? ''}:${sortDir ?? ''}:${highlightChanges ? '1' : '0'}:${sessionKey ?? ''}`;
   }
 
   private getDriveListFields(): string {
@@ -400,6 +588,8 @@ export class GoogleService extends BaseServiceClass {
     mimeIncludes: string[],
     allowedMimeCfg: string[],
     needMimeFilter: boolean,
+    dateFrom?: string,
+    dateTo?: string,
   ): string {
     const qParts: string[] = [
       `'${folderId}' in parents`,
@@ -410,6 +600,8 @@ export class GoogleService extends BaseServiceClass {
       const esc = nameContains.replace(/['\\]/g, '\\$&');
       qParts.push(`name contains '${esc}'`);
     }
+    if (dateFrom) qParts.push(`modifiedTime >= '${dateFrom}'`);
+    if (dateTo) qParts.push(`modifiedTime <= '${dateTo}'`);
     if (mimeIncludes && mimeIncludes.length > 0) {
       const ors = mimeIncludes.map(m => `mimeType='${m}'`).join(' or ');
       qParts.push(`(${ors})`);
@@ -419,6 +611,72 @@ export class GoogleService extends BaseServiceClass {
       qParts.push(`(${ors})`);
     }
     return qParts.join(' and ');
+  }
+
+  /**
+   * Считаем изменения между старым и новым списком файлов
+   */
+  private computeDriveListChanges(
+    prev: DriveFile[],
+    next: DriveFile[],
+  ): {
+    addedIds: string[];
+    removedIds: string[];
+    modified: Array<{
+      id: string;
+      fields: Array<'name' | 'mimeType' | 'size' | 'modifiedTime' | 'owners' | 'parents' | 'webViewLink'>;
+    }>;
+  } {
+    const prevMap = new Map(prev.map(f => [f.id, f] as const));
+    const nextMap = new Map(next.map(f => [f.id, f] as const));
+    const addedIds: string[] = [];
+    const removedIds: string[] = [];
+    const modified: Array<{ id: string; fields: Array<'name' | 'mimeType' | 'size' | 'modifiedTime' | 'owners' | 'parents' | 'webViewLink'>; }> = [];
+
+    for (const id of nextMap.keys()) if (!prevMap.has(id)) addedIds.push(id);
+    for (const id of prevMap.keys()) if (!nextMap.has(id)) removedIds.push(id);
+
+    const eqArr = (a?: string[], b?: string[]): boolean => {
+      const aa = Array.isArray(a) ? [...a].sort() : [];
+      const bb = Array.isArray(b) ? [...b].sort() : [];
+      if (aa.length !== bb.length) return false;
+      for (let i = 0; i < aa.length; i++) if (aa[i] !== bb[i]) return false;
+      return true;
+    };
+
+    for (const [id, n] of nextMap) {
+      const p = prevMap.get(id);
+      if (!p) continue;
+      const changed: Array<'name' | 'mimeType' | 'size' | 'modifiedTime' | 'owners' | 'parents' | 'webViewLink'> = [];
+      if ((p.name || '') !== (n.name || '')) changed.push('name');
+      if ((p.mimeType || '') !== (n.mimeType || '')) changed.push('mimeType');
+      if ((p.size ?? -1) !== (n.size ?? -1)) changed.push('size');
+      if ((p.modifiedTime || '') !== (n.modifiedTime || '')) changed.push('modifiedTime');
+      if (!eqArr(p.owners, n.owners)) changed.push('owners');
+      if (!eqArr(p.parents, n.parents)) changed.push('parents');
+      if ((p.webViewLink || '') !== (n.webViewLink || '')) changed.push('webViewLink');
+      if (changed.length) modified.push({ id, fields: changed });
+    }
+
+    return { addedIds, removedIds, modified };
+  }
+
+  /**
+   * Стабильный хэш набора фильтров для ключа снапшота изменений
+   */
+  private hashFiltersForSnapshot(filters: {
+    nameContains: string;
+    mimeIncludes: string[];
+    ownerAllowlist: string[];
+    dateFrom?: string | undefined;
+    dateTo?: string | undefined;
+    sizeMin?: number | undefined;
+    sizeMax?: number | undefined;
+    sortBy?: string | undefined;
+    sortDir?: string | undefined;
+  }): string {
+    const src = JSON.stringify(filters);
+    return createHash('md5').update(src).digest('hex');
   }
 
   /**
