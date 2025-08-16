@@ -86,6 +86,7 @@ export class FileManagerCommand extends BaseCommand {
                 .setDescription(t('files.opt.query.description'))
                 .setRequired(true)
                 .setMaxLength(200)
+                .setAutocomplete(true)
             )
             .addStringOption((option: SlashCommandStringOption) =>
               option
@@ -93,6 +94,7 @@ export class FileManagerCommand extends BaseCommand {
                 .setDescription(t('files.opt.folder.description'))
                 .setRequired(false)
                 .setMaxLength(50)
+                .setAutocomplete(true)
             )
             .addStringOption(opt =>
               opt
@@ -100,6 +102,7 @@ export class FileManagerCommand extends BaseCommand {
                 .setDescription('Фільтр за MIME (точний збіг)')
                 .setRequired(false)
                 .setMaxLength(100)
+                .setAutocomplete(true)
             )
             .addStringOption(opt =>
               opt
@@ -221,6 +224,52 @@ export class FileManagerCommand extends BaseCommand {
         });
       return builder;
     });
+  }
+
+  protected override async onAutocomplete(options: import('@/commands/BaseCommand').CommandAutocompleteOptions): Promise<void> {
+    const interaction = options.interaction as any;
+    try {
+      const focused = interaction.options?.getFocused?.(true);
+      const name: string = focused?.name || '';
+      const value: string = String(focused?.value ?? '').toLowerCase();
+
+      const choices: Array<{ name: string; value: string }> = [];
+
+      if (name === 'mime') {
+        const base = [
+          'application/pdf',
+          'application/vnd.google-apps.document',
+          'application/vnd.google-apps.spreadsheet',
+          'text/plain',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        const fromCfg = Array.isArray(this.config.drive?.allowedMime)
+          ? (this.config.drive?.allowedMime as string[])
+          : [];
+        const set = Array.from(new Set([...fromCfg, ...base]));
+        for (const m of set) {
+          if (!value || m.toLowerCase().includes(value)) choices.push({ name: m, value: m });
+          if (choices.length >= 25) break;
+        }
+      } else if (name === 'папка') {
+        const base = ['root'];
+        const defId = this.config.google?.driveFolderId || this.config.drive?.folderId;
+        if (defId && !base.includes(defId)) base.push(String(defId));
+        for (const f of base) {
+          if (!value || f.toLowerCase().includes(value)) choices.push({ name: f, value: f });
+        }
+      } else if (name === 'запит') {
+        const base = ['type:pdf', 'type:doc', 'owner:me', 'date>2024-01-01'];
+        for (const q of base) {
+          if (!value || q.toLowerCase().includes(value)) choices.push({ name: q, value: q });
+        }
+      }
+
+      await interaction.respond?.(choices.slice(0, 25));
+    } catch (error) {
+      logger.warn('Autocomplete failed', { error: String(error) });
+      try { await (options.interaction as any).respond?.([]); } catch {}
+    }
   }
 
   /**
