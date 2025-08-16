@@ -43,7 +43,7 @@ describe('OperationsCommand', () => {
     it('should handle situation subcommand', async () => {
       // Настройка моков
       const mockOperationsService = {
-        getSituation: jest.fn().mockResolvedValue({
+        getSituation: (jest.fn() as any).mockResolvedValue({
           status: 'active',
           incidents: 2,
           resources: 'available',
@@ -67,7 +67,7 @@ describe('OperationsCommand', () => {
     it('should handle tasks subcommand', async () => {
       // Настройка моков
       const mockOperationsService = {
-        getTasks: jest.fn().mockResolvedValue([
+        getTasks: (jest.fn() as any).mockResolvedValue([
           { id: '1', title: 'Task 1', status: 'in_progress' },
           { id: '2', title: 'Task 2', status: 'completed' },
         ]),
@@ -90,7 +90,7 @@ describe('OperationsCommand', () => {
     it('should handle coordination subcommand', async () => {
       // Настройка моков
       const mockOperationsService = {
-        coordinate: jest.fn().mockResolvedValue({
+        coordinate: (jest.fn() as any).mockResolvedValue({
           success: true,
           message: 'Coordination completed',
         }),
@@ -113,7 +113,7 @@ describe('OperationsCommand', () => {
     it('should handle intelligence subcommand', async () => {
       // Настройка моков
       const mockOperationsService = {
-        getIntelligence: jest.fn().mockResolvedValue({
+        getIntelligence: (jest.fn() as any).mockResolvedValue({
           reports: 5,
           alerts: 2,
           analysis: 'Intelligence summary',
@@ -152,7 +152,7 @@ describe('OperationsCommand', () => {
     it('should handle service error', async () => {
       // Настройка моков с ошибкой
       const mockOperationsService = {
-        getSituation: jest.fn().mockRejectedValue(new Error('Service error')),
+        getSituation: (jest.fn() as any).mockRejectedValue(new Error('Service error')),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
@@ -174,7 +174,7 @@ describe('OperationsCommand', () => {
     it('should handle empty results', async () => {
       // Настройка моков с пустыми результатами
       const mockOperationsService = {
-        getTasks: jest.fn().mockResolvedValue([]),
+        getTasks: (jest.fn() as any).mockResolvedValue([]),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
