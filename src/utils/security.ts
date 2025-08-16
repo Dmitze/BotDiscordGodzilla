@@ -97,9 +97,7 @@ export class SecurityManager {
   private _isInitialized = false;
 
   constructor() {
-    if (SecurityManager.instance) {
-      return SecurityManager.instance;
-    }
+    if (SecurityManager.instance) return SecurityManager.instance;
     SecurityManager.instance = this;
 
     this.stats = {
@@ -118,19 +116,11 @@ export class SecurityManager {
     this.initialize();
   }
 
-  /**
-   * Ініціалізація системи безпеки
-   */
   private initialize(): void {
     try {
       logger.info('🔒 Ініціалізація системи безпеки...');
-
-      // Завантаження чорного списку
       this.loadBlacklist();
-
-      // Запуск періодичних завдань
       this.startPeriodicTasks();
-
       this._isInitialized = true;
       logger.info('✅ Система безпеки успішно ініціалізована');
     } catch (error) {
@@ -142,16 +132,11 @@ export class SecurityManager {
     }
   }
 
-  /**
-   * Завантаження чорного списку
-   */
   private loadBlacklist(): void {
     try {
-      // Тут можна завантажити чорний список з файлу або бази даних
       SECURITY_CONSTANTS.BLACKLISTED_WORDS.forEach(word => {
         this.blacklistCache.add(word.toLowerCase());
       });
-
       logger.info(`📋 Завантажено ${this.blacklistCache.size} слів у чорний список`);
     } catch (error) {
       handleError(error, {
@@ -161,32 +146,13 @@ export class SecurityManager {
     }
   }
 
-  /**
-   * Запуск періодичних завдань
-   */
   private startPeriodicTasks(): void {
-    // Очищення rate limit кешу кожні 5 хвилин
-    setInterval(
-      () => {
-        this.cleanupRateLimitCache();
-      },
-      5 * 60 * 1000
-    );
-
-    // Очищення підозрілої активності кожні 10 хвилин
-    setInterval(
-      () => {
-        this.cleanupSuspiciousActivities();
-      },
-      10 * 60 * 1000
-    );
-
+    setInterval(() => this.cleanupRateLimitCache(), 5 * 60 * 1000);
+    setInterval(() => this.cleanupSuspiciousActivities(), 10 * 60 * 1000);
     logger.info('⏰ Періодичні завдання безпеки запущено');
   }
 
-  /**
-   * Валідація та санітизація введення
-   */
+  // Core validation: simplified but safe
   public validateInput(
     input: string,
     context: {
@@ -197,68 +163,51 @@ export class SecurityManager {
       inputType?: 'command' | 'message' | 'url' | 'file';
     } = {}
   ): SecurityValidationResult {
-    const startTime = performance.now();
+    const start = performance.now();
+    const errors: string[] = [];
+    const warnings: string[] = [];
 
     try {
-      logger.debug('🔍 Валідація введення...', {
-        inputLength: input.length,
-        inputType: context.inputType,
-        userId: context.userId,
-        commandName: context.commandName,
-      } as LogMeta);
-
-      const errors: string[] = [];
-      const warnings: string[] = [];
-      let sanitizedValue = input;
-
-      // Перевірка довжини
       if (input.length > SECURITY_CONSTANTS.MAX_INPUT_LENGTH) {
         errors.push(
           `Введення занадто довге (${input.length} символів, максимум ${SECURITY_CONSTANTS.MAX_INPUT_LENGTH})`
         );
-        sanitizedValue = input.substring(0, SECURITY_CONSTANTS.MAX_INPUT_LENGTH);
+        input = input.slice(0, SECURITY_CONSTANTS.MAX_INPUT_LENGTH);
       }
 
-      // Перевірка на XSS атаки
-      const xssResult = this.checkForXSS(input);
-      if (xssResult.found) {
-        errors.push('Виявлено потенційну XSS атаку');
-        this.recordSecurityEvent('suspicious_activity', context.userId || 'unknown', {
-          subtype: 'xss_attempt',
-          pattern: xssResult.pattern,
-          input: input.substring(0, 100),
-        });
-        this.stats.xssAttempts++;
+      // Basic suspicious patterns
+      for (const pattern of SECURITY_CONSTANTS.SUSPICIOUS_PATTERNS) {
+        if (pattern.test(input)) {
+          errors.push('Виявлено потенційну XSS атаку');
+          this.recordSecurityEvent('suspicious_activity', context.userId || 'unknown', {
+            subtype: 'xss_attempt',
+          });
+          break;
+        }
       }
 
-      // Перевірка на SQL ін'єкції
-      const sqlResult = this.checkForSQLInjection(input);
-      if (sqlResult.found) {
-        errors.push("Виявлено потенційну SQL ін'єкцію");
-        this.recordSecurityEvent('suspicious_activity', context.userId || 'unknown', {
-          subtype: 'sql_injection_attempt',
-          pattern: sqlResult.pattern,
-          input: input.substring(0, 100),
-        });
-        this.stats.sqlInjectionAttempts++;
+      // Approximate SQLi detection
+      const sqlPatterns = [
+        /(\b(union|select|insert|update|delete|drop|create|alter)\b)/i,
+        /(\b(where|from|into|values|set)\b)/i,
+        /(--)|(#)|(\/\*)|(\*\/)/,
+      ];
+      for (const p of sqlPatterns) {
+        if (p.test(input)) {
+          errors.push("Виявлено потенційну SQL ін'єкцію");
+          this.recordSecurityEvent('suspicious_activity', context.userId || 'unknown', {
+            subtype: 'sql_injection_attempt',
+          });
+          break;
+        }
       }
 
-      // Перевірка чорного списку
-      const blacklistResult = this.checkBlacklist(input);
-      if (blacklistResult.found) {
-        warnings.push('Виявлено слова з чорного списку');
-        this.stats.blacklistHits++;
-      }
-
-      // Перевірка дозволених символів
       if (!SECURITY_CONSTANTS.ALLOWED_CHARS.test(input)) {
         warnings.push('Введення містить недозволені символи');
       }
 
-      // Санітизація
-      sanitizedValue = this.sanitizeInput(input);
-
-      const duration = performance.now() - startTime;
+      const sanitizedValue = this.sanitizeInput(input);
+      const duration = performance.now() - start;
       this.updateStats(true, duration);
 
       const result: SecurityValidationResult = {
@@ -269,7 +218,6 @@ export class SecurityManager {
       };
 
       if (errors.length > 0) {
-        this.stats.failedValidations++;
         logger.warn('❌ Валідація введення невдала', {
           errors,
           warnings,
@@ -278,26 +226,21 @@ export class SecurityManager {
           commandName: context.commandName,
         } as LogMeta);
       } else {
-        this.stats.successfulValidations++;
         logger.debug('✅ Валідація введення успішна', {
-          inputLength: input.length,
           warnings,
+          inputLength: input.length,
           userId: context.userId,
           commandName: context.commandName,
         } as LogMeta);
       }
-
       return result;
     } catch (error) {
-      const duration = performance.now() - startTime;
+      const duration = performance.now() - start;
       this.updateStats(false, duration);
-
       handleError(error, {
         serviceName: 'SecurityManager',
-        ...(context.userId ? { userId: context.userId } : {}),
-        additionalContext: { operation: 'validateInput', input: input.substring(0, 100) },
+        additionalContext: { operation: 'validateInput' },
       });
-
       return {
         isValid: false,
         sanitizedValue: '',
@@ -307,247 +250,81 @@ export class SecurityManager {
     }
   }
 
-  /**
-   * Перевірка на XSS атаки
-   */
-  private checkForXSS(input: string): { found: boolean; pattern?: string } {
-    for (const pattern of SECURITY_CONSTANTS.SUSPICIOUS_PATTERNS) {
-      if (pattern.test(input)) {
-        return { found: true, pattern: pattern.source };
-      }
-    }
-    return { found: false };
-  }
-
-  /**
-   * Перевірка на SQL ін'єкції
-   */
-  private checkForSQLInjection(input: string): { found: boolean; pattern?: string } {
-    const sqlPatterns = [
-      /(\b(union|select|insert|update|delete|drop|create|alter)\b)/i,
-      /(\b(where|from|into|values|set)\b)/i,
-      /(--|#|\/\*|\*\/)/,
-      /(\b(and|or)\b\s+\d+\s*=\s*\d+)/i,
-      /(\b(and|or)\b\s+['"]\w+['"]\s*=\s*['"]\w+['"])/i,
-    ];
-
-    for (const pattern of sqlPatterns) {
-      if (pattern.test(input)) {
-        return { found: true, pattern: pattern.source };
-      }
-    }
-    return { found: false };
-  }
-
-  /**
-   * Перевірка чорного списку
-   */
-  private checkBlacklist(input: string): { found: boolean; words: string[] } {
-    const foundWords: string[] = [];
-    const words = input.toLowerCase().split(/\s+/);
-
-    for (const word of words) {
-      if (this.blacklistCache.has(word)) {
-        foundWords.push(word);
-      }
-    }
-
-    return {
-      found: foundWords.length > 0,
-      words: foundWords,
-    };
-  }
-
-  /**
-   * Санітизація введення
-   */
   private sanitizeInput(input: string): string {
-    let sanitized = input;
-
-    // Видалення HTML тегів
-    sanitized = sanitized.replace(/<[^>]*>/g, '');
-
-    // Екранування спеціальних символів
-    sanitized = sanitized
+    return input
+      .replace(/<[^>]*>/g, '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#x27;')
-      .replace(/\//g, '&#x2F;');
-
-    // Видалення зайвих пробілів
-    sanitized = sanitized.trim().replace(/\s+/g, ' ');
-
-    return sanitized;
+      .replace(/\//g, '&#x2F;')
+      .trim()
+      .replace(/\s+/g, ' ');
   }
 
-  /**
-   * Перевірка rate limit
-   */
-  public checkRateLimit(userId: string): {
-    allowed: boolean;
-    remaining: number;
-    resetTime: number;
-  } {
+  public checkRateLimit(userId: string): { allowed: boolean; remaining: number; resetTime: number } {
     try {
       const now = Date.now();
-      const userLimit = this.rateLimitMap.get(userId);
-
-      if (!userLimit || now > userLimit.resetTime) {
-        // Створення нового ліміту
-        this.rateLimitMap.set(userId, {
-          count: 1,
-          resetTime: now + SECURITY_CONSTANTS.RATE_LIMIT_WINDOW,
-          lastRequest: now,
-        });
-
-        return {
-          allowed: true,
-          remaining: SECURITY_CONSTANTS.RATE_LIMIT_MAX - 1,
-          resetTime: now + SECURITY_CONSTANTS.RATE_LIMIT_WINDOW,
-        };
+      const info = this.rateLimitMap.get(userId);
+      if (!info || now > info.resetTime) {
+        const reset = now + SECURITY_CONSTANTS.RATE_LIMIT_WINDOW;
+        this.rateLimitMap.set(userId, { count: 1, resetTime: reset, lastRequest: now });
+        return { allowed: true, remaining: SECURITY_CONSTANTS.RATE_LIMIT_MAX - 1, resetTime: reset };
       }
-
-      if (userLimit.count >= SECURITY_CONSTANTS.RATE_LIMIT_MAX) {
+      if (info.count >= SECURITY_CONSTANTS.RATE_LIMIT_MAX) {
         this.stats.rateLimitHits++;
-        this.recordSecurityEvent('rate_limit', userId, {
-          count: userLimit.count,
-          resetTime: userLimit.resetTime,
-        });
-
-        logger.warn('⏰ Rate limit перевищено', {
-          userId,
-          count: userLimit.count,
-          resetTime: userLimit.resetTime,
-        } as LogMeta);
-
-        return {
-          allowed: false,
-          remaining: 0,
-          resetTime: userLimit.resetTime,
-        };
+        this.recordSecurityEvent('rate_limit', userId, { count: info.count, resetTime: info.resetTime });
+        return { allowed: false, remaining: 0, resetTime: info.resetTime };
       }
-
-      // Збільшення лічильника
-      userLimit.count++;
-      userLimit.lastRequest = now;
-
+      info.count++;
+      info.lastRequest = now;
       return {
         allowed: true,
-        remaining: SECURITY_CONSTANTS.RATE_LIMIT_MAX - userLimit.count,
-        resetTime: userLimit.resetTime,
+        remaining: SECURITY_CONSTANTS.RATE_LIMIT_MAX - info.count,
+        resetTime: info.resetTime,
       };
     } catch (error) {
-      handleError(error, {
-        serviceName: 'SecurityManager',
-        userId,
-        additionalContext: { operation: 'checkRateLimit' },
-      });
-
-      // У випадку помилки дозволяємо запит
-      return {
-        allowed: true,
-        remaining: SECURITY_CONSTANTS.RATE_LIMIT_MAX,
-        resetTime: Date.now() + SECURITY_CONSTANTS.RATE_LIMIT_WINDOW,
-      };
+      handleError(error, { serviceName: 'SecurityManager', additionalContext: { operation: 'checkRateLimit' } });
+      return { allowed: true, remaining: SECURITY_CONSTANTS.RATE_LIMIT_MAX, resetTime: Date.now() + SECURITY_CONSTANTS.RATE_LIMIT_WINDOW };
     }
   }
 
-  /**
-   * Валідація URL
-   */
   public validateUrl(url: string): SecurityValidationResult {
-    try {
-      const errors: string[] = [];
-      const warnings: string[] = [];
-
-      // Перевірка довжини
-      if (url.length > SECURITY_CONSTANTS.MAX_URL_LENGTH) {
-        errors.push(
-          `URL занадто довгий (${url.length} символів, максимум ${SECURITY_CONSTANTS.MAX_URL_LENGTH})`
-        );
-      }
-
-      // Перевірка протоколу
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        errors.push('URL повинен починатися з http:// або https://');
-      }
-
-      // Перевірка дозволених доменів
-      if (!SECURITY_CONSTANTS.ALLOWED_URLS.test(url)) {
-        warnings.push('URL не з дозволеного домену');
-      }
-
-      // Перевірка на підозрілі патерни
-      if (url.includes('javascript:') || url.includes('data:text/html')) {
-        errors.push('URL містить підозрілі патерни');
-      }
-
-      return {
-        isValid: errors.length === 0,
-        sanitizedValue: url,
-        errors,
-        warnings,
-      };
-    } catch (error) {
-      handleError(error, {
-        serviceName: 'SecurityManager',
-        additionalContext: { operation: 'validateUrl', url },
-      });
-
-      return {
-        isValid: false,
-        sanitizedValue: '',
-        errors: ['Помилка валідації URL'],
-        warnings: [],
-      };
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (url.length > SECURITY_CONSTANTS.MAX_URL_LENGTH) {
+      errors.push(`URL занадто довгий (${url.length} символів, максимум ${SECURITY_CONSTANTS.MAX_URL_LENGTH})`);
     }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      errors.push('URL повинен починатися з http:// або https://');
+    }
+    if (!SECURITY_CONSTANTS.ALLOWED_URLS.test(url)) {
+      warnings.push('URL не з дозволеного домену');
+    }
+    if (url.includes('javascript:') || url.includes('data:text/html')) {
+      errors.push('URL містить підозрілі патерни');
+    }
+    return { isValid: errors.length === 0, sanitizedValue: url, errors, warnings };
   }
 
-  /**
-   * Запис події безпеки
-   */
-  private recordSecurityEvent(
-    type: SecurityEvent['type'],
-    userId: string,
-    details: Record<string, unknown> = {}
-  ): void {
-    try {
-      const event: SecurityEvent = {
-        type,
-        userId,
-        details,
-        timestamp: new Date(),
-        severity: this.determineEventSeverity(type),
-      };
-
-      this.suspiciousActivities.push(event);
-      this.stats.suspiciousActivities++;
-      this.stats.lastSecurityEvent = event;
-
-      // Обмеження розміру масиву
-      if (this.suspiciousActivities.length > 1000) {
-        this.suspiciousActivities = this.suspiciousActivities.slice(-500);
-      }
-
-      logger.security(type, userId, {
-        details,
-        severity: event.severity,
-        timestamp: event.timestamp.toISOString(),
-      } as LogMeta);
-    } catch (error) {
-      handleError(error, {
-        serviceName: 'SecurityManager',
-        userId,
-        additionalContext: { operation: 'recordSecurityEvent', type },
-      });
+  private recordSecurityEvent(type: SecurityEvent['type'], userId: string, details: Record<string, unknown> = {}): void {
+    const event: SecurityEvent = {
+      type,
+      userId,
+      details,
+      timestamp: new Date(),
+      severity: this.determineEventSeverity(type),
+    };
+    this.suspiciousActivities.push(event);
+    this.stats.suspiciousActivities++;
+    this.stats.lastSecurityEvent = event;
+    if (this.suspiciousActivities.length > 1000) {
+      this.suspiciousActivities = this.suspiciousActivities.slice(-500);
     }
+    logger.security(type, userId, { details, severity: event.severity, timestamp: event.timestamp.toISOString() } as LogMeta);
   }
 
-  /**
-   * Визначення серйозності події
-   */
   private determineEventSeverity(type: SecurityEvent['type']): SecurityEvent['severity'] {
     switch (type) {
       case 'unauthorized_access':
@@ -561,134 +338,75 @@ export class SecurityManager {
     }
   }
 
-  /**
-   * Очищення rate limit кешу
-   */
   private cleanupRateLimitCache(): void {
-    try {
-      const now = Date.now();
-      let cleanedCount = 0;
-
-      for (const [userId, limit] of this.rateLimitMap.entries()) {
-        if (now > limit.resetTime) {
-          this.rateLimitMap.delete(userId);
-          cleanedCount++;
-        }
-      }
-
-      if (cleanedCount > 0) {
-        logger.debug(`🧹 Очищено ${cleanedCount} застарілих rate limit записів`);
-      }
-    } catch (error) {
-      handleError(error, {
-        serviceName: 'SecurityManager',
-        additionalContext: { operation: 'cleanupRateLimitCache' },
-      });
+    const now = Date.now();
+    for (const [uid, limit] of this.rateLimitMap.entries()) {
+      if (now > limit.resetTime) this.rateLimitMap.delete(uid);
     }
   }
 
-  /**
-   * Очищення підозрілої активності
-   */
   private cleanupSuspiciousActivities(): void {
-    try {
-      const now = new Date();
-      const maxAge = 24 * 60 * 60 * 1000; // 24 години
-      const initialCount = this.suspiciousActivities.length;
-
-      this.suspiciousActivities = this.suspiciousActivities.filter(
-        activity => now.getTime() - activity.timestamp.getTime() < maxAge
-      );
-
-      const cleanedCount = initialCount - this.suspiciousActivities.length;
-      if (cleanedCount > 0) {
-        logger.debug(`🧹 Очищено ${cleanedCount} застарілих подій безпеки`);
-      }
-    } catch (error) {
-      handleError(error, {
-        serviceName: 'SecurityManager',
-        additionalContext: { operation: 'cleanupSuspiciousActivities' },
-      });
-    }
+    const now = Date.now();
+    const maxAge = 24 * 60 * 60 * 1000;
+    this.suspiciousActivities = this.suspiciousActivities.filter(a => now - a.timestamp.getTime() < maxAge);
   }
 
-  /**
-   * Оновлення статистики
-   */
   private updateStats(_success: boolean, duration: number): void {
-    try {
-      this.stats.totalValidations++;
-      this.stats.totalValidationTime += duration;
-      this.stats.averageValidationTime =
-        this.stats.totalValidationTime / this.stats.totalValidations;
-    } catch (error) {
-      handleError(error, {
-        serviceName: 'SecurityManager',
-        additionalContext: { operation: 'updateStats' },
-      });
-    }
+    this.stats.totalValidations++;
+    this.stats.totalValidationTime += duration;
+    this.stats.averageValidationTime = this.stats.totalValidationTime / this.stats.totalValidations;
   }
 
-  /**
-   * Отримання статистики безпеки
-   */
   public getStats(): SecurityStats {
     return { ...this.stats };
   }
 
-  /**
-   * Отримання підозрілої активності
-   */
   public getSuspiciousActivities(): SecurityEvent[] {
     return [...this.suspiciousActivities];
   }
 
-  /**
-   * Очищення ресурсів
-   */
   public cleanup(): void {
-    try {
-      this.rateLimitMap.clear();
-      this.suspiciousActivities = [];
-      this.blacklistCache.clear();
-
-      logger.info('🧹 Ресурси SecurityManager очищено');
-    } catch (error) {
-      handleError(error, {
-        serviceName: 'SecurityManager',
-        additionalContext: { operation: 'cleanup' },
-      });
-    }
+    this.rateLimitMap.clear();
+    this.suspiciousActivities = [];
+    this.blacklistCache.clear();
   }
 
-  /**
-   * Перевірка стану ініціалізації
-   */
   public isInitialized(): boolean {
     return this._isInitialized;
   }
+
+  // PII masking utility
+  public maskPII(input: string): string {
+    if (!input) return input;
+    let out = input;
+    const emailRegex = /([a-zA-Z0-9._%+-])([a-zA-Z0-9._%+-]*)(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    out = out.replace(emailRegex, (_m, first: string, middle: string, domain: string) => {
+      const maskedMiddle = middle.length > 0 ? '*'.repeat(Math.min(middle.length, 6)) : '***';
+      return `${first}${maskedMiddle}${domain}`;
+    });
+    const phoneRegex = /(?<!\d)([+]?\d[\d\s().-]{6,}\d)(?!\d)/g;
+    out = out.replace(phoneRegex, (match: string) => {
+      const digits = match.replace(/\D/g, '');
+      if (digits.length < 7) return match;
+      return '*'.repeat(Math.max(0, digits.length - 4)) + digits.slice(-4);
+    });
+    return out;
+  }
 }
 
-// Експорт єдиного екземпляра
+// Singleton and convenience exports
 export const securityManager = new SecurityManager();
-
-// Експорт функцій для зручності
 export const validateInput = (
   input: string,
-  context?: {
-    userId?: string;
-    guildId?: string;
-    channelId?: string;
-    commandName?: string;
-    inputType?: 'command' | 'message' | 'url' | 'file';
-  }
+  context?: { userId?: string; guildId?: string; channelId?: string; commandName?: string; inputType?: 'command' | 'message' | 'url' | 'file' }
 ) => securityManager.validateInput(input, context);
-
 export const checkRateLimit = (userId: string) => securityManager.checkRateLimit(userId);
 export const validateUrl = (url: string) => securityManager.validateUrl(url);
 export const getSecurityStats = () => securityManager.getStats();
 export const getSuspiciousActivities = () => securityManager.getSuspiciousActivities();
 export const cleanupSecurityManager = () => securityManager.cleanup();
+
+// Backward compatible sanitizeInput overloads
 
 // Функції для зворотної сумісності
 // Overloads to support legacy and extended usage
@@ -716,3 +434,5 @@ export const validateCommandOptions = (
   const input = JSON.stringify(options);
   return validateInput(input, { inputType: 'command' });
 };
+
+export const maskPII = (text: string): string => securityManager.maskPII(text);
