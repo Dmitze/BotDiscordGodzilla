@@ -3,10 +3,13 @@
  */
 
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import logger from '../../../utils/logger';
+import type { Logger as LoggerType, LogEntry } from '../../../utils/logger';
 
 // Мокаем winston
 jest.mock('winston', () => ({
   createLogger: jest.fn(() => ({
+    log: jest.fn(),
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
@@ -27,117 +30,140 @@ jest.mock('winston', () => ({
 }));
 
 describe('Logger Utils', () => {
-  let logger: any;
+  const typedLogger: LoggerType = logger as unknown as LoggerType;
 
   beforeEach(() => {
     // Очищаем моки
     jest.clearAllMocks();
-    
-    // Импортируем logger после моков
-    logger = require('../../../utils/logger');
   });
 
   describe('logger instance', () => {
     it('should create logger instance', () => {
-      expect(logger).toBeDefined();
+      expect(typedLogger).toBeDefined();
     });
 
     it('should have required methods', () => {
-      expect(typeof logger.info).toBe('function');
-      expect(typeof logger.error).toBe('function');
-      expect(typeof logger.warn).toBe('function');
-      expect(typeof logger.debug).toBe('function');
+      expect(typeof typedLogger.info).toBe('function');
+      expect(typeof typedLogger.error).toBe('function');
+      expect(typeof typedLogger.warn).toBe('function');
+      expect(typeof typedLogger.debug).toBe('function');
     });
   });
 
   describe('logging methods', () => {
     it('should log info message', () => {
       const message = 'Test info message';
-      logger.info(message);
-      
-      expect(logger.info).toHaveBeenCalledWith(message);
+      typedLogger.info(message);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe(message);
+      expect(last.level).toBe('info');
     });
 
     it('should log error message', () => {
       const message = 'Test error message';
-      logger.error(message);
-      
-      expect(logger.error).toHaveBeenCalledWith(message);
+      typedLogger.error(message);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe(message);
+      expect(last.level).toBe('error');
     });
 
     it('should log warning message', () => {
       const message = 'Test warning message';
-      logger.warn(message);
-      
-      expect(logger.warn).toHaveBeenCalledWith(message);
+      typedLogger.warn(message);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe(message);
+      expect(last.level).toBe('warn');
     });
 
     it('should log debug message', () => {
       const message = 'Test debug message';
-      logger.debug(message);
-      
-      expect(logger.debug).toHaveBeenCalledWith(message);
+      typedLogger.debug(message);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe(message);
+      expect(last.level).toBe('debug');
     });
   });
 
   describe('error logging', () => {
     it('should log error with stack trace', () => {
       const error = new Error('Test error');
-      logger.error('Error occurred', error);
-      
-      expect(logger.error).toHaveBeenCalledWith('Error occurred', error);
+      typedLogger.error('Error occurred', error);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe('Error occurred');
+      expect(last.level).toBe('error');
+      expect(last.meta).toBeDefined();
     });
 
     it('should log error object', () => {
       const errorObj = { message: 'Custom error', code: 500 };
-      logger.error('API Error', errorObj);
-      
-      expect(logger.error).toHaveBeenCalledWith('API Error', errorObj);
+      typedLogger.error('API Error', errorObj);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe('API Error');
+      expect(last.level).toBe('error');
+      expect(last.meta).toBeDefined();
     });
   });
 
   describe('structured logging', () => {
     it('should log with metadata', () => {
       const metadata = { userId: '123', action: 'search' };
-      logger.info('User action', metadata);
-      
-      expect(logger.info).toHaveBeenCalledWith('User action', metadata);
+      typedLogger.info('User action', metadata);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe('User action');
+      expect((last.meta as any)['userId']).toBe('123');
+      expect((last.meta as any)['action']).toBe('search');
     });
 
     it('should log performance data', () => {
       const perfData = { duration: 150, operation: 'search' };
-      logger.info('Performance metric', perfData);
-      
-      expect(logger.info).toHaveBeenCalledWith('Performance metric', perfData);
+      typedLogger.info('Performance metric', perfData);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe('Performance metric');
+      expect((last.meta as any)['duration']).toBe(150);
+      expect((last.meta as any)['operation']).toBe('search');
     });
   });
 
   describe('log levels', () => {
     it('should respect log level configuration', () => {
-      // В тестовом окружении должен быть установлен уровень error
-      logger.debug('Debug message');
-      logger.info('Info message');
-      
-      // Debug и info не должны логироваться в production
-      expect(logger.debug).toHaveBeenCalledWith('Debug message');
-      expect(logger.info).toHaveBeenCalledWith('Info message');
+      // Для простоты проверяем, что вызовы не бросают ошибок и записываются в буфер
+      typedLogger.debug('Debug message');
+      typedLogger.info('Info message');
+      const buf = typedLogger.getLogBuffer();
+      const messages = (buf as LogEntry[]).map((e) => e.message);
+      expect(messages).toContain('Debug message');
+      expect(messages).toContain('Info message');
     });
   });
 
   describe('error handling', () => {
     it('should handle null messages gracefully', () => {
-      logger.info(null);
-      expect(logger.info).toHaveBeenCalledWith(null);
+      typedLogger.info(null as unknown as string);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe(null as unknown as string);
     });
 
     it('should handle undefined messages gracefully', () => {
-      logger.info(undefined);
-      expect(logger.info).toHaveBeenCalledWith(undefined);
+      typedLogger.info(undefined as unknown as string);
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBeUndefined();
     });
 
     it('should handle empty string messages', () => {
-      logger.info('');
-      expect(logger.info).toHaveBeenCalledWith('');
+      typedLogger.info('');
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe('');
     });
   });
 
@@ -146,15 +172,15 @@ describe('Logger Utils', () => {
       const startTime = Date.now();
       const endTime = startTime + 100;
       
-      logger.info('Operation completed', {
+      typedLogger.info('Operation completed', {
         duration: endTime - startTime,
         operation: 'test',
       });
-      
-      expect(logger.info).toHaveBeenCalledWith('Operation completed', {
-        duration: 100,
-        operation: 'test',
-      });
+      const buf = typedLogger.getLogBuffer();
+      const last = buf[buf.length - 1] as LogEntry;
+      expect(last.message).toBe('Operation completed');
+      expect((last.meta as any)['duration']).toBe(100);
+      expect((last.meta as any)['operation']).toBe('test');
     });
   });
-}); 
+});
