@@ -24,7 +24,7 @@
     "lint:cmds": "eslint -c .eslintrc.cjs src/commands --ext .ts -f unix",
     "format": "prettier --write src/**/*.{js,ts}",
     "format:check": "prettier --check src/**/*.{js,ts}",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc -p tsconfig.build.json",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
