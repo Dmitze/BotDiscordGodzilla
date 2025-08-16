@@ -2,7 +2,27 @@
  * Unit тесты для утилиты security
  */
 
-import { jest, describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
+
+// Polyfills for Node test environment
+const __mem = new Map<string, string>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).localStorage = {
+  getItem: (k: string) => __mem.get(k) ?? null,
+  setItem: (k: string, v: string) => void __mem.set(k, v),
+  removeItem: (k: string) => void __mem.delete(k),
+  clear: () => void __mem.clear(),
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (!(globalThis as any).btoa) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).btoa = (str: string) => Buffer.from(str, 'utf8').toString('base64');
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (!(globalThis as any).atob) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).atob = (b64: string) => Buffer.from(b64, 'base64').toString('utf8');
+}
 
 describe('Security Utils', () => {
   describe('validateInput', () => {
@@ -115,7 +135,7 @@ function sanitizeInput(input: string): string {
   return input.replace(/<[^>]*>/g, '');
 }
 
-function rateLimit(userId: string, limit: number, window: number): { allowed: boolean } {
+function rateLimit(userId: string, limit: number, windowMs: number): { allowed: boolean } {
   // Простая реализация rate limiting
   const key = `rate_limit_${userId}`;
   const current = parseInt(localStorage.getItem(key) || '0');
