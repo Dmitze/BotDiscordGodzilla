@@ -27,7 +27,7 @@ describe('PerformanceCommand', () => {
     });
 
     it('should have correct description', () => {
-      expect(performanceCommand.getDescription()).toBe('Моніторинг продуктивності бота');
+      expect(performanceCommand.getDescription()).toBe('📊 Моніторинг продуктивності системи');
     });
   });
 
@@ -54,7 +54,7 @@ describe('PerformanceCommand', () => {
       mockInteraction.options.getSubcommand.mockReturnValue('статус');
 
       // Выполнение
-      await performanceCommand.execute(mockInteraction);
+      await performanceCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe('PerformanceCommand', () => {
       mockInteraction.options.getSubcommand.mockReturnValue('кеш');
 
       // Выполнение
-      await performanceCommand.execute(mockInteraction);
+      await performanceCommand.execute({ interaction: mockInteraction } as any);
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
