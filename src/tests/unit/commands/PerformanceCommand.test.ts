@@ -43,7 +43,7 @@ describe('PerformanceCommand', () => {
     it('should handle status subcommand', async () => {
       // Настройка моков
       const mockMetricsService = {
-        getStats: jest.fn().mockResolvedValue({
+        getStats: (jest.fn() as any).mockResolvedValue({
           uptime: 3600,
           requests: 100,
           errors: 5,
@@ -65,7 +65,7 @@ describe('PerformanceCommand', () => {
     it('should handle cache subcommand', async () => {
       // Настройка моков
       const mockCacheService = {
-        getStats: jest.fn().mockResolvedValue({
+        getStats: (jest.fn() as any).mockResolvedValue({
           hits: 80,
           misses: 20,
           size: 1024,
