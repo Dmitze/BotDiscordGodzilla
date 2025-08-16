@@ -208,7 +208,17 @@
     },
     "search": {
       "largeMark": "великий",
-      "filteredByPolicy": "⚠️ Деякі елементи ({{count}}) приховано політиками доступу"
+      "filteredByPolicy": "⚠️ Деякі елементи ({{count}}) приховано політиками доступу",
+      "changesSummary": "Зміни з моменту останнього запиту: +{{added}}, -{{removed}}, ~{{modified}}",
+      "buttons": {
+        "first": "⏮",
+        "prev": "◀",
+        "next": "▶",
+        "last": "⏭",
+        "showChangesOnly": "Лише зміни",
+        "resetBaseline": "Скинути базову",
+        "close": "Закрити"
+      }
     },
     "summary": {
       "largeFile": "📦 Великий файл: {{name}} ({{mimeType}}), ~{{size}} МБ. Для безпеки та продуктивності надаємо лише коротке зведення.",
