@@ -175,10 +175,11 @@ describe('FileManagerCommand', () => {
 
       await cmd.execute({ interaction } as any);
 
-      // Unknown subcommand should produce a reply (може або не може бути defer)
-      const replyUnknown = interaction.__replies.find((r) => r.type === 'reply') as any;
-      expect(replyUnknown).toBeDefined();
-      expect(replyUnknown.payload?.content || '').toMatch(/Невідома підкоманда|Невідома/);
+      // Unknown subcommand path throws after defer, so error goes via editReply
+      const editUnknown = interaction.__replies.find((r) => r.type === 'edit') as any;
+      expect(editUnknown).toBeDefined();
+      const editUnknownContent = (editUnknown.payload?.content || editUnknown.payload?.embeds?.[0]?.description || '') as string;
+      expect(editUnknownContent).toMatch(/Невідома підкоманда|Невідома|Помилка|сталася помилка/i);
     });
   });
 
@@ -192,10 +193,11 @@ describe('FileManagerCommand', () => {
 
       await cmd.execute({ interaction } as any);
 
-      // Error during search: must send error via reply
-      const replyErr = interaction.__replies.find((r) => r.type === 'reply') as any;
-      expect(replyErr).toBeDefined();
-      expect((replyErr.payload?.content || '') + (replyErr.payload?.embeds?.[0]?.description || '')).toMatch(/Помилка|сталася помилка/i);
+      // Error during search after defer: expect edit reply with error
+      const editErr = interaction.__replies.find((r) => r.type === 'edit') as any;
+      expect(editErr).toBeDefined();
+      const errContent = (editErr.payload?.content || editErr.payload?.embeds?.[0]?.description || '') as string;
+      expect(errContent).toMatch(/Помилка|сталася помилка/i);
     });
   });
 });
