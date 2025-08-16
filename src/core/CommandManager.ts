@@ -293,6 +293,14 @@ export class CommandManager {
               return;
             }
           }
+          // Компоненты FileManager (/файли пошук) — пагинация и переключатели
+          if (customId && customId.startsWith('filesrch|')) {
+            const cmd = this.commands.get('файли') as unknown as { handleComponent?: (args: { interaction: any; componentType?: 'button' | 'select' | 'modal' }) => Promise<void> } | undefined;
+            if (cmd && typeof cmd.handleComponent === 'function') {
+              await cmd.handleComponent({ interaction: interaction as any, componentType: 'button' });
+              return;
+            }
+          }
         }
       } catch (error) {
         logger.error('❌ Ошибка верхнего уровня в обработчике InteractionCreate', {
