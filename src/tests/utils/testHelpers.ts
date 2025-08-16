@@ -81,7 +81,7 @@ export function createMockConfig(): any {
  * Создание мок Discord взаимодействия
  */
 export function createMockInteraction() {
-  return {
+  const interaction: any = {
     commandName: 'test',
     user: {
       id: 'test_user_id',
@@ -105,7 +105,10 @@ export function createMockInteraction() {
     reply: jest.fn(),
     editReply: jest.fn(),
     followUp: jest.fn(),
-    deferReply: jest.fn(),
+    deferReply: jest.fn().mockImplementation(() => {
+      interaction.deferred = true;
+      return Promise.resolve();
+    }),
     replied: false,
     deferred: false,
     isCommand: () => true,
@@ -115,6 +118,7 @@ export function createMockInteraction() {
       },
     },
   };
+  return interaction;
 }
 
 /**
