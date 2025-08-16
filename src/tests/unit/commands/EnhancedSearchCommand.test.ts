@@ -43,7 +43,7 @@ describe('EnhancedSearchCommand', () => {
     it('should handle basic search with filters', async () => {
       // Настройка моков
       const mockGoogleService = {
-        enhancedSearch: jest.fn().mockResolvedValue([
+        enhancedSearch: (jest.fn() as any).mockResolvedValue([
           { id: '1', name: 'Item 1', price: 100, category: 'electronics' },
           { id: '2', name: 'Item 2', price: 200, category: 'electronics' },
         ]),
@@ -68,7 +68,7 @@ describe('EnhancedSearchCommand', () => {
     it('should handle search with sorting', async () => {
       // Настройка моков
       const mockGoogleService = {
-        enhancedSearch: jest.fn().mockResolvedValue([
+        enhancedSearch: (jest.fn() as any).mockResolvedValue([
           { id: '1', name: 'Item 1', price: 100 },
           { id: '2', name: 'Item 2', price: 200 },
         ]),
@@ -92,7 +92,7 @@ describe('EnhancedSearchCommand', () => {
     it('should handle search with date filters', async () => {
       // Настройка моков
       const mockGoogleService = {
-        enhancedSearch: jest.fn().mockResolvedValue([
+        enhancedSearch: (jest.fn() as any).mockResolvedValue([
           { id: '1', name: 'Item 1', date: '2024-01-01' },
           { id: '2', name: 'Item 2', date: '2024-01-02' },
         ]),
@@ -116,7 +116,7 @@ describe('EnhancedSearchCommand', () => {
     it('should handle search with limit', async () => {
       // Настройка моков
       const mockGoogleService = {
-        enhancedSearch: jest.fn().mockResolvedValue([
+        enhancedSearch: (jest.fn() as any).mockResolvedValue([
           { id: '1', name: 'Item 1' },
           { id: '2', name: 'Item 2' },
         ]),
@@ -154,7 +154,7 @@ describe('EnhancedSearchCommand', () => {
     it('should handle service error', async () => {
       // Настройка моков с ошибкой
       const mockGoogleService = {
-        enhancedSearch: jest.fn().mockRejectedValue(new Error('Search service error')),
+        enhancedSearch: (jest.fn() as any).mockRejectedValue(new Error('Search service error')),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockGoogleService);
@@ -175,7 +175,7 @@ describe('EnhancedSearchCommand', () => {
     it('should handle empty search results', async () => {
       // Настройка моков с пустыми результатами
       const mockGoogleService = {
-        enhancedSearch: jest.fn().mockResolvedValue([]),
+        enhancedSearch: (jest.fn() as any).mockResolvedValue([]),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockGoogleService);
@@ -196,7 +196,7 @@ describe('EnhancedSearchCommand', () => {
     it('should handle complex filters', async () => {
       // Настройка моков для сложных фильтров
       const mockGoogleService = {
-        enhancedSearch: jest.fn().mockResolvedValue([
+        enhancedSearch: (jest.fn() as any).mockResolvedValue([
           { id: '1', name: 'Item 1', price: 150, category: 'electronics', date: '2024-01-15' },
         ]),
       };
@@ -226,7 +226,7 @@ describe('EnhancedSearchCommand', () => {
     it('should handle pagination', async () => {
       // Настройка моков для пагинации
       const mockGoogleService = {
-        enhancedSearch: jest.fn().mockResolvedValue({
+        enhancedSearch: (jest.fn() as any).mockResolvedValue({
           data: [
             { id: '1', name: 'Item 1' },
             { id: '2', name: 'Item 2' },
