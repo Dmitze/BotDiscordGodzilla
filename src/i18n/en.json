@@ -1,0 +1,20 @@
+{
+  "files": {
+    "policy": {
+      "disallowedMime": "🚫 Access denied: file type is not allowed by security policy",
+      "deniedOwner": "🚫 Access denied: file owner is not in the allowlist"
+    },
+    "summary": {
+      "largeFile": "📦 Large file: {{name}} ({{mimeType}}), ~{{size}} MB. For safety and performance only a brief summary is provided.",
+      "link": "Link"
+    },
+    "result": {
+      "fileDownloaded": "📄 File downloaded\n\nName: {{name}}\nType: {{mimeType}}",
+      "more": "\n…and {{rest}} more"
+    },
+    "error": {
+      "serviceUnavailable": "❌ GoogleService unavailable",
+      "metadata": "❌ Cannot read file metadata"
+    }
+  }
+}
