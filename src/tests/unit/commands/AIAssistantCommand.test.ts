@@ -43,7 +43,7 @@ describe('AIAssistantCommand', () => {
     it('should handle AI request', async () => {
       // Настройка моков
       const mockAIService = {
-        generateResponse: jest.fn().mockResolvedValue('AI response'),
+        generateResponse: (jest.fn() as any).mockResolvedValue('AI response'),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockAIService);
@@ -76,7 +76,7 @@ describe('AIAssistantCommand', () => {
     it('should handle AI service error', async () => {
       // Настройка моков с ошибкой
       const mockAIService = {
-        generateResponse: jest.fn().mockRejectedValue(new Error('AI service error')),
+        generateResponse: (jest.fn() as any).mockRejectedValue(new Error('AI service error')),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockAIService);
@@ -98,7 +98,7 @@ describe('AIAssistantCommand', () => {
       // Настройка моков с длинным ответом
       const longResponse = 'A'.repeat(2000);
       const mockAIService = {
-        generateResponse: jest.fn().mockResolvedValue(longResponse),
+        generateResponse: (jest.fn() as any).mockResolvedValue(longResponse),
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockAIService);
