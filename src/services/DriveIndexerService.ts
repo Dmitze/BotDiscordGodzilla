@@ -10,6 +10,7 @@ import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { GoogleService } from './GoogleService';
 import { CacheService } from './CacheService';
 import SchedulerService from './SchedulerService';
+import { chunkTextForDiscord } from '@/utils/chunk';
 
 interface BotLike {
   config: BotConfig;
@@ -188,6 +189,26 @@ export class DriveIndexerService extends BaseServiceClass {
     // простая сортировка по позиции первого вхождения
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, limit);
+  }
+
+  /** Получить полную запись индекса по fileId (если доступна в кэше) */
+  public async getEntry(fileId: string): Promise<DriveIndexEntry | null> {
+    if (!this.ensureReady()) return null;
+    const entry = await this.cache.get<DriveIndexEntry>(INDEX_PREFIX + fileId);
+    return entry ?? null;
+  }
+
+  /** Получить исходный текст (обрезанный до MAX_TEXT_STORED) для предпросмотра */
+  public async getText(fileId: string): Promise<string> {
+    const entry = await this.getEntry(fileId);
+    return entry?.text ?? '';
+  }
+
+  /** Получить чанки текста, безопасные для Discord */
+  public async getTextChunks(fileId: string, max = 1900): Promise<string[]> {
+    const text = await this.getText(fileId);
+    if (!text) return [];
+    return chunkTextForDiscord(text, max);
   }
 
   /** Индексация одного файла по метаданным (без повторного запроса метаданных) */
