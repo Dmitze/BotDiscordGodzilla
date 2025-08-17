@@ -173,8 +173,12 @@ class Logger {
       // Налаштування обробки необроблених помилок
       this.setupExceptionHandling();
 
-      // Запуск періодичних завдань
-      this.startPeriodicTasks();
+      // Запуск періодичних завдань (пропускаємо у тестах)
+      if (process.env['NODE_ENV'] !== 'test' && !process.env['JEST_WORKER_ID']) {
+        this.startPeriodicTasks();
+      } else {
+        console.log('⏭️ Пропуск періодичних завдань логера у тестовому середовищі');
+      }
 
       this.isInitialized = true;
       console.log('✅ Логер успішно ініціалізовано');
@@ -308,6 +312,10 @@ class Logger {
    * Отримання рівня логування
    */
   private getLogLevel(): string {
+    // У тестах за замовчуванням знижуємо рівень логів
+    if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
+      return (process.env['LOG_LEVEL']?.toLowerCase()) || 'error';
+    }
     const level = process.env['LOG_LEVEL']?.toLowerCase();
     const validLevels = ['error', 'warn', 'info', 'debug'];
 
@@ -349,6 +357,9 @@ class Logger {
    * Запуск періодичних завдань
    */
   private startPeriodicTasks(): void {
+    if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
+      return;
+    }
     // Очищення старих логів
     this.cleanupInterval = setInterval(() => {
       this.cleanupOldLogs();
