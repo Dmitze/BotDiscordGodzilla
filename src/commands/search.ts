@@ -16,5 +16,3 @@ export async function execute(interaction: ChatInputCommandInteraction, bot?: an
   const cmd = getInstance(bot);
   await cmd.execute({ interaction });
 }
-
-export = { execute };
