@@ -322,4 +322,12 @@
       "unknownSub": "❌ Невідома підкоманда"
     }
   }
+  ,
+  "parsers": {
+    "fallback": {
+      "used": "Використано запасний парсер"
+    },
+    "unsupportedMime": "Непідтримуваний MIME: {{mime}}",
+    "parseError": "Помилка парсингу"
+  }
 }
