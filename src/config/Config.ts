@@ -14,6 +14,7 @@ import type {
   RedisConfig,
   MetricsConfig,
 } from '@/types';
+import type { FeaturesConfig } from '@/types';
 import type { DriveConfig } from '@/types/drive';
 import logger from '@/utils/logger';
 
@@ -68,6 +69,7 @@ export class Config {
         performance: this.loadPerformanceConfig(),
         logging: this.loadLoggingConfig(),
         drive: this.loadDriveConfig(),
+        features: this.loadFeaturesConfig(),
       };
 
       this.validate(config);
@@ -126,6 +128,29 @@ export class Config {
     } catch (error) {
       logger.error('❌ Помилка завантаження Drive конфігурації:', error as any);
       throw error;
+    }
+  }
+
+  /**
+   * Завантаження Features конфігурації
+   */
+  private static loadFeaturesConfig(): FeaturesConfig {
+    try {
+      const defaultLocaleEnv = this.getEnv('DEFAULT_LOCALE', 'uk');
+      const defaultLocale: FeaturesConfig['defaultLocale'] = defaultLocaleEnv === 'en' ? 'en' : 'uk';
+
+      const config: FeaturesConfig = {
+        defaultLocale,
+        enableUserWorkspace: this.getEnv('ENABLE_USER_WORKSPACE', 'true').toLowerCase() === 'true',
+        enableDisambiguation:
+          this.getEnv('ENABLE_DISAMBIGUATION', 'true').toLowerCase() === 'true',
+      };
+      logger.debug('✅ Features конфігурація завантажена');
+      return config;
+    } catch (error) {
+      logger.error('❌ Помилка завантаження Features конфігурації:', error as any);
+      // Безпечно повернути дефолти
+      return { defaultLocale: 'uk', enableUserWorkspace: true, enableDisambiguation: true };
     }
   }
 
