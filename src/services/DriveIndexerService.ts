@@ -45,6 +45,14 @@ export class DriveIndexerService extends BaseServiceClass {
   private metrics?: { incCounter?: (...args: any[]) => void; observeHistogram?: (...args: any[]) => void };
   private indexedCount = 0;
   private lastRunAt: number | null = null;
+  
+  private isCronDisabled(): boolean {
+    return (
+      process.env['NODE_ENV'] === 'test' ||
+      Boolean(process.env['JEST_WORKER_ID']) ||
+      String(process.env['DISABLE_CRON']).toLowerCase() === 'true'
+    );
+  }
 
   constructor(bot: BotLike) {
     super('DriveIndexerService', bot.config);
@@ -68,7 +76,11 @@ export class DriveIndexerService extends BaseServiceClass {
       return;
     }
 
-    // Зарегистрируем cron-задачу
+    // Зарегистрируем cron-задачу (пропускаємо у тестовому середовищі або коли DISABLE_CRON=true)
+    if (this.isCronDisabled()) {
+      logger.debug('⏭️ Пропуск реєстрації cron індексації Drive (тест або DISABLE_CRON)');
+      return;
+    }
     const scheduler = this.bot.getService('scheduler') as SchedulerService | undefined;
     if (scheduler && typeof scheduler.scheduleJob === 'function') {
       const cron = this.config.drive.indexCron || '*/30 * * * *';
