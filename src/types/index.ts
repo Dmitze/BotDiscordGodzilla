@@ -13,6 +13,7 @@ export interface BotConfig {
   performance: PerformanceConfig;
   logging: LoggingConfig;
   drive: DriveConfig;
+  features: FeaturesConfig;
 }
 
 export interface DiscordConfig {
@@ -102,6 +103,13 @@ export interface LoggingConfig {
   maxFiles: number;
   maxSize: string;
   directory: string;
+}
+
+// Features and UX flags
+export interface FeaturesConfig {
+  defaultLocale: 'uk' | 'en';
+  enableUserWorkspace?: boolean;
+  enableDisambiguation?: boolean;
 }
 
 // Сервіси
