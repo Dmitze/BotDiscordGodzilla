@@ -23,6 +23,8 @@ import { SelectSheetCommand } from '@/commands/SelectSheetCommand';
 import { OCRCommand } from '@/commands/OCRCommand';
 import { DriveExtractCommand } from '@/commands/DriveExtractCommand';
 import { DocCommand } from '@/commands/DocCommand';
+import { WorkspaceCommand } from '@/commands/WorkspaceCommand';
+import { LangCommand } from '@/commands/LangCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -235,6 +237,8 @@ export class CommandManager {
         new OCRCommand(this.config, googleService),
         new DriveExtractCommand(this.config, googleService),
         new DocCommand(this.config, googleService),
+        new WorkspaceCommand(this.config),
+        new LangCommand(this.config),
       ];
 
       // Реєструємо команди
