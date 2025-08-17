@@ -134,7 +134,7 @@ export class Bot extends BaseServiceClass {
     // Чат-режим: пам'ять, детектор намірів і роутер повідомлень
     this.chatMemory = new MemoryService({ maxTokens: 2000, summaryAfter: 1500 });
     this.intentDetector = new IntentDetector();
-    this.chatRouter = new ChatRouter(this.client, this.chatMemory, this.intentDetector);
+    this.chatRouter = new ChatRouter(this.client, this.chatMemory, this.intentDetector, this.getService.bind(this));
 
     // Налаштування обробників подій
     this.setupEventHandlers();
