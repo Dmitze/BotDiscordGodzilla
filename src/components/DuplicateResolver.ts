@@ -48,7 +48,7 @@ export class DuplicateResolver {
       .setCustomId(this.customId(scope, userId, nonce, 'select', current))
       .setPlaceholder('Оберіть один варіант')
       .addOptions(
-        ...pageItems.map((f, idx) => ({
+        ...pageItems.map((f) => ({
           label: f.name ?? '—',
           value: f.id,
           description: f.mimeType?.slice(0, 95) ?? undefined,
