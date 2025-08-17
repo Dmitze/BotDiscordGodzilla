@@ -3,7 +3,7 @@
  * Централізоване управління всіма командами
  */
 
-import { Collection, EmbedBuilder, Events } from 'discord.js';
+import { Collection, EmbedBuilder, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import type { ChatInputCommandInteraction, GuildMember, Interaction, Client } from 'discord.js';
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
@@ -61,6 +61,76 @@ export class CommandManager {
       commandsByCategory: {},
       lastUsed: new Date(),
     };
+  }
+
+  /**
+   * Обработка кнопок поиска: expand/page
+   */
+  private async handleSearchButton(interaction: any): Promise<void> {
+    try {
+      const customId = String(interaction.customId || '');
+      // Форматы: search|expand|{fileId}  или  search|page|{fileId}|{index}
+      const parts = customId.split('|');
+      const action = parts[1];
+      const fileId = parts[2];
+      const pageIndex = parts[3] ? parseInt(parts[3], 10) : 0;
+      if (!fileId) {
+        await interaction.reply({ content: '❌ Невірний ідентифікатор файлу.', ephemeral: true });
+        return;
+      }
+
+      const driveIndexer = (this.bot.getService?.('driveIndexer') ?? undefined) as
+        | import('@/services/DriveIndexerService').DriveIndexerService
+        | undefined;
+      if (!driveIndexer) {
+        await interaction.reply({ content: 'Пошук наразі недоступний.', ephemeral: true });
+        return;
+      }
+
+      const chunks = await driveIndexer.getTextChunks(fileId, 1800);
+      if (!chunks.length) {
+        await interaction.reply({ content: 'Немає тексту для відображення.', ephemeral: true });
+        return;
+      }
+
+      const idx = Math.min(Math.max(0, pageIndex), chunks.length - 1);
+      const content = chunks[idx];
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`search|page|${fileId}|${Math.max(0, idx - 1)}`)
+          .setLabel('⬅️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(idx === 0),
+        new ButtonBuilder()
+          .setCustomId(`search|page|${fileId}|${Math.min(chunks.length - 1, idx + 1)}`)
+          .setLabel('➡️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(idx >= chunks.length - 1)
+      );
+
+      if (action === 'expand') {
+        await interaction.reply({ content, components: [row], ephemeral: true });
+        return;
+      }
+      if (action === 'page') {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply({ content, components: [row] });
+        } else {
+          await interaction.reply({ content, components: [row], ephemeral: true });
+        }
+        return;
+      }
+
+      await interaction.reply({ content: 'Невідома дія.', ephemeral: true });
+    } catch (e) {
+      logger.error('search_button_failed', { error: e instanceof Error ? e.message : String(e) });
+      try {
+        await interaction.reply({ content: '❌ Помилка обробки кнопки.', ephemeral: true });
+      } catch {
+        // ignore
+      }
+    }
   }
 
   /**
@@ -160,7 +230,7 @@ export class CommandManager {
         new FileManagerCommand(this.config),
         new OperationsCommand(this.config),
         new AnalyticsCommand(this.config),
-        new EnhancedSearchCommand(this.config, googleService, sheetsContext),
+        new EnhancedSearchCommand(this.config, googleService),
         new SelectSheetCommand(this.config, googleService, sheetsContext),
         new OCRCommand(this.config, googleService),
         new DriveExtractCommand(this.config, googleService),
@@ -286,6 +356,11 @@ export class CommandManager {
         // Компоненты (кнопки и т.п.) для пагинации /doc blocks
         if ('isButton' in interaction && typeof (interaction as any).isButton === 'function' && (interaction as any).isButton()) {
           const customId = (interaction as any).customId as string | undefined;
+          // Поиск: предпросмотр и пагинация текста
+          if (customId && customId.startsWith('search|')) {
+            await this.handleSearchButton(interaction as any);
+            return;
+          }
           if (customId && customId.startsWith('docblk|')) {
             const cmd = this.commands.get('doc') as unknown as { handleComponent?: (args: { interaction: any; componentType?: 'button' | 'select' | 'modal' }) => Promise<void> } | undefined;
             if (cmd && typeof cmd.handleComponent === 'function') {
