@@ -18,6 +18,7 @@ import { basename, dirname, extname, join } from 'path';
 import { handleError } from './errorHandler';
 import logger from './logger';
 import { validateInput, sanitizeInput, maskPII } from './security';
+import { Config } from '@/config/Config';
 
 // Константи для обробки файлів
 const FILE_PROCESSOR_CONSTANTS = {
@@ -671,7 +672,12 @@ export function normalizeText(input: string): string {
  */
 export function sanitizeTextForChat(input: string, maxLen = 1800): string {
   const cleaned = sanitizeInput(normalizeText(String(input ?? '')));
-  const masked = maskPII(cleaned);
+  const features = Config.get().features ?? { enablePiiMasking: true, piiMaskEmail: true, piiMaskPhone: true };
+  const emailOn: boolean = features.piiMaskEmail !== false;
+  const phoneOn: boolean = features.piiMaskPhone !== false;
+  const masked = features.enablePiiMasking
+    ? maskPII(cleaned, { email: emailOn, phone: phoneOn })
+    : cleaned;
   if (masked.length <= maxLen) return masked.trim();
   // Обрезаем по границе абзаца/предложения, если возможно
   const slice = masked.slice(0, maxLen);
@@ -688,7 +694,12 @@ export function sanitizeTextForChat(input: string, maxLen = 1800): string {
 export function chunkTextForDiscord(input: string, opts?: { maxChunkLen?: number }): string[] {
   const maxChunkLen = Math.max(100, Math.min(1900, opts?.maxChunkLen ?? 1800));
   const base = sanitizeInput(normalizeText(String(input ?? ''))).trim();
-  const text = maskPII(base);
+  const features = Config.get().features ?? { enablePiiMasking: true, piiMaskEmail: true, piiMaskPhone: true };
+  const emailOn: boolean = features.piiMaskEmail !== false;
+  const phoneOn: boolean = features.piiMaskPhone !== false;
+  const text = features.enablePiiMasking
+    ? maskPII(base, { email: emailOn, phone: phoneOn })
+    : base;
   if (!text) return [];
 
   const chunks: string[] = [];
