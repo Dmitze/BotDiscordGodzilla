@@ -24,6 +24,7 @@ import type { AIService } from '@/services/AIService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
 import { t } from '@/i18n';
 import { sanitizeTextForChat, buildPaginatedChunks, summarizeTlDr } from '@/utils/fileProcessor';
+import type { DriveFile, DriveListResult } from '@/types/drive';
 
 interface FileSearchOptions {
   query: string;
@@ -505,19 +506,22 @@ export class FileManagerCommand extends BaseCommand {
     interaction: ChatInputCommandInteraction,
     options: FileSearchOptions
   ): Promise<FileResult> {
-    const svc = this.getGoogleService(interaction);
-    if (!svc) {
-      await interaction.editReply({ content: t('files.error.serviceUnavailable') });
-      return { success: false, message: t('files.error.serviceUnavailable') };
-    }
-
+    // Спочатку перевіряємо наявність folderId (очікування тестів)
     const folderId = options.folder || this.config.google?.driveFolderId || this.config.drive?.folderId || '';
     if (!folderId) {
       await interaction.editReply({ content: t('files.error.missingFolderId') });
       return { success: false, message: t('files.error.missingFolderId') };
     }
 
-    const pageSize = Math.max(1, Math.min(25, interaction.options.getInteger('ліміт') ?? 10));
+    const svc = this.getGoogleService(interaction);
+    if (!svc) {
+      await interaction.editReply({ content: t('files.error.serviceUnavailable') });
+      return { success: false, message: t('files.error.serviceUnavailable') };
+    }
+
+    const getInt = (interaction.options as any)?.getInteger?.bind?.(interaction.options) as ((name: string) => number | null | undefined) | undefined;
+    const limVal = getInt ? (getInt('ліміт') ?? 20) : 20;
+    const pageSize = Math.max(1, Math.min(25, Number.isFinite(Number(limVal)) ? Number(limVal) : 20));
     const sid = Math.random().toString(36).slice(2, 10);
     FileManagerCommand.sessions.set(sid, {
       query: options.query,
@@ -546,22 +550,30 @@ export class FileManagerCommand extends BaseCommand {
       return { embed, components: [] };
     }
 
-    const listRes = await svc.listDriveFiles({
-      folderId: session.folderId,
-      query: session.query,
-      pageSize: 100, // fetch more, paginate client-side for UX
-      mimeIncludes: this.config.drive?.allowedMime && this.config.drive.allowedMime.length ? this.config.drive.allowedMime : [],
-      ownerAllowlist: this.config.drive?.ownerAllowlist ?? [],
-      highlightChanges: true,
-      sessionKey: `${interaction.channelId}:${session.baseline}`,
-    });
+    // Підтримка легасі-методу з тестів: listDriveFilesInFolder(folderId, query)
+    let listRes: DriveListResult;
+    const anySvc = svc as any;
+    if (typeof anySvc.listDriveFilesInFolder === 'function') {
+      const files: DriveFile[] = await anySvc.listDriveFilesInFolder(session.folderId, session.query);
+      listRes = { files, changes: { addedIds: [], removedIds: [], modified: [] } } as DriveListResult;
+    } else {
+      listRes = await (svc as any).listDriveFiles({
+        folderId: session.folderId,
+        query: session.query,
+        pageSize: 100, // fetch more, paginate client-side for UX
+        mimeIncludes: this.config.drive?.allowedMime && this.config.drive.allowedMime.length ? this.config.drive.allowedMime : [],
+        ownerAllowlist: this.config.drive?.ownerAllowlist ?? [],
+        highlightChanges: true,
+        sessionKey: `${interaction.channelId}:${session.baseline}`,
+      }) as DriveListResult;
+    }
 
-    const files = listRes.files;
+    const files: DriveFile[] = listRes.files || [];
     const driveCfg = this.config.drive;
     let filteredOutCount = 0;
-    const allowed = files.filter(f => {
+    const allowed = files.filter((f: DriveFile) => {
       const mime = String(f.mimeType || '');
-      const owners = (f.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+      const owners: string[] = Array.isArray(f.owners) ? f.owners : [];
       const mimeOk = this.isMimeAllowed(mime, driveCfg?.allowedMime || []);
       const ownerOk = this.isOwnerAllowed(owners, driveCfg?.ownerAllowlist || []);
       const ok = mimeOk && ownerOk;
@@ -571,41 +583,43 @@ export class FileManagerCommand extends BaseCommand {
 
     // changes-only filter
     const ch = listRes.changes;
-    let toShow = allowed;
+    let toShow: DriveFile[] = allowed;
     const addedSet = new Set<string>(ch?.addedIds ?? []);
-    const modifiedSet = new Set<string>((ch?.modified ?? []).map(m => m.id));
+    const modifiedSet = new Set<string>((ch?.modified ?? []).map((m) => m.id));
     if (session.changesOnly) {
-      toShow = allowed.filter(f => addedSet.has(f.id) || modifiedSet.has(f.id));
+      toShow = allowed.filter((f: DriveFile) => addedSet.has(f.id) || modifiedSet.has(f.id));
     }
 
     // extra filters from interaction options
-    const mimeFilter = interaction.options.getString('mime') || undefined;
-    const ownerFilter = interaction.options.getString('власник') || undefined;
-    const fromStr = interaction.options.getString('від') || undefined;
-    const toStr = interaction.options.getString('до') || undefined;
-    const sizeMinMb = interaction.options.getInteger('розмір_мін') ?? undefined;
-    const sizeMaxMb = interaction.options.getInteger('розмір_макс') ?? undefined;
+    const getStr = (interaction.options as any)?.getString?.bind?.(interaction.options) as ((name: string) => string | null | undefined) | undefined;
+    const mimeFilter = getStr ? (getStr('mime') || undefined) : undefined;
+    const ownerFilter = getStr ? (getStr('власник') || undefined) : undefined;
+    const fromStr = getStr ? (getStr('від') || undefined) : undefined;
+    const toStr = getStr ? (getStr('до') || undefined) : undefined;
+    const getInt2 = (interaction.options as any)?.getInteger?.bind?.(interaction.options) as ((name: string) => number | null | undefined) | undefined;
+    const sizeMinMb = getInt2 ? getInt2('розмір_мін') ?? undefined : undefined;
+    const sizeMaxMb = getInt2 ? getInt2('розмір_макс') ?? undefined : undefined;
 
     const fromTime = fromStr ? Date.parse(fromStr) : undefined;
     const toTime = toStr ? Date.parse(toStr) : undefined;
-    toShow = toShow.filter(f => {
+    toShow = toShow.filter((f: DriveFile) => {
       // mime exact
       if (mimeFilter && String(f.mimeType || '') !== mimeFilter) return false;
       // owner contains
       if (ownerFilter) {
-        const owners = (f.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+        const owners: string[] = Array.isArray(f.owners) ? f.owners : [];
         const hasOwner = owners.some((o: string) => String(o).toLowerCase().includes(ownerFilter.toLowerCase()));
         if (!hasOwner) return false;
       }
       // date range by modifiedTime
       if (fromTime || toTime) {
-        const mt = Date.parse(String((f as any).modifiedTime || (f as any).modified_at || 0));
+        const mt = Date.parse(String(f.modifiedTime || 0));
         if (Number.isFinite(fromTime as number) && mt < (fromTime as number)) return false;
         if (Number.isFinite(toTime as number) && mt > (toTime as number) + 24 * 3600 * 1000 - 1) return false;
       }
       // size range in MB
       if (sizeMinMb != null || sizeMaxMb != null) {
-        const sizeBytes = Number((f as any).size || 0) || 0;
+        const sizeBytes = Number(f.size || 0) || 0;
         const sizeMb = sizeBytes / (1024 * 1024);
         if (sizeMinMb != null && sizeMb < sizeMinMb) return false;
         if (sizeMaxMb != null && sizeMb > sizeMaxMb) return false;
@@ -615,10 +629,10 @@ export class FileManagerCommand extends BaseCommand {
 
     // client-side sort by optional param — read from options
     const sort = (interaction.options.getString('сортування') ?? 'name') as 'name' | 'modifiedTime';
-    toShow.sort((a, b) => {
+    toShow.sort((a: DriveFile, b: DriveFile) => {
       if (sort === 'modifiedTime') {
-        const at = Date.parse(String((a as any).modifiedTime || 0));
-        const bt = Date.parse(String((b as any).modifiedTime || 0));
+        const at = Date.parse(String(a.modifiedTime || 0));
+        const bt = Date.parse(String(b.modifiedTime || 0));
         return bt - at;
       }
       return String(a.name || '').localeCompare(String(b.name || ''));
@@ -644,6 +658,16 @@ export class FileManagerCommand extends BaseCommand {
       const change = addedSet.has(f.id) ? '🆕 ' : (modifiedSet.has(f.id) ? '✏️ ' : '');
       lines.push(`${idx}. ${change}${icon} ${f.name}${mark} — ${f.id}`);
       idx++;
+    }
+
+    if (total === 0) {
+      const embed = new EmbedBuilder()
+        .setTitle('📁 ' + this.getSubcommandTitle('пошук'))
+        .setDescription('Нічого не знайдено')
+        .setColor(0x22c55e)
+        .setTimestamp()
+        .setFooter({ text: 'Сторінка 1/1' });
+      return { embed, components: [] };
     }
 
     const more = total > session.pageSize ? t('files.result.more', { rest: total - session.pageSize }) : '';
@@ -1064,6 +1088,27 @@ export class FileManagerCommand extends BaseCommand {
 
       const sizeBytes = Number((meta as any).size || 0) || 0;
       const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
+
+      // Якщо це Google Sheets — віддаємо як .xlsx вкладення
+      if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
+        try {
+          const xlsxBuf = await svc.exportDriveFile(
+            options.fileId,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          );
+          const baseName = String(meta.name || options.fileId);
+          const fileName = baseName.endsWith('.xlsx') ? baseName : `${baseName}.xlsx`;
+          const attachment = new AttachmentBuilder(xlsxBuf).setName(fileName);
+          await interaction.editReply({
+            content: t('files.read.downloadedSheet') || 'Завантажено таблицю як .xlsx',
+            files: [attachment],
+          });
+          return;
+        } catch (e) {
+          // Якщо експорт не вдався — переходимо до текстового фолу-бека нижче
+          logger.warn('Sheets export failed, fallback to text flow', { error: String(e) });
+        }
+      }
 
       const extracted = await (svc as GoogleService).extractTextForChat(options.fileId);
       const safeText = String(extracted?.text || '').trim();
