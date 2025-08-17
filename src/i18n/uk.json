@@ -264,4 +264,62 @@
       "multiMatchWarn": "SelectSheet: знайдено кілька відповідників, обираємо перший"
     }
   }
+  ,
+  "ws": {
+    "command": { "description": "Особистий workspace: збережені документи та запити" },
+    "sub": {
+      "add": { "description": "Додати файл або пошуковий запит до workspace" },
+      "list": { "description": "Показати workspace" },
+      "remove": { "description": "Видалити елемент з workspace" },
+      "run": { "description": "Виконати елемент workspace (для query) або показати файл" }
+    },
+    "opt": {
+      "type": { "description": "Тип елемента: file | query" },
+      "title": { "description": "Назва елемента" },
+      "fileid": { "description": "ID файлу (для type=file)" },
+      "query": { "description": "Пошуковий запит (для type=query)" }
+    },
+    "choices": {
+      "file": "file",
+      "query": "query"
+    },
+    "reply": {
+      "unknownSub": "❌ Невідома підкоманда",
+      "addSuccess": "✅ Додано до workspace: {{title}} (id: {{id}})",
+      "listEmpty": "ℹ️ Workspace порожній",
+      "listTitle": "🗂️ Ваш workspace:",
+      "removed": "🗑️ Видалено",
+      "notFound": "⚠️ Не знайдено",
+      "runQuery": "🔎 Виконання запиту: {{query}}",
+      "runFile": "📄 Обрано файл: {{fileId}}"
+    },
+    "error": {
+      "exec": "❌ Помилка виконання команди",
+      "missingFileId": "⚠️ Вкажіть fileid для type=file",
+      "missingQuery": "⚠️ Вкажіть query для type=query",
+      "unsupportedType": "⚠️ Непідтримуваний тип",
+      "disabled": "🚫 Функція workspace вимкнена адміністратором"
+    },
+    "format": {
+      "listLine": "• [{{type}}] {{title}} — id: {{id}}",
+      "defaultTitleFile": "Файл {{fileId}}",
+      "defaultTitleQuery": "Запит: {{query}}"
+    }
+  }
+  ,
+  "lang": {
+    "command": { "description": "Налаштування мови" },
+    "sub": {
+      "set": { "description": "Встановити бажану мову" },
+      "show": { "description": "Показати поточну мову" }
+    },
+    "opt": {
+      "locale": { "description": "Обрана мова" }
+    },
+    "reply": {
+      "setOk": "✅ Мову оновлено: {{locale}}",
+      "current": "🌐 Поточна мова: {{locale}}",
+      "unknownSub": "❌ Невідома підкоманда"
+    }
+  }
 }
