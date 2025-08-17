@@ -88,6 +88,11 @@ export class PerformanceOptimizer {
   private startMonitoring(): void {
     try {
       logger.info('📊 Запуск моніторингу продуктивності...');
+      // Пропускаємо моніторинг у тестовому середовищі, щоб не створювати таймери
+      if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
+        logger.debug('⏭️ Пропуск моніторингу продуктивності у тестовому середовищі');
+        return;
+      }
 
       // Garbage collection
       this.gcInterval = setInterval(() => {
