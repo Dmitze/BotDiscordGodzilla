@@ -1,6 +1,6 @@
 import logger from '@/utils/logger';
 
-export type IntentType = 'ANALYZE_SHEET' | 'ANALYZE_FILE' | 'QNA_GENERAL' | 'HELP' | 'UNKNOWN';
+export type IntentType = 'SEARCH' | 'ANALYZE_SHEET' | 'ANALYZE_FILE' | 'QNA_GENERAL' | 'HELP' | 'UNKNOWN';
 
 export interface DetectedIntent {
   type: IntentType;
@@ -19,6 +19,9 @@ export class IntentDetector {
 
     try {
       if (this.isHelp(q)) return { type: 'HELP', confidence: 0.9 };
+
+      const search = this.tryExtractSearch(q);
+      if (search) return { type: 'SEARCH', confidence: 0.8, params: search };
 
       const sheet = this.tryExtractSheet(q);
       if (sheet) return { type: 'ANALYZE_SHEET', confidence: 0.75, params: sheet };
@@ -41,6 +44,19 @@ export class IntentDetector {
 
   private isHelp(q: string): boolean {
     return /^help$|^помощ/i.test(q);
+  }
+
+  private tryExtractSearch(q: string): Record<string, string> | undefined {
+    // ключевые слова: поиск/найди/знайди/search/пошук
+    if (/(поиск|найд[иё]|знайд[ий]|search|пошук)/i.test(q)) {
+      // Возьмём всё после ключевого слова как query, либо содержимое в кавычках
+      const quoted = q.match(/["'«](.+?)["'»]/);
+      if (quoted?.[1]) return { query: quoted[1] };
+      const m = q.match(/(?:поиск|найд[иё]|знайд[ий]|search|пошук)\s+(.+)/i);
+      if (m?.[1]) return { query: m[1].trim() };
+      return { query: q };
+    }
+    return undefined;
   }
 
   private tryExtractSheet(q: string): Record<string, string> | undefined {
