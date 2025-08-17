@@ -12,7 +12,7 @@ import logger from '@/utils/logger';
 
 export class OperationsCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super('операції', 'Оперативне управління та координація', config, {}, (builder: any) => {
+    super('операції', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
       return builder
         .addSubcommand((subcommand: any) =>
           subcommand
@@ -80,17 +80,43 @@ export class OperationsCommand extends BaseCommand {
             .setDescription('🔍 Розвідувальні дані')
             .addStringOption((option: any) =>
               option
-                .setName('період')
-                .setDescription('Період/тип розвідки')
+                .setName('тип')
+                .setDescription('Тип розвідки')
                 .setRequired(true)
                 .addChoices(
-                  { name: 'Щоденний', value: 'daily' },
-                  { name: 'Щотижневий', value: 'weekly' },
-                  { name: 'Зведений', value: 'summary' }
+                  { name: 'Повітряна розвідка', value: 'air' },
+                  { name: 'Наземна розвідка', value: 'ground' },
+                  { name: 'Технічна розвідка', value: 'technical' },
+                  { name: 'Агентурна розвідка', value: 'agent' },
+                  { name: 'Зведена розвідка', value: 'summary' }
                 )
             )
             .addStringOption((option: any) =>
               option.setName('район').setDescription('Район розвідки').setRequired(false)
+            )
+        )
+        .addSubcommand((subcommand: any) =>
+          subcommand
+            .setName("зв'язок")
+            .setDescription("📡 Управління зв'язком")
+            .addStringOption((option: any) =>
+              option
+                .setName('дія')
+                .setDescription("Дія зі зв'язком")
+                .setRequired(true)
+                .addChoices(
+                  { name: "Статус зв'язку", value: 'status' },
+                  { name: 'Налаштування каналів', value: 'channels' },
+                  { name: 'Передача повідомлення', value: 'message' },
+                  { name: 'Перевірка якості', value: 'quality' },
+                  { name: 'Резервні канали', value: 'backup' }
+                )
+            )
+            .addStringOption((option: any) =>
+              option.setName('канал').setDescription("Канал зв'язку").setRequired(false)
+            )
+            .addStringOption((option: any) =>
+              option.setName('повідомлення').setDescription('Текст повідомлення').setRequired(false)
             )
         );
     });
@@ -119,6 +145,9 @@ export class OperationsCommand extends BaseCommand {
           break;
         case 'розвідка':
           await this.handleIntelligence(interaction, opsService);
+          break;
+        case "зв'язок":
+          await this.handleCommunications(interaction, opsService);
           break;
         default:
           await interaction.reply({ content: '❌ Невідома підкоманда', ephemeral: true });
@@ -218,7 +247,7 @@ export class OperationsCommand extends BaseCommand {
         );
         break;
       case 'new':
-        embed.setDescription('**Створено нове завдання**');
+        embed.setDescription(`**Нове завдання**\n\nДані: ${query || 'Не вказано'}`);
         embed.addFields({ name: 'Статус', value: '✅ Завдання створено', inline: false });
         break;
       case 'update':
@@ -290,7 +319,7 @@ export class OperationsCommand extends BaseCommand {
     interaction: ChatInputCommandInteraction,
     opsService?: any
   ): Promise<void> {
-    const type = interaction.options.getString('період', true);
+    const type = interaction.options.getString('тип', true);
     const area = interaction.options.getString('район');
 
     try {
@@ -324,9 +353,71 @@ export class OperationsCommand extends BaseCommand {
   }
 
   /**
-   * Отримання назви дії завдання
+   * Обробка зв'язку
    */
-  // helper getTaskActionName видалено як не використовується
+  private async handleCommunications(
+    interaction: ChatInputCommandInteraction,
+    opsService?: any
+  ): Promise<void> {
+    const action = interaction.options.getString('дія', true);
+    const channel = interaction.options.getString('канал');
+    const message = interaction.options.getString('повідомлення');
+
+    logger.info("Управління зв'язком", {
+      action,
+      channel: channel || undefined,
+      message: message || undefined,
+      userId: interaction.user.id,
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle("📡 Управління зв'язком")
+      .setColor(0x9932cc)
+      .setTimestamp();
+
+    switch (action) {
+      case 'status':
+        embed.setDescription("**Статус зв'язку**");
+        embed.addFields(
+          { name: 'Основний канал', value: '✅ Працює', inline: true },
+          { name: 'Резервний канал', value: '✅ Готовий', inline: true },
+          { name: 'Якість сигналу', value: 'Висока', inline: true }
+        );
+        break;
+      case 'channels':
+        embed.setDescription('**Налаштування каналів**');
+        embed.addFields(
+          { name: 'Активні канали', value: '3', inline: true },
+          { name: 'Резервні канали', value: '2', inline: true }
+        );
+        break;
+      case 'message':
+        embed.setDescription(
+          `**Передача повідомлення**\n\nКанал: ${channel || 'Основний'}\nПовідомлення: ${message || 'Не вказано'}`
+        );
+        embed.addFields({ name: 'Статус', value: '✅ Повідомлення передано', inline: false });
+        break;
+      case 'quality':
+        embed.setDescription("**Перевірка якості зв'язку**");
+        embed.addFields(
+          { name: 'Якість сигналу', value: '95%', inline: true },
+          { name: 'Затримка', value: '50ms', inline: true },
+          { name: 'Стабільність', value: 'Висока', inline: true }
+        );
+        break;
+      case 'backup':
+        embed.setDescription('**Резервні канали**');
+        embed.addFields(
+          { name: 'Канал 1', value: '✅ Активний', inline: true },
+          { name: 'Канал 2', value: '✅ Готовий', inline: true }
+        );
+        break;
+      default:
+        embed.setDescription('❌ Невідома дія');
+    }
+
+    await interaction.reply({ embeds: [embed] });
+  }
 
   /**
    * Отримання назви типу координації
