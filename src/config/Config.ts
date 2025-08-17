@@ -144,13 +144,24 @@ export class Config {
         enableUserWorkspace: this.getEnv('ENABLE_USER_WORKSPACE', 'true').toLowerCase() === 'true',
         enableDisambiguation:
           this.getEnv('ENABLE_DISAMBIGUATION', 'true').toLowerCase() === 'true',
+        // PII masking flags (defaults ON for safety)
+        enablePiiMasking: this.getEnv('ENABLE_PII_MASKING', 'true').toLowerCase() === 'true',
+        piiMaskEmail: this.getEnv('PII_MASK_EMAIL', 'true').toLowerCase() === 'true',
+        piiMaskPhone: this.getEnv('PII_MASK_PHONE', 'true').toLowerCase() === 'true',
       };
       logger.debug('✅ Features конфігурація завантажена');
       return config;
     } catch (error) {
       logger.error('❌ Помилка завантаження Features конфігурації:', error as any);
       // Безпечно повернути дефолти
-      return { defaultLocale: 'uk', enableUserWorkspace: true, enableDisambiguation: true };
+      return {
+        defaultLocale: 'uk',
+        enableUserWorkspace: true,
+        enableDisambiguation: true,
+        enablePiiMasking: true,
+        piiMaskEmail: true,
+        piiMaskPhone: true,
+      };
     }
   }
 
@@ -687,6 +698,36 @@ export class Config {
   private static getRequiredEnv(key: string): string {
     const value = process.env[key];
     if (!value) {
+      // У тестовому середовищі повертаємо безпечні заглушки для всіх обов'язкових ключів,
+      // щоб юніт/інтеграційні тести могли виконуватися без реального оточення.
+      const isTestEnv = process.env['NODE_ENV'] === 'test' || !!process.env['JEST_WORKER_ID'];
+      if (isTestEnv) {
+        const testStubMap: Record<string, string> = {
+          // Discord
+          DISCORD_TOKEN: 'stub-discord-token',
+          DISCORD_CLIENT_ID: 'stub-discord-client-id',
+          DISCORD_GUILD_ID: 'stub-discord-guild-id',
+          // Google
+          GOOGLE_API_KEY: 'AIzaStub',
+          GOOGLE_APPLICATION_CREDENTIALS: '',
+          GOOGLE_SPREADSHEET_ID: 'stub-spreadsheet-id',
+          GOOGLE_DRIVE_FOLDER_ID: 'stub-drive-folder-id',
+          GOOGLE_APP_SCRIPT_URL: 'http://localhost/stub-app-script',
+          GOOGLE_CLIENT_EMAIL: 'stub-sa@example.iam.gserviceaccount.com',
+          GOOGLE_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nMII...stub...\n-----END PRIVATE KEY-----\n',
+          GOOGLE_PROJECT_ID: 'stub-project-id',
+          // OpenAI
+          OPENAI_API_KEY: 'sk-test-stub',
+        };
+        const stub = testStubMap[key];
+        if (typeof stub !== 'undefined') {
+          logger.warn(`⚠️ [TEST] ${key} не задано, використовую тестову заглушку`);
+          return stub;
+        }
+        // Для інших ключів у тестах повертаємо універсальну заглушку
+        logger.warn(`⚠️ [TEST] ${key} не задано, використовую 'stub'`);
+        return 'stub';
+      }
       // М'який режим для Google-ключів у локальному smoke-запуску
       const allowGoogleStubs = ((process.env['ALLOW_GOOGLE_STUBS'] as string) || '').toLowerCase() === 'true';
       const softGoogleKeys = new Set<string>([
