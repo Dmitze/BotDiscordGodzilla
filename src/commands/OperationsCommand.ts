@@ -324,70 +324,6 @@ export class OperationsCommand extends BaseCommand {
   }
 
   /**
-   * Обробка зв'язку
-   */
-  private async handleCommunications(interaction: ChatInputCommandInteraction): Promise<void> {
-    const action = interaction.options.getString('action', true);
-    const channel = interaction.options.getString('channel');
-    const message = interaction.options.getString('message');
-
-    logger.info("Управління зв'язком", {
-      action,
-      channel: channel || undefined,
-      message: message || undefined,
-      userId: interaction.user.id,
-    });
-
-    const embed = new EmbedBuilder()
-      .setTitle("📡 Управління зв'язком")
-      .setColor(0x9932cc)
-      .setTimestamp();
-
-    switch (action) {
-      case 'status':
-        embed.setDescription("**Статус зв'язку**");
-        embed.addFields(
-          { name: 'Основний канал', value: '✅ Працює', inline: true },
-          { name: 'Резервний канал', value: '✅ Готовий', inline: true },
-          { name: 'Якість сигналу', value: 'Висока', inline: true }
-        );
-        break;
-      case 'channels':
-        embed.setDescription('**Налаштування каналів**');
-        embed.addFields(
-          { name: 'Активні канали', value: '3', inline: true },
-          { name: 'Резервні канали', value: '2', inline: true }
-        );
-        break;
-      case 'message':
-        embed.setDescription(
-          `**Передача повідомлення**\n\nКанал: ${channel || 'Основний'}\nПовідомлення: ${message || 'Не вказано'}`
-        );
-        embed.addFields({ name: 'Статус', value: '✅ Повідомлення передано', inline: false });
-        break;
-      case 'quality':
-        embed.setDescription("**Перевірка якості зв'язку**");
-        embed.addFields(
-          { name: 'Якість сигналу', value: '95%', inline: true },
-          { name: 'Затримка', value: '50ms', inline: true },
-          { name: 'Стабільність', value: 'Висока', inline: true }
-        );
-        break;
-      case 'backup':
-        embed.setDescription('**Резервні канали**');
-        embed.addFields(
-          { name: 'Канал 1', value: '✅ Активний', inline: true },
-          { name: 'Канал 2', value: '✅ Готовий', inline: true }
-        );
-        break;
-      default:
-        embed.setDescription('❌ Невідома дія');
-    }
-
-    await interaction.reply({ embeds: [embed] });
-  }
-
-  /**
    * Отримання назви дії завдання
    */
   // helper getTaskActionName видалено як не використовується
@@ -421,9 +357,4 @@ export class OperationsCommand extends BaseCommand {
 
     return typeNames[type] || type;
   }
-
-  /**
-   * Отримання назви дії зв'язку
-   */
-  // helper getCommunicationActionName видалено як не використовується
 }
