@@ -3,14 +3,21 @@
  * Покращена продуктивність та стабільність
  */
 
-import { google } from 'googleapis';
-import type { sheets_v4, drive_v3, docs_v1 } from 'googleapis';
+import { google, type sheets_v4, type drive_v3, type docs_v1 } from 'googleapis';
 import type { DocBlock } from '@/types/docs';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import type { MetricsService } from './MetricsService';
 import { createHash } from 'crypto';
 import pdfParse from 'pdf-parse';
 import * as mammoth from 'mammoth';
+// Parsers
+import { ParserRouter } from '@/parsers/ParserRouter';
+import { PlainTextParser } from '@/parsers/PlainTextParser';
+import { PdfParser } from '@/parsers/PdfParser';
+import { DocxParser } from '@/parsers/DocxParser';
+import { SheetsParser } from '@/parsers/SheetsParser';
+import { ImageOcrParser } from '@/parsers/ImageOcrParser';
+import { GoogleDocsExportParser } from '@/parsers/GoogleDocsExportParser';
 import type { BotConfig, HealthStatus, ServiceStats, SheetData, BatchSheetData } from '@/types';
 import type { DriveListQuery, DriveListResult, DriveFile } from '@/types/drive';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
@@ -121,154 +128,43 @@ export class GoogleService extends BaseServiceClass {
     let text = '';
     let source: 'export' | 'parser' | 'ocr' | 'raw' = 'raw';
 
-    // Маршрутизация парсеров
+    // Маршрутизация через модульные парсеры
     try {
-      if (mime === 'application/vnd.google-apps.document') {
-        // Google Docs → экспорт в text/plain
-        const opStart = Date.now();
-        const buf = await this.exportFile(fileId, 'text/plain');
-        buffer = buf;
-        text = buf.toString('utf8');
-        source = 'export';
-        try {
-          this.metrics?.recordFileOperation({ operation: 'export_text', status: 'success', mime, fileId });
-          this.metrics?.observeFileOperationLatency('export_text', mime, Date.now() - opStart);
-          this.metrics?.observeTextSizeBytes('export', Buffer.byteLength(text, 'utf8'));
-          if (mime) this.metrics?.incrementMimeType(mime);
-        } catch {}
-      } else if (mime === 'application/vnd.google-apps.spreadsheet') {
-        // Google Sheets → экспорт в CSV
-        const opStart = Date.now();
-        const buf = await this.exportFile(fileId, 'text/csv');
-        buffer = buf;
-        text = buf.toString('utf8');
-        source = 'export';
-        try {
-          this.metrics?.recordFileOperation({ operation: 'export_csv', status: 'success', mime, fileId });
-          this.metrics?.observeFileOperationLatency('export_csv', mime, Date.now() - opStart);
-          this.metrics?.observeTextSizeBytes('export', Buffer.byteLength(text, 'utf8'));
-          if (mime) this.metrics?.incrementMimeType(mime);
-        } catch {}
-      } else if (mime === 'application/pdf') {
-        // PDF → pdf-parse, при сбое → OCR
-        const dlStart = Date.now();
-        const buf = await this.downloadFile(fileId);
-        buffer = buf;
-        try {
-          this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime, fileId });
-          this.metrics?.observeFileOperationLatency('download', mime, Date.now() - dlStart);
-          this.metrics?.observeTextSizeBytes('download_bytes', buf.length);
-          if (mime) this.metrics?.incrementMimeType(mime);
-        } catch {}
-        try {
-          const parseStart = Date.now();
-          const parsed = await pdfParse(buf);
-          text = parsed.text || '';
-          source = 'parser';
-          try {
-            this.metrics?.recordFileOperation({ operation: 'parse_pdf', status: 'success', mime, fileId });
-            this.metrics?.observeFileOperationLatency('parse_pdf', mime, Date.now() - parseStart);
-            this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(text, 'utf8'));
-          } catch {}
-        } catch (e) {
-          warnings.push('pdf-parse failed, fallback to OCR');
-          const ocrStart = Date.now();
-          text = await this.extractTextFromBuffer(buf);
-          source = 'ocr';
-          try {
-            this.metrics?.recordFileOperation({ operation: 'ocr_image', status: 'success', mime, fileId });
-            this.metrics?.observeFileOperationLatency('ocr_image', mime, Date.now() - ocrStart);
-            this.metrics?.observeTextSizeBytes('ocr', Buffer.byteLength(text, 'utf8'));
-          } catch {}
+      const router = new ParserRouter([
+        new GoogleDocsExportParser(),
+        new SheetsParser(),
+        new PdfParser(),
+        new DocxParser(),
+        new ImageOcrParser(),
+        new PlainTextParser(),
+      ]);
+      const parsed = await router.parse(
+        {
+          id: String(meta.id || fileId),
+          name: String((meta as any).name || ''),
+          mimeType: mime,
+          modifiedTime: meta.modifiedTime,
+          owners: (meta as any).owners || [],
+          webViewLink: (meta as any).webViewLink,
+          iconLink: (meta as any).iconLink,
+          size: (meta as any).size ? Number((meta as any).size) : undefined,
+          isShortcut: (meta as any).shortcutDetails ? true : false,
+          shortcutTargetId: (meta as any).shortcutDetails?.targetId,
+        } as any,
+        {
+          exportFile: (id, m) => this.exportFile(id, m),
+          downloadFile: (id) => this.downloadFile(id),
+          extractTextFromImage: async (_file) => {
+            // not used in current parsers; OCR uses buffer path
+            const buf = await this.downloadFile(fileId);
+            return this.extractTextFromBuffer(buf);
+          },
+          extractTextFromBuffer: (buf) => this.extractTextFromBuffer(buf),
         }
-      } else if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mime === 'application/msword') {
-        // DOCX/DOC → mammoth (doc → предварительная совместимость ограничена)
-        const dlStart = Date.now();
-        const buf = await this.downloadFile(fileId);
-        buffer = buf;
-        try {
-          this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime, fileId });
-          this.metrics?.observeFileOperationLatency('download', mime, Date.now() - dlStart);
-          this.metrics?.observeTextSizeBytes('download_bytes', buf.length);
-          if (mime) this.metrics?.incrementMimeType(mime);
-        } catch {}
-        try {
-          // mammoth в Node ожидает объект { buffer: Buffer }
-          const parseStart = Date.now();
-          const { value } = await mammoth.extractRawText({ buffer: buf });
-          text = value || '';
-          source = 'parser';
-          try {
-            this.metrics?.recordFileOperation({ operation: 'parse_word', status: 'success', mime, fileId });
-            this.metrics?.observeFileOperationLatency('parse_word', mime, Date.now() - parseStart);
-            this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(text, 'utf8'));
-          } catch {}
-        } catch (e) {
-          warnings.push('mammoth failed, fallback to raw text');
-          text = buf.toString('utf8');
-          source = 'raw';
-          try {
-            this.metrics?.recordFileOperation({ operation: 'fallback_raw', status: 'success', mime, fileId });
-            this.metrics?.observeTextSizeBytes('raw', Buffer.byteLength(text, 'utf8'));
-          } catch {}
-        }
-      } else if (/^image\//i.test(mime)) {
-        // Изображения → OCR
-        const file = await this.getDriveFileMetadata(fileId);
-        const ocrStart = Date.now();
-        text = await this.extractTextFromImage(file);
-        source = 'ocr';
-        try {
-          this.metrics?.recordFileOperation({ operation: 'ocr_image', status: 'success', mime, fileId });
-          this.metrics?.observeFileOperationLatency('ocr_image', mime, Date.now() - ocrStart);
-          this.metrics?.observeTextSizeBytes('ocr', Buffer.byteLength(text, 'utf8'));
-          if (mime) this.metrics?.incrementMimeType(mime);
-        } catch {}
-      } else if (mime === 'text/plain' || mime === 'text/markdown' || mime === 'application/json' || mime === 'text/csv') {
-        // Текстовые форматы → прямое чтение
-        const dlStart = Date.now();
-        const buf = await this.downloadFile(fileId);
-        buffer = buf;
-        text = buf.toString('utf8');
-        source = 'raw';
-        try {
-          this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime, fileId });
-          this.metrics?.observeFileOperationLatency('download', mime, Date.now() - dlStart);
-          this.metrics?.observeTextSizeBytes('raw', Buffer.byteLength(text, 'utf8'));
-          if (mime) this.metrics?.incrementMimeType(mime);
-        } catch {}
-      } else {
-        // Неизвестный/бинарный формат → попытка экспортировать в текст, затем OCR как крайний случай
-        try {
-          const opStart = Date.now();
-          const buf = await this.exportFile(fileId, 'text/plain');
-          buffer = buf;
-          text = buf.toString('utf8');
-          source = 'export';
-          try {
-            this.metrics?.recordFileOperation({ operation: 'export_text', status: 'success', mime, fileId });
-            this.metrics?.observeFileOperationLatency('export_text', mime, Date.now() - opStart);
-            this.metrics?.observeTextSizeBytes('export', Buffer.byteLength(text, 'utf8'));
-            if (mime) this.metrics?.incrementMimeType(mime);
-          } catch {}
-        } catch (e) {
-          warnings.push('export to text/plain failed, fallback to OCR');
-          const dlStart = Date.now();
-          const buf = await this.downloadFile(fileId);
-          buffer = buf;
-          const ocrStart = Date.now();
-          text = await this.extractTextFromBuffer(buf);
-          source = 'ocr';
-          try {
-            this.metrics?.recordFileOperation({ operation: 'download', status: 'success', mime, fileId });
-            this.metrics?.observeFileOperationLatency('download', mime, Date.now() - dlStart);
-            this.metrics?.recordFileOperation({ operation: 'ocr_image', status: 'success', mime, fileId });
-            this.metrics?.observeFileOperationLatency('ocr_image', mime, Date.now() - ocrStart);
-            this.metrics?.observeTextSizeBytes('ocr', Buffer.byteLength(text, 'utf8'));
-            if (mime) this.metrics?.incrementMimeType(mime);
-          } catch {}
-        }
-      }
+      );
+      text = parsed.text;
+      source = (parsed.source as any) ?? 'raw';
+      buffer = parsed.buffer ?? null;
     } catch (error) {
       logger.error('❌ Помилка витягання тексту', {
         type: 'processing_error',
@@ -293,7 +189,7 @@ export class GoogleService extends BaseServiceClass {
 
     const result = { text: safe, checksum, modifiedTime: modified, source, warnings } as const;
     try {
-      const ttl = this.config.drive.ttlTextSec ?? 300;
+      const ttl = this.config.drive?.ttlTextSec ?? 300;
       await this.cacheService.set(baseCacheKey, result, ttl);
     } catch { /* istanbul ignore next */ }
     // Final overall metrics for extractTextForChat
