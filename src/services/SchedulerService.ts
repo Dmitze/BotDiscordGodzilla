@@ -83,11 +83,29 @@ class SchedulerService {
   }
 
   /**
+   * Внутрішня перевірка: чи потрібно вимкнути cron (тести або DISABLE_CRON)
+   */
+  private isCronDisabled(): boolean {
+    return (
+      process.env['NODE_ENV'] === 'test' ||
+      Boolean(process.env['JEST_WORKER_ID']) ||
+      String(process.env['DISABLE_CRON']).toLowerCase() === 'true'
+    );
+  }
+
+  /**
    * Ініціалізація Scheduler сервісу
    */
   async initialize(): Promise<void> {
     try {
       logger.info('⏰ Ініціалізація Scheduler сервісу...');
+
+      // Пропускаємо ініціалізацію у тестовому середовищі
+      if (this.isCronDisabled()) {
+        logger.debug('⏭️ Пропуск ініціалізації Scheduler у тестовому середовищі');
+        this._isActive = false;
+        return;
+      }
 
       // Створення планувальника
       await this.createScheduler();
@@ -168,6 +186,11 @@ class SchedulerService {
     options: any = {}
   ): any {
     try {
+      // Пропускаємо планування завдань у тестовому середовищі
+      if (this.isCronDisabled()) {
+        logger.debug(`⏭️ Пропуск планування завдання "${name}" у тестовому середовищі`);
+        return null;
+      }
       if (!this.scheduler) {
         logger.warn(`⚠️ Сервіс планувальника недоступний. Завдання "${name}" не буде заплановано.`);
         return null;
