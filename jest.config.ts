@@ -40,6 +40,9 @@ const config: Config.InitialOptions = {
   verbose: true,
   clearMocks: true,
   restoreMocks: true,
+  // Allow capping Jest workers via env to reduce load locally/CI
+  // Example: $env:JEST_MAX_WORKERS="50%"; npm test
+  maxWorkers: process.env['JEST_MAX_WORKERS'] || '50%',
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
