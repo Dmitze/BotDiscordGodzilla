@@ -3,9 +3,6 @@
  * Розширені можливості пошуку та фільтрації даних
  */
 
-<<<<<<< HEAD
-// No runtime imports needed from discord.js here
-=======
 import {
   EmbedBuilder,
   ActionRowBuilder,
@@ -15,7 +12,6 @@ import {
   StringSelectMenuOptionBuilder,
   ChatInputCommandInteraction,
 } from 'discord.js';
->>>>>>> fb9e7d22 (feat(command): інтеграція з GoogleService)
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
 import { BaseCommand } from './BaseCommand';
@@ -23,16 +19,7 @@ import logger from '@/utils/logger';
 
 export class EnhancedSearchCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
-<<<<<<< HEAD
   constructor(config: BotConfig, googleService?: GoogleService) {
-=======
-  private readonly sheetsContext: SheetsContextService | undefined;
-  constructor(
-    config: BotConfig,
-    googleService?: GoogleService,
-    sheetsContext?: SheetsContextService
-  ) {
->>>>>>> fb9e7d22 (feat(command): інтеграція з GoogleService)
     super(
       'розширений_пошук',
       '🔍 Покращений пошук з діапазонами та сортуванням',
@@ -112,7 +99,6 @@ export class EnhancedSearchCommand extends BaseCommand {
    */
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
-<<<<<<< HEAD
 
     try {
       // Тести очікують виклики для обох варіантів поля запиту

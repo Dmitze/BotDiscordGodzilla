@@ -18,7 +18,7 @@ import {
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
-import { redact } from '@/utils/redact';
+
 import type { GoogleService } from '@/services/GoogleService';
 import type { AIService } from '@/services/AIService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
@@ -79,6 +79,7 @@ export class FileManagerCommand extends BaseCommand {
     fileId: string;
     fileName: string;
     chunks: string[];
+    link?: string;
     createdAt: number; // unix seconds
   }>();
 
@@ -235,6 +236,55 @@ export class FileManagerCommand extends BaseCommand {
     });
   }
 
+  /**
+   * Створення звіту на основі файлу
+   */
+  private async handleReport(
+    interaction: ChatInputCommandInteraction,
+    options: FileReportOptions
+  ): Promise<FileResult> {
+    const googleSvc = this.getGoogleService(interaction);
+    if (!googleSvc) {
+      return { success: false, message: t('files.error.serviceUnavailable') };
+    }
+
+    try {
+      // Отримуємо базовий текст для звіту
+      const meta = await googleSvc.getDriveFileMetadata(options.fileId);
+      const { text, source } = await googleSvc.extractTextForChat(options.fileId);
+
+      const title = String(meta.name || options.fileId);
+      const header = `Звіт по файлу: ${title}\nДжерело тексту: ${source}\n\n`;
+      const body = text || t('files.report.noContent');
+      const reportTxt = `${header}${body}`;
+      const allowLink = !(this.config.drive?.hideWebLink);
+      const viewLink = allowLink ? String((meta as any).webViewLink || '') : '';
+      const linkLine = allowLink && viewLink ? `\n${t('files.summary.link') || 'Посилання'}: ${viewLink}` : '';
+
+      // Поки підтримуємо тільки TXT. Для інших форматів – фолбек.
+      const reqFmt = options.format || 'txt';
+      if (reqFmt !== 'txt') {
+        return {
+          success: true,
+          message: `${t('files.report.fallbackTxt') || 'Формат поки що не підтримується, надано TXT-версію.'}${linkLine}`,
+          file: Buffer.from(reportTxt, 'utf8'),
+          fileName: `${title}.txt`,
+        };
+      }
+
+      return {
+        success: true,
+        message: `${t('files.report.generated') || 'Звіт згенеровано.'}${linkLine}`,
+        file: Buffer.from(reportTxt, 'utf8'),
+        fileName: `${title}.txt`,
+      };
+    } catch (error) {
+      logger.error('FileManager report error', { error: String(error) });
+      const msg = this.mapGoogleApiErrorToMessage(error) || t('files.error.process');
+      return { success: false, message: msg };
+    }
+  }
+
   protected override async onAutocomplete(options: import('@/commands/BaseCommand').CommandAutocompleteOptions): Promise<void> {
     const interaction = options.interaction as any;
     try {
@@ -309,7 +359,7 @@ export class FileManagerCommand extends BaseCommand {
       }
 
       // Логування події
-      this.logSecurityEvent('file_manager_command_executed', {
+      logger.info('file_manager_command_executed', {
         userId: interaction.user.id,
         userTag: interaction.user.tag,
         subcommand,
@@ -638,8 +688,14 @@ export class FileManagerCommand extends BaseCommand {
       new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: safePage, ts, action: 'close' }))
         .setLabel(t('files.search.buttons.close')).setStyle(ButtonStyle.Danger),
     );
-
-    return { embed, components: [row1, row2] };
+    const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [row1, row2];
+    const allowLink = !(this.config.drive?.hideWebLink);
+    if (allowLink && session.folderId && session.folderId !== 'root') {
+      const folderUrl = `https://drive.google.com/drive/folders/${encodeURIComponent(session.folderId)}`;
+      const linkBtn = new ButtonBuilder().setLabel('Джерело').setStyle(ButtonStyle.Link).setURL(folderUrl);
+      rows.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn));
+    }
+    return { embed, components: rows };
   }
 
   private buildCustomId(args: { sid: string; page: number; ts: number; action?: 'toggle' | 'reset' | 'close' }): string {
@@ -666,6 +722,77 @@ export class FileManagerCommand extends BaseCommand {
     if (a === 'toggle' || a === 'reset' || a === 'close') res.action = a;
     if (Number.isFinite(t)) res.ts = t;
     return res;
+  }
+
+  // --- Text pagination helpers ---
+  private buildTextCustomId(args: { sid: string; page: number; ts: number; action?: 'close' }): string {
+    const { sid, page, ts, action } = args;
+    return `filetxt|sid=${sid}|p=${page}|${action ? `a=${action}|` : ''}t=${ts}`;
+  }
+
+  private parseTextCustomId(customId: string): { sid: string; page: number; ts?: number; action?: 'close' } | null {
+    if (!customId.startsWith('filetxt|')) return null;
+    const parts = customId.split('|').slice(1);
+    const map = new Map(parts.map(kv => {
+      const i = kv.indexOf('=');
+      return i > 0 ? [kv.slice(0, i), kv.slice(i + 1)] as const : [kv, ''];
+    }));
+    const sid = map.get('sid');
+    const p = Number(map.get('p') || '1');
+    const a = map.get('a') as any;
+    const t = Number(map.get('t') || '');
+    if (!sid) return null;
+    const res: { sid: string; page: number; ts?: number; action?: 'close' } = {
+      sid,
+      page: Number.isFinite(p) ? p : 1,
+    };
+    if (a === 'close') res.action = a;
+    if (Number.isFinite(t)) res.ts = t;
+    return res;
+  }
+
+  private buildTextPage(args: { sid: string; page: number; fileName: string; chunks: string[]; link?: string }): { embed: EmbedBuilder; components: ActionRowBuilder<MessageActionRowComponentBuilder>[] } {
+    const { sid, page, fileName, chunks, link } = args;
+    const totalPages = Math.max(1, chunks.length);
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const ts = Math.floor(Date.now() / 1000);
+    const embed = new EmbedBuilder()
+      .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
+      .setDescription(chunks[safePage - 1] || '')
+      .setColor(0x22c55e)
+      .setTimestamp()
+      .setFooter({ text: `Сторінка ${safePage}/${totalPages}` });
+
+    const prevBtn = new ButtonBuilder()
+      .setCustomId(this.buildTextCustomId({ sid, page: Math.max(1, safePage - 1), ts }))
+      .setLabel(t('files.search.buttons.prev'))
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(safePage === 1);
+    const nextBtn = new ButtonBuilder()
+      .setCustomId(this.buildTextCustomId({ sid, page: Math.min(totalPages, safePage + 1), ts }))
+      .setLabel(t('files.search.buttons.next'))
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(safePage === totalPages);
+    const closeBtn = new ButtonBuilder()
+      .setCustomId(this.buildTextCustomId({ sid, page: safePage, ts, action: 'close' }))
+      .setLabel(t('files.search.buttons.close'))
+      .setStyle(ButtonStyle.Danger);
+
+    const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(prevBtn, nextBtn, closeBtn);
+    const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [row];
+    if (link) {
+      const linkBtn = new ButtonBuilder()
+        .setLabel('Джерело')
+        .setStyle(ButtonStyle.Link)
+        .setURL(link);
+      const rowLink = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn);
+      rows.push(rowLink);
+    }
+    return { embed, components: rows };
+  }
+
+  private generateSessionId(prefix: string): string {
+    return `${prefix}_${Math.random().toString(36).slice(2, 8)}_${Date.now().toString(36)}`;
   }
 
   protected override async onComponent(options: import('@/commands/BaseCommand').CommandComponentOptions): Promise<void> {
@@ -698,7 +825,9 @@ export class FileManagerCommand extends BaseCommand {
           return;
         }
 
-        const { embed, components } = this.buildTextPage({ sid, page, fileName: session.fileName, chunks: session.chunks });
+        const args: { sid: string; page: number; fileName: string; chunks: string[]; link?: string } = { sid, page, fileName: session.fileName, chunks: session.chunks };
+        if (session.link) args.link = session.link;
+        const { embed, components } = this.buildTextPage(args);
         if (interaction.deferred || interaction.replied) {
           await interaction.editReply({ embeds: [embed], components });
         } else {
@@ -749,181 +878,15 @@ export class FileManagerCommand extends BaseCommand {
       }
     } catch (error) {
       logger.error('FileManager component error', { error: String(error) });
-      if (!interaction.deferred && !interaction.replied) {
-        await interaction.reply({ content: t('doc.error.updatePage'), ephemeral: true });
-      }
-    }
-  }
-
-  /**
-   * Потік читання тексту з файлу з TL;DR та пагінацією
-   */
-  private async handleReadTextFlow(
-    interaction: ChatInputCommandInteraction,
-    options: FileReadOptions
-  ): Promise<void> {
-    const svc = this.getGoogleService(interaction);
-    if (!svc) {
-      await interaction.editReply({ content: t('files.error.serviceUnavailable') });
-      return;
-    }
-
-    try {
-      const meta = await svc.getDriveFileMetadata(options.fileId);
-      if (!meta || !meta.mimeType) {
-        await interaction.editReply({ content: t('files.error.metadata') });
-        return;
-      }
-
-      const driveCfg = this.config.drive;
-      if (driveCfg?.allowedMime && driveCfg.allowedMime.length && !this.isMimeAllowed(meta.mimeType, driveCfg.allowedMime)) {
-        await interaction.editReply({ content: t('files.policy.disallowedMime') });
-        return;
-      }
-      if (driveCfg?.ownerAllowlist && driveCfg.ownerAllowlist.length) {
-        const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
-        if (!this.isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
-          await interaction.editReply({ content: t('files.policy.deniedOwner') });
-          return;
+      try {
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.reply({ content: t('files.error.process'), ephemeral: true });
+        } else {
+          await interaction.followUp({ content: t('files.error.process'), ephemeral: true });
         }
-      }
-
-      // Пытаемся извлечь текст безопасно
-      const extracted = await (svc as GoogleService).extractTextForChat(options.fileId);
-      const safeText = String(extracted?.text || '').trim();
-
-      // Если текст пуст — fallback к сообщению о большом файле/ссылке
-      if (!safeText) {
-        const sizeBytes = Number((meta as any).size || 0) || 0;
-        const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
-        if (tooLarge) {
-          const linkAllowed = !(driveCfg?.hideWebLink);
-          const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
-          const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
-          const summary = t('files.summary.largeFile', {
-            name: String(meta.name || ''),
-            mimeType: String(meta.mimeType || ''),
-            size: sizeMb,
-          });
-          const linkText = linkAllowed && link ? `\n${t('files.summary.link')}: ${link}` : '';
-          await interaction.editReply({ content: `${summary}${linkText}` });
-          return;
-        }
-        await interaction.editReply({ content: t('files.error.noText') });
-        return;
-      }
-
-      const fileName = String(meta.name || options.fileId);
-      const quick = sanitizeTextForChat(safeText, 1800);
-
-      // Если вмещается в один короткий ответ — просто отдаем
-      if (quick.length >= safeText.length) {
-        const embed = new EmbedBuilder()
-          .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
-          .setDescription(quick)
-          .setColor(0x22c55e)
-          .setTimestamp();
-        await interaction.editReply({ embeds: [embed] });
-        return;
-      }
-
-      // Иначе — TL;DR + кнопка «Показати ще», после нажатия — пагінація
-      const tldr = summarizeTlDr(safeText, { budget: 800, minSentLen: 40 });
-      const chunks = buildPaginatedChunks(safeText, { maxChunkLen: 1800 });
-      const sid = this.generateSessionId('txt');
-      FileManagerCommand.textSessions.set(sid, {
-        fileId: options.fileId,
-        fileName,
-        chunks,
-        createdAt: Math.floor(Date.now() / 1000),
-      });
-
-      const ts = Math.floor(Date.now() / 1000);
-      const openBtn = new ButtonBuilder()
-        .setCustomId(this.buildTextCustomId({ sid, page: 1, ts }))
-        .setLabel('Показати ще')
-        .setStyle(ButtonStyle.Primary);
-      const closeBtn = new ButtonBuilder()
-        .setCustomId(this.buildTextCustomId({ sid, page: 1, ts, action: 'close' }))
-        .setLabel(t('files.search.buttons.close'))
-        .setStyle(ButtonStyle.Danger);
-      const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(openBtn, closeBtn);
-
-      const embed = new EmbedBuilder()
-        .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
-        .setDescription(tldr)
-        .setColor(0x22c55e)
-        .setTimestamp();
-      await interaction.editReply({ embeds: [embed], components: [row] });
-    } catch (error) {
-      logger.error('FileManager read flow error', { error: String(error) });
-      await interaction.editReply({ content: t('files.error.process') });
+      } catch {}
     }
   }
-
-  private buildTextPage(args: { sid: string; page: number; fileName: string; chunks: string[] }): { embed: EmbedBuilder; components: ActionRowBuilder<MessageActionRowComponentBuilder>[] } {
-    const { sid, page, fileName, chunks } = args;
-    const totalPages = Math.max(1, chunks.length);
-    const safePage = Math.min(Math.max(1, page), totalPages);
-    const body = chunks[safePage - 1] || '';
-    const ts = Math.floor(Date.now() / 1000);
-    const embed = new EmbedBuilder()
-      .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
-      .setDescription(body)
-      .setColor(0x22c55e)
-      .setTimestamp()
-      .setFooter({ text: `Сторінка ${safePage}/${totalPages}` });
-
-    const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: 1, ts }))
-        .setLabel(t('files.search.buttons.first')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === 1),
-      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: Math.max(1, safePage - 1), ts }))
-        .setLabel(t('files.search.buttons.prev')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === 1),
-      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: Math.min(totalPages, safePage + 1), ts }))
-        .setLabel(t('files.search.buttons.next')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === totalPages),
-      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: totalPages, ts }))
-        .setLabel(t('files.search.buttons.last')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === totalPages),
-    );
-    const row2 = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(this.buildTextCustomId({ sid, page: safePage, ts, action: 'close' }))
-        .setLabel(t('files.search.buttons.close')).setStyle(ButtonStyle.Danger),
-    );
-    return { embed, components: [row, row2] };
-  }
-
-  private buildTextCustomId(args: { sid: string; page: number; ts: number; action?: 'close' }): string {
-    const { sid, page, ts, action } = args;
-    return `filetxt|sid=${sid}|p=${page}|${action ? `a=${action}|` : ''}t=${ts}`;
-  }
-
-  private parseTextCustomId(customId: string): { sid: string; page: number; ts?: number; action?: 'close' } | null {
-    if (!customId.startsWith('filetxt|')) return null;
-    const parts = customId.split('|').slice(1);
-    const map = new Map(parts.map(kv => {
-      const i = kv.indexOf('=');
-      return i > 0 ? [kv.slice(0, i), kv.slice(i + 1)] as const : [kv, ''];
-    }));
-    const sid = map.get('sid');
-    const p = Number(map.get('p') || '1');
-    const a = map.get('a') as any;
-    const t = Number(map.get('t') || '');
-    if (!sid) return null;
-    const res: { sid: string; page: number; ts?: number; action?: 'close' } = {
-      sid,
-      page: Number.isFinite(p) ? p : 1,
-    };
-    if (a === 'close') res.action = a;
-    if (Number.isFinite(t)) res.ts = t;
-    return res;
-  }
-
-  private generateSessionId(prefix: string): string {
-    const rnd = Math.random().toString(36).slice(2, 8);
-    const ts = Math.floor(Date.now() / 1000).toString(36);
-    return `${prefix}${ts}${rnd}`;
-  }
-
-  
 
   /**
    * Обробка аналізу файлу
@@ -978,272 +941,255 @@ export class FileManagerCommand extends BaseCommand {
 
     // Отримуємо текстову витримку з файлу для аналізу (offline)
     let contextText = '';
-    try {
-      if (googleSvc) {
-        if (meta.mimeType === 'application/vnd.google-apps.document') {
-          const buf = await googleSvc.exportDriveFile(options.fileId, 'text/plain');
-          contextText = buf.toString('utf8').slice(0, 4000);
-        } else if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
-          const buf = await googleSvc.exportDriveFile(options.fileId, 'text/csv');
-          contextText = buf.toString('utf8').slice(0, 4000);
-        } else {
-          contextText = `File: ${meta.name} (${meta.mimeType})`;
-        }
+  try {
+    if (googleSvc) {
+      if (meta.mimeType === 'application/vnd.google-apps.document') {
+        const buf = await googleSvc.exportDriveFile(options.fileId, 'text/plain');
+        contextText = buf.toString('utf8').slice(0, 4000);
+      } else if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
+        const buf = await googleSvc.exportDriveFile(options.fileId, 'text/csv');
+        contextText = buf.toString('utf8').slice(0, 4000);
+      } else {
+        contextText = `File: ${meta.name} (${meta.mimeType})`;
       }
-    } catch {}
+    }
+  } catch {}
 
-    // Додатковий контекст із SheetsContextService (якщо є)
-    let sheetCtxNote = '';
-    try {
-      if (sheetsContext) {
-        const ctx = await (sheetsContext as any).get?.('current');
-        if (ctx) sheetCtxNote = `\nContext: ${JSON.stringify(ctx).slice(0, 500)}`;
-      }
-    } catch {}
+  // Додатковий контекст із SheetsContextService (якщо є)
+  let sheetCtxNote = '';
+  try {
+    if (sheetsContext) {
+      const ctx = await (sheetsContext as any).get?.('current');
+      if (ctx) sheetCtxNote = `\nContext: ${JSON.stringify(ctx).slice(0, 500)}`;
+    }
+  } catch {}
 
-    let analysis = `Тип аналізу: ${analysisTypeName}\n${sheetCtxNote}`;
-    if (ai) {
-      try {
-        const res = await (ai as any).generate?.(
-          `Проаналізуй наступний вміст та надай ${analysisTypeName}:\n\n${contextText}`,
-          { maxTokens: 512 }
-        );
-        if (res && typeof res.content === 'string') {
-          analysis = res.content;
-        }
-      } catch {
-        // Фолбек на локальне резюме без мережі
-        analysis = `${analysis}\n\nЗведення (локальне): ${contextText.slice(0, 800)}`;
+  let analysis = `Тип аналізу: ${analysisTypeName}\n${sheetCtxNote}`;
+  if (ai) {
+    try {
+      const res = await (ai as any).generate?.(
+        `Проаналізуй наступний вміст та надай ${analysisTypeName}:\n\n${contextText}`,
+        { maxTokens: 512 }
+      );
+      if (res && typeof res.content === 'string') {
+        analysis = res.content;
       }
-    } else {
+    } catch {
+      // Фолбек на локальне резюме без мережі
       analysis = `${analysis}\n\nЗведення (локальне): ${contextText.slice(0, 800)}`;
     }
-
-    return {
-      success: true,
-      message: `🤖 **AI-аналіз файлу**\n\n${analysis}`,
-    };
+  } else {
+    analysis = `${analysis}\n\nЗведення (локальне): ${contextText.slice(0, 800)}`;
   }
 
-  /**
-   * Обробка створення звіту
-   */
-  private async handleReport(
-    interaction: ChatInputCommandInteraction,
-    options: FileReportOptions
-  ): Promise<FileResult> {
-    const google = this.getGoogleService(interaction);
-    if (!google) return { success: false, message: t('files.error.serviceUnavailable') };
+  // Додаємо посилання на джерело, якщо політика дозволяє
+  const allowLink = !(driveCfg?.hideWebLink);
+  const viewLink = allowLink ? String((meta as any).webViewLink || '') : '';
+  const linkNote = allowLink && viewLink ? `\n${t('files.summary.link') || 'Посилання'}: ${viewLink}` : '';
 
-    const meta = await google.getDriveFileMetadata(options.fileId);
-    const driveCfg = this.config.drive;
-    const mime = String(meta.mimeType || '');
-    if (driveCfg?.allowedMime && !this.isMimeAllowed(mime, driveCfg.allowedMime)) {
-      return { success: false, message: t('files.policy.disallowedMime') };
-    }
-    if (driveCfg?.ownerAllowlist?.length) {
-      const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
-      if (!this.isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
-        return { success: false, message: t('files.policy.deniedOwner') };
-      }
-    }
-
-    const sizeBytes = Number((meta as any).size || 0) || 0;
-    const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
-    const baseName = (meta.name || 'report').replace(/\.[^/.]+$/, '');
-
-    // Збираємо коротку інформацію про файл як вміст звіту
-    let content = `Звіт по файлу\nНазва: ${meta.name}\nТип: ${meta.mimeType}\nОновлено: ${meta.modifiedTime}`;
-    if (tooLarge && !mime.startsWith('application/vnd.google-apps')) {
-      const linkAllowed = !(driveCfg?.hideWebLink);
-      const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
-      const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
-      const summary = t('files.summary.largeFile', {
-        name: String(meta.name || ''),
-        mimeType: String(meta.mimeType || ''),
-        size: sizeMb,
-      });
-      content += `\n\n${summary}` + (linkAllowed && link ? `\n${t('files.summary.link')}: ${link}` : '');
-      // Повертаємо короткий звіт у запитаному форматі без важких експортів
-      if (options.format === 'txt') {
-        return { success: true, message: '📋 Звіт сформовано (TXT)', file: Buffer.from(content, 'utf8'), fileName: `${baseName}-report.txt` };
-      }
-      if (options.format === 'pdf') {
-        const pdf = await this.renderPdf(content, baseName);
-        return { success: true, message: '📋 Звіт сформовано (PDF)', file: pdf, fileName: `${baseName}-report.pdf` };
-      }
-      const docx = await this.renderDocx(content, baseName);
-      return { success: true, message: '📋 Звіт сформовано (DOCX)', file: docx, fileName: `${baseName}-report.docx` };
-    }
-
-    try {
-      if (meta.mimeType === 'application/vnd.google-apps.document') {
-        const buf = await google.exportDriveFile(options.fileId, 'text/plain');
-        content += `\n\nФрагмент вмісту:\n${buf.toString('utf8').slice(0, 1000)}`;
-      } else if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
-        const buf = await google.exportDriveFile(options.fileId, 'text/csv');
-        content += `\n\nПерші рядки (CSV):\n${buf.toString('utf8').slice(0, 1000)}`;
-      }
-    } catch {}
-
-    if (options.format === 'txt') {
-      return {
-        success: true,
-        message: '📋 Звіт сформовано (TXT)',
-        file: Buffer.from(content, 'utf8'),
-        fileName: `${baseName}-report.txt`,
-      };
-    }
-
-    if (options.format === 'pdf') {
-      const pdf = await this.renderPdf(content, baseName);
-      return {
-        success: true,
-        message: '📋 Звіт сформовано (PDF)',
-        file: pdf,
-        fileName: `${baseName}-report.pdf`,
-      };
-    }
-
-    // docx
-    const docx = await this.renderDocx(content, baseName);
-    return {
-      success: true,
-      message: '📋 Звіт сформовано (DOCX)',
-      file: docx,
-      fileName: `${baseName}-report.docx`,
-    };
+  return {
+    success: true,
+    message: `🤖 **AI-аналіз файлу**\n\n${analysis}${linkNote}`,
+  };
   }
 
-  // Helpers
-  private async renderPdf(text: string, title: string): Promise<Buffer> {
-    return await new Promise<Buffer>((resolve, reject) => {
-      try {
-        // Dynamic require to avoid dependency at module load time
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const PDFDocument = require('pdfkit');
-        const doc = new PDFDocument({ margin: 50 });
-        const chunks: Buffer[] = [];
-        doc.on('data', (d: any) => chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
-        doc.on('end', () => resolve(Buffer.concat(chunks)));
-        doc.on('error', reject);
-
-        doc.fontSize(18).text(title, { underline: true });
-        doc.moveDown();
-        doc.fontSize(12).text(text);
-        doc.end();
-      } catch (e) {
-        reject(e as any);
-      }
-    });
+  // --- Helpers & service resolution ---
+  private isMimeAllowed(mime: string, allowed: string[]): boolean {
+    if (!allowed || !allowed.length) return true;
+    return allowed.some(a => a === mime);
   }
 
-  private async renderDocx(text: string, title: string): Promise<Buffer> {
-    // Dynamic require for docx
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const docx = require('docx');
-    const { Document, Packer, Paragraph, HeadingLevel, TextRun } = docx;
-    const doc = new Document({
-      sections: [
-        {
-          properties: {},
-          children: [
-            new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ children: [new TextRun(text)] }),
-          ],
-        },
-      ],
-    });
-    const buf = await Packer.toBuffer(doc);
-    return Buffer.from(buf);
-  }
-
-  /**
-   * Відправка результату
-   */
-  private async sendResult(
-    interaction: ChatInputCommandInteraction,
-    result: FileResult,
-    subcommand: string
-  ): Promise<void> {
-    if (!result.success) {
-      await interaction.editReply({ content: result.message });
-      return;
-    }
-
-    const embed = new EmbedBuilder()
-      .setTitle(`📁 ${this.getSubcommandTitle(subcommand)}`)
-      .setDescription(result.message)
-      .setColor(0x00ff00)
-      .setTimestamp();
-
-    if (result.file && result.fileName) {
-      const attachment = new AttachmentBuilder(result.file, { name: result.fileName });
-      await interaction.editReply({ embeds: [embed], files: [attachment] });
-    } else {
-      await interaction.editReply({ embeds: [embed] });
+  private getSubcommandTitle(name: 'пошук' | 'читати' | 'аналіз' | string): string {
+    // Базовий маппінг назв підкоманд для заголовків
+    switch (name) {
+      case 'пошук': return t('files.sub.search.title') || 'Пошук';
+      case 'читати': return t('files.sub.read.title') || 'Читати';
+      case 'аналіз': return t('files.sub.analyze.title') || 'Аналіз';
+      default: return name;
     }
   }
 
-  /**
-   * Отримання назви типу аналізу
-   */
-  private getAnalysisTypeName(type: FileAnalysisOptions['analysisType']): string {
-    const typeNames: Record<string, string> = {
-      summary: 'Короткий зміст',
-      detailed: 'Детальний аналіз',
-      key_points: 'Ключові моменти',
-    };
-    return typeNames[type] || type;
-  }
-
-  /**
-   * Отримання заголовку підкоманди
-   */
-  private getSubcommandTitle(subcommand: string): string {
-    const titles: Record<string, string> = {
-      пошук: 'Пошук файлів',
-      читати: 'Читання файлу',
-      аналіз: 'AI-аналіз',
-      звіт: 'Створення звіту',
-    };
-
-    return titles[subcommand] || 'Робота з файлами';
-  }
-
-  /**
-   * Логування події безпеки
-   */
-  private logSecurityEvent(eventType: string, data: Record<string, any>): void {
-    logger.info('security_event', redact({
-      eventType,
-      ...data,
-    }));
-  }
-
-  /**
-   * Отримання GoogleService через ServiceContainer
-   */
   private getGoogleService(interaction: ChatInputCommandInteraction): GoogleService | undefined {
     try {
-      const anyClient = interaction.client as any;
-      const svc = anyClient?.serviceContainer?.get?.('google');
-      return svc as GoogleService | undefined;
+      const svc = (interaction.client as any)?.serviceContainer?.get?.('google') as GoogleService | undefined;
+      return svc;
     } catch (e) {
-      logger.warn('FileManager: не вдалося отримати GoogleService', redact({
+      logger.warn('FileManager: не вдалося отримати GoogleService', {
         component: 'FileManagerCommand',
         event: 'service_resolve_failed',
         error: String(e),
-      }));
+      });
       return undefined;
     }
   }
 
-  // Policy helpers
-  private isMimeAllowed(mime: string, allowed: string[]): boolean {
-    if (!allowed.length) return true;
-    if (allowed.includes('*')) return true;
-    return allowed.includes(mime);
+  private getAnalysisTypeName(type: FileAnalysisOptions['analysisType']): string {
+    switch (type) {
+      case 'summary': return t('files.choices.analysis.summary');
+      case 'detailed': return t('files.choices.analysis.detailed');
+      case 'key_points': return t('files.choices.analysis.key_points');
+      default: return 'Аналіз';
+    }
+  }
+
+  private async handleReadTextFlow(
+    interaction: ChatInputCommandInteraction,
+    options: FileReadOptions
+  ): Promise<void> {
+    const svc = this.getGoogleService(interaction);
+    if (!svc) {
+      await interaction.editReply({ content: t('files.error.serviceUnavailable') });
+      return;
+    }
+
+    try {
+      const meta = await svc.getDriveFileMetadata(options.fileId);
+      if (!meta || !meta.mimeType) {
+        await interaction.editReply({ content: t('files.error.metadata') });
+        return;
+      }
+
+      const driveCfg = this.config.drive;
+      if (driveCfg?.allowedMime && !this.isMimeAllowed(meta.mimeType, driveCfg.allowedMime)) {
+        await interaction.editReply({ content: t('files.policy.disallowedMime') });
+        return;
+      }
+      if (driveCfg?.ownerAllowlist?.length) {
+        const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+        if (!this.isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
+          await interaction.editReply({ content: t('files.policy.deniedOwner') });
+          return;
+        }
+      }
+
+      const sizeBytes = Number((meta as any).size || 0) || 0;
+      const tooLarge = this.isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
+
+      const extracted = await (svc as GoogleService).extractTextForChat(options.fileId);
+      const safeText = String(extracted?.text || '').trim();
+
+      if (!safeText) {
+        if (tooLarge) {
+          const linkAllowed = !(driveCfg?.hideWebLink);
+          const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+          const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
+          const summary = t('files.summary.largeFile', {
+            name: String(meta.name || ''),
+            mimeType: String(meta.mimeType || ''),
+            size: sizeMb,
+          });
+          const linkText = linkAllowed && link ? `\n${t('files.summary.link')}: ${link}` : '';
+          await interaction.editReply({ content: `${summary}${linkText}` });
+          return;
+        }
+        await interaction.editReply({ content: t('files.error.noText') });
+        return;
+      }
+
+      const fileName = String(meta.name || options.fileId);
+      const quick = sanitizeTextForChat(safeText, 1800);
+      if (quick.length >= safeText.length) {
+        const linkAllowed = !(driveCfg?.hideWebLink);
+        const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+        const embed = new EmbedBuilder()
+          .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
+          .setDescription(quick)
+          .setColor(0x22c55e)
+          .setTimestamp();
+        if (link) {
+          const linkBtn = new ButtonBuilder().setLabel('Джерело').setStyle(ButtonStyle.Link).setURL(link);
+          const rowLink = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn);
+          await interaction.editReply({ embeds: [embed], components: [rowLink] });
+        } else {
+          await interaction.editReply({ embeds: [embed] });
+        }
+        return;
+      }
+
+      const tldr = summarizeTlDr(safeText, { budget: 800, minSentLen: 40 });
+      const chunks = buildPaginatedChunks(safeText, { maxChunkLen: 1800 });
+      const sid = this.generateSessionId('txt');
+      const linkAllowed = !(this.config.drive?.hideWebLink);
+      const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+      const sessionObj: { fileId: string; fileName: string; chunks: string[]; createdAt: number; link?: string } = {
+        fileId: options.fileId,
+        fileName,
+        chunks,
+        createdAt: Math.floor(Date.now() / 1000),
+      };
+      if (link) sessionObj.link = link;
+      FileManagerCommand.textSessions.set(sid, sessionObj);
+
+      const ts = Math.floor(Date.now() / 1000);
+      const openBtn = new ButtonBuilder()
+        .setCustomId(this.buildTextCustomId({ sid, page: 1, ts }))
+        .setLabel('Показати ще')
+        .setStyle(ButtonStyle.Primary);
+      const closeBtn = new ButtonBuilder()
+        .setCustomId(this.buildTextCustomId({ sid, page: 1, ts, action: 'close' }))
+        .setLabel(t('files.search.buttons.close'))
+        .setStyle(ButtonStyle.Danger);
+      const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(openBtn, closeBtn);
+      const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [row];
+      if (link) {
+        const linkBtn = new ButtonBuilder().setLabel('Джерело').setStyle(ButtonStyle.Link).setURL(link);
+        const rowLink = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn);
+        rows.push(rowLink);
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
+        .setDescription(tldr)
+        .setColor(0x22c55e)
+        .setTimestamp();
+      await interaction.editReply({ embeds: [embed], components: rows });
+    } catch (error) {
+      logger.error('FileManager read flow error', { error: String(error) });
+      const msg = this.mapGoogleApiErrorToMessage(error) || t('files.error.process');
+      await interaction.editReply({ content: msg });
+    }
+  }
+
+  // --- Google API error mapping ---
+  private mapGoogleApiErrorToMessage(error: any): string | null {
+    try {
+      const code: number | undefined = (error?.code ?? error?.status ?? error?.response?.status) as number | undefined;
+      if (!code) return null;
+      switch (code) {
+        case 400: return t('files.error.badRequest') || 'Некоректний запит до Google API. Перевірте параметри.';
+        case 401: return t('files.error.unauthorized') || 'Неавторизовано. Перевірте ключі/облікові дані Google.';
+        case 403: return t('files.error.forbidden') || 'Доступ заборонено. Немає прав перегляду файла або API вимкнено.';
+        case 404: return t('files.error.notFound') || 'Файл не знайдено або видалено.';
+        case 409: return t('files.error.conflict') || 'Конфлікт операцій. Спробуйте ще раз пізніше.';
+        case 429: return t('files.error.rateLimited') || 'Перевищено ліміт запитів. Зачекайте і повторіть.';
+        case 500: return t('files.error.server') || 'Помилка сервера Google. Повторіть спробу пізніше.';
+        case 503: return t('files.error.unavailable') || 'Сервіс недоступний. Повторіть спробу пізніше.';
+        default: return null;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  private async sendResult(
+    interaction: ChatInputCommandInteraction,
+    result: FileResult | undefined,
+    _subcommand: string
+  ): Promise<void> {
+    if (!result) {
+      await interaction.editReply({ content: t('files.error.process') });
+      return;
+    }
+    if (!result.success) {
+      await interaction.editReply({ content: result.message || t('files.error.process') });
+      return;
+    }
+    if (result.file && result.fileName) {
+      const attachment = new AttachmentBuilder(result.file).setName(result.fileName);
+      await interaction.editReply({ content: result.message, files: [attachment] });
+      return;
+    }
+    await interaction.editReply({ content: result.message });
   }
 
   private isOwnerAllowed(owners: string[], allowlist: string[]): boolean {
