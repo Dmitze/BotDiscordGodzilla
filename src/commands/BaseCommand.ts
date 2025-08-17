@@ -21,6 +21,7 @@ import type {
 } from '@/types';
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
+import { UserPreferencesService } from '@/services/UserPreferencesService';
 
 // Константи для конфігурації команд
 const COMMAND_CONFIG = {
@@ -185,6 +186,9 @@ export abstract class BaseCommand {
     const userId = options.interaction.user.id;
 
     try {
+      // Застосувати локаль користувача (i18n), дефолт 'uk' з підтримкою псевдоніма 'uk-UA'
+      await UserPreferencesService.resolveAndApplyLocale(options.interaction);
+
       // Перевірка стану команди
       if (this.isShuttingDown) {
         await this.handleShutdownError(options.interaction);
