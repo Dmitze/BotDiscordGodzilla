@@ -160,6 +160,10 @@ export class FileProcessor {
    * Запуск періодичного очищення
    */
   private startCleanupInterval(): void {
+    if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
+      logger.debug('⏭️ Пропуск періодичного очищення файлів у тестовому середовищі');
+      return;
+    }
     this.cleanupInterval = setInterval(() => {
       this.cleanupTempFiles();
     }, FILE_PROCESSOR_CONSTANTS.CLEANUP_INTERVAL);
