@@ -110,6 +110,10 @@ export interface FeaturesConfig {
   defaultLocale: 'uk' | 'en';
   enableUserWorkspace?: boolean;
   enableDisambiguation?: boolean;
+  // PII masking flags
+  enablePiiMasking?: boolean; // master switch
+  piiMaskEmail?: boolean;
+  piiMaskPhone?: boolean;
 }
 
 // Сервіси
