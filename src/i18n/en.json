@@ -31,4 +31,58 @@
       "metadata": "❌ Cannot read file metadata"
     }
   }
+  ,
+  "ws": {
+    "command": { "description": "Personal workspace: saved documents and queries" },
+    "sub": {
+      "add": { "description": "Add a file or a search query to the workspace" },
+      "list": { "description": "Show workspace" },
+      "remove": { "description": "Remove an item from workspace" },
+      "run": { "description": "Run a workspace item (for query) or show file" }
+    },
+    "opt": {
+      "type": { "description": "Item type: file | query" },
+      "title": { "description": "Item title" },
+      "fileid": { "description": "File ID (for type=file)" },
+      "query": { "description": "Search query (for type=query)" }
+    },
+    "reply": {
+      "unknownSub": "❌ Unknown subcommand",
+      "addSuccess": "✅ Added to workspace: {{title}} (id: {{id}})",
+      "listEmpty": "ℹ️ Workspace is empty",
+      "listTitle": "🗂️ Your workspace:",
+      "removed": "🗑️ Removed",
+      "notFound": "⚠️ Not found",
+      "runQuery": "🔎 Running query: {{query}}",
+      "runFile": "📄 Selected file: {{fileId}}"
+    },
+    "error": {
+      "exec": "❌ Command execution error",
+      "missingFileId": "⚠️ Provide fileid for type=file",
+      "missingQuery": "⚠️ Provide query for type=query",
+      "unsupportedType": "⚠️ Unsupported type",
+      "disabled": "🚫 Workspace feature is disabled by administrator"
+    },
+    "format": {
+      "listLine": "• [{{type}}] {{title}} — id: {{id}}",
+      "defaultTitleFile": "File {{fileId}}",
+      "defaultTitleQuery": "Query: {{query}}"
+    }
+  }
+  ,
+  "lang": {
+    "command": { "description": "Language preferences" },
+    "sub": {
+      "set": { "description": "Set your preferred language" },
+      "show": { "description": "Show your current language" }
+    },
+    "opt": {
+      "locale": { "description": "Language to use" }
+    },
+    "reply": {
+      "setOk": "✅ Language updated: {{locale}}",
+      "current": "🌐 Current language: {{locale}}",
+      "unknownSub": "❌ Unknown subcommand"
+    }
+  }
 }
