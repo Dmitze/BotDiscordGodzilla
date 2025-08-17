@@ -85,4 +85,12 @@
       "unknownSub": "❌ Unknown subcommand"
     }
   }
+  ,
+  "parsers": {
+    "fallback": {
+      "used": "Fallback parser used"
+    },
+    "unsupportedMime": "Unsupported MIME: {{mime}}",
+    "parseError": "Parsing error"
+  }
 }
