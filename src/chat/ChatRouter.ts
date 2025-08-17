@@ -1,13 +1,17 @@
 import type { Client, Message } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import logger from '@/utils/logger';
 import type { IntentDetector } from './IntentDetector';
 import type { MemoryService } from './MemoryService';
+import type { DriveIndexerService, DriveSearchResult } from '@/services/DriveIndexerService';
+import { tokenizeQuery, buildSnippet, highlightSnippet } from '@/utils/highlight';
 
 export class ChatRouter {
   constructor(
     private readonly client: Client,
     private readonly memory: MemoryService,
-    private readonly intents: IntentDetector
+    private readonly intents: IntentDetector,
+    private readonly getService?: (name: string) => unknown
   ) {}
 
   bind(): void {
@@ -35,6 +39,9 @@ export class ChatRouter {
       const intent = this.intents.detect(content);
 
       switch (intent.type) {
+        case 'SEARCH':
+          await this.replySearch(msg, intent.params?.['query'] || content);
+          break;
         case 'HELP':
           await this.replyHelp(msg);
           break;
@@ -67,6 +74,68 @@ export class ChatRouter {
       }
     }
   };
+
+  private async replySearch(msg: Message, queryRaw: string): Promise<void> {
+    const query = (queryRaw || '').trim();
+    if (!query) {
+      await msg.reply('Вкажіть запит для пошуку. Приклад: "пошук договор поставки"');
+      return;
+    }
+    const svc = (this.getService?.('driveIndexer') ?? undefined) as DriveIndexerService | undefined;
+    if (!svc) {
+      await msg.reply('Пошук наразі недоступний. Сервіс індексації не активний.');
+      return;
+    }
+    try {
+      const results: DriveSearchResult[] = await svc.search(query, 5);
+      if (!results.length) {
+        await msg.reply('Нічого не знайдено за вашим запитом. Спробуйте інші ключові слова.');
+        return;
+      }
+      const terms = tokenizeQuery(query);
+      const embeds = results.slice(0, 3).map(r => {
+        const e = new EmbedBuilder()
+          .setColor('#2b6cb0')
+          .setTitle(this.decorateTitle(r.file.name, r.file.mimeType))
+          .setDescription(highlightSnippet(buildSnippet(r.file.snippet || '', terms, 240), terms))
+          .addFields(
+            ...(r.file.modifiedTime ? [{ name: 'Оновлено', value: new Date(r.file.modifiedTime).toLocaleString('uk-UA') }] : []),
+            ...(Array.isArray(r.file.owners) && r.file.owners.length
+              ? [{ name: 'Власники', value: r.file.owners.join(', ') }]
+              : []),
+            ...(typeof r.file.size === 'number' ? [{ name: 'Розмір', value: `${r.file.size} B` }] : [])
+          );
+        return e;
+      });
+
+      const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        ...results.slice(0, 3).map(r =>
+          new ButtonBuilder()
+            .setCustomId(`search|expand|${r.file.id}`)
+            .setLabel('Розгорнути')
+            .setStyle(ButtonStyle.Primary)
+        )
+      );
+
+      await msg.reply({ embeds, components: [buttons] });
+    } catch (e) {
+      logger.error('search_reply_failed', { error: e instanceof Error ? e.message : String(e) });
+      await msg.reply('❌ Сталася помилка під час пошуку. Спробуйте пізніше.');
+    }
+  }
+
+  private decorateTitle(name: string, mime?: string): string {
+    const icon = this.mimeIcon(mime || '');
+    return `${icon} ${name}`;
+  }
+
+  private mimeIcon(mime: string): string {
+    if (/google-apps.document/.test(mime)) return '📄';
+    if (/pdf/.test(mime)) return '📑';
+    if (/image\//.test(mime)) return '🖼️';
+    if (/sheet|excel|spreadsheet/.test(mime)) return '📊';
+    return '📁';
+  }
 
   private async replyHelp(msg: Message): Promise<void> {
     await msg.reply(
