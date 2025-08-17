@@ -52,7 +52,8 @@
     "build",
     "docs",
     "examples",
-    "legacy"
+    "legacy",
+    "src/tests/**"
   ],
   "ts-node": {
     "esm": false,
