@@ -360,6 +360,16 @@ export class CommandManager {
         // Компоненты (кнопки и т.п.) для пагинации /doc blocks
         if ('isButton' in interaction && typeof (interaction as any).isButton === 'function' && (interaction as any).isButton()) {
           const customId = (interaction as any).customId as string | undefined;
+          // Дизамбигуация дубликатов: dup|scope|userId|nonce|action|page
+          if (customId && customId.startsWith('dup|')) {
+            const parts = customId.split('|');
+            const scope = parts[1];
+            const cmd = scope ? (this.commands.get(scope) as unknown as { handleComponent?: (args: { interaction: any; componentType?: 'button' | 'select' | 'modal' }) => Promise<void> } | undefined) : undefined;
+            if (cmd && typeof cmd.handleComponent === 'function') {
+              await cmd.handleComponent({ interaction: interaction as any, componentType: 'button' });
+              return;
+            }
+          }
           // Поиск: предпросмотр и пагинация текста
           if (customId && customId.startsWith('search|')) {
             await this.handleSearchButton(interaction as any);
@@ -377,6 +387,20 @@ export class CommandManager {
             const cmd = this.commands.get('файли') as unknown as { handleComponent?: (args: { interaction: any; componentType?: 'button' | 'select' | 'modal' }) => Promise<void> } | undefined;
             if (cmd && typeof cmd.handleComponent === 'function') {
               await cmd.handleComponent({ interaction: interaction as any, componentType: 'button' });
+              return;
+            }
+          }
+        }
+
+        // SelectMenu для дизамбигуации и других компонентов
+        if ('isStringSelectMenu' in interaction && typeof (interaction as any).isStringSelectMenu === 'function' && (interaction as any).isStringSelectMenu()) {
+          const customId = (interaction as any).customId as string | undefined;
+          if (customId && customId.startsWith('dup|')) {
+            const parts = customId.split('|');
+            const scope = parts[1];
+            const cmd = scope ? (this.commands.get(scope) as unknown as { handleComponent?: (args: { interaction: any; componentType?: 'button' | 'select' | 'modal' }) => Promise<void> } | undefined) : undefined;
+            if (cmd && typeof cmd.handleComponent === 'function') {
+              await cmd.handleComponent({ interaction: interaction as any, componentType: 'select' });
               return;
             }
           }
