@@ -2,7 +2,7 @@
  * Unit тесты для DocumentsCommand
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { DocumentsCommand } from '../../../commands/DocumentsCommand';
 import { createMockConfig, createMockInteraction } from '../../utils/testHelpers';
 
@@ -27,7 +27,7 @@ describe('DocumentsCommand', () => {
     });
 
     it('should have correct description', () => {
-      expect(documentsCommand.getDescription()).toBe('Управління документами та експорт');
+      expect(documentsCommand.getDescription()).toBe('📄 Робота з військовими документами ЗСУ');
     });
   });
 
@@ -40,83 +40,46 @@ describe('DocumentsCommand', () => {
   });
 
   describe('execute', () => {
-    it('should handle search subcommand', async () => {
-      // Настройка моков
-      const mockGoogleService = {
-        searchDocuments: (jest.fn() as any).mockResolvedValue([
-          { id: '1', name: 'Document 1', type: 'pdf' },
-          { id: '2', name: 'Document 2', type: 'docx' },
-        ]),
-      };
+    it('should handle personnel search subcommand', async () => {
+      // Моки ввода: підкоманда та опції
+      mockInteraction.options.getSubcommand.mockReturnValue('особовий-склад');
+      mockInteraction.options.getString.mockImplementation((name: string) => {
+        if (name === 'дія') return 'search';
+        if (name === 'запит') return 'тест';
+        return null;
+      });
 
-      mockInteraction.client.serviceContainer.get.mockReturnValue(mockGoogleService);
-      mockInteraction.options.getSubcommand.mockReturnValue('пошук');
-      mockInteraction.options.getString.mockReturnValue('тест');
-
-      // Выполнение
       await documentsCommand.execute(mockInteraction);
 
-      // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
+      expect(mockInteraction.options.getString).toHaveBeenCalledWith('дія', true);
       expect(mockInteraction.options.getString).toHaveBeenCalledWith('запит');
-      expect(mockGoogleService.searchDocuments).toHaveBeenCalledWith('тест');
-      expect(mockInteraction.reply).toHaveBeenCalled();
-    });
-
-    it('should handle export subcommand', async () => {
-      // Настройка моков
-      const mockGoogleService = {
-        exportData: (jest.fn() as any).mockResolvedValue('exported_data'),
-      };
-
-      mockInteraction.client.serviceContainer.get.mockReturnValue(mockGoogleService);
-      mockInteraction.options.getSubcommand.mockReturnValue('експорт');
-      mockInteraction.options.getString.mockReturnValue('excel');
-
-      // Выполнение
-      await documentsCommand.execute(mockInteraction);
-
-      // Проверки
-      expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockInteraction.options.getString).toHaveBeenCalledWith('формат');
-      expect(mockGoogleService.exportData).toHaveBeenCalledWith('excel');
-      expect(mockInteraction.reply).toHaveBeenCalled();
+      expect(mockInteraction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({ embeds: expect.any(Array) })
+      );
     });
 
     it('should handle invalid subcommand', async () => {
       mockInteraction.options.getSubcommand.mockReturnValue('неіснуюча');
 
-      // Выполнение
       await documentsCommand.execute(mockInteraction);
 
-      // Проверки
       expect(mockInteraction.reply).toHaveBeenCalledWith(
-        expect.objectContaining({
-          content: expect.stringContaining('Невідома підкоманда'),
-          ephemeral: true,
-        })
+        expect.stringContaining('Невідома підкоманда')
       );
     });
 
-    it('should handle service error', async () => {
-      // Настройка моков с ошибкой
-      const mockGoogleService = {
-        searchDocuments: (jest.fn() as any).mockRejectedValue(new Error('Service error')),
-      };
+    it('should handle error during execution', async () => {
+      mockInteraction.options.getSubcommand.mockReturnValue('особовий-склад');
+      // Заставим getString кинути помилку, щоб перейти в catch
+      mockInteraction.options.getString.mockImplementation(() => {
+        throw new Error('boom');
+      });
 
-      mockInteraction.client.serviceContainer.get.mockReturnValue(mockGoogleService);
-      mockInteraction.options.getSubcommand.mockReturnValue('пошук');
-      mockInteraction.options.getString.mockReturnValue('тест');
-
-      // Выполнение
       await documentsCommand.execute(mockInteraction);
 
-      // Проверки
       expect(mockInteraction.reply).toHaveBeenCalledWith(
-        expect.objectContaining({
-          content: expect.stringContaining('Помилка'),
-          ephemeral: true,
-        })
+        expect.stringContaining('Помилка обробки документів')
       );
     });
   });
