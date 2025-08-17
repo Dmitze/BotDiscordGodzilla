@@ -120,7 +120,12 @@ export class SecurityManager {
     try {
       logger.info('🔒 Ініціалізація системи безпеки...');
       this.loadBlacklist();
-      this.startPeriodicTasks();
+      // Skip timers in test environment
+      if (process.env['NODE_ENV'] !== 'test' && !process.env['JEST_WORKER_ID']) {
+        this.startPeriodicTasks();
+      } else {
+        logger.debug('⏭️ Пропуск періодичних завдань безпеки у тестовому середовищі');
+      }
       this._isInitialized = true;
       logger.info('✅ Система безпеки успішно ініціалізована');
     } catch (error) {
@@ -147,6 +152,9 @@ export class SecurityManager {
   }
 
   private startPeriodicTasks(): void {
+    if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
+      return;
+    }
     setInterval(() => this.cleanupRateLimitCache(), 5 * 60 * 1000);
     setInterval(() => this.cleanupSuspiciousActivities(), 10 * 60 * 1000);
     logger.info('⏰ Періодичні завдання безпеки запущено');
