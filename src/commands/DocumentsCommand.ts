@@ -4,6 +4,10 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
+import { DuplicateResolver } from '@/components/DuplicateResolver';
+import { uiState } from '@/services/UIStateService';
+import type { CommandComponentOptions } from './BaseCommand';
+import type { DriveFile } from '@/types/drive';
 import type { BotConfig, CommandExecuteOptions, LogMeta } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
@@ -419,6 +423,55 @@ export class DocumentsCommand extends BaseCommand {
     }
 
     await interaction.reply({ embeds: [embed] });
+  }
+
+  /**
+   * Відобразити UI вибору при дублікатах (для подальшого використання командами)
+   */
+  private async _showDuplicates(
+    interaction: { reply: Function; user?: { id?: string } },
+    files: Array<Pick<DriveFile, 'id' | 'name' | 'mimeType' | 'webViewLink' | 'owners'>>,
+    scope = this.getName()
+  ): Promise<void> {
+    const userId = interaction.user?.id ?? '0';
+    const nonce = Date.now().toString(36);
+    const key = uiState.makeKey({ scope, userId, nonce });
+    uiState.set(key, files, 300);
+
+    const { embed, rows } = DuplicateResolver.buildPage({
+      scope,
+      userId,
+      nonce,
+      files,
+      page: 0,
+      perPage: 5,
+      title: 'Знайдено кілька збігів',
+    });
+
+    await (interaction as any).reply({ embeds: [embed], components: rows, ephemeral: true });
+  }
+
+  /**
+   * Обробка компонентів DuplicateResolver
+   */
+  protected override async onComponent(options: CommandComponentOptions): Promise<void> {
+    const { interaction } = options;
+    const customId = (interaction as any).customId as string | undefined;
+    if (!customId || !customId.startsWith(DuplicateResolver.PREFIX)) return;
+
+    await DuplicateResolver.handleComponent(interaction as any, {
+      fetchFiles: async ({ scope, userId, nonce }) => {
+        const key = uiState.makeKey({ scope, userId, nonce });
+        return (
+          uiState.get<Array<Pick<DriveFile, 'id' | 'name' | 'mimeType' | 'webViewLink' | 'owners'>>>(key) ?? []
+        );
+      },
+      onSelect: async ({ fileId }) => {
+        logger.debug('DuplicateResolver select', { component: 'DocumentsCommand', fileId });
+      },
+      title: 'Знайдено кілька збігів',
+      perPage: 5,
+    });
   }
 
   /**
