@@ -89,17 +89,17 @@ describe('Commands Integration Tests', () => {
   let mockInteraction;
 
   beforeEach(() => {
+    // Створюємо моки сервісів ОДИН раз на тест і повертаємо ті ж самі інстанси
+    const services = {
+      ai: require('../../services/AIService')(),
+      google: require('../../services/GoogleService')(),
+      cache: require('../../services/CacheService')(),
+      metrics: require('../../services/MetricsService')(),
+    };
+
     // Створюємо мок бота
     mockBot = {
-      getService: jest.fn(name => {
-        const services = {
-          ai: require('../../services/AIService')(),
-          google: require('../../services/GoogleService')(),
-          cache: require('../../services/CacheService')(),
-          metrics: require('../../services/MetricsService')(),
-        };
-        return services[name];
-      }),
+      getService: jest.fn(name => services[name]),
       handleError: jest.fn().mockResolvedValue({
         handled: true,
         message: 'Error handled',
