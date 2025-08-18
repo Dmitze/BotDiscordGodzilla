@@ -18,16 +18,11 @@ export class SelectSheetCommand extends BaseCommand {
   ) {
     super(
       'select_sheet',
-<<<<<<< HEAD
       t('sheets.command.description'),
-=======
-      '📁 Вибір Google таблиці та листа для контексту пошуку',
->>>>>>> 116c32e2 (feat(command): додано SelectSheetCommand)
       config,
       {},
       (builder: SlashCommandBuilder) => {
         builder
-<<<<<<< HEAD
           .setDescription(t('sheets.opt.mode.description'))
           .addStringOption((opt: SlashCommandStringOption) =>
             opt
@@ -45,28 +40,6 @@ export class SelectSheetCommand extends BaseCommand {
               .setName('spreadsheet')
               .setDescription(t('sheets.opt.spreadsheet.description'))
               .setRequired(false)
-=======
-          .setDescription('Встановити/показати/очистити контекст таблиці та листа')
-          .addStringOption((opt: any) =>
-            opt
-              .setName('mode')
-              .setDescription('Дія: встановити, показати або очистити')
-              .setRequired(false)
-              .addChoices(
-                { name: 'встановити', value: 'set' },
-                { name: 'показати', value: 'show' },
-                { name: 'очистити', value: 'clear' }
-              )
-          )
-          .addStringOption((opt: any) =>
-            opt
-              .setName('spreadsheet')
-              .setDescription('Назва таблиці (у папці) або ID')
-              .setRequired(false)
-          )
-          .addStringOption((opt: any) =>
-            opt.setName('sheet').setDescription('Назва листа в таблиці').setRequired(false)
->>>>>>> 116c32e2 (feat(command): додано SelectSheetCommand)
           )
           .addStringOption((opt: SlashCommandStringOption) =>
             opt.setName('sheet').setDescription(t('sheets.opt.sheet.description')).setRequired(false)
@@ -92,11 +65,7 @@ export class SelectSheetCommand extends BaseCommand {
         if (interaction.guildId) key.guildId = interaction.guildId;
         const removed = await this.sheetsContext?.clearContext(key as any);
         await interaction.editReply(
-<<<<<<< HEAD
           removed ? t('sheets.reply.cleared') : t('sheets.reply.noContext')
-=======
-          removed ? '✅ Контекст очищено' : 'ℹ️ Немає збереженого контексту'
->>>>>>> 116c32e2 (feat(command): додано SelectSheetCommand)
         );
         return;
       }
@@ -113,11 +82,7 @@ export class SelectSheetCommand extends BaseCommand {
           return;
         }
         await interaction.editReply(
-<<<<<<< HEAD
           t('sheets.reply.current', { spreadsheetId: ctx.spreadsheetId, sheetName: ctx.sheetName || '—' })
-=======
-          `📄 Поточний контекст:\nSpreadsheet: ${ctx.spreadsheetId}\nSheet: ${ctx.sheetName || '—'}`
->>>>>>> 116c32e2 (feat(command): додано SelectSheetCommand)
         );
         return;
       }
@@ -149,15 +114,9 @@ export class SelectSheetCommand extends BaseCommand {
             3
           );
           if (matches.length === 0)
-<<<<<<< HEAD
             throw new Error(t('sheets.error.notFoundByName', { name: spreadsheetInput }));
           if (matches.length > 1) {
             logger.warn(t('sheets.log.multiMatchWarn'), {
-=======
-            throw new Error(`Таблицю за ім'ям "${spreadsheetInput}" не знайдено у папці`);
-          if (matches.length > 1) {
-            logger.warn('SelectSheet: знайдено кілька відповідників, обираємо перший', {
->>>>>>> 116c32e2 (feat(command): додано SelectSheetCommand)
               component: 'SelectSheetCommand',
               count: matches.length,
               query: spreadsheetInput,
@@ -192,11 +151,7 @@ export class SelectSheetCommand extends BaseCommand {
       });
 
       await interaction.editReply(
-<<<<<<< HEAD
         t('sheets.reply.set', { spreadsheetId, sheetName: sheetName || '—' })
-=======
-        `✅ Контекст встановлено:\nSpreadsheet: ${spreadsheetId}\nSheet: ${sheetName || '—'}`
->>>>>>> 116c32e2 (feat(command): додано SelectSheetCommand)
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
