@@ -132,7 +132,10 @@ function validateInput(input: string): { isValid: boolean; reason?: string } {
 }
 
 function sanitizeInput(input: string): string {
-  return input.replace(/<[^>]*>/g, '');
+  // Remove entire <script>...</script> blocks first
+  const withoutScripts = input.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+  // Then strip remaining HTML tags
+  return withoutScripts.replace(/<[^>]*>/g, '').trim();
 }
 
 function rateLimit(userId: string, limit: number, _windowMs: number): { allowed: boolean } {
