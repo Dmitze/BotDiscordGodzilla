@@ -55,7 +55,7 @@ export class CacheService extends BaseServiceClass {
    */
   protected async onInitialize(): Promise<void> {
     try {
-      if (!this.config.redis.enabled) {
+      if (!this.isEnabled()) {
         logger.info('Redis кешування вимкнено', { component: 'CacheService' });
         return;
       }
@@ -77,7 +77,7 @@ export class CacheService extends BaseServiceClass {
       };
 
       // Додаємо url лише якщо визначено, щоб уникнути undefined при exactOptionalPropertyTypes
-      if (this.config.redis.url) {
+      if (this.config.redis?.url) {
         (redisOptions as { url: string }).url = this.config.redis.url;
       }
 
@@ -105,6 +105,14 @@ export class CacheService extends BaseServiceClass {
       });
       throw error;
     }
+  }
+
+  /**
+   * Перевірка чи ввімкнено Redis (з урахуванням legacy-прапора cache.enabled)
+   */
+  private isEnabled(): boolean {
+    const anyCfg = this.config as any;
+    return Boolean(this.config.redis?.enabled ?? anyCfg.cache?.enabled ?? false);
   }
 
   /**
@@ -241,7 +249,7 @@ export class CacheService extends BaseServiceClass {
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
-      return null;
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -268,7 +276,14 @@ export class CacheService extends BaseServiceClass {
         serializedValue = String(value);
       }
 
-      await this.client.setEx(key, ttl, serializedValue);
+      // Підтримка як setEx, так і set з EX
+      if (typeof (this.client as any).setEx === 'function') {
+        await (this.client as any).setEx(key, ttl, serializedValue);
+      } else if (typeof (this.client as any).set === 'function') {
+        await (this.client as any).set(key, serializedValue, { EX: ttl });
+      } else {
+        throw new Error('Redis client does not support set/setEx');
+      }
       this.stats.sets++;
       this.updateStats();
 
@@ -286,7 +301,7 @@ export class CacheService extends BaseServiceClass {
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
-      return false;
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -614,7 +629,7 @@ export class CacheService extends BaseServiceClass {
    */
   protected async onHealthCheck(): Promise<HealthStatus> {
     try {
-      if (!this.config.redis.enabled) {
+      if (!this.isEnabled()) {
         return {
           healthy: true,
           service: this.name,
@@ -666,7 +681,11 @@ export class CacheService extends BaseServiceClass {
   protected async onShutdown(): Promise<void> {
     try {
       if (this.client && this.isConnected) {
-        await this.client.quit();
+        if (typeof (this.client as any).quit === 'function') {
+          await (this.client as any).quit();
+        } else if (typeof (this.client as any).disconnect === 'function') {
+          await (this.client as any).disconnect();
+        }
         this.isConnected = false;
       }
 
@@ -690,5 +709,29 @@ export class CacheService extends BaseServiceClass {
    */
   protected onGetStats(): Partial<CacheServiceStats> {
     return this.stats;
+  }
+
+  /**
+   * Розмір кешу (кількість ключів)
+   */
+  public async getSize(): Promise<number> {
+    if (!this.client || !this.isConnected) return 0;
+    const keys = await this.client.keys('*');
+    return keys.length;
+  }
+
+  /**
+   * Спрощена статистика для юніт-тестів
+   */
+  public async getCacheStatsSimple(): Promise<{ hits: number; misses: number; size: number; hitRate: number }> {
+    const size = await this.getSize();
+    // Повертаємо hitRate у діапазоні [0..1] для сумісності зі старими тестами
+    const hitRate = this.stats.totalRequests > 0 ? this.stats.hits / this.stats.totalRequests : 0;
+    return {
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      size,
+      hitRate,
+    };
   }
 }
