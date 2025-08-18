@@ -83,6 +83,13 @@ export class AIService extends BaseServiceClass {
   }
 
   /**
+   * Поточний активний AI-провайдер
+   */
+  public getProvider(): string {
+    return this.currentProvider;
+  }
+
+  /**
    * Ініціалізація AI сервісу з детальним логуванням
    */
   protected async onInitialize(): Promise<void> {
