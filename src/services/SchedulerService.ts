@@ -168,11 +168,84 @@ class SchedulerService {
         this.createBackup();
       });
 
+      // Опитування змін Google Drive кожні 2 хвилини (без у тестах/коли вимкнено cron)
+      this.scheduleJob('poll-drive-changes', '*/2 * * * *', () => {
+        this.pollDriveChanges();
+      });
+
       logger.debug('✅ Стандартні завдання зареєстровано');
     } catch (error) {
       logger.error(
         `Помилка реєстрації стандартних завдань: ${error instanceof Error ? error.message : String(error)}`
       );
+    }
+  }
+
+  /**
+   * Опитування змін у Google Drive з ретраями та м'якими помилками
+   */
+  private async pollDriveChanges(): Promise<void> {
+    try {
+      const changesService = this.bot.getService('driveChanges');
+      if (!changesService || typeof changesService.pollOnce !== 'function') {
+        logger.debug('pollDriveChanges: сервіс змін недоступний');
+        return;
+      }
+
+      const maxRetries = 3;
+      let attempt = 0;
+      // Експоненційна затримка між ретраями
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        try {
+          const { events } = await changesService.pollOnce();
+          if (events.length) await this.notifyDriveChanges(events).catch(() => undefined);
+          break;
+        } catch (e) {
+          attempt++;
+          if (attempt >= maxRetries) {
+            logger.error(`pollDriveChanges: помилка після ${attempt} спроб`, e as any);
+            break;
+          }
+          const wait = Math.min(30000, 1000 * Math.pow(2, attempt));
+          await new Promise(r => setTimeout(r, wait));
+        }
+      }
+    } catch (error) {
+      logger.error('pollDriveChanges: невідома помилка', error as any);
+    }
+  }
+
+  /**
+   * Надіслати повідомлення про зміни у канал/DM (no-op, якщо клієнт/канал не задані)
+   */
+  private async notifyDriveChanges(events: Array<{ fileId: string; name?: string; time?: string; type: string; owners?: string[]; webViewLink?: string }>): Promise<void> {
+    try {
+      if (!this.bot.client) return;
+      const channelId = process.env['DRIVE_CHANGES_CHANNEL_ID'];
+      if (!channelId) {
+        logger.debug(`notifyDriveChanges: канал не налаштований, подій: ${events.length}`);
+        return;
+      }
+      const channel = await this.bot.client.channels.fetch(channelId).catch(() => null);
+      if (!channel || !('send' in (channel as any))) return;
+
+      const chunks: typeof events[] = [];
+      const copy = [...events];
+      while (copy.length) chunks.push(copy.splice(0, 10));
+
+      for (const part of chunks) {
+        const lines = part.map(ev => {
+          const who = ev.owners && ev.owners.length ? ` — ${ev.owners.join(', ')}` : '';
+          const time = ev.time ? ` (${new Date(ev.time).toLocaleString('uk-UA')})` : '';
+          const link = ev.webViewLink ? ` \u2014 <${ev.webViewLink}>` : '';
+          return `• ${ev.type}: ${ev.name ?? ev.fileId}${who}${time}${link}`;
+        });
+        const content = `🛎️ Оновлення Google Drive (${part.length}):\n` + lines.join('\n');
+        await (channel as any).send({ content }).catch(() => undefined);
+      }
+    } catch (error) {
+      logger.warn('notifyDriveChanges: не вдалося надіслати повідомлення', error as any);
     }
   }
 
