@@ -57,7 +57,7 @@ describe('AIService', () => {
     });
 
     it('should generate response successfully', async () => {
-      const mockResponse = {
+      const mockResponse: any = {
         choices: [
           {
             message: {
@@ -71,7 +71,7 @@ describe('AIService', () => {
       const mockOpenAI = {
         chat: {
           completions: {
-            create: jest.fn().mockResolvedValue(mockResponse),
+            create: jest.fn().mockResolvedValue(mockResponse as any),
           },
         },
       };
@@ -85,7 +85,7 @@ describe('AIService', () => {
     });
 
     it('should handle empty response', async () => {
-      const mockResponse = {
+      const mockResponse: any = {
         choices: [
           {
             message: {
@@ -114,7 +114,7 @@ describe('AIService', () => {
       const mockOpenAI = {
         chat: {
           completions: {
-            create: jest.fn().mockRejectedValue(new Error('OpenAI API error')),
+            create: jest.fn().mockRejectedValue(new Error('OpenAI API error') as any),
           },
         },
       };
@@ -128,7 +128,7 @@ describe('AIService', () => {
       const mockOpenAI = {
         chat: {
           completions: {
-            create: jest.fn().mockRejectedValue(new Error('Rate limit exceeded')),
+            create: jest.fn().mockRejectedValue(new Error('Rate limit exceeded') as any),
           },
         },
       };
