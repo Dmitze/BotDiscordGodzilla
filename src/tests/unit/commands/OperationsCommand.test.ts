@@ -23,11 +23,11 @@ describe('OperationsCommand', () => {
     });
 
     it('should have correct name', () => {
-      expect(operationsCommand.getName()).toBe('операції');
+      expect(operationsCommand.getName()).toBe('operations');
     });
 
     it('should have correct description', () => {
-      expect(operationsCommand.getDescription()).toBe('Оперативне управління та координація');
+      expect(operationsCommand.getDescription()).toBe('⚔️ Оперативне управління ЗСУ');
     });
   });
 
@@ -35,7 +35,7 @@ describe('OperationsCommand', () => {
     it('should return SlashCommandBuilder', () => {
       const data = operationsCommand.getData();
       expect(data).toBeDefined();
-      expect(data.name).toBe('операції');
+      expect(data.name).toBe('operations');
     });
   });
 
@@ -51,7 +51,7 @@ describe('OperationsCommand', () => {
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
-      mockInteraction.options.getSubcommand.mockReturnValue('ситуація');
+      mockInteraction.options.getSubcommand.mockReturnValue('situation');
       mockInteraction.options.getString.mockReturnValue('all');
 
       // Выполнение
@@ -59,7 +59,7 @@ describe('OperationsCommand', () => {
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockInteraction.options.getString).toHaveBeenCalledWith('сектор');
+      expect(mockInteraction.options.getString).toHaveBeenCalledWith('sector');
       expect(mockOperationsService.getSituation).toHaveBeenCalledWith('all');
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
@@ -74,7 +74,7 @@ describe('OperationsCommand', () => {
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
-      mockInteraction.options.getSubcommand.mockReturnValue('завдання');
+      mockInteraction.options.getSubcommand.mockReturnValue('tasks');
       mockInteraction.options.getString.mockReturnValue('current');
 
       // Выполнение
@@ -82,7 +82,7 @@ describe('OperationsCommand', () => {
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockInteraction.options.getString).toHaveBeenCalledWith('дія');
+      expect(mockInteraction.options.getString).toHaveBeenCalledWith('action');
       expect(mockOperationsService.getTasks).toHaveBeenCalledWith('current');
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
@@ -97,7 +97,7 @@ describe('OperationsCommand', () => {
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
-      mockInteraction.options.getSubcommand.mockReturnValue('координація');
+      mockInteraction.options.getSubcommand.mockReturnValue('coordination');
       mockInteraction.options.getString.mockReturnValue('emergency');
 
       // Выполнение
@@ -105,6 +105,7 @@ describe('OperationsCommand', () => {
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
+      // Handler currently reads Ukrainian option name 'тип'
       expect(mockInteraction.options.getString).toHaveBeenCalledWith('тип');
       expect(mockOperationsService.coordinate).toHaveBeenCalledWith('emergency');
       expect(mockInteraction.reply).toHaveBeenCalled();
@@ -121,7 +122,7 @@ describe('OperationsCommand', () => {
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
-      mockInteraction.options.getSubcommand.mockReturnValue('розвідка');
+      mockInteraction.options.getSubcommand.mockReturnValue('intelligence');
       mockInteraction.options.getString.mockReturnValue('daily');
 
       // Выполнение
@@ -129,7 +130,7 @@ describe('OperationsCommand', () => {
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockInteraction.options.getString).toHaveBeenCalledWith('період');
+      expect(mockInteraction.options.getString).toHaveBeenCalledWith('type');
       expect(mockOperationsService.getIntelligence).toHaveBeenCalledWith('daily');
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
