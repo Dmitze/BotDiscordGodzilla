@@ -110,4 +110,67 @@ export class AnalyticsService {
       return { groups: grouped, metrics };
     }) as Promise<{ groups: Record<string, Row[]>; metrics: Record<string, number> } | Row[]>;
   }
+
+  /**
+   * Простой частотный анализ ключевых слов по тексту
+   */
+  extractKeywords(text: string, opts?: { minLen?: number; topN?: number; stop?: string[] }): Array<{ word: string; count: number }> {
+    const minLen = opts?.minLen ?? 3;
+    const topN = opts?.topN ?? 20;
+    const stop = new Set((opts?.stop ?? ['the','and','a','to','of','в','і','та','на','що','для','це','як','ми','ви','вони'])
+      .map(s => s.toLowerCase()));
+    const words = String(text || '')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= minLen && !stop.has(w));
+    const freq = new Map<string, number>();
+    for (const w of words) freq.set(w, (freq.get(w) ?? 0) + 1);
+    return Array.from(freq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, topN)
+      .map(([word, count]) => ({ word, count }));
+  }
+
+  /**
+   * Наивные темы: группируем ключевые слова по стемам (обрезка окончаний) и выбираем топовые
+   */
+  extractTopics(text: string, opts?: { topN?: number }): Array<{ topic: string; weight: number }> {
+    const topN = opts?.topN ?? 10;
+    const kw = this.extractKeywords(text, { topN: topN * 3 });
+    const stem = (w: string) => w.replace(/(ами|ами|ами|ами|ів|ем|ам|ах|ах|ий|ий|ий|ий|ий|ий|ий|ов|ев|ів|ом|ом|ах|ах|и|и|и|а|я|у|ю|е|о)$/u, '');
+    const buckets = new Map<string, number>();
+    for (const { word, count } of kw) {
+      const s = stem(word);
+      buckets.set(s, (buckets.get(s) ?? 0) + count);
+    }
+    return Array.from(buckets.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, topN)
+      .map(([topic, weight]) => ({ topic, weight }));
+  }
+
+  /**
+   * Табличная аналитика: преднастроенные группировки/срезы
+   */
+  async analyzeTable(rows: Row[], preset: 'by_status' | 'by_month' | 'by_owner', statusField = 'status', dateField = 'date', ownerField = 'owner'): Promise<{ groups: Record<string, Row[]>; metrics: Record<string, number> }> {
+    switch (preset) {
+      case 'by_status':
+        return (await this.analyze({ rows, groupKeys: [statusField], aggregateOp: 'count' })) as any;
+      case 'by_month': {
+        const norm = rows.map(r => ({ ...r, __month: this.monthKey(r[dateField]) }));
+        return (await this.analyze({ rows: norm, groupKeys: ['__month'], aggregateOp: 'count' })) as any;
+      }
+      case 'by_owner':
+        return (await this.analyze({ rows, groupKeys: [ownerField], aggregateOp: 'count' })) as any;
+    }
+  }
+
+  private monthKey(v: any): string {
+    const d = v ? new Date(v) : null;
+    if (!d || Number.isNaN(d.getTime())) return 'unknown';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
 }
