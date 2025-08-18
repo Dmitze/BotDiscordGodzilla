@@ -331,6 +331,36 @@
     "parseError": "Помилка парсингу"
   }
   ,
+  "changes": {
+    "notify": {
+      "title": "🛎️ Оновлення Google Drive",
+      "line": "• {{type}}: {{name}} — {{owners}} ({{time}})",
+      "created": "створено",
+      "modified": "змінено",
+      "removed": "видалено",
+      "button": {
+        "source": "Джерело"
+      },
+      "noChannel": "Канал для сповіщень не налаштований"
+    }
+  }
+  ,
+  "analytics": {
+    "keywords": {
+      "title": "Ключові слова",
+      "line": "{{word}} — {{count}}"
+    },
+    "topics": {
+      "title": "Теми",
+      "line": "{{topic}} — {{weight}}"
+    },
+    "tables": {
+      "byStatus": "Розподіл за статусом",
+      "byMonth": "Розподіл за місяцями",
+      "byOwner": "Розподіл за власниками"
+    }
+  }
+  ,
   "workspace": {
     "common": {
       "unknownSub": "❌ Невідома підкоманда",
