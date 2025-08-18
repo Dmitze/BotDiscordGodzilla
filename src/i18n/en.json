@@ -93,4 +93,47 @@
     "unsupportedMime": "Unsupported MIME: {{mime}}",
     "parseError": "Parsing error"
   }
+  ,
+  "workspace": {
+    "common": {
+      "unknownSub": "❌ Unknown subcommand",
+      "execError": "❌ Command execution error",
+      "notFound": "⚠️ Not found"
+    },
+    "fav": {
+      "command": { "description": "Favorites: manage your favorite files" },
+      "sub": {
+        "add": "Add file to favorites",
+        "list": "Show favorites",
+        "remove": "Remove file from favorites"
+      },
+      "added": "✅ Added to favorites",
+      "exists": "ℹ️ Already in favorites",
+      "removed": "🗑️ Removed from favorites",
+      "empty": "ℹ️ Favorites list is empty",
+      "listTitle": "⭐ Favorites:"
+    },
+    "search": {
+      "command": { "description": "Saved searches" },
+      "sub": {
+        "save": "Save search",
+        "run": "Run saved search",
+        "list": "Show saved searches",
+        "remove": "Remove saved search"
+      },
+      "opt": {
+        "name": "Search name",
+        "query": "Search string (name contains)",
+        "folder": "Folder ID",
+        "mime": "MIME filter",
+        "owner": "Owner",
+        "limit": "Page limit"
+      },
+      "saved": "✅ Search saved: {{name}}",
+      "runNotFound": "⚠️ Saved search not found",
+      "listEmpty": "ℹ️ No saved searches",
+      "listTitle": "🔍 Saved searches:",
+      "removed": "🗑️ Removed"
+    }
+  }
 }
