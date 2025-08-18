@@ -135,16 +135,16 @@ function sanitizeInput(input: string): string {
   return input.replace(/<[^>]*>/g, '');
 }
 
-function rateLimit(userId: string, limit: number, windowMs: number): { allowed: boolean } {
+function rateLimit(userId: string, limit: number, _windowMs: number): { allowed: boolean } {
   // Простая реализация rate limiting
   const key = `rate_limit_${userId}`;
-  const current = parseInt(localStorage.getItem(key) || '0');
+  const current = parseInt((globalThis as any).localStorage.getItem(key) || '0');
   
   if (current >= limit) {
     return { allowed: false };
   }
   
-  localStorage.setItem(key, (current + 1).toString());
+  (globalThis as any).localStorage.setItem(key, (current + 1).toString());
   return { allowed: true };
 }
 
