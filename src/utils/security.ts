@@ -259,7 +259,11 @@ export class SecurityManager {
   }
 
   private sanitizeInput(input: string): string {
-    return input
+    // 1) Remove entire <script>...</script> blocks (including content)
+    // 2) Strip remaining HTML tags
+    // 3) Escape special characters and normalize whitespace
+    const withoutScripts = input.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+    return withoutScripts
       .replace(/<[^>]*>/g, '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
