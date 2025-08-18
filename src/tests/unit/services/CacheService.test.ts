@@ -169,7 +169,7 @@ describe('CacheService', () => {
       const mockKeys = ['key1', 'key2', 'key3'];
       mockRedisClient.keys.mockResolvedValue(mockKeys);
 
-      const stats = await cacheService.getStats();
+      const stats = await cacheService.getCacheStatsSimple();
 
       expect(mockRedisClient.keys).toHaveBeenCalledWith('*');
       expect(stats).toEqual({
@@ -188,7 +188,7 @@ describe('CacheService', () => {
       const mockKeys = ['key1'];
       mockRedisClient.keys.mockResolvedValue(mockKeys);
 
-      const stats = await cacheService.getStats();
+      const stats = await cacheService.getCacheStatsSimple();
 
       expect(stats.hitRate).toBe(0.8); // 80 / (80 + 20) = 0.8
     });
@@ -197,7 +197,7 @@ describe('CacheService', () => {
       const mockKeys = ['key1'];
       mockRedisClient.keys.mockResolvedValue(mockKeys);
 
-      const stats = await cacheService.getStats();
+      const stats = await cacheService.getCacheStatsSimple();
 
       expect(stats.hitRate).toBe(0);
     });
