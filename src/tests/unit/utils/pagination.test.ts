@@ -2,7 +2,8 @@
  * Unit тесты для утилиты pagination
  */
 
-import { jest, describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
+
 import { createPaginationEmbed, createPaginationRow } from '../../../utils/pagination';
 
 describe('Pagination Utils', () => {
@@ -58,8 +59,8 @@ describe('Pagination Utils', () => {
 
       const embed = createPaginationEmbed(data, 0, 2, 'Formatted Title');
 
-      expect(embed.fields[0].name).toContain('Item 1');
-      expect(embed.fields[0].value).toContain('Value 1');
+      expect(embed.fields?.[0]?.name).toContain('Item 1');
+      expect(embed.fields?.[0]?.value).toContain('Value 1');
     });
   });
 
