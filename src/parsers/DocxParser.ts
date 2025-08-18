@@ -11,7 +11,13 @@ export class DocxParser implements IParser {
   }): Promise<ParseResult> {
     if (!input.fileId) throw new Error('fileId required');
     const buf = await ctx.downloadFile(input.fileId);
-    const { value } = await mammoth.extractRawText({ buffer: buf });
-    return { text: value || '', source: 'parser', buffer: buf };
+    try {
+      const { value } = await mammoth.extractRawText({ buffer: buf });
+      return { text: value || '', source: 'parser', buffer: buf };
+    } catch (_e) {
+      // Fallback: return raw UTF-8 text from buffer
+      const text = buf.toString('utf8');
+      return { text: text || '', source: 'raw', buffer: buf };
+    }
   }
 }
