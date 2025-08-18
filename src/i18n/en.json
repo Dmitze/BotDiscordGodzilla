@@ -94,6 +94,36 @@
     "parseError": "Parsing error"
   }
   ,
+  "changes": {
+    "notify": {
+      "title": "🛎️ Google Drive Updates",
+      "line": "• {{type}}: {{name}} — {{owners}} ({{time}})",
+      "created": "created",
+      "modified": "modified",
+      "removed": "removed",
+      "button": {
+        "source": "Source"
+      },
+      "noChannel": "Notification channel is not configured"
+    }
+  }
+  ,
+  "analytics": {
+    "keywords": {
+      "title": "Keywords",
+      "line": "{{word}} — {{count}}"
+    },
+    "topics": {
+      "title": "Topics",
+      "line": "{{topic}} — {{weight}}"
+    },
+    "tables": {
+      "byStatus": "By status",
+      "byMonth": "By month",
+      "byOwner": "By owner"
+    }
+  }
+  ,
   "workspace": {
     "common": {
       "unknownSub": "❌ Unknown subcommand",
