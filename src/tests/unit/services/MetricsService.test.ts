@@ -10,7 +10,7 @@ import { createMockConfig } from '../../utils/testHelpers';
 jest.mock('prom-client', () => ({
   Registry: jest.fn(() => ({
     registerMetric: jest.fn(),
-    metrics: jest.fn().mockResolvedValue('test_metrics'),
+    metrics: (jest.fn() as any).mockResolvedValue('test_metrics' as any),
     clear: jest.fn(),
   })),
   Counter: jest.fn(() => ({
