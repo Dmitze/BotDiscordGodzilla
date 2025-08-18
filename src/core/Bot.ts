@@ -53,9 +53,12 @@ export class Bot extends BaseServiceClass {
   public readonly errorHandler: ErrorHandler;
   public readonly eventManager: EventManager;
   public readonly serviceManager: ServiceManager;
+<<<<<<< HEAD
   private readonly chatMemory: MemoryService;
   private readonly intentDetector: IntentDetector;
   private readonly chatRouter: ChatRouter;
+=======
+>>>>>>> 9c10d7c4 (fix(core): lifecycle бота)
 
   private commands = new Collection<string, BaseCommand>();
   private isReady = false;
@@ -120,7 +123,16 @@ export class Bot extends BaseServiceClass {
     }
 
     this.client = new Client({
+<<<<<<< HEAD
       intents: intentsResolved,
+=======
+      intents: [
+        // Мінімально необхідні інтенти для слеш-команд та базових подій
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.DirectMessages,
+      ],
+>>>>>>> 9c10d7c4 (fix(core): lifecycle бота)
       failIfNotExists: false,
     });
 
@@ -231,6 +243,7 @@ export class Bot extends BaseServiceClass {
       logger.info('⏳ Очікування готовності клієнта...');
       await this.waitForReady();
 
+<<<<<<< HEAD
       // Підключаємо чат-роутер після готовності клієнта (тільки якщо чат увімкнено)
       if (this.config.discord.enableChat) {
         try {
@@ -247,6 +260,8 @@ export class Bot extends BaseServiceClass {
         logger.info('💤 Chat mode disabled — ChatRouter не підключено');
       }
 
+=======
+>>>>>>> 9c10d7c4 (fix(core): lifecycle бота)
       // Запуск health check
       this.startHealthCheck();
 
