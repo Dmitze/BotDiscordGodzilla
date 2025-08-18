@@ -13,6 +13,7 @@ import { MetricsService } from '../services/MetricsService';
 import { SheetsContextService } from '../services/SheetsContextService';
 import SchedulerService from '../services/SchedulerService';
 import { DriveIndexerService } from '../services/DriveIndexerService';
+import { DriveChangesService } from '../services/DriveChangesService';
 import type { BotConfig } from '@/types';
 
 interface Bot {
@@ -117,6 +118,9 @@ class ServiceManager {
 
     // Sheets Context Service
     this.services.set('sheetsContext', new SheetsContextService(this.bot.config));
+
+    // Drive Changes Service (polling changes)
+    this.services.set('driveChanges', new DriveChangesService(this.bot.config as BotConfig));
 
     // Drive Indexer Service (потребує доступу до інших сервісів через getService)
     this.services.set(
