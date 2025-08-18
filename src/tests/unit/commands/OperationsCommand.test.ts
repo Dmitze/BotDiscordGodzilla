@@ -75,14 +75,18 @@ describe('OperationsCommand', () => {
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
       mockInteraction.options.getSubcommand.mockReturnValue('tasks');
-      mockInteraction.options.getString.mockReturnValue('current');
+      // first required option 'action', then optional 'query'
+      mockInteraction.options.getString
+        .mockReturnValueOnce('current')
+        .mockReturnValueOnce(undefined);
 
       // Выполнение
       await operationsCommand.execute(mockInteraction);
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockInteraction.options.getString).toHaveBeenCalledWith('action');
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(1, 'action', true);
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(2, 'query');
       expect(mockOperationsService.getTasks).toHaveBeenCalledWith('current');
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
@@ -98,15 +102,18 @@ describe('OperationsCommand', () => {
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
       mockInteraction.options.getSubcommand.mockReturnValue('coordination');
-      mockInteraction.options.getString.mockReturnValue('emergency');
+      // handler reads 'тип' (ua key) as required; service called with 'emergency'
+      mockInteraction.options.getString
+        .mockReturnValueOnce('emergency') // for 'тип'
+        .mockReturnValueOnce(undefined); // for 'підрозділ'
 
       // Выполнение
       await operationsCommand.execute(mockInteraction);
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      // Handler currently reads Ukrainian option name 'тип'
-      expect(mockInteraction.options.getString).toHaveBeenCalledWith('тип');
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(1, 'тип', true);
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(2, 'підрозділ');
       expect(mockOperationsService.coordinate).toHaveBeenCalledWith('emergency');
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
@@ -123,14 +130,17 @@ describe('OperationsCommand', () => {
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
       mockInteraction.options.getSubcommand.mockReturnValue('intelligence');
-      mockInteraction.options.getString.mockReturnValue('daily');
+      mockInteraction.options.getString
+        .mockReturnValueOnce('daily') // for 'тип'
+        .mockReturnValueOnce(undefined); // for 'район'
 
       // Выполнение
       await operationsCommand.execute(mockInteraction);
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockInteraction.options.getString).toHaveBeenCalledWith('type');
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(1, 'тип', true);
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(2, 'район');
       expect(mockOperationsService.getIntelligence).toHaveBeenCalledWith('daily');
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
@@ -157,7 +167,7 @@ describe('OperationsCommand', () => {
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
-      mockInteraction.options.getSubcommand.mockReturnValue('ситуація');
+      mockInteraction.options.getSubcommand.mockReturnValue('situation');
       mockInteraction.options.getString.mockReturnValue('all');
 
       // Выполнение
@@ -179,8 +189,10 @@ describe('OperationsCommand', () => {
       };
 
       mockInteraction.client.serviceContainer.get.mockReturnValue(mockOperationsService);
-      mockInteraction.options.getSubcommand.mockReturnValue('завдання');
-      mockInteraction.options.getString.mockReturnValue('completed');
+      mockInteraction.options.getSubcommand.mockReturnValue('tasks');
+      mockInteraction.options.getString
+        .mockReturnValueOnce('current') // action
+        .mockReturnValueOnce(undefined); // query
 
       // Выполнение
       await operationsCommand.execute(mockInteraction);
