@@ -26,6 +26,8 @@ import { DocCommand } from '@/commands/DocCommand';
 import { WorkspaceCommand } from '@/commands/WorkspaceCommand';
 import { LangCommand } from '@/commands/LangCommand';
 import { AnalyzeCommand } from '@/commands/AnalyzeCommand';
+import { FavoritesCommand } from '@/commands/FavoritesCommand';
+import { SavedSearchCommand } from '@/commands/SavedSearchCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -239,6 +241,8 @@ export class CommandManager {
         new DriveExtractCommand(this.config, googleService),
         new DocCommand(this.config, googleService),
         new WorkspaceCommand(this.config),
+        new FavoritesCommand(this.config),
+        new SavedSearchCommand(this.config),
         new LangCommand(this.config),
         new AnalyzeCommand(this.config),
       ];
