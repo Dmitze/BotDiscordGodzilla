@@ -244,6 +244,18 @@ class Logger {
    */
   private createTransports(): winston.transport[] {
     const formats = this.createFormats();
+    // У тестовому середовищі використовуємо лише консольний транспорт,
+    // щоб уникнути помилки winston "write after end" при завершенні Jest
+    if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
+      return [
+        new winston.transports.Console({
+          format: formats.console,
+          level: this.getLogLevel(),
+          handleExceptions: true,
+          handleRejections: true,
+        }),
+      ];
+    }
 
     return [
       // Консольний транспорт
