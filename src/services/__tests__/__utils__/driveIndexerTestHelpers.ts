@@ -80,3 +80,10 @@ export async function initIndexer(bot: any) {
   await indexer.initialize();
   return indexer;
 }
+
+// Trivial test to satisfy Jest's requirement for at least one test in this suite
+describe('driveIndexerTestHelpers noop', () => {
+  it('should be true', () => {
+    expect(true).toBe(true);
+  });
+});
