@@ -12,15 +12,16 @@ import logger from '@/utils/logger';
 
 export class OperationsCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super('операції', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
+    // Command and option names must be lowercase ASCII (Discord constraint)
+    super('operations', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
       return builder
         .addSubcommand((subcommand: any) =>
           subcommand
-            .setName('ситуація')
+            .setName('situation')
             .setDescription('📊 Поточна оперативна ситуація')
             .addStringOption((option: any) =>
               option
-                .setName('сектор')
+                .setName('sector')
                 .setDescription('Оперативний сектор')
                 .setRequired(false)
                 .addChoices(
@@ -34,11 +35,11 @@ export class OperationsCommand extends BaseCommand {
         )
         .addSubcommand((subcommand: any) =>
           subcommand
-            .setName('завдання')
+            .setName('tasks')
             .setDescription('🎯 Управління завданнями')
             .addStringOption((option: any) =>
               option
-                .setName('дія')
+                .setName('action')
                 .setDescription('Дія з завданнями')
                 .setRequired(true)
                 .addChoices(
@@ -50,16 +51,16 @@ export class OperationsCommand extends BaseCommand {
                 )
             )
             .addStringOption((option: any) =>
-              option.setName('запит').setDescription('Пошуковий запит або дані').setRequired(false)
+              option.setName('query').setDescription('Пошуковий запит або дані').setRequired(false)
             )
         )
         .addSubcommand((subcommand: any) =>
           subcommand
-            .setName('координація')
+            .setName('coordination')
             .setDescription('🔄 Координація між підрозділами')
             .addStringOption((option: any) =>
               option
-                .setName('тип')
+                .setName('type')
                 .setDescription('Тип координації')
                 .setRequired(true)
                 .addChoices(
@@ -71,16 +72,16 @@ export class OperationsCommand extends BaseCommand {
                 )
             )
             .addStringOption((option: any) =>
-              option.setName('підрозділ').setDescription('Підрозділ для координації').setRequired(false)
+              option.setName('unit').setDescription('Підрозділ для координації').setRequired(false)
             )
         )
         .addSubcommand((subcommand: any) =>
           subcommand
-            .setName('розвідка')
+            .setName('intelligence')
             .setDescription('🔍 Розвідувальні дані')
             .addStringOption((option: any) =>
               option
-                .setName('тип')
+                .setName('type')
                 .setDescription('Тип розвідки')
                 .setRequired(true)
                 .addChoices(
@@ -92,16 +93,16 @@ export class OperationsCommand extends BaseCommand {
                 )
             )
             .addStringOption((option: any) =>
-              option.setName('район').setDescription('Район розвідки').setRequired(false)
+              option.setName('area').setDescription('Район розвідки').setRequired(false)
             )
         )
         .addSubcommand((subcommand: any) =>
           subcommand
-            .setName("зв'язок")
+            .setName('communications')
             .setDescription("📡 Управління зв'язком")
             .addStringOption((option: any) =>
               option
-                .setName('дія')
+                .setName('action')
                 .setDescription("Дія зі зв'язком")
                 .setRequired(true)
                 .addChoices(
@@ -113,10 +114,10 @@ export class OperationsCommand extends BaseCommand {
                 )
             )
             .addStringOption((option: any) =>
-              option.setName('канал').setDescription("Канал зв'язку").setRequired(false)
+              option.setName('channel').setDescription("Канал зв'язку").setRequired(false)
             )
             .addStringOption((option: any) =>
-              option.setName('повідомлення').setDescription('Текст повідомлення').setRequired(false)
+              option.setName('message').setDescription('Текст повідомлення').setRequired(false)
             )
         );
     });
@@ -134,19 +135,19 @@ export class OperationsCommand extends BaseCommand {
       const opsService = services?.get?.('operations');
 
       switch (subcommand) {
-        case 'ситуація':
+        case 'situation':
           await this.handleSituation(interaction, opsService);
           break;
-        case 'завдання':
+        case 'tasks':
           await this.handleTasks(interaction, opsService);
           break;
-        case 'координація':
+        case 'coordination':
           await this.handleCoordination(interaction, opsService);
           break;
-        case 'розвідка':
+        case 'intelligence':
           await this.handleIntelligence(interaction, opsService);
           break;
-        case "зв'язок":
+        case 'communications':
           await this.handleCommunications(interaction, opsService);
           break;
         default:
@@ -169,7 +170,7 @@ export class OperationsCommand extends BaseCommand {
     interaction: ChatInputCommandInteraction,
     opsService?: any
   ): Promise<void> {
-    const sector = interaction.options.getString('сектор') || 'all';
+    const sector = interaction.options.getString('sector') || 'all';
 
     // Виклик сервісу, якщо він є (для unit-тестів використовується мок)
     try {
@@ -213,8 +214,8 @@ export class OperationsCommand extends BaseCommand {
     interaction: ChatInputCommandInteraction,
     opsService?: any
   ): Promise<void> {
-    const action = interaction.options.getString('дія', true);
-    const query = interaction.options.getString('запит');
+    const action = interaction.options.getString('action', true);
+    const query = interaction.options.getString('query');
 
     logger.info('Виконання дії управління завданнями', {
       action,
