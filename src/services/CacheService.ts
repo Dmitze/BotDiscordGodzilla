@@ -80,8 +80,12 @@ export class CacheService extends BaseServiceClass {
       if (this.config.redis?.url) {
         (redisOptions as { url: string }).url = this.config.redis.url;
       }
-
-      this.client = createClient(redisOptions);
+      // Якщо клієнт уже підставлено (наприклад, у юніт-тестах) — використовуємо його
+      if (!this.client) {
+        this.client = createClient(redisOptions);
+      } else {
+        logger.debug('Використовую наданий Redis клієнт (інжектований)', { component: 'CacheService' });
+      }
 
       // Обробники подій
       this.setupEventHandlers();
@@ -120,17 +124,23 @@ export class CacheService extends BaseServiceClass {
    */
   private setupEventHandlers(): void {
     if (!this.client) return;
+    const anyClient: any = this.client as any;
+    if (typeof anyClient.on !== 'function') {
+      // In tests or minimal mocks, redis client may not implement EventEmitter
+      logger.debug('Redis client has no .on; skipping event handler binding', { component: 'CacheService' });
+      return;
+    }
 
-    this.client.on('connect', () => {
+    anyClient.on('connect', () => {
       logger.info('🔗 Redis: Підключено', { component: 'CacheService' });
       this.isConnected = true;
     });
 
-    this.client.on('ready', () => {
+    anyClient.on('ready', () => {
       logger.info('✅ Redis: Готовий до роботи', { component: 'CacheService' });
     });
 
-    this.client.on('error', error => {
+    anyClient.on('error', (error: unknown) => {
       logger.error('❌ Redis помилка:', {
         type: 'cache_service',
         event: 'redis_error',
@@ -144,12 +154,12 @@ export class CacheService extends BaseServiceClass {
       this.stats.errors++;
     });
 
-    this.client.on('end', () => {
+    anyClient.on('end', () => {
       logger.warn("🔌 Redis: З'єднання закрито", { component: 'CacheService' });
       this.isConnected = false;
     });
 
-    this.client.on('reconnecting', () => {
+    anyClient.on('reconnecting', () => {
       logger.info('🔄 Redis: Перепідключення...', { component: 'CacheService' });
     });
   }
@@ -165,6 +175,8 @@ export class CacheService extends BaseServiceClass {
     try {
       await this.client.connect();
       logger.info('✅ Підключення до Redis успішне', { component: 'CacheService' });
+      // Для середовищ без EventEmitter подій (моки) виставляємо прапорець вручну
+      this.isConnected = true;
     } catch (error) {
       logger.error('❌ Помилка підключення до Redis:', {
         type: 'cache_service',
