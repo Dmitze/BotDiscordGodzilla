@@ -4,8 +4,19 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
+<<<<<<< HEAD
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import type { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+=======
+import {
+  SlashCommandBuilder,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChatInputCommandInteraction,
+} from 'discord.js';
+>>>>>>> 2b35cf14 (refactor(command): оновлено SearchCommand)
 import type { BotConfig, SheetData, SearchParams } from '@/types';
 import { BaseCommand, type CommandExecuteOptions } from './BaseCommand';
 import logger from '@/utils/logger';
@@ -121,7 +132,11 @@ export class SearchCommand extends BaseCommand {
               .setMaxLength(10)
           )
           .addStringOption(option =>
+<<<<<<< HEAD
             option.setName('підрозділ').setDescription(t('search.opt.unit.description')).setMaxLength(100)
+=======
+            option.setName('підрозділ').setDescription('Підрозділ для пошуку').setMaxLength(100)
+>>>>>>> 2b35cf14 (refactor(command): оновлено SearchCommand)
           )
           .addStringOption(option =>
             option
@@ -334,7 +349,11 @@ export class SearchCommand extends BaseCommand {
     const cached = this.searchCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < SEARCH_CONFIG.CACHE_TTL * 1000) {
       this.searchStats.cacheHits++;
+<<<<<<< HEAD
       logger.debug(t('search.log.cacheHit'), {
+=======
+      logger.debug('Результат знайдено в кеші', {
+>>>>>>> 2b35cf14 (refactor(command): оновлено SearchCommand)
         type: 'performance',
         component: 'SearchCommand',
         cacheKey,
@@ -794,11 +813,18 @@ export class SearchCommand extends BaseCommand {
       .setTimestamp();
 
     try {
+<<<<<<< HEAD
       const content = `❌ Помилка: ${errorMessage}`;
       if (interaction.deferred) {
         await interaction.editReply({ content, embeds: [errorEmbed] });
       } else if (interaction.replied) {
         await interaction.followUp({ content, embeds: [errorEmbed], ephemeral: true });
+=======
+      if (interaction.deferred) {
+        await interaction.editReply({ embeds: [errorEmbed] });
+      } else if (interaction.replied) {
+        await interaction.followUp({ embeds: [errorEmbed], ephemeral: true });
+>>>>>>> 2b35cf14 (refactor(command): оновлено SearchCommand)
       } else {
         await interaction.reply({ content, embeds: [errorEmbed], ephemeral: true });
       }
