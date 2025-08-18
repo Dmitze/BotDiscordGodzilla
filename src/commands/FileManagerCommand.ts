@@ -18,6 +18,7 @@ import {
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
+import { buildSearchPaginationRows } from '@/ui/components';
 
 import type { GoogleService } from '@/services/GoogleService';
 import type { AIService } from '@/services/AIService';
@@ -697,33 +698,16 @@ export class FileManagerCommand extends BaseCommand {
       .setTimestamp()
       .setFooter({ text: `Сторінка ${safePage}/${totalPages}` });
 
-    const ts = Math.floor(Date.now() / 1000);
-    const row1 = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: 1, ts }))
-        .setLabel(t('files.search.buttons.first')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === 1),
-      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: Math.max(1, safePage - 1), ts }))
-        .setLabel(t('files.search.buttons.prev')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === 1),
-      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: Math.min(totalPages, safePage + 1), ts }))
-        .setLabel(t('files.search.buttons.next')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === totalPages),
-      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: totalPages, ts }))
-        .setLabel(t('files.search.buttons.last')).setStyle(ButtonStyle.Secondary).setDisabled(safePage === totalPages),
-    );
-
-    const row2 = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: safePage, ts, action: 'toggle' }))
-        .setLabel(t('files.search.buttons.showChangesOnly')).setStyle(session.changesOnly ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: 1, ts, action: 'reset' }))
-        .setLabel(t('files.search.buttons.resetBaseline')).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(this.buildCustomId({ sid, page: safePage, ts, action: 'close' }))
-        .setLabel(t('files.search.buttons.close')).setStyle(ButtonStyle.Danger),
-    );
-    const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [row1, row2];
     const allowLink = !(this.config.drive?.hideWebLink);
-    if (allowLink && session.folderId && session.folderId !== 'root') {
-      const folderUrl = `https://drive.google.com/drive/folders/${encodeURIComponent(session.folderId)}`;
-      const linkBtn = new ButtonBuilder().setLabel('Джерело').setStyle(ButtonStyle.Link).setURL(folderUrl);
-      rows.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn));
-    }
+    const rows = buildSearchPaginationRows({
+      sid,
+      safePage,
+      totalPages,
+      changesOnly: session.changesOnly,
+      allowLink,
+      folderId: session.folderId,
+      buildId: ({ sid, page, ts, action }) => this.buildCustomId({ sid, page, ts, action }),
+    });
     return { embed, components: rows };
   }
 
