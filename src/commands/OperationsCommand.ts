@@ -317,13 +317,13 @@ export class OperationsCommand extends BaseCommand {
    */
   private async handleIntelligence(
     interaction: ChatInputCommandInteraction,
-    opsService?: any
+    _opsService?: any
   ): Promise<void> {
     const type = interaction.options.getString('тип', true);
     const area = interaction.options.getString('район');
 
     try {
-      await opsService?.getIntelligence?.(type);
+      await _opsService?.getIntelligence?.(type);
     } catch (e) {
       await interaction.reply({ content: '❌ Помилка розвідки', ephemeral: true });
       return;
@@ -357,7 +357,7 @@ export class OperationsCommand extends BaseCommand {
    */
   private async handleCommunications(
     interaction: ChatInputCommandInteraction,
-    opsService?: any
+    _opsService?: any
   ): Promise<void> {
     const action = interaction.options.getString('дія', true);
     const channel = interaction.options.getString('канал');
