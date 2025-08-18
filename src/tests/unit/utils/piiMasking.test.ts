@@ -31,7 +31,7 @@ describe('PII masking flags in fileProcessor', () => {
       features: { enablePiiMasking: true, piiMaskEmail: false, piiMaskPhone: true },
     } as any);
     const out = sanitizeTextForChat(sample);
-    expect(out).toContain('example.com') || expect(out).toMatch(/john(\.|\*)?doe/i);
+    expect(out.includes('example.com') || /john(\.|\*)?doe/i.test(out)).toBe(true);
     expect(out).not.toMatch(/415\D*555/);
   });
 
