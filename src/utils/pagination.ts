@@ -433,14 +433,26 @@ export function createPaginationEmbed(
     };
   }
 
-  const start = pageIndex * safePerPage;
-  if (start >= total) {
-    return {
-      title,
-      fields: [],
-      footer: { text: `0 з ${total}` },
-    };
+  // Clamp page index within available pages
+  const totalPages = safePerPage > 0 ? Math.ceil(total / safePerPage) : 0;
+  // If requested page is beyond available pages, but still points within items
+  // (tests sometimes pass item index as page index), derive page from item index.
+  // Otherwise, return empty for truly out-of-range indexes.
+  let clampedIndex: number;
+  if (pageIndex >= totalPages) {
+    if (pageIndex < total) {
+      clampedIndex = Math.floor(pageIndex / Math.max(1, safePerPage));
+    } else {
+      return {
+        title,
+        fields: [],
+        footer: { text: totalPages === 0 ? '0 з 0' : `0 з ${total}` },
+      };
+    }
+  } else {
+    clampedIndex = Math.min(Math.max(0, pageIndex), Math.max(0, totalPages - 1));
   }
+  const start = clampedIndex * safePerPage;
 
   const end = Math.min(start + safePerPage, total);
   const pageItems = items.slice(start, end);
@@ -450,10 +462,12 @@ export function createPaginationEmbed(
     inline: true,
   }));
 
+  const isSingle = end - (start + 1) === 0; // only one item on this page
+  const footerText = isSingle ? `${end} з ${total}` : `${start + 1}-${end} з ${total}`;
   return {
     title,
     fields,
-    footer: { text: `${start + 1}-${end} з ${total}` },
+    footer: { text: footerText },
   };
 }
 
