@@ -5,17 +5,17 @@
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 
 export class AnalyticsCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super('аналітика', 'Аналітика та звітність', config, {}, (builder: any) => {
-      return builder
-        .addSubcommand((subcommand: any) =>
+    super('аналітика', 'Аналітика та звітність', config, {}, (builder) => {
+      builder
+        .addSubcommand((subcommand) =>
           subcommand
             .setName('звіт')
             .setDescription('📋 Генерація звітів')
-            .addStringOption((option: any) =>
+            .addStringOption((option) =>
               option
                 .setName('тип')
                 .setDescription('Тип звіту')
@@ -26,7 +26,7 @@ export class AnalyticsCommand extends BaseCommand {
                   { name: 'Місячний звіт', value: 'monthly' }
                 )
             )
-            .addStringOption((option: any) =>
+            .addStringOption((option) =>
               option
                 .setName('формат')
                 .setDescription('Формат звіту')
@@ -37,12 +37,13 @@ export class AnalyticsCommand extends BaseCommand {
                   { name: 'PDF', value: 'pdf' }
                 )
             )
-        )
-        .addSubcommand((subcommand: any) =>
+        );
+      builder
+        .addSubcommand((subcommand) =>
           subcommand
             .setName('статистика')
             .setDescription('📈 Статистика та метрики')
-            .addStringOption((option: any) =>
+            .addStringOption((option) =>
               option
                 .setName('категорія')
                 .setDescription('Категорія статистики')
@@ -57,23 +58,26 @@ export class AnalyticsCommand extends BaseCommand {
                   { name: 'Ефективність', value: 'efficiency' }
                 )
             )
-        )
-        .addSubcommand((subcommand: any) =>
+        );
+      builder
+        .addSubcommand((subcommand) =>
           subcommand
             .setName('тренди')
             .setDescription('📊 Тренди за період')
-            .addStringOption((option: any) =>
+            .addStringOption((option) =>
               option
                 .setName('період')
                 .setDescription('Період трендів (напр. 7d, 30d)')
                 .setRequired(true)
             )
-        )
-        .addSubcommand((subcommand: any) =>
+        );
+      builder
+        .addSubcommand((subcommand) =>
           subcommand
             .setName('інсайти')
             .setDescription('💡 Інсайти та рекомендації')
         );
+      return builder;
     });
   }
 
@@ -110,12 +114,12 @@ export class AnalyticsCommand extends BaseCommand {
     }
   }
 
-  private async handleReport(interaction: any): Promise<void> {
+  private async handleReport(interaction: ChatInputCommandInteraction): Promise<void> {
     const type = interaction.options.getString('тип', true);
     const format = interaction.options.getString('формат') || 'text';
 
     try {
-      const analyticsService = interaction.client.serviceContainer.get('AnalyticsService');
+      const analyticsService = (interaction.client as any)?.serviceContainer?.get('AnalyticsService');
       const report = await analyticsService.generateReport(type, format);
 
       if (!report || !report.data || Object.keys(report.data).length === 0) {
@@ -133,7 +137,7 @@ export class AnalyticsCommand extends BaseCommand {
     }
   }
 
-  private async handleStatistics(interaction: any): Promise<void> {
+  private async handleStatistics(interaction: ChatInputCommandInteraction): Promise<void> {
     const category = interaction.options.getString('категорія', true);
 
     const embed = new EmbedBuilder()
@@ -145,7 +149,7 @@ export class AnalyticsCommand extends BaseCommand {
 
     embed.setDescription(`**${categoryName}**`);
     try {
-      const analyticsService = interaction.client.serviceContainer.get('AnalyticsService');
+      const analyticsService = (interaction.client as any)?.serviceContainer?.get('AnalyticsService');
       const stats = await analyticsService.getStatistics(category);
       // Додаємо кілька базових полів, якщо сервіс повернув дані
       if (stats) {
@@ -158,10 +162,10 @@ export class AnalyticsCommand extends BaseCommand {
     }
   }
 
-  private async handleTrends(interaction: any): Promise<void> {
+  private async handleTrends(interaction: ChatInputCommandInteraction): Promise<void> {
     const period = interaction.options.getString('період', true);
     try {
-      const analyticsService = interaction.client.serviceContainer.get('AnalyticsService');
+      const analyticsService = (interaction.client as any)?.serviceContainer?.get('AnalyticsService');
       const trends = await analyticsService.getTrends(period);
       await interaction.reply({ content: `✅ Тренди за період ${period}: ${trends?.trends?.length ?? 0}` });
     } catch {
@@ -169,9 +173,9 @@ export class AnalyticsCommand extends BaseCommand {
     }
   }
 
-  private async handleInsights(interaction: any): Promise<void> {
+  private async handleInsights(interaction: ChatInputCommandInteraction): Promise<void> {
     try {
-      const analyticsService = interaction.client.serviceContainer.get('AnalyticsService');
+      const analyticsService = (interaction.client as any)?.serviceContainer?.get('AnalyticsService');
       const data = await analyticsService.getInsights();
       const msgs: string[] = [];
       if (data?.insights?.length) msgs.push('• ' + data.insights.join('\n• '));
@@ -202,25 +206,5 @@ export class AnalyticsCommand extends BaseCommand {
       efficiency: 'Ефективність',
     };
     return map[category] || category;
-  }
-
-  private getObjectName(object: string): string {
-    const objectNames: Record<string, string> = {
-      units: 'Підрозділи',
-      periods: 'Періоди',
-      metrics: 'Показники',
-      regions: 'Регіони',
-    };
-    return objectNames[object] || object;
-  }
-
-  private getMetricName(metric: string): string {
-    const metricNames: Record<string, string> = {
-      efficiency: 'Ефективність',
-      costs: 'Витрати',
-      results: 'Результати',
-      time: 'Час виконання',
-    };
-    return metricNames[metric] || metric;
   }
 }
