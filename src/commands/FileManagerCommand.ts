@@ -706,7 +706,9 @@ export class FileManagerCommand extends BaseCommand {
       changesOnly: session.changesOnly,
       allowLink,
       folderId: session.folderId,
-      buildId: ({ sid, page, ts, action }) => this.buildCustomId({ sid, page, ts, action }),
+      buildId: ({ sid, page, ts, action }) => action
+        ? this.buildCustomId({ sid, page, ts, action })
+        : this.buildCustomId({ sid, page, ts }),
     });
     return { embed, components: rows };
   }
