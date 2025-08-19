@@ -2,6 +2,8 @@ import type { DriveFile } from '@/types/drive';
 import type { IParser, ParseResult } from './IParser';
 import { t } from '@/i18n';
 import logger from '@/utils/logger';
+import { withTimeout, retry } from './utils';
+import { normalizeUnicode } from './normalize';
 
 export type ParserContext = {
   exportFile: (fileId: string, mime: string) => Promise<Buffer>;
@@ -10,10 +12,22 @@ export type ParserContext = {
   extractTextFromBuffer: (buf: Buffer) => Promise<string>;
 };
 
+export type ParserRouterOptions = {
+  timeoutMs?: number; // таймаут на один парсер
+  retryAttempts?: number; // количество попыток на один парсер
+  retryDelayMs?: number; // задержка между попытками
+};
+
 export class ParserRouter {
   private parsers: IParser[] = [];
-  constructor(parsers: IParser[]) {
+  private opts: Required<ParserRouterOptions>;
+  constructor(parsers: IParser[], options: ParserRouterOptions = {}) {
     this.parsers = parsers;
+    this.opts = {
+      timeoutMs: options.timeoutMs ?? 10000,
+      retryAttempts: options.retryAttempts ?? 1,
+      retryDelayMs: options.retryDelayMs ?? 200,
+    };
   }
 
   register(parser: IParser): void {
@@ -35,7 +49,17 @@ export class ParserRouter {
     let lastErr: unknown;
     for (const parser of candidates) {
       try {
-        return await parser.parse({ fileId: meta.id, mime: meta.mimeType }, ctx);
+        const result = await retry(
+          () => withTimeout(parser.parse({ fileId: meta.id, mime: meta.mimeType }, ctx), this.opts.timeoutMs, 'parser.parse'),
+          this.opts.retryAttempts,
+          this.opts.retryDelayMs,
+          'parser.parse'
+        );
+        // Нормализация текста единообразно по всем парсерам
+        if (result && typeof result.text === 'string') {
+          result.text = normalizeUnicode(result.text);
+        }
+        return result;
       } catch (e) {
         lastErr = e;
         logger.warn('ParserRouter: primary parser failed, trying fallback', {
