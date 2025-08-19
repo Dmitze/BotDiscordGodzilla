@@ -2561,6 +2561,7 @@ export class GoogleService extends BaseServiceClass {
       this.metrics?.observeTextSizeBytes('download_bytes', buf.length);
     } catch {}
     const parseStart = Date.now();
+    const { default: pdfParse } = await import('pdf-parse');
     const parsed = await pdfParse(buf);
     const text = parsed.text || '';
     try {
@@ -2581,6 +2582,7 @@ export class GoogleService extends BaseServiceClass {
       this.metrics?.observeTextSizeBytes('download_bytes', buf.length);
     } catch {}
     const parseStart = Date.now();
+    const mammoth = await import('mammoth');
     const result = await mammoth.extractRawText({ buffer: buf });
     const text = result.value || '';
     try {
