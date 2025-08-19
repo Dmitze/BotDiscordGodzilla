@@ -409,6 +409,8 @@ export class Config {
     try {
       logger.debug('💾 Завантаження Redis конфігурації...');
 
+      const isTestEnv = process.env['NODE_ENV'] === 'test' || !!process.env['JEST_WORKER_ID'];
+
       const config: RedisConfig = {
         host: this.getEnv('REDIS_HOST', CONFIG_CONSTANTS.DEFAULT_REDIS_HOST),
         port: this.validateNumber(
@@ -424,7 +426,9 @@ export class Config {
           0,
           15
         ),
-        enabled: this.getEnv('REDIS_ENABLED', 'true').toLowerCase() === 'true',
+        // У тестовому середовищі вимикаємо Redis за замовчуванням,
+        // але дозволяємо явне перевизначення через REDIS_ENABLED=true
+        enabled: this.getEnv('REDIS_ENABLED', isTestEnv ? 'false' : 'true').toLowerCase() === 'true',
         url: this.getEnv('REDIS_URL', ''),
       };
 
@@ -448,7 +452,9 @@ export class Config {
         event: 'load_start',
       });
 
-      const enabled = this.getEnv('METRICS_ENABLED', 'true').toLowerCase() === 'true';
+      const isTestEnv = process.env['NODE_ENV'] === 'test' || !!process.env['JEST_WORKER_ID'];
+      // У тестах вимикаємо HTTP-сервер метрик за замовчуванням, але поважаємо явне ввімкнення
+      const enabled = this.getEnv('METRICS_ENABLED', isTestEnv ? 'false' : 'true').toLowerCase() === 'true';
       const port = this.validateNumber(
         this.getEnv('METRICS_PORT', CONFIG_CONSTANTS.DEFAULT_METRICS_PORT.toString()),
         CONFIG_CONSTANTS.DEFAULT_METRICS_PORT,
