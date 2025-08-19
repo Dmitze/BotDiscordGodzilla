@@ -8,16 +8,8 @@ import type { DocBlock } from '@/types/docs';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import type { MetricsService } from './MetricsService';
 import { createHash } from 'crypto';
-import pdfParse from 'pdf-parse';
-import * as mammoth from 'mammoth';
 // Parsers
-import { ParserRouter } from '@/parsers/ParserRouter';
-import { PlainTextParser } from '@/parsers/PlainTextParser';
-import { PdfParser } from '@/parsers/PdfParser';
-import { DocxParser } from '@/parsers/DocxParser';
-import { SheetsParser } from '@/parsers/SheetsParser';
-import { ImageOcrParser } from '@/parsers/ImageOcrParser';
-import { GoogleDocsExportParser } from '@/parsers/GoogleDocsExportParser';
+import { createDefaultParserRouter } from '@/parsers';
 import type { BotConfig, HealthStatus, ServiceStats, SheetData, BatchSheetData } from '@/types';
 import type { DriveListQuery, DriveListResult, DriveFile } from '@/types/drive';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
@@ -130,14 +122,11 @@ export class GoogleService extends BaseServiceClass {
 
     // Маршрутизация через модульные парсеры
     try {
-      const router = new ParserRouter([
-        new GoogleDocsExportParser(),
-        new SheetsParser(),
-        new PdfParser(),
-        new DocxParser(),
-        new ImageOcrParser(),
-        new PlainTextParser(),
-      ]);
+      const router = createDefaultParserRouter({
+        timeoutMs: this.config.drive?.parseTimeoutMs ?? 10000,
+        retryAttempts: this.config.drive?.parseRetryAttempts ?? 1,
+        retryDelayMs: this.config.drive?.parseRetryDelayMs ?? 200,
+      });
       const parsed = await router.parse(
         {
           id: String(meta.id || fileId),
