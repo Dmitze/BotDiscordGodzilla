@@ -121,12 +121,13 @@ export class SavedSearchCommand extends BaseCommand {
       await interaction.reply({ content: t('workspace.search.runNotFound'), ephemeral: true });
       return;
     }
-    const items = Array.isArray(result.items) ? result.items : (result.data || []);
+    const items = Array.isArray((result as any).files) ? (result as any).files : [];
     if (!items.length) {
-      await interaction.reply({ content: t('files.result.searchEmpty', { query: '', folderId: String(result.folderId || '') }), ephemeral: true });
+      await interaction.reply({ content: t('files.result.searchEmpty', { query: '' }), ephemeral: true });
       return;
     }
-    const lines = items.slice(0, result.pageSize || 10).map((f: any) => `• ${f.name || f.id}`);
+    const pageSize = this.config.drive?.pageSize ?? 10;
+    const lines = items.slice(0, pageSize).map((f: any) => `• ${f.name || f.id}`);
     await interaction.reply({ content: `${t('workspace.search.listTitle')}\n${lines.join('\n')}`, ephemeral: true });
   }
 
