@@ -15,6 +15,10 @@ export interface DriveConfig {
   hideWebLink: boolean; // скрывать webViewLink в ответах бота
   rateQps?: number; // лимит запросов в секунду к Google API (по умолчанию 5)
   rateBurst?: number; // размер бурста токен‑бакета (по умолчанию 10)
+  // Настройки парсинга/извлечения текста
+  parseTimeoutMs?: number;
+  parseRetryAttempts?: number;
+  parseRetryDelayMs?: number;
 }
 
 // Нормализованный объект файла Drive для внутреннего использования
