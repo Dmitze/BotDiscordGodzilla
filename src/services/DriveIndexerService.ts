@@ -7,8 +7,9 @@ import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
 import type { DriveFile, DriveListResult, DriveListQuery } from '@/types/drive';
 import logger from '@/utils/logger';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
-import { GoogleService } from './GoogleService';
-import { CacheService } from './CacheService';
+import type { GoogleService } from './GoogleService';
+import type { SearchIndex } from '@/search/SearchIndex';
+import type { CacheService } from './CacheService';
 import SchedulerService from './SchedulerService';
 import { chunkTextForDiscord } from '@/utils/chunk';
 
@@ -42,6 +43,7 @@ export class DriveIndexerService extends BaseServiceClass {
   private bot: BotLike;
   private google!: GoogleService;
   private cache!: CacheService;
+  private searchIndex: SearchIndex | undefined;
   private metrics?: { incCounter?: (...args: any[]) => void; observeHistogram?: (...args: any[]) => void };
   private indexedCount = 0;
   private lastRunAt: number | null = null;
@@ -63,6 +65,11 @@ export class DriveIndexerService extends BaseServiceClass {
     // Получим зависимости
     this.google = this.bot.getService('google') as GoogleService;
     this.cache = this.bot.getService('cache') as CacheService;
+    try {
+      this.searchIndex = this.bot.getService('searchIndex') as unknown as SearchIndex;
+    } catch {
+      this.searchIndex = undefined;
+    }
     // Метрики опционально
     try {
       const m = this.bot.getService('metrics');
@@ -233,6 +240,42 @@ export class DriveIndexerService extends BaseServiceClass {
 
     const text = await this.google.extractTextFromFile({ id: file.id, mimeType: file.mimeType, name: file.name, modifiedTime: file.modifiedTime ?? null });
     await this.saveEntry(file, text);
+    // Persist to SQLite FTS index (best-effort)
+    try {
+      if (this.searchIndex && file.id) {
+        const modifiedMs = file.modifiedTime ? Date.parse(file.modifiedTime) : undefined;
+        const payload: {
+          fileId: string;
+          name: string;
+          mimeType?: string;
+          ownerEmail?: string;
+          sizeBytes?: number;
+          modifiedTime?: number;
+          createdTime?: number;
+          text: string;
+          tags?: string[];
+          meta?: unknown;
+        } = {
+          fileId: file.id,
+          name: file.name,
+          mimeType: file.mimeType,
+          text,
+          meta: {
+            webViewLink: file.webViewLink,
+            parents: file.parents,
+            isShortcut: file.isShortcut,
+            shortcutTargetId: file.shortcutDetails?.targetId,
+          },
+        };
+        const owner = Array.isArray(file.owners) && file.owners.length ? file.owners[0] : undefined;
+        if (owner) payload.ownerEmail = owner;
+        if (typeof file.size === 'number') payload.sizeBytes = file.size;
+        if (Number.isFinite(modifiedMs as number)) payload.modifiedTime = modifiedMs as number;
+        await this.searchIndex.upsert(payload);
+      }
+    } catch (e) {
+      logger.warn('⚠️ Не вдалося оновити SqliteSearchIndex', { id: file.id, error: e instanceof Error ? e.message : String(e) });
+    }
     this.indexedCount++;
     this.metrics?.incCounter?.('drive_index_file_indexed', { mime: file.mimeType });
   }
