@@ -117,6 +117,13 @@ export class WorkspaceService {
     return this.searches.get(userId) || [];
   }
 
+  /** Get a saved search by name (case-insensitive) */
+  public getSavedSearch(userId: string, name: string): SavedSearch | undefined {
+    const list = this.searches.get(userId) || [];
+    const lname = name.toLowerCase();
+    return list.find(s => s.name.toLowerCase() === lname);
+  }
+
   /** Execute saved search with policy enforcement */
   public async runSearch(
     userId: string,
