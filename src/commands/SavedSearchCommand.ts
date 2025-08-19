@@ -3,6 +3,7 @@ import { BaseCommand } from './BaseCommand';
 import { t } from '@/i18n';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
+import type { SearchIndex, SearchQuery } from '@/search/SearchIndex';
 import { defaultWorkspaceService, WorkspaceService } from '@/services/WorkspaceService';
 import type { DriveListQuery } from '@/types/drive';
 
@@ -13,6 +14,10 @@ function getWorkspace(interaction: any): WorkspaceService {
 
 function getGoogle(interaction: any): GoogleService | undefined {
   return ((interaction.client as any)?.serviceContainer?.get?.('google') as GoogleService) || undefined;
+}
+
+function getSearchIndex(interaction: any): SearchIndex | undefined {
+  return ((interaction.client as any)?.serviceContainer?.get?.('searchIndex') as SearchIndex) || undefined;
 }
 
 export class SavedSearchCommand extends BaseCommand {
@@ -111,6 +116,69 @@ export class SavedSearchCommand extends BaseCommand {
     const userId = interaction.user.id;
     const name = interaction.options.getString('name', true);
     const ws = getWorkspace(interaction);
+    // Попробуем выполнить через персистентный индекс (SQLite), если доступен
+    const searchIndex = getSearchIndex(interaction);
+    if (searchIndex) {
+      const saved = ws.getSavedSearch(userId, name);
+      if (!saved) {
+        await interaction.reply({ content: t('workspace.search.runNotFound'), ephemeral: true });
+        return;
+      }
+      // Применяем политики из конфига
+      const cfg = this.config.drive || {};
+      const f = { ...(saved.filters || {}) } as any;
+      // Политики allowedMime/ownerAllowlist
+      if (Array.isArray(cfg.allowedMime) && cfg.allowedMime.length) {
+        f.mimeIncludes = Array.isArray(f.mimeIncludes) && f.mimeIncludes.length
+          ? f.mimeIncludes.filter((m: string) => cfg.allowedMime!.includes(m))
+          : cfg.allowedMime;
+      }
+      if (Array.isArray(cfg.ownerAllowlist) && cfg.ownerAllowlist.length) {
+        f.ownerAllowlist = cfg.ownerAllowlist;
+      }
+      // Маппинг DriveListQuery -> SearchQuery
+      const limit = Math.max(1, Math.min(25, f.pageSize ?? (this.config.drive?.pageSize ?? 10)));
+      const q: SearchQuery = {
+        text: (f.query || '').toString(),
+        limit,
+        filters: {
+          mime: Array.isArray(f.mimeIncludes) && f.mimeIncludes.length ? f.mimeIncludes : undefined,
+          owner: Array.isArray(f.ownerAllowlist) && f.ownerAllowlist.length ? f.ownerAllowlist : undefined,
+          modifiedFrom: f.dateFrom ? (new Date(f.dateFrom).getTime() || undefined) : undefined,
+          modifiedTo: f.dateTo ? (new Date(f.dateTo).getTime() || undefined) : undefined,
+          sizeFrom: typeof f.sizeMin === 'number' ? Math.max(0, f.sizeMin) * 1024 * 1024 : undefined,
+          sizeTo: typeof f.sizeMax === 'number' ? Math.max(0, f.sizeMax) * 1024 * 1024 : undefined,
+          tags: Array.isArray(f.tags) && f.tags.length ? f.tags : undefined,
+        },
+      };
+      let hits: Awaited<ReturnType<SearchIndex['search']>>;
+      try {
+        hits = await searchIndex.search(q);
+      } catch (e) {
+        // Фоллбек на Google, если индекс недоступен
+        const google = getGoogle(interaction);
+        if (!google) {
+          await interaction.reply({ content: t('files.error.serviceUnavailable'), ephemeral: true });
+          return;
+        }
+        const result = await ws.runSearch(userId, name, { google, config: this.config });
+        const items = Array.isArray((result as any)?.files) ? (result as any).files : [];
+        const pageSize = this.config.drive?.pageSize ?? 10;
+        const lines = items.slice(0, pageSize).map((f: any) => `• ${f.name || f.id}`);
+        await interaction.reply({ content: `${t('workspace.search.listTitle')}` + "\n" + lines.join('\n'), ephemeral: true });
+        return;
+      }
+      const items = hits?.hits || [];
+      if (!items.length) {
+        await interaction.reply({ content: t('files.result.searchEmpty', { query: '' }), ephemeral: true });
+        return;
+      }
+      const lines = items.map((h: any) => `• ${h.name || h.fileId}`);
+      await interaction.reply({ content: `${t('workspace.search.listTitle')}` + "\n" + lines.join('\n'), ephemeral: true });
+      return;
+    }
+
+    // Если индекса нет — прежнее поведение через Google
     const google = getGoogle(interaction);
     if (!google) {
       await interaction.reply({ content: t('files.error.serviceUnavailable'), ephemeral: true });
@@ -128,7 +196,7 @@ export class SavedSearchCommand extends BaseCommand {
     }
     const pageSize = this.config.drive?.pageSize ?? 10;
     const lines = items.slice(0, pageSize).map((f: any) => `• ${f.name || f.id}`);
-    await interaction.reply({ content: `${t('workspace.search.listTitle')}\n${lines.join('\n')}`, ephemeral: true });
+    await interaction.reply({ content: `${t('workspace.search.listTitle')}` + "\n" + lines.join('\n'), ephemeral: true });
   }
 
   private async handleList(interaction: any): Promise<void> {
