@@ -3,6 +3,7 @@
  * Покращена продуктивність та стабільність
  */
 
+<<<<<<< HEAD
 import { google, type sheets_v4, type drive_v3, type docs_v1 } from 'googleapis';
 import type { DocBlock } from '@/types/docs';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
@@ -12,6 +13,10 @@ import { createHash } from 'crypto';
 import { createDefaultParserRouter } from '@/parsers';
 import type { BotConfig, HealthStatus, ServiceStats, SheetData, BatchSheetData } from '@/types';
 import type { DriveListQuery, DriveListResult, DriveFile } from '@/types/drive';
+=======
+import { google, sheets_v4, drive_v3, docs_v1 } from 'googleapis';
+import type { BotConfig, HealthStatus, ServiceStats, SheetData, BatchSheetData } from '@/types';
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
 import logger from '@/utils/logger';
@@ -1165,14 +1170,30 @@ export class GoogleService extends BaseServiceClass {
       const foldersLevel = await this.fetchAllDriveList(qFolders, limit, pageToken);
       const folders = this.extractFoldersFromLevel(foldersLevel);
 
+<<<<<<< HEAD
       for (const folder of folders) {
         try {
           const sub = await this.listDriveFilesInFolder(folder.id, {
+=======
+    let results: drive_v3.Schema$File[] = [...firstLevel];
+
+    if (recursive && maxDepth > 0) {
+      const folders = firstLevel.filter(
+        (f: drive_v3.Schema$File) => f.mimeType === 'application/vnd.google-apps.folder'
+      );
+      for (const folder of folders) {
+        try {
+          const sub = await this.listDriveFilesInFolder(folder.id!, {
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
             recursive: true,
             type,
             query,
             limit,
+<<<<<<< HEAD
             maxDepth: maxDepth <= -1 ? -1 : maxDepth - 1,
+=======
+            maxDepth: maxDepth - 1,
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
           });
           results.push(...sub);
         } catch (err) {
@@ -1347,9 +1368,13 @@ export class GoogleService extends BaseServiceClass {
 
     try {
       await this.cacheService.set(cacheKey, titles, 60);
+<<<<<<< HEAD
     } catch (/* istanbul ignore next */ _e) {
       // noop: ошибка записи в кеш не критична
     }
+=======
+    } catch {}
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
     return titles;
   }
 
@@ -1396,8 +1421,12 @@ export class GoogleService extends BaseServiceClass {
       );
 
       // Авторизація
+<<<<<<< HEAD
       await jwt.authorize();
       this.auth = jwt;
+=======
+      await this.auth.authorize();
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
       logger.info('✅ Google автентифікація успішна', {
         type: 'system',
         event: 'google_auth_success',
@@ -1625,7 +1654,11 @@ export class GoogleService extends BaseServiceClass {
               event: 'cache_hit',
               component: 'GoogleService',
               spreadsheetId: spreadsheetId.substring(0, 10) + '...',
+<<<<<<< HEAD
               range: normRange,
+=======
+              range,
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
               rowsCount: cached.values.length,
             });
             return cached;
@@ -1659,12 +1692,24 @@ export class GoogleService extends BaseServiceClass {
 
         const response = await this.sheets.spreadsheets.values.get({
           spreadsheetId,
+<<<<<<< HEAD
           range: normRange,
         });
 
         // Унифицированная нормализация через SheetsService
         return this.getSheetsService().toSheetDataFromGet(response.data, normRange);
       }, 'sheets', undefined, 'sheets.spreadsheets.values.get');
+=======
+          range,
+        });
+
+        return {
+          range: response.data.range || range,
+          majorDimension: response.data.majorDimension || 'ROWS',
+          values: response.data.values || [],
+        };
+      }, 'sheets');
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
 
       // Збереження в кеш
       if (useCache) {
@@ -1743,13 +1788,17 @@ export class GoogleService extends BaseServiceClass {
     const { valueInputOption = 'RAW', clearCache = true } = options;
 
     try {
+<<<<<<< HEAD
       const normRange = this.getSheetsService().normalizeRange(range);
       const normValues = this.getSheetsService().normalizeWriteValues(values);
+=======
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
       await this.executeWithRetry(async () => {
         if (!this.sheets) throw new Error('Sheets API не ініціалізовано');
 
         await this.sheets.spreadsheets.values.update({
           spreadsheetId,
+<<<<<<< HEAD
           range: normRange,
           valueInputOption,
           requestBody: {
@@ -1757,6 +1806,15 @@ export class GoogleService extends BaseServiceClass {
           },
         });
       }, 'sheets', undefined, 'sheets.spreadsheets.values.update');
+=======
+          range,
+          valueInputOption,
+          requestBody: {
+            values,
+          },
+        });
+      }, 'sheets');
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
 
       // Очищення кешу
       if (clearCache) {
@@ -1768,7 +1826,11 @@ export class GoogleService extends BaseServiceClass {
             event: 'cache_delete',
             component: 'GoogleService',
             spreadsheetId: spreadsheetId.substring(0, 10) + '...',
+<<<<<<< HEAD
             range: normRange,
+=======
+            range,
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
           });
         } catch (cacheError) {
           if (cacheError instanceof Error) {
@@ -1957,7 +2019,11 @@ export class GoogleService extends BaseServiceClass {
     data: Array<{ range: string; values: string[][] }>,
     options: GoogleServiceOptions = {}
   ): Promise<void> {
+<<<<<<< HEAD
     const { batchSize = 10, retryFailed = true, maxRetries = 3, clearCache = true, valueInputOption = 'RAW' } = options;
+=======
+    const { batchSize = 10, retryFailed = true, maxRetries = 3, clearCache = true } = options;
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
 
     try {
       const normData = data.map(d => ({ range: this.getSheetsService().normalizeRange(d.range), values: d.values }));
@@ -2124,7 +2190,11 @@ export class GoogleService extends BaseServiceClass {
         });
 
         return response.data.files || [];
+<<<<<<< HEAD
       }, 'drive', undefined, 'drive.files.list');
+=======
+      }, 'drive');
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
 
       return result;
     } catch (error) {
@@ -2170,7 +2240,11 @@ export class GoogleService extends BaseServiceClass {
         });
 
         return response.data;
+<<<<<<< HEAD
       }, 'drive', undefined, 'drive.files.get');
+=======
+      }, 'drive');
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
 
       return result;
     } catch (error) {
@@ -2211,10 +2285,17 @@ export class GoogleService extends BaseServiceClass {
           documentId,
         });
 
+<<<<<<< HEAD
         // Парсинг контенту документа через узкий DocsService
         const content = this.getDocsService().extractTextFromDoc(response.data);
         return content;
       }, 'docs', undefined, 'docs.documents.get');
+=======
+        // Парсинг контенту документа
+        const content = this.parseDocumentContent(response.data);
+        return content;
+      }, 'docs');
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
 
       return result;
     } catch (error) {
@@ -2396,6 +2477,7 @@ export class GoogleService extends BaseServiceClass {
     }
     this.stats.connectionPoolUsage = (inUseConnections / this.connectionPool.size) * 100;
   }
+<<<<<<< HEAD
 
   /**
    * Побудова індексу файлів у папці Drive та збереження у кеші
@@ -2592,4 +2674,6 @@ export class GoogleService extends BaseServiceClass {
     } catch {}
     return text;
   }
+=======
+>>>>>>> 585711bd (feat(service): нові методи для Drive/Sheets)
 }
