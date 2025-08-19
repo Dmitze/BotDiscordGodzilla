@@ -13,6 +13,8 @@ import { MetricsService } from '../services/MetricsService';
 import { SheetsContextService } from '../services/SheetsContextService';
 import SchedulerService from '../services/SchedulerService';
 import { DriveIndexerService } from '../services/DriveIndexerService';
+import { SqliteSearchIndex } from '@/search/sqlite/SqliteSearchIndex';
+import type { SearchIndex } from '@/search/SearchIndex';
 import { DriveChangesService } from '../services/DriveChangesService';
 import type { BotConfig } from '@/types';
 
@@ -130,6 +132,26 @@ class ServiceManager {
         getService: (name: string) => this.getService(name),
       } as any)
     );
+
+    // Persistent Search Index (SQLite FTS5)
+    try {
+      const dbPath = process.env['BOT_INDEX_DB_PATH'] || './data/search-index.db';
+      const searchIndex: SearchIndex = new SqliteSearchIndex({ dbPath });
+      this.services.set('searchIndex', searchIndex as unknown as Service);
+      logger.info('🗂️ SqliteSearchIndex зареєстровано', {
+        type: 'service_manager',
+        event: 'search_index_registered',
+        component: 'ServiceManager',
+        dbPath,
+      });
+    } catch (e) {
+      logger.error('❌ Не вдалося створити SqliteSearchIndex', {
+        type: 'service_manager',
+        event: 'search_index_register_failed',
+        component: 'ServiceManager',
+        errorMessage: e instanceof Error ? e.message : String(e),
+      });
+    }
 
     // Зв'язуємо MetricsService з GoogleService (якщо обидва доступні)
     try {
