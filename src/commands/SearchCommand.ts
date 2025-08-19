@@ -838,8 +838,13 @@ export class SearchCommand extends BaseCommand {
       if (parts[0] !== 'srch') return null;
       const map = new Map<string, string>();
       for (let i = 1; i < parts.length; i++) {
-        const [k, v] = parts[i].split('=');
-        if (k && v !== undefined) map.set(k, v);
+        const seg = parts[i] ?? '';
+        const eq = seg.indexOf('=');
+        if (eq > 0) {
+          const k = seg.slice(0, eq);
+          const v = seg.slice(eq + 1);
+          if (k && v !== undefined) map.set(k, v);
+        }
       }
       const sid = map.get('sid') || '';
       const p = Number(map.get('p'));
@@ -863,7 +868,7 @@ export class SearchCommand extends BaseCommand {
   }
 
   // Build single page embed considering page/pageSize and flags
-  private buildSearchPage(result: SearchResult, page: number, pageSize: number, changesOnly: boolean): EmbedBuilder {
+  private buildSearchPage(result: SearchResult, page: number, pageSize: number, _changesOnly: boolean): EmbedBuilder {
     const start = (page - 1) * pageSize;
     const end = Math.min(result.filteredCount, start + pageSize);
     const rows = result.rows.slice(start, end);
