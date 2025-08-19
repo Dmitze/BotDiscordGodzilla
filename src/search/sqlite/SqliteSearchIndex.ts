@@ -1,8 +1,9 @@
 import Database from 'better-sqlite3';
+import type { Statement } from 'better-sqlite3';
 import { mkdirSync, readFileSync, existsSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { sha256 } from '../../utils/hash';
-import type { SearchFilters, SearchHit, SearchIndex, SearchQuery } from '../SearchIndex';
+import type { SearchHit, SearchIndex, SearchQuery } from '../SearchIndex';
 
 function nowMs(): number {
   return Date.now();
@@ -26,15 +27,15 @@ export interface SqliteIndexOptions {
 }
 
 export class SqliteSearchIndex implements SearchIndex {
-  private db: Database.Database;
+  private db: Database;
 
-  private insertDocStmt: Database.Statement;
-  private updateDocStmt: Database.Statement;
-  private selectDocStmt: Database.Statement;
-  private insertFtsStmt: Database.Statement;
-  private deleteFtsByIdStmt: Database.Statement;
-  private insertVersionStmt: Database.Statement;
-  private selectVersionsStmt: Database.Statement;
+  private insertDocStmt: Statement;
+  private updateDocStmt: Statement;
+  private selectDocStmt: Statement;
+  private insertFtsStmt: Statement;
+  private deleteFtsByIdStmt: Statement;
+  private insertVersionStmt: Statement;
+  private selectVersionsStmt: Statement;
 
   constructor(opts: SqliteIndexOptions = {}) {
     const dbPath = resolve(process.cwd(), opts.dbPath || './data/search-index.db');
