@@ -20,12 +20,12 @@ function nowIso(): string { return new Date().toISOString(); }
  * - In-memory storage with optional JSON persistence (single file)
  */
 export class WorkspaceService {
-  private persistPath?: string;
+  private persistPath: string | null = null;
   private favorites = new Map<string, Favorite[]>();
   private searches = new Map<string, SavedSearch[]>();
 
   constructor(persistPath?: string) {
-    this.persistPath = persistPath ? resolve(persistPath) : undefined;
+    this.persistPath = persistPath ? resolve(persistPath) : null;
   }
 
   // Persistence helpers
@@ -127,7 +127,7 @@ export class WorkspaceService {
     const item = list.find(s => s.name.toLowerCase() === name.toLowerCase());
     if (!item) return undefined;
 
-    const base = { ...item.filters };
+    const base = { ...item.filters } as Partial<DriveListQuery>;
     // Enforce policies from config
     const cfg = deps.config.drive || {};
     if (Array.isArray(cfg.allowedMime) && cfg.allowedMime.length) {
@@ -140,10 +140,10 @@ export class WorkspaceService {
     }
     // Use default folder if not specified
     if (!base.folderId) {
-      base.folderId = (deps.config.google?.driveFolderId || deps.config.drive?.folderId) as string | undefined;
+      base.folderId = deps.config.google?.driveFolderId ?? deps.config.drive?.folderId ?? undefined;
     }
-
-    return deps.google.listDriveFiles(base);
+    if (!base.folderId) return undefined;
+    return deps.google.listDriveFiles(base as DriveListQuery);
   }
 
   // Test helper
