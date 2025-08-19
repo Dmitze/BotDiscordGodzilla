@@ -428,28 +428,7 @@ export class DocumentsCommand extends BaseCommand {
   /**
    * Відобразити UI вибору при дублікатах (для подальшого використання командами)
    */
-  private async _showDuplicates(
-    interaction: { reply: Function; user?: { id?: string } },
-    files: Array<Pick<DriveFile, 'id' | 'name' | 'mimeType' | 'webViewLink' | 'owners'>>,
-    scope = this.getName()
-  ): Promise<void> {
-    const userId = interaction.user?.id ?? '0';
-    const nonce = Date.now().toString(36);
-    const key = uiState.makeKey({ scope, userId, nonce });
-    uiState.set(key, files, 300);
-
-    const { embed, rows } = DuplicateResolver.buildPage({
-      scope,
-      userId,
-      nonce,
-      files,
-      page: 0,
-      perPage: 5,
-      title: 'Знайдено кілька збігів',
-    });
-
-    await (interaction as any).reply({ embeds: [embed], components: rows, ephemeral: true });
-  }
+  // TODO: Загальний UI для дублікатів реалізовано у DuplicateResolver та onComponent
 
   /**
    * Обробка компонентів DuplicateResolver
