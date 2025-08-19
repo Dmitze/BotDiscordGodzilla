@@ -9,7 +9,6 @@ import {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle,
   ChatInputCommandInteraction,
 } from 'discord.js';
 import type { BotConfig, SheetData, SearchParams } from '@/types';
@@ -18,6 +17,7 @@ import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
 import type { GoogleService } from '@/services/GoogleService';
 import { t } from '@/i18n';
+import { buildSearchPaginationRows } from '@/ui/components';
 
 // Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
@@ -57,9 +57,13 @@ interface PaginationState {
   results: SearchResult;
   timestamp: number;
   userId: string;
+  pageSize: number;
+  changesOnly: boolean;
 }
 
 export class SearchCommand extends BaseCommand {
+  private static sessions: Map<string, PaginationState> = new Map();
+  private static readonly SESSION_TTL_SEC = 10 * 60; // 10 хвилин
   private paginationStates = new Map<string, PaginationState>();
   private searchCache = new Map<string, { result: SearchResult; timestamp: number }>();
   private readonly googleService: GoogleService | undefined;
@@ -151,6 +155,19 @@ export class SearchCommand extends BaseCommand {
       }
     );
     if (googleService) this.googleService = googleService;
+
+    // Ensure background cleanup for stale sessions
+    const self = SearchCommand as unknown as { _cleanup?: NodeJS.Timer };
+    if (!self._cleanup) {
+      self._cleanup = setInterval(() => {
+        const now = Math.floor(Date.now() / 1000);
+        for (const [sid, s] of SearchCommand.sessions.entries()) {
+          if (now - s.timestamp > SearchCommand.SESSION_TTL_SEC) {
+            SearchCommand.sessions.delete(sid);
+          }
+        }
+      }, 5 * 60 * 1000);
+    }
   }
 
   /**
@@ -216,14 +233,27 @@ export class SearchCommand extends BaseCommand {
       // Виконання пошуку
       const searchResult = await this.performSearchWithCache(searchParams, interaction.user.id);
 
-      // Форматування результатів
-      const formattedResults = this.formatResults(searchResult.rows, searchResult.headers);
+      // Параметри пагінації
+      const pageSize = Math.max(1, searchParams.limit ?? SEARCH_CONFIG.DEFAULT_LIMIT);
+      const totalPages = Math.max(1, Math.ceil(searchResult.filteredCount / pageSize));
 
-      // Створення embed
-      const embed = this.createSearchEmbed(searchResult, formattedResults);
+      // Створення embed (1-я сторінка)
+      const embed = this.buildSearchPage(searchResult, 1, pageSize, false);
 
-      // Створення кнопок пагінації
-      const components = this.createPaginationComponents(searchResult, 1);
+      const sid = this.generateSessionId('srch');
+      const state: PaginationState = {
+        currentPage: 1,
+        totalPages,
+        results: searchResult,
+        timestamp: Math.floor(Date.now() / 1000),
+        userId: interaction.user.id,
+        pageSize,
+        changesOnly: false,
+      };
+      SearchCommand.sessions.set(sid, state);
+
+      // Створення кнопок пагінації з урахуванням sid
+      const components = this.createPaginationComponents(searchResult, 1, sid);
 
       // Відправка відповіді
       await interaction.editReply({ embeds: [embed], components });
@@ -707,30 +737,145 @@ export class SearchCommand extends BaseCommand {
    */
   private createPaginationComponents(
     searchResult: SearchResult,
-    currentPage: number
+    currentPage: number,
+    sid?: string
   ): ActionRowBuilder<ButtonBuilder>[] {
-    const totalPages = Math.ceil(searchResult.filteredCount / SEARCH_CONFIG.DEFAULT_LIMIT);
+    let totalPages = Math.max(1, Math.ceil(searchResult.filteredCount / SEARCH_CONFIG.DEFAULT_LIMIT));
+    let changesOnly = false;
+    if (sid) {
+      const session = SearchCommand.sessions.get(sid);
+      if (session) {
+        totalPages = session.totalPages;
+        changesOnly = session.changesOnly;
+      }
+    }
+    if (totalPages <= 1) return [] as any;
 
-    if (totalPages <= 1) return [];
+    const sessionId = sid ?? 'search';
+    const rows = buildSearchPaginationRows({
+      sid: sessionId,
+      safePage: Math.min(Math.max(1, currentPage), totalPages),
+      totalPages,
+      changesOnly,
+      allowLink: false,
+      buildId: ({ sid, page, ts, action }) => `srch|sid=${sid}|p=${page}|${action ? `a=${action}|` : ''}t=${ts}`,
+    }) as unknown as ActionRowBuilder<ButtonBuilder>[];
+    return rows;
+  }
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`search_prev_${currentPage}`)
-        .setLabel('◀️ Попередня')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(currentPage <= 1),
-      new ButtonBuilder()
-        .setCustomId(`search_next_${currentPage}`)
-        .setLabel('Наступна ▶️')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(currentPage >= totalPages),
-      new ButtonBuilder()
-        .setCustomId(`search_close`)
-        .setLabel('❌ Закрити')
-        .setStyle(ButtonStyle.Danger)
-    );
+  // --- Component handling ---
+  protected override async onComponent(options: import('@/commands/BaseCommand').CommandComponentOptions): Promise<void> {
+    const interaction = options.interaction as any;
+    if (!('isButton' in interaction) || !interaction.isButton()) return;
+    const customId: string = interaction.customId;
+    if (!customId || !customId.startsWith('srch|')) return;
+    try {
+      const parsed = this.parseSearchCustomId(customId);
+      if (!parsed) return;
+      const { sid, page, action } = parsed;
+      const now = Math.floor(Date.now() / 1000);
+      const session = SearchCommand.sessions.get(sid);
+      if (!session) {
+        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+        return;
+      }
+      // Check server-side TTL
+      if (now - session.timestamp > SearchCommand.SESSION_TTL_SEC) {
+        SearchCommand.sessions.delete(sid);
+        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+        return;
+      }
+      // Owner restriction
+      if (interaction.user?.id && interaction.user.id !== session.userId) {
+        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+        return;
+      }
+      if (action === 'close') {
+        SearchCommand.sessions.delete(sid);
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply({ components: [] });
+        } else {
+          await interaction.update({ components: [] });
+        }
+        return;
+      }
+      // toggle/reset
+      if (action === 'toggle') {
+        session.changesOnly = !session.changesOnly;
+      } else if (action === 'reset') {
+        session.changesOnly = false; // baseline reset placeholder
+      }
 
-    return [row];
+      const totalPages = session.totalPages;
+      const safePage = Math.min(Math.max(1, page), totalPages);
+      session.currentPage = safePage;
+      session.timestamp = now;
+
+      const rows = this.createPaginationComponents(session.results, safePage, sid);
+      const embed = this.buildSearchPage(session.results, safePage, session.pageSize, session.changesOnly);
+
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ embeds: [embed], components: rows });
+      } else {
+        await interaction.update({ embeds: [embed], components: rows });
+      }
+    } catch (error) {
+      logger.error('SearchCommand component error', { error: String(error) });
+      try {
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.reply({ content: t('files.error.process'), ephemeral: true });
+        } else {
+          await interaction.followUp({ content: t('files.error.process'), ephemeral: true });
+        }
+      } catch {}
+    }
+  }
+
+  private parseSearchCustomId(id: string): { sid: string; page: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } | null {
+    try {
+      // Format: srch|sid=...|p=...|[a=toggle|reset|close|]t=...
+      const parts = id.split('|');
+      if (parts[0] !== 'srch') return null;
+      const map = new Map<string, string>();
+      for (let i = 1; i < parts.length; i++) {
+        const [k, v] = parts[i].split('=');
+        if (k && v !== undefined) map.set(k, v);
+      }
+      const sid = map.get('sid') || '';
+      const p = Number(map.get('p'));
+      const t = Number(map.get('t'));
+      const a = map.get('a') as any;
+      if (!sid || !Number.isFinite(p)) return null;
+      const res: { sid: string; page: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } = {
+        sid,
+        page: Number.isFinite(p) ? p : 1,
+      };
+      if (Number.isFinite(t)) res.ts = t;
+      if (a === 'toggle' || a === 'reset' || a === 'close') res.action = a;
+      return res;
+    } catch {
+      return null;
+    }
+  }
+
+  private generateSessionId(prefix: string): string {
+    return `${prefix}_${Math.random().toString(36).slice(2, 8)}_${Date.now().toString(36)}`;
+  }
+
+  // Build single page embed considering page/pageSize and flags
+  private buildSearchPage(result: SearchResult, page: number, pageSize: number, changesOnly: boolean): EmbedBuilder {
+    const start = (page - 1) * pageSize;
+    const end = Math.min(result.filteredCount, start + pageSize);
+    const rows = result.rows.slice(start, end);
+    // Optionally filter rows when changesOnly is on; placeholder: keep as-is
+    const formatted = this.formatResults(rows, result.headers);
+    const embed = this.createSearchEmbed({ ...result, rows, filteredCount: result.filteredCount }, formatted);
+    // Append page x/y to footer
+    const totalPages = Math.max(1, Math.ceil(result.filteredCount / pageSize));
+    // Set page indicator in footer
+    const pageText = `${page}/${totalPages}`;
+    embed.setFooter({ text: pageText });
+    return embed;
   }
 
   /**
