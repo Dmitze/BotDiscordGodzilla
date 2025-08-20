@@ -3,12 +3,8 @@
  * Централізоване управління метриками та моніторингом
  */
 
-<<<<<<< HEAD
 import { Registry, Counter, Gauge, Histogram } from 'prom-client';
 import * as PromClient from 'prom-client';
-=======
-import { Registry, Counter, Gauge, Histogram, collectDefaultMetrics } from 'prom-client';
->>>>>>> ea982da4 (feat(service): метрики сервісів)
 import type { BotConfig, ServiceStats, CacheStats, QueueStats, HealthStatus } from '@/types';
 
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
@@ -319,7 +315,6 @@ export class MetricsService extends BaseServiceClass {
       };
 
       this.stats.metricsCount = Object.keys(this.metrics).length;
-<<<<<<< HEAD
       // Map test-visible aliases to internal metrics
       this.commandCounter = this.metrics.commandsTotal;
       this.errorCounter = this.metrics.errorsTotal;
@@ -344,8 +339,6 @@ export class MetricsService extends BaseServiceClass {
       this.responseTime = this.metrics.apiResponseTime;
       this.activeUsers = this.metrics.activeUsers;
       this.memoryUsage = this.metrics.memoryUsage;
-=======
->>>>>>> ea982da4 (feat(service): метрики сервісів)
       logger.debug('✅ Метрики створено', {
         type: 'metrics_service',
         event: 'metrics_created',
@@ -877,13 +870,9 @@ export class MetricsService extends BaseServiceClass {
         this.server = null;
       }
 
-<<<<<<< HEAD
       if (this.registry && typeof (this.registry as any).clear === 'function') {
         (this.registry as any).clear();
       }
-
-=======
->>>>>>> ea982da4 (feat(service): метрики сервісів)
       logger.info('✅ Metrics Service зупинено', {
         type: 'metrics_service',
         event: 'shutdown_success',
@@ -908,7 +897,6 @@ export class MetricsService extends BaseServiceClass {
   protected onGetStats(): Partial<MetricsServiceStats> {
     return this.stats;
   }
-<<<<<<< HEAD
 
   /**
    * Override: health status should be healthy when metrics are disabled.
@@ -925,6 +913,4 @@ export class MetricsService extends BaseServiceClass {
     }
     return super.getHealthStatus();
   }
-=======
->>>>>>> ea982da4 (feat(service): метрики сервісів)
 }
