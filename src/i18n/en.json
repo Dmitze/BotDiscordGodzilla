@@ -1,5 +1,80 @@
 {
+  "key": "",
+  "ai": {
+    "command": { "description": "🤖 AI assistant for Google Sheets" },
+    "opt": {
+      "query": { "description": "What do you want to do? (e.g., 'find iPhone items', 'analyze stock')" },
+      "context": { "description": "Additional context for AI" }
+    },
+    "validation": {
+      "failed": "❌ Validation error:\n{{errors}}"
+    },
+    "reply": {
+      "title": "AI Assistant",
+      "lowConfidence": "⚠️ Low confidence ({{pct}}%)",
+      "query": "**Your query:** {{query}}",
+      "answer": "**Answer:**\n{{answer}}",
+      "context": "**Context:** {{context}}",
+      "action": "**Action:** {{action}}",
+      "format": "(format: {{format}})"
+    },
+    "error": {
+      "process": "❌ Error processing AI request. Please retry or contact the administrator.",
+      "accessDenied": "🚫 Access denied: {{reason}}",
+      "permissionCheck": "❌ Permission check error",
+      "googleUnavailable": "Google service is not initialized. Check service configuration.",
+      "missingDriveFolderId": "GOOGLE_DRIVE_FOLDER_ID is not configured. Add folder ID to .env."
+    },
+    "ocr": {
+      "noImages": "No matching images found in the folder.",
+      "result": "File: {{name}} (id: {{id}})\n\n{{preview}}",
+      "cannotRead": "Could not read text from images."
+    },
+    "analytics": {
+      "noTables": "No tables found for analytics."
+    }
+  },
   "files": {
+    "command": { "description": "📁 Work with files in Google Drive" },
+    "buttons": {
+      "open": "Open",
+      "download": "Download",
+      "summary": "Summary",
+      "source": "Source",
+      "question": "Question"
+    },
+    "card": {
+      "owner": "Owner",
+      "modified": "Modified"
+    },
+    "common": {
+      "file": "file",
+      "folder": "folder"
+    },
+    "opt": {
+      "query": { "description": "File name to search" },
+      "folder": { "description": "Folder ID to search in (optional)" },
+      "id": { "description": "Google Drive file ID" },
+      "type": { "description": "Analysis type" },
+      "format": { "description": "Report format" }
+    },
+    "choices": {
+      "analysis": {
+        "summary": "summary",
+        "key_points": "key points",
+        "detailed": "detailed"
+      },
+      "reportFormat": {
+        "txt": "Text",
+        "pdf": "PDF",
+        "docx": "Word"
+      }
+    },
+    "validation": {
+      "failed": "❌ Validation error:\n{{errors}}",
+      "queryTooShort": "Query must be at least 2 characters",
+      "fileIdTooShort": "File ID must be at least 10 characters"
+    },
     "search": {
       "largeMark": "large",
       "filteredByPolicy": "⚠️ Some items ({{count}}) are hidden by access policies",
@@ -23,12 +98,189 @@
       "link": "Link"
     },
     "result": {
+      "searchEmpty": "🔍 Query: \"{{query}}\"\nFolder: {{folderId}}\n\nNo results.",
+      "searchList": "🔍 **Search results**\nQuery: {{query}}\nFolder: {{folderId}}\nFound: {{count}}\n\n{{lines}}{{more}}",
       "fileDownloaded": "📄 File downloaded\n\nName: {{name}}\nType: {{mimeType}}",
       "more": "\n…and {{rest}} more"
     },
+    "read": {
+      "downloadedSheet": "📥 Sheet downloaded: {{title}} ({{sheetName}})"
+    },
+    "report": {
+      "generated": "📝 Report generated",
+      "fallbackTxt": "[text report]",
+      "noContent": "No content for the report"
+    },
+    "sub": {
+      "search": { "title": "Search", "description": "Search files in Google Drive" },
+      "read": { "title": "Read", "description": "Read file contents" },
+      "analyze": { "title": "Analyze", "description": "AI analysis of a file" },
+      "report": { "description": "Create a report based on a file" }
+    },
     "error": {
       "serviceUnavailable": "❌ GoogleService unavailable",
-      "metadata": "❌ Cannot read file metadata"
+      "unauthorized": "🚫 Unauthorized",
+      "forbidden": "🚫 Forbidden",
+      "notFound": "❌ Not found",
+      "conflict": "⚠️ Conflict",
+      "badRequest": "⚠️ Bad request",
+      "rateLimited": "⏳ Rate limited",
+      "server": "❌ Server error",
+      "unavailable": "❌ Service temporarily unavailable",
+      "unknownSubcommand": "❌ Unknown subcommand",
+      "missingFolderId": "❌ Folder ID is not set. Provide \"folder\" option or configure driveFolderId.",
+      "metadata": "❌ Cannot read file metadata",
+      "process": "❌ File processing error. Please retry or contact the administrator.",
+      "noText": "❌ Could not extract text from the file"
+    }
+  }
+  ,
+  "ocr": {
+    "command": {
+      "description": "Recognize text in an image (offline Tesseract or Google Vision)"
+    },
+    "opt": {
+      "image": { "description": "Upload an image for OCR" },
+      "drive_id": { "description": "Image file ID in Google Drive" }
+    },
+    "error": {
+      "needInput": "Please provide either an attachment (image) or drive_id.",
+      "serviceUnavailable": "Google service is unavailable. Contact the administrator.",
+      "downloadFail": "Failed to download image: {{status}} {{statusText}}",
+      "process": "❌ Recognition error. Try a different image."
+    },
+    "result": {
+      "provider": "Provider: {{provider}}",
+      "empty": "[empty]"
+    }
+  }
+  ,
+  "search": {
+    "command": {
+      "description": "🔍 Flexible search across documents",
+      "usage": "/search query:text [options]"
+    },
+    "opt": {
+      "query": { "description": "What to search for? (e.g., 'personnel', 'equipment', 'weapons')" },
+      "type": { "description": "Document type to search" },
+      "dateFrom": { "description": "Date from (format: DD.MM.YYYY)" },
+      "dateTo": { "description": "Date to (format: DD.MM.YYYY)" },
+      "unit": { "description": "Unit to search in" },
+      "priority": { "description": "Document priority" },
+      "limit": { "description": "Number of results (max {{max}})" }
+    },
+    "choices": {
+      "type": {
+        "all": "All documents",
+        "orders": "Orders",
+        "reports": "Reports",
+        "statistics": "Statistics",
+        "plans": "Plans",
+        "instructions": "Instructions",
+        "protocols": "Protocols",
+        "cards": "Cards",
+        "journals": "Journals"
+      },
+      "priority": {
+        "all": "All",
+        "critical": "Critical",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      }
+    },
+    "error": {
+      "invalidQuery": "Invalid query: {{errors}}",
+      "invalidDateFrom": "Invalid 'from' date format (use DD.MM.YYYY)",
+      "invalidDateTo": "Invalid 'to' date format (use DD.MM.YYYY)",
+      "dateRange": "'To' date cannot be earlier than 'from' date",
+      "invalidUnit": "Invalid unit: {{errors}}",
+      "noService": "Google service is not configured",
+      "noData": "No data to search",
+      "noSpreadsheet": "spreadsheetId is not set in configuration",
+      "searchFailed": "Search execution error"
+    },
+    "log": {
+      "start": "Search started",
+      "success": "Search completed successfully",
+      "error": "Search error",
+      "cacheHit": "Result found in cache"
+    }
+  }
+  ,
+  "doc": {
+    "command": {
+      "description": "Work with Google Docs"
+    },
+    "sub": {
+      "blocks": {
+        "description": "Show structured Google Docs blocks"
+      }
+    },
+    "opt": {
+      "documentid": { "description": "ID or link to a Google Docs document" },
+      "limit": { "description": "How many blocks to show (1-25)" },
+      "format": { "description": "Output format: short | full | headings" }
+    },
+    "unknownSub": "Unknown subcommand",
+    "id": {
+      "invalid": "Failed to parse document ID. Provide raw ID or a link in the form:\n- https://docs.google.com/document/d/<ID>/edit\nWhere <ID> is the string between '/d/' and '/edit'."
+    },
+    "google": {
+      "unavailable": "GoogleService is unavailable. Contact the administrator."
+    },
+    "error": {
+      "fetchBlocks": "❌ Error fetching document blocks. Check ID and access.",
+      "updatePage": "❌ Error updating page"
+    },
+    "sessionExpired": "⏳ Viewing session has expired. Run the command again.",
+    "embed": {
+      "title": "Google Docs structure",
+      "desc": "documentId: {{documentId}}\nTotal blocks: {{total}}\nPage: {{page}}/{{totalPages}} ({{pageSize}} per page)\nFormat: {{format}}"
+    },
+    "kinds": {
+      "empty": "[empty]",
+      "heading": "heading h{{level}}",
+      "listItem": "list item",
+      "paragraph": "paragraph",
+      "table": "table {{rows}}x{{cols}}",
+      "emptyTable": "[empty table]",
+      "footnote": "footnote {{id}}"
+    }
+  }
+  ,
+  "sheets": {
+    "command": {
+      "description": "📁 Select Google Spreadsheet and sheet as search context"
+    },
+    "opt": {
+      "mode": { "description": "Action: set, show or clear" },
+      "spreadsheet": { "description": "Spreadsheet name (within folder) or ID" },
+      "sheet": { "description": "Sheet name in the spreadsheet" }
+    },
+    "choices": {
+      "mode": {
+        "set": "set",
+        "show": "show",
+        "clear": "clear"
+      }
+    },
+    "reply": {
+      "cleared": "✅ Context cleared",
+      "noContext": "ℹ️ No saved context",
+      "current": "📄 Current context:\nSpreadsheet: {{spreadsheetId}}\nSheet: {{sheetName}}",
+      "set": "✅ Context set:\nSpreadsheet: {{spreadsheetId}}\nSheet: {{sheetName}}"
+    },
+    "error": {
+      "serviceUnavailable": "GoogleService unavailable",
+      "missingFolderId": "GOOGLE_DRIVE_FOLDER_ID is not set in configuration",
+      "notFoundByName": "Spreadsheet named '{{name}}' not found in the folder",
+      "missingSpreadsheet": "Spreadsheet not specified. Provide 'spreadsheet' option (name or ID).",
+      "sheetNotFound": "Sheet '{{sheet}}' not found in the selected spreadsheet",
+      "failed": "❌ Error: {{message}}"
+    },
+    "log": {
+      "multiMatchWarn": "SelectSheet: multiple matches found, selecting the first"
     }
   }
   ,
