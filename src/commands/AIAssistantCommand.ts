@@ -6,6 +6,7 @@
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
+import { replyWithPrivacy } from '@/ui/reply';
 import type { GoogleService } from '@/services/GoogleService';
 import * as xlsx from 'xlsx';
 import { AnalyticsService } from '@/services/AnalyticsService';
@@ -169,7 +170,7 @@ export class AIAssistantCommand extends BaseCommand {
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
-        await interaction.reply({ content: errorMessage, ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: errorMessage });
       }
     }
   }
@@ -199,7 +200,7 @@ export class AIAssistantCommand extends BaseCommand {
           command: interaction.commandName,
         });
 
-        await interaction.reply({ content: t('ai.error.accessDenied', { reason: result.reason || '' }), ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: t('ai.error.accessDenied', { reason: result.reason || '' }) });
         return false;
       }
 
@@ -226,7 +227,7 @@ export class AIAssistantCommand extends BaseCommand {
         severity: 'high',
       });
       // За замовчуванням не пускати у разі помилки
-      await interaction.reply({ content: t('ai.error.permissionCheck'), ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: t('ai.error.permissionCheck') });
       return false;
     }
   }
