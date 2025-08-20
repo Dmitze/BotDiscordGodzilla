@@ -63,6 +63,10 @@ module.exports = {
     {
       files: ['**/__tests__/**/*.{ts,js}', '**/*.{spec,test}.{ts,js}'],
       env: { jest: true, node: true },
+      parserOptions: {
+        project: ['tsconfig.jest.json'],
+        tsconfigRootDir: __dirname,
+      },
       rules: {
         // В тестах позволяем более свободные моки
         '@typescript-eslint/no-explicit-any': 'off',
@@ -72,6 +76,17 @@ module.exports = {
         '@typescript-eslint/unbound-method': 'off',
         '@typescript-eslint/require-await': 'off',
         // В тестах не ругаемся на неиспользуемые переменные/аргументы
+        '@typescript-eslint/no-unused-vars': 'off',
+      },
+    },
+    {
+      files: ['src/tests/**/*.{ts,js}'],
+      env: { jest: true, node: true },
+      parserOptions: {
+        project: ['tsconfig.jest.json'],
+        tsconfigRootDir: __dirname,
+      },
+      rules: {
         '@typescript-eslint/no-unused-vars': 'off',
       },
     },
