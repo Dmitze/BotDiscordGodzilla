@@ -99,19 +99,7 @@ describe('Commands Integration Tests', () => {
 
     // Створюємо мок бота
     mockBot = {
-<<<<<<< HEAD
       getService: jest.fn(name => services[name]),
-=======
-      getService: jest.fn(name => {
-        const services = {
-          ai: require('../../services/AIService')(),
-          google: require('../../services/GoogleService')(),
-          cache: require('../../services/CacheService')(),
-          metrics: require('../../services/MetricsService')(),
-        };
-        return services[name];
-      }),
->>>>>>> f4064bcd (test(integration): тести команд)
       handleError: jest.fn().mockResolvedValue({
         handled: true,
         message: 'Error handled',
