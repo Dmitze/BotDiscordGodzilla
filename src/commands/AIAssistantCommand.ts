@@ -8,6 +8,12 @@ import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 import { replyWithPrivacy } from '@/ui/reply';
 import type { GoogleService } from '@/services/GoogleService';
+import type {
+  SlashCommandBuilder,
+  SlashCommandStringOption,
+  ChatInputCommandInteraction,
+  GuildMember,
+} from 'discord.js';
 import * as xlsx from 'xlsx';
 import { AnalyticsService } from '@/services/AnalyticsService';
 import { t } from '@/i18n';
@@ -21,6 +27,17 @@ interface AIQueryResult {
     format?: string;
   };
 }
+
+type AICommandOptions = {
+  query: string | null;
+  context: string | null;
+};
+
+type DriveIndexedFile = {
+  id?: string;
+  name?: string;
+  mimeType?: string;
+};
 
 interface ValidationResult {
   isValid: boolean;
@@ -40,22 +57,22 @@ export class AIAssistantCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
 
   constructor(config: BotConfig, googleService?: GoogleService) {
-    super('ai', t('ai.command.description'), config, {}, (builder: any) => {
-      return builder
-        .addStringOption((option: any) =>
-          option
-            .setName('запит')
-            .setDescription(t('ai.opt.query.description'))
-            .setRequired(true)
-            .setMaxLength(1000)
-        )
-        .addStringOption((option: any) =>
-          option
-            .setName('контекст')
-            .setDescription(t('ai.opt.context.description'))
-            .setRequired(false)
-            .setMaxLength(500)
-        );
+    super('ai', t('ai.command.description'), config, {}, (builder: SlashCommandBuilder): SlashCommandBuilder => {
+      builder.addStringOption((option: SlashCommandStringOption) =>
+        option
+          .setName('запит')
+          .setDescription(t('ai.opt.query.description'))
+          .setRequired(true)
+          .setMaxLength(1000)
+      );
+      builder.addStringOption((option: SlashCommandStringOption) =>
+        option
+          .setName('контекст')
+          .setDescription(t('ai.opt.context.description'))
+          .setRequired(false)
+          .setMaxLength(500)
+      );
+      return builder;
     });
 
     this.googleService = googleService;
@@ -78,7 +95,7 @@ export class AIAssistantCommand extends BaseCommand {
       await interaction.deferReply();
 
       // Валідація параметрів
-      const commandOptions = {
+      const commandOptions: AICommandOptions = {
         query: interaction.options.getString('запит'),
         context: interaction.options.getString('контекст'),
       };
@@ -106,39 +123,14 @@ export class AIAssistantCommand extends BaseCommand {
       const result = await this.processAIQuery(
         interaction.user.id,
         commandOptions.query || '',
-        commandOptions.context
+        commandOptions.context ?? undefined
       );
 
       // Формування відповіді
-      let response = `🤖 **${t('ai.reply.title')}**\n\n`;
-
-      if (result.confidence < 0.7) {
-        response += t('ai.reply.lowConfidence', { pct: Math.round(result.confidence * 100) });
-        response += '\n';
-      }
-
-      response += t('ai.reply.query', { query: String(commandOptions.query) });
-      response += '\n\n';
-      response += t('ai.reply.answer', { answer: result.response });
-
-      // Додавання контексту якщо є
-      if (commandOptions.context) {
-        response += '\n\n' + t('ai.reply.context', { context: String(commandOptions.context) });
-      }
-
-      // Додавання додаткової інформації
-      if (result.actionData) {
-        response += `\n\n` + t('ai.reply.action', { action: result.actionData.type });
-        if (result.actionData.format) {
-          response += ` ` + t('ai.reply.format', { format: result.actionData.format });
-        }
-      }
+      const response = this.buildResponse(result, commandOptions);
 
       // Відправка відповіді
-      await interaction.editReply({
-        content: response,
-        ephemeral: false,
-      });
+      await interaction.editReply({ content: response });
 
       // Логування успішного виконання
       logger.info('AI command executed successfully', {
@@ -175,16 +167,44 @@ export class AIAssistantCommand extends BaseCommand {
     }
   }
 
+  private buildResponse(result: AIQueryResult, commandOptions: AICommandOptions): string {
+    let response = `🤖 **${t('ai.reply.title')}**\n\n`;
+
+    if (result.confidence < 0.7) {
+      response += t('ai.reply.lowConfidence', { pct: Math.round(result.confidence * 100) });
+      response += '\n';
+    }
+
+    response += t('ai.reply.query', { query: String(commandOptions.query) });
+    response += '\n\n';
+    response += t('ai.reply.answer', { answer: result.response });
+
+    if (commandOptions.context) {
+      response += '\n\n' + t('ai.reply.context', { context: String(commandOptions.context) });
+    }
+
+    if (result.actionData) {
+      response += `\n\n` + t('ai.reply.action', { action: result.actionData.type });
+      if (result.actionData.format) {
+        response += ` ` + t('ai.reply.format', { format: result.actionData.format });
+      }
+    }
+    return response;
+  }
+
   /**
    * Перевірка прав доступу
    */
-  private async checkPermission(interaction: any): Promise<boolean> {
+  private async checkPermission(interaction: ChatInputCommandInteraction): Promise<boolean> {
     try {
       const { PermissionManager } = await import('../core/PermissionManager');
       const permissionManager = new PermissionManager(this.config);
+      const member: GuildMember | null = interaction.member instanceof (await import('discord.js')).GuildMember
+        ? (interaction.member as GuildMember)
+        : null;
       const result = await permissionManager.checkPermission(
         interaction.user,
-        interaction.member ?? null,
+        member,
         interaction.commandName,
         interaction.channelId
       );
@@ -235,7 +255,7 @@ export class AIAssistantCommand extends BaseCommand {
   /**
    * Валідація параметрів команди
    */
-  private validateCommandOptions(options: Record<string, any>): ValidationResult {
+  private validateCommandOptions(options: AICommandOptions): ValidationResult {
     const validationSchema: ValidationSchema = {
       query: {
         required: true,
@@ -254,7 +274,7 @@ export class AIAssistantCommand extends BaseCommand {
     const errors: string[] = [];
 
     for (const [key, schema] of Object.entries(validationSchema)) {
-      const value = options[key];
+      const value = (options as Record<string, unknown>)[key];
 
       if (schema.required && !value) {
         errors.push(`${key} є обов'язковим`);
@@ -266,7 +286,7 @@ export class AIAssistantCommand extends BaseCommand {
         continue;
       }
 
-      if (value && schema.maxLength && value.length > schema.maxLength) {
+      if (value && schema.maxLength && String(value).length > schema.maxLength) {
         errors.push(`${key} не може бути довшим за ${schema.maxLength} символів`);
       }
     }
@@ -280,8 +300,8 @@ export class AIAssistantCommand extends BaseCommand {
   /**
    * Логування події безпеки
    */
-  private logSecurityEvent(eventType: string, data: Record<string, any>): void {
-    logger.security(eventType, data['userId'] || 'unknown', {
+  private logSecurityEvent(eventType: string, data: Record<string, unknown>): void {
+    logger.security(eventType, (data['userId'] as string) || 'unknown', {
       type: 'security',
       component: 'AIAssistantCommand',
       command: this.name,
@@ -316,18 +336,21 @@ export class AIAssistantCommand extends BaseCommand {
       const qlc = (s: string) => s.toLowerCase();
       const matchesName = (name?: string) => !nameQuery || qlc(name || '').includes(qlc(nameQuery));
       const isImage = (mt?: string) => !!(mt && /^image\//i.test(mt));
-      const candidates = (index || []).filter(f => isImage((f as any).mimeType) && matchesName((f as any).name));
+      const candidates = (index || []).filter((f: unknown) => {
+        const file = f as DriveIndexedFile;
+        return isImage(file.mimeType) && matchesName(file.name);
+      }) as DriveIndexedFile[];
       if (!candidates.length) {
         return { response: t('ai.ocr.noImages'), confidence: 0.85, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
       }
       for (const f of candidates.slice(0, 5)) {
         try {
-          const text = await this.googleService.extractTextFromImage(f as any);
+          const text = await this.googleService.extractTextFromImage(f as DriveIndexedFile);
           if (!text.trim()) continue;
           const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
-          return { response: t('ai.ocr.result', { name: String((f as any).name ?? ''), id: String((f as any).id ?? ''), preview }), confidence: 0.9, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+          return { response: t('ai.ocr.result', { name: String(f.name ?? ''), id: String(f.id ?? ''), preview }), confidence: 0.9, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
         } catch (e) {
-          logger.warn('OCR error', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: (f as any).id, err: e instanceof Error ? e.message : String(e) });
+          logger.warn('OCR error', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: f.id, err: e instanceof Error ? e.message : String(e) });
         }
       }
       return { response: t('ai.ocr.cannotRead'), confidence: 0.7, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
@@ -359,31 +382,31 @@ export class AIAssistantCommand extends BaseCommand {
         return { response: t('ai.analytics.noTables'), confidence: 0.85, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
       }
 
-      const readGoogleSheet = async (spreadsheetId: string): Promise<Array<Record<string, any>>> => {
+      const readGoogleSheet = async (spreadsheetId: string): Promise<Array<Record<string, unknown>>> => {
         try {
           const sheetTitles = await this.googleService!.listSheets(spreadsheetId);
           const first = sheetTitles[0] || 'Лист1';
           const data = await this.googleService!.getSheetData(spreadsheetId, `${first}!A1:Z2000`);
-          const rows = (data.values || []) as any[];
+          const rows = (data.values || []) as unknown[];
           if (!rows.length) return [];
-          const headerRow: string[] = rows[0] ?? [];
-          const rest = rows.slice(1);
+          const headerRow = (rows[0] as unknown[] | undefined) ?? [];
+          const rest = (rows.slice(1) as unknown[][]) ?? [];
           const headers = headerRow.map(h => String(h ?? '').trim());
-          return rest.map(row => {
-            const obj: Record<string, any> = {};
-            headers.forEach((h, i) => { if (!h) return; obj[h] = row[i]; });
+          return rest.map((rowArr) => {
+            const obj: Record<string, unknown> = {};
+            headers.forEach((h, i) => { if (!h) return; obj[h] = (rowArr as unknown[])[i]; });
             return obj;
           });
         } catch { return []; }
       };
-      const readExcelBuffer = (buf: Buffer): Array<Record<string, any>> => {
+      const readExcelBuffer = (buf: Buffer): Array<Record<string, unknown>> => {
         try {
           const wb = xlsx.read(buf, { type: 'buffer' });
           const firstName = wb.SheetNames[0];
           if (!firstName) return [];
           const sheet = wb.Sheets[firstName];
           if (!sheet) return [];
-          return xlsx.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+          return xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
         } catch { return []; }
       };
 
@@ -391,7 +414,7 @@ export class AIAssistantCommand extends BaseCommand {
       for (const f of tableLike.slice(0, 5)) {
         try {
           const mt = f.mimeType || '';
-          let rows: Array<Record<string, any>> = [];
+          let rows: Array<Record<string, unknown>> = [];
           if (mt === 'application/vnd.google-apps.spreadsheet') rows = await readGoogleSheet(f.id!);
           else rows = readExcelBuffer(await this.googleService.downloadDriveFile(f.id!));
           if (!rows.length) continue;
@@ -400,9 +423,17 @@ export class AIAssistantCommand extends BaseCommand {
           const dateKey = schema.find(k => /дата|date/i.test(k));
           let filtered = rows;
           if (monthNum && dateKey) {
+            const toDate = (v: unknown): Date | null => {
+              if (v instanceof Date && !isNaN(+v)) return v;
+              if (typeof v === 'string' || typeof v === 'number') {
+                const d = new Date(v);
+                return isNaN(+d) ? null : d;
+              }
+              return null;
+            };
             filtered = rows.filter(r => {
-              const v = r[dateKey!];
-              const d = v ? new Date(v) : null;
+              const v = (r as Record<string, unknown>)[dateKey!];
+              const d = toDate(v);
               return d instanceof Date && !isNaN(+d) && d.getMonth() + 1 === monthNum;
             });
           }
@@ -410,13 +441,13 @@ export class AIAssistantCommand extends BaseCommand {
           const groups = analytics.groupBy(filtered, [statusKey]);
           const lines: string[] = [];
           for (const [gk, arr] of Object.entries(groups)) {
-            const cnt = analytics.aggregate(arr as any[], null as any, 'count');
+            const cnt = (arr as unknown[]).length;
             lines.push(`${gk || '—'}: ${cnt}`);
           }
           const head = `Файл: ${f.name} (id: ${f.id})`;
           return { response: head + '\n' + lines.join('\n'), confidence: 0.9, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
         } catch (e) {
-          logger.warn('Analytics failed for file', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: (f as any).id, err: e instanceof Error ? e.message : String(e) });
+          logger.warn('Analytics failed for file', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: f.id, err: e instanceof Error ? e.message : String(e) });
         }
       }
       return { response: 'Не вдалося виконати аналітику: дані порожні або структура невідома.', confidence: 0.7, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
@@ -439,18 +470,21 @@ export class AIAssistantCommand extends BaseCommand {
       const qlc = (s: string) => s.toLowerCase();
       const matchesName = (name?: string) => !nameQuery || qlc(name || '').includes(qlc(nameQuery));
       const isDocLike = (mt?: string) => mt === 'application/vnd.google-apps.document' || mt === 'application/pdf' || mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mt === 'application/msword';
-      const candidates = (index || []).filter(f => isDocLike((f as any).mimeType) && matchesName((f as any).name));
+      const candidates = (index || []).filter((f: unknown) => {
+        const file = f as DriveIndexedFile;
+        return isDocLike(file.mimeType) && matchesName(file.name);
+      }) as DriveIndexedFile[];
       if (!candidates.length) {
         return { response: 'Не знайдено відповідних документів (Docs/Word/PDF) за вашим описом.', confidence: 0.85, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
       }
       for (const f of candidates.slice(0, 5)) {
         try {
-          const text = await this.googleService.extractTextFromFile(f as any);
+          const text = await this.googleService.extractTextFromFile(f as DriveIndexedFile);
           if (!text.trim()) continue;
           const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
-          return { response: `Файл: ${(f as any).name} (id: ${(f as any).id})\n\n${preview}`, confidence: 0.9, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
+          return { response: `Файл: ${String(f.name)} (id: ${String(f.id)})\n\n${preview}`, confidence: 0.9, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
         } catch (e) {
-          logger.warn('Не вдалося витягти текст з документу', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: (f as any).id, fileName: (f as any).name, error: e instanceof Error ? e.message : String(e) });
+          logger.warn('Не вдалося витягти текст з документу', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: f.id, fileName: f.name, error: e instanceof Error ? e.message : String(e) });
         }
       }
       return { response: 'Не вдалося витягти текст: документи порожні або формат не підтримується. Уточніть назву файла або надішліть приклад.', confidence: 0.7, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
@@ -491,27 +525,27 @@ export class AIAssistantCommand extends BaseCommand {
         }
         return count;
       };
-      const readGoogleSheet = async (spreadsheetId: string): Promise<Array<Record<string, any>>> => {
+      const readGoogleSheet = async (spreadsheetId: string): Promise<Array<Record<string, unknown>>> => {
         try {
           const sheetTitles = await this.googleService!.listSheets(spreadsheetId);
           const first = sheetTitles[0] || 'Лист1';
           const data = await this.googleService!.getSheetData(spreadsheetId, `${first}!A1:Z1000`);
-          const rows = (data.values || []) as any[];
+          const rows = (data.values || []) as unknown[];
           if (!rows.length) return [];
-          const headerRow: string[] = rows[0] ?? [];
-          const rest = rows.slice(1);
+          const headerRow = (rows[0] as unknown[] | undefined) ?? [];
+          const rest = (rows.slice(1) as unknown[][]) ?? [];
           const headers = headerRow.map(h => String(h ?? '').trim());
-          return rest.map(row => { const obj: Record<string, any> = {}; headers.forEach((h, i) => { if (!h) return; obj[h] = row[i]; }); return obj; });
+          return rest.map((rowArr) => { const obj: Record<string, unknown> = {}; headers.forEach((h, i) => { if (!h) return; obj[h] = (rowArr as unknown[])[i]; }); return obj; });
         } catch { return []; }
       };
-      const readExcelBuffer = (buf: Buffer): Array<Record<string, any>> => {
+      const readExcelBuffer = (buf: Buffer): Array<Record<string, unknown>> => {
         try {
           const wb = xlsx.read(buf, { type: 'buffer' });
           const firstName = wb.SheetNames[0];
           if (!firstName) return [];
           const sheet = wb.Sheets[firstName];
           if (!sheet) return [];
-          return xlsx.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+          return xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
         } catch { return []; }
       };
       for (const f of candidates.slice(0, 5)) {
