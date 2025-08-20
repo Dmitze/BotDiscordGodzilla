@@ -82,6 +82,58 @@ class SchedulerService {
     this._isActive = false;
   }
 
+  // ===== Workspace (Stage 7) =====
+  private async flushWorkspaceNotifications(): Promise<void> {
+    try {
+      const ws = this.bot.getService('workspace');
+      if (!ws || typeof ws.flushNotifications !== 'function') return;
+      const ready = await ws.flushNotifications();
+      if (!ready || !ready.length) {
+        logger.debug('workspace: нет готовых уведомлений');
+        return;
+      }
+      logger.info(`workspace: готово уведомлений к доставке: ${ready.length}`);
+      // На этом этапе можно отправлять DM/канал. Оставляем лог/заглушку.
+    } catch (e) {
+      logger.warn('workspace: flushNotifications error', e as any);
+    }
+  }
+
+  private async sendWorkspaceDigest(period: 'daily' | 'weekly'): Promise<void> {
+    try {
+      const ws = this.bot.getService('workspace');
+      if (!ws || typeof ws.buildDigest !== 'function' || typeof ws.createDigestRecord !== 'function') return;
+
+      const now = Date.now();
+      let windowStart: number; let windowEnd: number;
+      if (period === 'daily') {
+        const d = new Date(now); d.setHours(0,0,0,0);
+        windowStart = d.getTime() - 24 * 60 * 60 * 1000; // вчера 00:00
+        windowEnd = d.getTime() - 1;                     // вчера 23:59:59.999
+      } else {
+        windowEnd = now;
+        windowStart = now - 7 * 24 * 60 * 60 * 1000;
+      }
+
+      if (typeof ws.db?.listAllSubscribers !== 'function') {
+        logger.debug('workspace: нет listAllSubscribers');
+        return;
+      }
+      const users: string[] = ws.db.listAllSubscribers();
+      let prepared = 0;
+      for (const userId of users) {
+        const digest = await ws.buildDigest(userId, period, windowStart, windowEnd);
+        if (digest.total > 0) {
+          ws.createDigestRecord(userId, period, windowStart, windowEnd, digest, null);
+          prepared++;
+        }
+      }
+      logger.info(`workspace: сформировано дайджестов (${period}): ${prepared}`);
+    } catch (e) {
+      logger.warn('workspace: sendWorkspaceDigest error', e as any);
+    }
+  }
+
   /**
    * Внутрішня перевірка: чи потрібно вимкнути cron (тести або DISABLE_CRON)
    */
@@ -171,6 +223,21 @@ class SchedulerService {
       // Опитування змін Google Drive кожні 2 хвилини (без у тестах/коли вимкнено cron)
       this.scheduleJob('poll-drive-changes', '*/2 * * * *', () => {
         this.pollDriveChanges();
+      });
+
+      // Workspace: коалесинг/доставка уведомлений (каждые 5 минут)
+      this.scheduleJob('workspace-flush-notifs', '*/5 * * * *', () => {
+        this.flushWorkspaceNotifications();
+      });
+
+      // Workspace: дневной дайджест (каждый день 09:05)
+      this.scheduleJob('workspace-digest-daily', '5 9 * * *', () => {
+        this.sendWorkspaceDigest('daily');
+      });
+
+      // Workspace: недельный дайджест (каждый понедельник 09:10)
+      this.scheduleJob('workspace-digest-weekly', '10 9 * * MON', () => {
+        this.sendWorkspaceDigest('weekly');
       });
 
       logger.debug('✅ Стандартні завдання зареєстровано');
