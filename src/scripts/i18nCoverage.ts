@@ -62,8 +62,14 @@ function extractKeysFromFile(filePath: string): string[] {
   const re1 = /\bt\(\s*["'`]([\w.-]+)["'`]/g;
   const re2 = /\btUser\(\s*["'`]([\w.-]+)["'`]/g;
   let m: RegExpExecArray | null;
-  while ((m = re1.exec(content))) keys.add(m[1]);
-  while ((m = re2.exec(content))) keys.add(m[1]);
+  while ((m = re1.exec(content))) {
+    const k = m[1];
+    if (typeof k === 'string' && k.length) keys.add(k);
+  }
+  while ((m = re2.exec(content))) {
+    const k = m[1];
+    if (typeof k === 'string' && k.length) keys.add(k);
+  }
   return Array.from(keys);
 }
 
