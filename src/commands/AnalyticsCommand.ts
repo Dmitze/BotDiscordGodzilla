@@ -6,6 +6,7 @@ import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { replyWithPrivacy } from '@/ui/reply';
 
 export class AnalyticsCommand extends BaseCommand {
   constructor(config: BotConfig) {
@@ -101,7 +102,7 @@ export class AnalyticsCommand extends BaseCommand {
           await this.handleInsights(interaction);
           break;
         default:
-          await interaction.reply({ content: '❌ Невідома підкоманда', ephemeral: true });
+          await replyWithPrivacy(interaction, { content: '❌ Невідома підкоманда' });
       }
     } catch (error) {
       logger.error('Помилка виконання команди аналітики', {
@@ -110,7 +111,7 @@ export class AnalyticsCommand extends BaseCommand {
         event: 'execute_error',
         errorMessage: error instanceof Error ? error.message : String(error),
       });
-      await interaction.reply({ content: '❌ Помилка аналітики', ephemeral: true });
+      await replyWithPrivacy(interaction, { content: '❌ Помилка аналітики' });
     }
   }
 
@@ -123,7 +124,7 @@ export class AnalyticsCommand extends BaseCommand {
       const report = await analyticsService.generateReport(type, format);
 
       if (!report || !report.data || Object.keys(report.data).length === 0) {
-        await interaction.reply({ content: '⚠️ Дані для звіту відсутні', ephemeral: true });
+        await replyWithPrivacy(interaction, { content: '⚠️ Дані для звіту відсутні' });
         return;
       }
 
@@ -133,7 +134,7 @@ export class AnalyticsCommand extends BaseCommand {
       }
       await interaction.reply({ content });
     } catch (error) {
-      await interaction.reply({ content: '❌ Помилка генерації звіту', ephemeral: true });
+      await replyWithPrivacy(interaction, { content: '❌ Помилка генерації звіту' });
     }
   }
 
@@ -158,7 +159,7 @@ export class AnalyticsCommand extends BaseCommand {
       }
       await interaction.reply({ embeds: [embed] });
     } catch {
-      await interaction.reply({ content: '❌ Помилка отримання статистики', ephemeral: true });
+      await replyWithPrivacy(interaction, { content: '❌ Помилка отримання статистики' });
     }
   }
 
@@ -169,7 +170,7 @@ export class AnalyticsCommand extends BaseCommand {
       const trends = await analyticsService.getTrends(period);
       await interaction.reply({ content: `✅ Тренди за період ${period}: ${trends?.trends?.length ?? 0}` });
     } catch {
-      await interaction.reply({ content: '❌ Помилка отримання трендів', ephemeral: true });
+      await replyWithPrivacy(interaction, { content: '❌ Помилка отримання трендів' });
     }
   }
 
@@ -182,7 +183,7 @@ export class AnalyticsCommand extends BaseCommand {
       if (data?.recommendations?.length) msgs.push('\nРекомендації:\n• ' + data.recommendations.join('\n• '));
       await interaction.reply({ content: msgs.join('\n') || 'Немає інсайтів' });
     } catch {
-      await interaction.reply({ content: '❌ Помилка отримання інсайтів', ephemeral: true });
+      await replyWithPrivacy(interaction, { content: '❌ Помилка отримання інсайтів' });
     }
   }
 
