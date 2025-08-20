@@ -8,6 +8,7 @@ import { BaseCommand } from './BaseCommand';
 import { t } from '@/i18n';
 import logger from '@/utils/logger';
 import { UserWorkspaceService, type WorkspaceItemType } from '@/services/UserWorkspaceService';
+import { replyWithPrivacy } from '@/ui/reply';
 
 export class WorkspaceCommand extends BaseCommand {
   constructor(config: BotConfig) {
@@ -71,7 +72,7 @@ export class WorkspaceCommand extends BaseCommand {
     try {
       // Feature flag: workspace can be disabled via config
       if (!this.config.features?.enableUserWorkspace) {
-        await interaction.reply({ content: t('ws.error.disabled'), ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: t('ws.error.disabled') });
         return;
       }
       const sub = interaction.options.getSubcommand();
@@ -89,7 +90,7 @@ export class WorkspaceCommand extends BaseCommand {
           await this.handleRun(interaction as any);
           break;
         default:
-          await interaction.reply({ content: t('ws.reply.unknownSub'), ephemeral: true });
+          await replyWithPrivacy(interaction as any, { content: t('ws.reply.unknownSub') });
       }
     } catch (error) {
       logger.error('Помилка WorkspaceCommand', {
@@ -100,7 +101,7 @@ export class WorkspaceCommand extends BaseCommand {
       if (interaction.deferred) {
         await interaction.editReply({ content: t('ws.error.exec') });
       } else {
-        await interaction.reply({ content: t('ws.error.exec'), ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: t('ws.error.exec') });
       }
     }
   }
@@ -113,11 +114,11 @@ export class WorkspaceCommand extends BaseCommand {
     const query = interaction.options.getString('query');
 
     if (type === 'file' && !fileId) {
-      await interaction.reply({ content: t('ws.error.missingFileId'), ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: t('ws.error.missingFileId') });
       return;
     }
     if (type === 'query' && !query) {
-      await interaction.reply({ content: t('ws.error.missingQuery'), ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: t('ws.error.missingQuery') });
       return;
     }
 
@@ -131,9 +132,8 @@ export class WorkspaceCommand extends BaseCommand {
       payload: { fileId: fileId || undefined, query: query || undefined },
     });
 
-    await interaction.reply({
+    await replyWithPrivacy(interaction as any, {
       content: t('ws.reply.addSuccess', { title: item.title, id: item.id }),
-      ephemeral: true,
     });
   }
 
@@ -146,16 +146,15 @@ export class WorkspaceCommand extends BaseCommand {
       type ? { type } : undefined
     );
     if (!items.length) {
-      await interaction.reply({ content: t('ws.reply.listEmpty'), ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: t('ws.reply.listEmpty') });
       return;
     }
 
     const lines = items.map(i =>
       t('ws.format.listLine', { type: i.type, title: i.title, id: i.id })
     );
-    await interaction.reply({
+    await replyWithPrivacy(interaction as any, {
       content: `${t('ws.reply.listTitle')}\n${lines.join('\n')}`,
-      ephemeral: true,
     });
   }
 
@@ -164,9 +163,8 @@ export class WorkspaceCommand extends BaseCommand {
     const id = interaction.options.getString('id', true);
 
     const ok = await UserWorkspaceService.remove(userId, id);
-    await interaction.reply({
+    await replyWithPrivacy(interaction as any, {
       content: ok ? t('ws.reply.removed') : t('ws.reply.notFound'),
-      ephemeral: true,
     });
   }
 
@@ -176,26 +174,24 @@ export class WorkspaceCommand extends BaseCommand {
 
     const item = await UserWorkspaceService.get(userId, id);
     if (!item) {
-      await interaction.reply({ content: t('ws.reply.notFound'), ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: t('ws.reply.notFound') });
       return;
     }
 
     if (item.type === 'query') {
-      await interaction.reply({
+      await replyWithPrivacy(interaction as any, {
         content: t('ws.reply.runQuery', { query: String(item.payload.query) }),
-        ephemeral: true,
       });
       return;
     }
 
     if (item.type === 'file') {
-      await interaction.reply({
+      await replyWithPrivacy(interaction as any, {
         content: t('ws.reply.runFile', { fileId: String(item.payload.fileId) }),
-        ephemeral: true,
       });
       return;
     }
 
-    await interaction.reply({ content: t('ws.error.unsupportedType'), ephemeral: true });
+    await replyWithPrivacy(interaction as any, { content: t('ws.error.unsupportedType') });
   }
 }
