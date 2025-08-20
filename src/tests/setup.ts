@@ -87,6 +87,27 @@ jest.mock('../utils/security', () => {
   };
 });
 
+// Глобальний мок Redis: блокує реальні підключення та прибирає шумні логи у всіх тестах
+jest.mock('redis', () => {
+  const noop = async () => undefined;
+  const syncNoop = () => undefined;
+  return {
+    createClient: jest.fn(() => ({
+      on: syncNoop,
+      off: syncNoop,
+      connect: noop,
+      disconnect: noop,
+      get: jest.fn(async () => null),
+      set: jest.fn(async () => 'OK'),
+      del: jest.fn(async () => 1),
+      exists: jest.fn(async () => 0),
+      keys: jest.fn(async () => []),
+      flushDb: jest.fn(async () => 'OK'),
+      ping: jest.fn(async () => 'PONG'),
+    })),
+  };
+});
+
 // Завантаження змінних середовища
 config({ path: '.env.test' });
 
