@@ -12,6 +12,7 @@ import type { GoogleService } from '@/services/GoogleService';
 import logger from '@/utils/logger';
 import type { DocBlock } from '@/types/docs';
 import { t } from '@/i18n';
+import { replyWithPrivacy } from '@/ui/reply';
 
 export class DocCommand extends BaseCommand {
   private readonly google: GoogleService | null;
@@ -70,14 +71,14 @@ export class DocCommand extends BaseCommand {
 
     const sub = interaction.options.getSubcommand();
     if (sub !== 'blocks') {
-      await interaction.reply({ content: t('doc.unknownSub'), ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: t('doc.unknownSub') });
       return;
     }
 
     const documentInput = interaction.options.getString('documentid', true);
     const documentId = extractDocId(documentInput);
     if (!documentId) {
-      await interaction.reply({ content: t('doc.id.invalid'), ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: t('doc.id.invalid') });
       return;
     }
     const limit = interaction.options.getInteger('limit') ?? 10;
@@ -170,12 +171,12 @@ export class DocCommand extends BaseCommand {
       // Ограничение времени жизни: 10 минут
       const nowSec = Math.floor(Date.now() / 1000);
       if (ts && nowSec - ts > 10 * 60) {
-        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: t('doc.sessionExpired') });
         return;
       }
 
       if (!this.google) {
-        await interaction.reply({ content: t('doc.google.unavailable'), ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: t('doc.google.unavailable') });
         return;
       }
 
@@ -195,7 +196,7 @@ export class DocCommand extends BaseCommand {
         error: error instanceof Error ? error.message : String(error),
       });
       if (!interaction.deferred && !interaction.replied) {
-        await interaction.reply({ content: t('doc.error.updatePage'), ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: t('doc.error.updatePage') });
       }
     }
   }
