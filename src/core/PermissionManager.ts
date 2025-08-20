@@ -73,6 +73,10 @@ export class PermissionManager {
 
   constructor(_config: BotConfig) {
     if (PermissionManager.instance) {
+      // If existing instance was cleaned up in previous test run, re-initialize it
+      if (!(PermissionManager.instance as PermissionManager).isInitialized) {
+        (PermissionManager.instance as PermissionManager).initialize();
+      }
       return PermissionManager.instance;
     }
 
@@ -278,7 +282,7 @@ export class PermissionManager {
       const duration = Date.now() - startTime;
       if (allowed) {
         this.recordCommandUsage(user.id, commandName);
-        logger.debug(
+        logger.info(
           `✅ Доступ дозволено user=${user.id} command=${commandName} duration=${duration}ms level=${UserLevel[userInfo.userLevel]}`
         );
       } else {
@@ -322,7 +326,8 @@ export class PermissionManager {
 
     // Отримання інформації з Discord
     const userLevel = this.determineUserLevel(member);
-    const roles = member.roles.cache.map(role => role.name);
+    // Support both discord.js Collection and plain Map used in tests
+    const roles = Array.from((member.roles.cache as any).values()).map((role: any) => role.name);
     const permissions = member.permissions.toArray();
 
     const userInfo: UserPermissionCache = {
@@ -371,13 +376,13 @@ export class PermissionManager {
 
     // Перевірка на довірених користувачів
     const trustedRoles = ['Trusted', 'VIP', 'Premium', 'Verified'];
-    if (member.roles.cache.some(role => trustedRoles.includes(role.name))) {
+    if (Array.from((member.roles.cache as any).values()).some((role: any) => trustedRoles.includes(role.name))) {
       return UserLevel.TRUSTED;
     }
 
     // Перевірка на заборонених користувачів
     const bannedRoles = ['Banned', 'Muted', 'Restricted'];
-    if (member.roles.cache.some(role => bannedRoles.includes(role.name))) {
+    if (Array.from((member.roles.cache as any).values()).some((role: any) => bannedRoles.includes(role.name))) {
       return UserLevel.BANNED;
     }
 
@@ -398,7 +403,7 @@ export class PermissionManager {
       return true;
     }
 
-    const memberRoles = member.roles.cache.map(role => role.name);
+    const memberRoles = Array.from((member.roles.cache as any).values()).map((role: any) => role.name);
     return requiredRoles.some(requiredRole => memberRoles.includes(requiredRole));
   }
 
@@ -410,6 +415,13 @@ export class PermissionManager {
     requiredPermissions: PermissionResolvable[]
   ): boolean {
     if (requiredPermissions.length === 0) return true;
+    // Адміністратори завжди мають доступ до перевірки дозволів
+    if (
+      PERMISSION_CONSTANTS.ADMIN_BYPASS &&
+      member.permissions.has(PermissionFlagsBits.Administrator)
+    ) {
+      return true;
+    }
 
     return member.permissions.has(requiredPermissions);
   }
@@ -565,6 +577,10 @@ export class PermissionManager {
    * Запуск періодичного очищення кешу
    */
   private startCacheCleanup(): void {
+    // Avoid background timers in test environment to prevent open handle issues in Jest
+    if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
+      return;
+    }
     setInterval(() => {
       const now = Date.now();
       let cleanedCount = 0;
