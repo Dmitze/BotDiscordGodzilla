@@ -24,7 +24,8 @@ export class DocCommand extends BaseCommand {
       config,
       {
         category: 'documents',
-        usage: '/doc blocks <documentId|url> [limit]'
+        usage: '/doc blocks <documentId|url> [limit]',
+        i18n: { nameKey: 'commands.doc.name', descriptionKey: 'doc.command.description' }
       },
       (builder: SlashCommandBuilder) => {
         builder
