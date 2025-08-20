@@ -60,7 +60,7 @@ describe('AnalyticsCommand', () => {
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockInteraction.options.getString).toHaveBeenCalledWith('тип');
+      expect(mockInteraction.options.getString).toHaveBeenCalledWith('тип', true);
       expect(mockInteraction.options.getString).toHaveBeenCalledWith('формат');
       expect(mockAnalyticsService.generateReport).toHaveBeenCalledWith('daily', 'excel');
       expect(mockInteraction.reply).toHaveBeenCalled();
