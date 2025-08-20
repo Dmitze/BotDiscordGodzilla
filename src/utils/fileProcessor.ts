@@ -647,6 +647,7 @@ export const writeFile = (
 export const getFileProcessorStats = () => fileProcessor.getStats();
 export const cleanupFileProcessor = () => fileProcessor.cleanup();
 export default fileProcessor;
+<<<<<<< HEAD
 
 /**
  * Нормализация текста: переносы в \n, табы → 2 пробела, схлопывание пробелов, удаление невидимых символов
@@ -780,3 +781,5 @@ export function summarizeTlDr(
   const summary = picked.join(' ');
   return sanitizeTextForChat(summary, budget);
 }
+=======
+>>>>>>> 67884674 (utils(file): оновлено fileProcessor)
