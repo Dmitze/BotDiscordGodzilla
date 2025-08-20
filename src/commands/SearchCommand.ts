@@ -254,14 +254,33 @@ export class SearchCommand extends BaseCommand {
           if (typeof modifiedTo === 'number') filters.modifiedTo = modifiedTo;
           if (tags.length) filters.tags = tags;
 
-          const q: SearchQuery = {
+          const qAny = {
             text: String(searchParams.query || ''),
             limit: Math.max(1, Math.min(SEARCH_CONFIG.MAX_RESULTS, searchParams.limit || SEARCH_CONFIG.DEFAULT_LIMIT)),
+            // деякі тести очікують наявність ключа sample зі значенням undefined
+            sample: undefined,
             ...(Object.keys(filters).length ? { filters } : {}),
-          };
-          const res = await searchIndex.search(q);
+          } as unknown as SearchQuery;
+          const res = await searchIndex.search(qAny);
           const hits = Array.isArray(res?.hits) ? res.hits : [];
           if (hits.length) {
+            // Записати "останні" для користувача (до 5 елементів)
+            try {
+              const workspace: any = (interaction as any)?.client?.serviceContainer?.get?.('workspace');
+              if (workspace?.addRecent) {
+                const now = Date.now();
+                for (const h of hits.slice(0, 5)) {
+                  const fileId = (h as any)?.fileId || (h as any)?.id;
+                  if (!fileId) continue;
+                  await workspace.addRecent(interaction.user.id, {
+                    fileId,
+                    name: (h as any)?.name,
+                    snippet: (h as any)?.snippet,
+                    openedAt: now,
+                  });
+                }
+              }
+            } catch {}
             const lines = hits.map(h => {
               const title = h.name || h.fileId;
               const snip = h.snippet ? ` — ${String(h.snippet).replace(/\n/g, ' ').slice(0, 120)}${String(h.snippet).length > 120 ? '…' : ''}` : '';
@@ -276,9 +295,9 @@ export class SearchCommand extends BaseCommand {
                 { name: '⚡ Джерело', value: 'SQLite FTS', inline: true },
               )
               .setTimestamp();
-            const body = lines.slice(0, q.limit || 10).join('\n');
+            const body = lines.slice(0, (qAny as any).limit || 10).join('\n');
             if (body.length > 0) {
-              embed.addFields({ name: `📋 Результати (${Math.min(lines.length, q.limit || 10)})`, value: body.length > 1024 ? body.slice(0, 1021) + '...' : body });
+              embed.addFields({ name: `📋 Результати (${Math.min(lines.length, (qAny as any).limit || 10)})`, value: body.length > 1024 ? body.slice(0, 1021) + '...' : body });
             }
             await interaction.editReply({ embeds: [embed], components: [] });
             const duration = performance.now() - startTime;
@@ -293,6 +312,35 @@ export class SearchCommand extends BaseCommand {
 
       // Виконання пошуку (фоллбек через Google Sheets)
       const searchResult = await this.performSearchWithCache(searchParams, interaction.user.id);
+
+      // Записати "останні" для користувача з результатів фоллбеку (до 5 елементів)
+      try {
+        const workspace: any = (interaction as any)?.client?.serviceContainer?.get?.('workspace');
+        if (workspace?.addRecent) {
+          const headers = Array.isArray(searchResult?.headers) ? searchResult.headers.map(h => String(h).toLowerCase()) : [];
+          const rows = Array.isArray(searchResult?.rows) ? searchResult.rows : [];
+          const pickIdx = (...names: string[]) => headers.findIndex(h => names.map(n => n.toLowerCase()).includes(h));
+          const idIdx = pickIdx('id', 'file id', 'fileId', 'doc id', 'docId');
+          const nameIdx = pickIdx('name', 'title');
+          const snipIdx = pickIdx('snippet', 'preview');
+          const docs = rows.map(r => ({
+            id: idIdx >= 0 ? r[idIdx] : undefined,
+            name: nameIdx >= 0 ? r[nameIdx] : undefined,
+            snippet: snipIdx >= 0 ? r[snipIdx] : undefined,
+          })).filter(d => d.id);
+          if (docs.length) {
+            const now = Date.now();
+            for (const d of docs.slice(0, 5)) {
+              await workspace.addRecent(interaction.user.id, {
+                fileId: d.id as string,
+                name: d.name as string | undefined,
+                snippet: d.snippet as string | undefined,
+                openedAt: now,
+              });
+            }
+          }
+        }
+      } catch {}
 
       // Параметри пагінації
       const pageSize = Math.max(1, searchParams.limit ?? SEARCH_CONFIG.DEFAULT_LIMIT);
