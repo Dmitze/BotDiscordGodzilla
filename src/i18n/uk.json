@@ -1,4 +1,5 @@
 {
+  "key": "",
   "ai": {
     "command": {
       "description": "🤖 AI-асистент для роботи з Google Sheets"
@@ -161,10 +162,25 @@
       "description": "📁 Робота з файлами в Google Drive"
     },
     "sub": {
-      "search": { "description": "Пошук файлів у Google Drive" },
-      "read": { "description": "Читати вміст файлу" },
-      "analyze": { "description": "AI-аналіз вмісту файлу" },
+      "search": { "title": "Пошук", "description": "Пошук файлів у Google Drive" },
+      "read": { "title": "Читання", "description": "Читати вміст файлу" },
+      "analyze": { "title": "Аналіз", "description": "AI-аналіз вмісту файлу" },
       "report": { "description": "Створити звіт на основі файлу" }
+    },
+    "buttons": {
+      "open": "Відкрити",
+      "download": "Завантажити",
+      "summary": "Зведення",
+      "source": "Джерело",
+      "question": "Питання"
+    },
+    "card": {
+      "owner": "Власник",
+      "modified": "Змінено"
+    },
+    "common": {
+      "file": "файл",
+      "folder": "папка"
     },
     "opt": {
       "query": { "description": "Назва файлу для пошуку" },
@@ -192,6 +208,16 @@
     },
     "error": {
       "serviceUnavailable": "❌ GoogleService недоступний",
+      "unauthorized": "🚫 Неавторизовано",
+      "forbidden": "🚫 Доступ заборонено",
+      "notFound": "❌ Не знайдено",
+      "conflict": "⚠️ Конфлікт",
+      "badRequest": "⚠️ Некоректний запит",
+      "rateLimited": "⏳ Перевищено ліміт запитів",
+      "server": "❌ Помилка сервера",
+      "unavailable": "❌ Сервіс тимчасово недоступний",
+      "unknownSubcommand": "❌ Невідома підкоманда",
+      "noText": "❌ Не вдалося отримати текст із файлу",
       "missingFolderId": "❌ Не вказано ID папки. Додайте параметр \"папка\" або налаштуйте driveFolderId у конфігурації.",
       "metadata": "❌ Неможливо отримати метадані файлу",
       "process": "❌ Помилка при роботі з файлами. Спробуйте ще раз або зверніться до адміністратора."
@@ -206,6 +232,15 @@
       "fileDownloaded": "📄 **Файл завантажено**\n\nНазва: {{name}}\nТип: {{mimeType}}",
       "more": "\n…та ще {{rest}}"
     },
+    "read": {
+      "downloadedSheet": "📥 Лист завантажено: {{title}} ({{sheetName}})"
+    },
+    "report": {
+      "generated": "📝 Звіт згенеровано",
+      "fallbackTxt": "[текстовий звіт]",
+      "noContent": "Немає вмісту для звіту"
+    },
+    
     "search": {
       "largeMark": "великий",
       "filteredByPolicy": "⚠️ Деякі елементи ({{count}}) приховано політиками доступу",
