@@ -3,6 +3,7 @@
  * Розширені можливості пошуку та фільтрації даних
  */
 import type { BotConfig, CommandExecuteOptions } from '@/types';
+import { replyWithPrivacy } from '@/ui/reply';
 import type { GoogleService } from '@/services/GoogleService';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
@@ -101,9 +102,8 @@ export class EnhancedSearchCommand extends BaseCommand {
       // Кінцевий запит: спочатку legacy, потім modern
       const query = legacyQuery ?? modernQuery;
       if (!query || query.trim().length === 0) {
-        await interaction.reply({
+        await replyWithPrivacy(interaction as any, {
           content: 'Будь ласка, вкажіть запит для пошуку',
-          ephemeral: true,
         });
         return;
       }
@@ -123,7 +123,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       const google: GoogleSvc | undefined =
         (this.googleService as unknown as GoogleSvc | undefined) ?? containerGoogle;
       if (!google) {
-        await interaction.reply({ content: 'Помилка: сервіс пошуку недоступний', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: 'Помилка: сервіс пошуку недоступний' });
         return;
       }
 
@@ -157,14 +157,14 @@ export class EnhancedSearchCommand extends BaseCommand {
         result = raw as MinimalSearchItem[] | SearchResultPage;
       } catch (e) {
         logger.error('EnhancedSearchCommand: service error', { error: String(e) });
-        await interaction.reply({ content: 'Помилка при пошуку', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: 'Помилка при пошуку' });
         return;
       }
 
       // Підтримка двох форматів відповіді: масив або обʼєкт з пагінацією
       const items: MinimalSearchItem[] = Array.isArray(result) ? result : result?.data || [];
       if (!items || items.length === 0) {
-        await interaction.reply({ content: 'Результатів не знайдено', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: 'Результатів не знайдено' });
         return;
       }
 
@@ -183,7 +183,7 @@ export class EnhancedSearchCommand extends BaseCommand {
         error: error instanceof Error ? error.message : String(error),
         userId: options.interaction.user?.id,
       });
-      await options.interaction.reply({ content: '❌ Помилка при виконанні пошуку', ephemeral: true });
+      await replyWithPrivacy(options.interaction as any, { content: '❌ Помилка при виконанні пошуку' });
     }
   }
 }
