@@ -17,6 +17,7 @@ import { SqliteSearchIndex } from '@/search/sqlite/SqliteSearchIndex';
 import type { SearchIndex } from '@/search/SearchIndex';
 import { DriveChangesService } from '../services/DriveChangesService';
 import type { BotConfig } from '@/types';
+import { WorkspaceDbService } from '@/services/WorkspaceDbService';
 
 interface Bot {
   config: BotConfig;
@@ -132,6 +133,24 @@ class ServiceManager {
         getService: (name: string) => this.getService(name),
       } as any)
     );
+
+    // Workspace (персональний простір користувача) на SQLite
+    try {
+      const workspace = new WorkspaceDbService(this.bot.config as BotConfig);
+      this.services.set('workspace', workspace as unknown as Service);
+      logger.info('🗂️ WorkspaceDbService зареєстровано', {
+        type: 'service_manager',
+        event: 'workspace_registered',
+        component: 'ServiceManager',
+      });
+    } catch (e) {
+      logger.error('❌ Не вдалося створити WorkspaceDbService', {
+        type: 'service_manager',
+        event: 'workspace_register_failed',
+        component: 'ServiceManager',
+        errorMessage: e instanceof Error ? e.message : String(e),
+      });
+    }
 
     // Persistent Search Index (SQLite FTS5)
     try {
