@@ -12,10 +12,10 @@ export type Subscription = { topic: string; criteria?: unknown; createdAt: numbe
 
 export class WorkspaceDbService {
   private db: SqliteWorkspace;
-  private _config: BotConfig;
 
   constructor(config: BotConfig) {
-    this._config = config;
+    // touch config to avoid TS6133 unused-parameter error while keeping signature stable
+    void config;
     const dbPath = process.env['BOT_INDEX_DB_PATH'] || './data/search-index.db';
     this.db = new SqliteWorkspace({ dbPath });
   }
