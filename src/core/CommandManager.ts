@@ -431,10 +431,7 @@ export class CommandManager {
       const command = this.commands.get(commandName);
 
       if (!command) {
-        await interaction.reply({
-          content: '❌ Команда не знайдена',
-          ephemeral: true,
-        });
+        await replyWithPrivacy(interaction as any, { content: '❌ Команда не знайдена' });
         return;
       }
 
@@ -444,10 +441,7 @@ export class CommandManager {
       // Перевірка прав доступу
       const hasPermission = await this.checkPermissions(interaction);
       if (!hasPermission) {
-        await interaction.reply({
-          content: '❌ Недостатньо прав для виконання цієї команди',
-          ephemeral: true,
-        });
+        // Повідомлення вже відправлено в checkPermissions(); уникаємо повторної відповіді
         return;
       }
 
@@ -481,7 +475,7 @@ export class CommandManager {
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
-        await interaction.reply({ content: errorMessage, ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: errorMessage });
       }
     }
   }
