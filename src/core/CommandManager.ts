@@ -9,6 +9,7 @@ import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
+import { replyWithPrivacy } from '@/ui/reply';
 
 // Імпорт всіх команд
 import { SearchCommand } from '@/commands/SearchCommand';
@@ -80,7 +81,7 @@ export class CommandManager {
       const fileId = parts[2];
       const pageIndex = parts[3] ? parseInt(parts[3], 10) : 0;
       if (!fileId) {
-        await interaction.reply({ content: '❌ Невірний ідентифікатор файлу.', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: '❌ Невірний ідентифікатор файлу.' });
         return;
       }
 
@@ -88,13 +89,13 @@ export class CommandManager {
         | import('@/services/DriveIndexerService').DriveIndexerService
         | undefined;
       if (!driveIndexer) {
-        await interaction.reply({ content: 'Пошук наразі недоступний.', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: 'Пошук наразі недоступний.' });
         return;
       }
 
       const chunks = await driveIndexer.getTextChunks(fileId, 1800);
       if (!chunks.length) {
-        await interaction.reply({ content: 'Немає тексту для відображення.', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: 'Немає тексту для відображення.' });
         return;
       }
 
@@ -115,23 +116,23 @@ export class CommandManager {
       );
 
       if (action === 'expand') {
-        await interaction.reply({ content, components: [row], ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: content ?? '', components: [row] });
         return;
       }
       if (action === 'page') {
         if (interaction.deferred || interaction.replied) {
           await interaction.editReply({ content, components: [row] });
         } else {
-          await interaction.reply({ content, components: [row], ephemeral: true });
+          await replyWithPrivacy(interaction as any, { content: content ?? '', components: [row] });
         }
         return;
       }
 
-      await interaction.reply({ content: 'Невідома дія.', ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: 'Невідома дія.' });
     } catch (e) {
       logger.error('search_button_failed', { error: e instanceof Error ? e.message : String(e) });
       try {
-        await interaction.reply({ content: '❌ Помилка обробки кнопки.', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: '❌ Помилка обробки кнопки.' });
       } catch {
         // ignore
       }
