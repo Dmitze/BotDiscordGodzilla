@@ -1,5 +1,32 @@
 {
   "key": "",
+  "commands": {
+    "search": {
+      "name": "search",
+      "description": "🔍 Flexible search across documents"
+    },
+    "ai": {
+      "name": "assistant"
+    },
+    "ocr": {
+      "name": "ocr"
+    },
+    "doc": {
+      "name": "doc"
+    },
+    "sheets": {
+      "name": "sheets"
+    },
+    "ws": {
+      "name": "ws"
+    },
+    "lang": {
+      "name": "lang"
+    },
+    "files": {
+      "name": "files"
+    }
+  },
   "ai": {
     "command": { "description": "🤖 AI assistant for Google Sheets" },
     "opt": {
@@ -73,7 +100,8 @@
     "validation": {
       "failed": "❌ Validation error:\n{{errors}}",
       "queryTooShort": "Query must be at least 2 characters",
-      "fileIdTooShort": "File ID must be at least 10 characters"
+      "fileIdTooShort": "File ID must be at least 10 characters",
+      "invalidFileId": "❌ Invalid file identifier."
     },
     "search": {
       "largeMark": "large",
