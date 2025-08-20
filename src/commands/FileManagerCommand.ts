@@ -86,7 +86,7 @@ export class FileManagerCommand extends BaseCommand {
   }>();
 
   constructor(config: BotConfig) {
-    super('файли', t('files.command.description'), config, {}, (builder: SlashCommandBuilder) => {
+    super('files', t('files.command.description'), config, { i18n: { nameKey: 'commands.files.name', descriptionKey: 'files.command.description' } }, (builder: SlashCommandBuilder) => {
       builder
         .addSubcommand((sub: SlashCommandSubcommandBuilder) => {
           sub
