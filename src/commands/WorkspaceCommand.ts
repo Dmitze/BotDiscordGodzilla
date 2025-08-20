@@ -12,7 +12,7 @@ import { replyWithPrivacy } from '@/ui/reply';
 
 export class WorkspaceCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super('ws', t('ws.command.description'), config, {}, (builder: any) => {
+    super('ws', t('ws.command.description'), config, { i18n: { nameKey: 'commands.ws.name', descriptionKey: 'ws.command.description' } }, (builder: any) => {
       return builder
         .addSubcommand((sub: any) =>
           sub
