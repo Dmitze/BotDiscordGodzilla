@@ -3,6 +3,8 @@
  */
 import uk from './uk.json';
 import en from './en.json';
+// Types are imported as type-only to avoid runtime dependency on discord.js
+import type { Interaction, User, Guild, GuildMember } from 'discord.js';
 
 // Narrow dictionary types to avoid any/unsafe
 type DictLeaf = string | string[];
@@ -50,14 +52,41 @@ export function getIntlLocale(): string {
   return String(uiLocale);
 }
 
+// --- Discord-aware locale resolution helpers ---
+function mapToLocaleInput(input?: string | null): LocaleInput | undefined {
+  if (!input) return undefined;
+  const lower = input.toLowerCase();
+  if (lower.startsWith('uk')) return 'uk';
+  if (lower.startsWith('en')) return 'en';
+  return undefined;
+}
+
+// Accepts Interaction | User | Guild | GuildMember | arbitrary object with locale fields
+function resolveDiscordLocale(source?: unknown): LocaleInput {
+  // 1) Try interaction.locale / interaction.guildLocale (discord.js v14)
+  const asAny = source as any;
+  const fromInteraction: string | undefined = asAny?.locale || asAny?.guildLocale;
+  const fromInteractionUser: string | undefined = asAny?.user?.locale;
+  const fromMember: string | undefined = asAny?.member?.user?.locale;
+  const fromGuildPref: string | undefined = asAny?.guild?.preferredLocale || asAny?.preferredLocale;
+
+  const loc = mapToLocaleInput(fromInteraction)
+    || mapToLocaleInput(fromInteractionUser)
+    || mapToLocaleInput(fromMember)
+    || mapToLocaleInput(fromGuildPref);
+
+  // Fallback strictly to Ukrainian per product preference
+  return loc ?? 'uk';
+}
+
 function getDeep(obj: Dictionary, path: string): DictLeaf | Dictionary | undefined {
   return path
     .split('.')
     .reduce<DictLeaf | Dictionary | undefined>((acc, key) => {
       if (!acc || typeof acc !== 'object') return undefined;
       const next = (acc as Dictionary)[key];
-      return next as DictLeaf | Dictionary | undefined;
-    }, obj) as DictLeaf | Dictionary | undefined;
+      return next;
+    }, obj);
 }
 
 function interpolate(template: string, vars?: Record<string, string | number>): string {
@@ -69,8 +98,10 @@ function interpolate(template: string, vars?: Record<string, string | number>): 
   });
 }
 
-export function t(key: string, vars?: Record<string, string | number>): string {
-  const dict = locales[dictLocale];
+// Core translate with explicit locale support
+function translate(key: string, vars?: Record<string, string | number>, locale?: LocaleInput): string {
+  const locKey: LocaleKey = locale ? resolveDictLocale(locale) : dictLocale;
+  const dict = locales[locKey];
   let raw = getDeep(dict, key);
 
   // Fallback to Ukrainian if missing in selected locale
@@ -84,6 +115,23 @@ export function t(key: string, vars?: Record<string, string | number>): string {
     return interpolate(pick, vars);
   }
   return key; // fallback to key when missing
+}
+
+// Overloads for t()
+export function t(key: string, vars?: Record<string, string | number>): string;
+export function t(key: string, vars: Record<string, string | number> | undefined, locale: LocaleInput): string;
+export function t(key: string, vars?: Record<string, string | number>, locale?: LocaleInput): string {
+  return translate(key, vars, locale);
+}
+
+// Translate using locale derived from a Discord Interaction/User/Guild
+export function tUser(
+  key: string,
+  source: Interaction | User | Guild | GuildMember | unknown,
+  vars?: Record<string, string | number>
+): string {
+  const loc = resolveDiscordLocale(source);
+  return translate(key, vars, loc);
 }
 
 // Intl helpers
