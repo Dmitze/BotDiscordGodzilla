@@ -184,40 +184,38 @@ export class SearchCommand extends BaseCommand {
 
     try {
       // Легасі-шлях для сумісності з існуючими тестами: використовує serviceContainer.get('google'|'cache')
-      // ВАЖЛИВО: не виконуємо цей шлях, якщо доступний персистентний searchIndex — пріоритет SQLite
-      if (
-        !this.googleService &&
-        (interaction as any)?.client?.serviceContainer?.get &&
-        !(typeof (interaction as any).client.serviceContainer.get === 'function' &&
-          (interaction as any).client.serviceContainer.get('searchIndex'))
-      ) {
-        const getSvc = (interaction as any).client.serviceContainer.get.bind((interaction as any).client.serviceContainer) as (name: string) => any;
-        const google = getSvc('google');
-        const cache = getSvc('cache');
-        const query = interaction.options.getString('запит');
+      // Пробуємо його спочатку, якщо немає ін'єктованого googleService
+      if (!this.googleService && (interaction as any)?.client?.serviceContainer?.get) {
+        const sc = (interaction as any).client.serviceContainer;
+        const getSvc = sc.get.bind(sc) as (name: string) => any;
+        // Підтримка альтернативних ключів сервісів
+        const google = getSvc('google') ?? getSvc('GoogleService');
+        const cache = getSvc('cache') ?? getSvc('CacheService');
+        if (google && typeof google.searchData === 'function') {
+          const query = interaction.options.getString('запит', true);
+          const cacheKey = `search:${String(query ?? '')}`;
+          let rows: unknown;
+          try {
+            rows = cache?.get ? await cache.get(cacheKey) : null;
+          } catch {
+            rows = null;
+          }
 
-        const cacheKey = `search:${String(query ?? '')}`;
-        let rows: unknown;
-        try {
-          rows = cache?.get ? await cache.get(cacheKey) : null;
-        } catch {
-          rows = null;
-        }
+          if (!rows) {
+            rows = await google.searchData(String(query ?? ''));
+            try { if (cache?.set) await cache.set(cacheKey, rows); } catch {}
+          }
 
-        if (!rows) {
-          rows = await google.searchData(String(query ?? ''));
-          try { if (cache?.set) await cache.set(cacheKey, rows); } catch {}
-        }
+          // Порожні результати
+          if (!rows || (Array.isArray(rows) && rows.length === 0)) {
+            await interaction.reply({ content: 'Результатів не знайдено', ephemeral: true });
+            return;
+          }
 
-        // Порожні результати
-        if (!rows || (Array.isArray(rows) && rows.length === 0)) {
-          await interaction.reply({ content: 'Результатів не знайдено', ephemeral: true });
+          // Базова відповідь
+          await interaction.reply({ content: '✅ Знайдено результати', ephemeral: false });
           return;
         }
-
-        // Базова відповідь
-        await interaction.reply({ content: '✅ Знайдено результати', ephemeral: false });
-        return;
       }
 
       // Валідація та отримання параметрів пошуку
