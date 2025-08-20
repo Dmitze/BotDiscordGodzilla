@@ -35,7 +35,7 @@ describe('DriveIndexerService cron registration', () => {
   });
 
   it('does not register cron when NODE_ENV=test', async () => {
-    process.env.NODE_ENV = 'test';
+    process.env['NODE_ENV'] = 'test';
     const bot = makeBot();
     const svc = new DriveIndexerService(bot);
     await svc.initialize();
@@ -44,8 +44,8 @@ describe('DriveIndexerService cron registration', () => {
   });
 
   it('does not register cron when DISABLE_CRON=true', async () => {
-    process.env.NODE_ENV = 'production';
-    process.env.DISABLE_CRON = 'true';
+    process.env['NODE_ENV'] = 'production';
+    process.env['DISABLE_CRON'] = 'true';
     const bot = makeBot();
     const svc = new DriveIndexerService(bot);
     await svc.initialize();
@@ -54,8 +54,8 @@ describe('DriveIndexerService cron registration', () => {
   });
 
   it('registers cron in non-test when enabled', async () => {
-    process.env.NODE_ENV = 'production';
-    delete process.env.DISABLE_CRON;
+    process.env['NODE_ENV'] = 'production';
+    delete process.env['DISABLE_CRON'];
     const bot = makeBot();
     const svc = new DriveIndexerService(bot);
     await svc.initialize();
