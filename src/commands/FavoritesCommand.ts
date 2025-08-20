@@ -4,6 +4,7 @@ import { t } from '@/i18n';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
 import { defaultWorkspaceService, WorkspaceService } from '@/services/WorkspaceService';
+import { replyWithPrivacy } from '@/ui/reply';
 
 function getWorkspace(interaction: any): WorkspaceService {
   const svc = (interaction.client as any)?.serviceContainer?.get?.('workspace');
@@ -47,13 +48,13 @@ export class FavoritesCommand extends BaseCommand {
       if (sub === 'add') return this.handleAdd(interaction);
       if (sub === 'list') return this.handleList(interaction);
       if (sub === 'remove') return this.handleRemove(interaction);
-      await interaction.reply({ content: t('workspace.common.unknownSub'), ephemeral: true });
+      await replyWithPrivacy(interaction, t('workspace.common.unknownSub'));
     } catch (error) {
       logger.error('FavoritesCommand failed', { error: String(error) });
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ content: t('workspace.common.execError') });
       } else {
-        await interaction.reply({ content: t('workspace.common.execError'), ephemeral: true });
+        await replyWithPrivacy(interaction, t('workspace.common.execError'));
       }
     }
   }
@@ -64,10 +65,7 @@ export class FavoritesCommand extends BaseCommand {
     const ws = getWorkspace(interaction);
 
     const { added } = await ws.addFavorite(userId, fileId);
-    await interaction.reply({
-      content: added ? t('workspace.fav.added') : t('workspace.fav.exists'),
-      ephemeral: true,
-    });
+    await replyWithPrivacy(interaction, added ? t('workspace.fav.added') : t('workspace.fav.exists'));
   }
 
   private async handleList(interaction: any): Promise<void> {
@@ -75,7 +73,7 @@ export class FavoritesCommand extends BaseCommand {
     const ws = getWorkspace(interaction);
     const list = await ws.listFavorites(userId);
     if (!list.length) {
-      await interaction.reply({ content: t('workspace.fav.empty'), ephemeral: true });
+      await replyWithPrivacy(interaction, t('workspace.fav.empty'));
       return;
     }
 
@@ -94,10 +92,7 @@ export class FavoritesCommand extends BaseCommand {
       }
     }
 
-    await interaction.reply({
-      content: `${t('workspace.fav.listTitle')}\n${lines.join('\n')}`,
-      ephemeral: true,
-    });
+    await replyWithPrivacy(interaction, `${t('workspace.fav.listTitle')}\n${lines.join('\n')}`);
   }
 
   private async handleRemove(interaction: any): Promise<void> {
@@ -105,6 +100,6 @@ export class FavoritesCommand extends BaseCommand {
     const fileId = interaction.options.getString('fileid', true);
     const ws = getWorkspace(interaction);
     const ok = await ws.removeFavorite(userId, fileId);
-    await interaction.reply({ content: ok ? t('workspace.fav.removed') : t('workspace.common.notFound'), ephemeral: true });
+    await replyWithPrivacy(interaction, ok ? t('workspace.fav.removed') : t('workspace.common.notFound'));
   }
 }
