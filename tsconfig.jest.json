@@ -11,7 +11,8 @@
       "@/commands/*": ["commands/*"],
       "@/utils/*": ["utils/*"],
       "@/config/*": ["config/*"]
-    }
+    },
+    "isolatedModules": true
   },
   "include": [
     "src/**/*.ts",
