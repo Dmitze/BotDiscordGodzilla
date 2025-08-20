@@ -57,7 +57,13 @@ describe('PermissionManager', () => {
       members: {
         me: {
           permissions: {
-            has: jest.fn().mockReturnValue(true)
+            has: jest.fn().mockImplementation((perm: unknown) => {
+              // Bot can generally view/send, but not Administrator by default
+              const allow = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages];
+              return Array.isArray(perm)
+                ? perm.every(p => allow.includes(p as any))
+                : allow.includes(perm as any);
+            })
           }
         }
       }
@@ -74,7 +80,12 @@ describe('PermissionManager', () => {
         ])
       },
       permissions: {
-        has: jest.fn().mockReturnValue(true),
+        has: jest.fn().mockImplementation((perm: unknown) => {
+          const allow = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages];
+          return Array.isArray(perm)
+            ? perm.every(p => allow.includes(p as any))
+            : allow.includes(perm as any);
+        }),
         toArray: jest.fn().mockReturnValue(['ViewChannel', 'SendMessages'])
       }
     } as unknown as GuildMember;
