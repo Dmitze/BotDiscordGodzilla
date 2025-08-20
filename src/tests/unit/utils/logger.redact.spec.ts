@@ -40,6 +40,7 @@ beforeAll(async () => {
   const mod = await import('@/utils/logger');
   logger = mod.default;
 });
+<<<<<<< HEAD
 
 describe('logger redact', () => {
   it('redacts sensitive fields in meta', () => {
@@ -62,3 +63,5 @@ describe('logger redact', () => {
     expect(nested['secret']).toBe(redacted);
   });
 });
+=======
+>>>>>>> 9c806657 (test(unit): перевірка редагування логів)
