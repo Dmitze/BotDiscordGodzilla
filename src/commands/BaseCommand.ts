@@ -4,9 +4,8 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import {
-  SlashCommandBuilder,
-  EmbedBuilder,
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import type {
   ChatInputCommandInteraction,
   AutocompleteInteraction,
   MessageComponentInteraction,
@@ -22,6 +21,7 @@ import type {
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
 import { UserPreferencesService } from '@/services/UserPreferencesService';
+import { replyWithPrivacy } from '@/ui/reply';
 
 // Константи для конфігурації команд
 const COMMAND_CONFIG = {
@@ -560,7 +560,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] });
       }
     } catch (error) {
       logger.error('Помилка відправки cooldown повідомлення:', { error });
@@ -584,7 +584,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] });
       }
     } catch (error) {
       logger.error('Помилка відправки кешованого результату:', { error });
@@ -609,7 +609,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] });
       }
     } catch (error) {
       logger.error('Помилка відправки повідомлення про валідацію:', { error });
@@ -630,7 +630,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] });
       }
     } catch (error) {
       logger.error('Помилка відправки повідомлення про зупинку:', { error });
@@ -669,7 +669,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] });
       }
     } catch (replyError) {
       logger.error('Помилка відправки повідомлення про помилку:', { error: replyError });
@@ -713,7 +713,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] });
       }
     } catch (replyError) {
       logger.error('Помилка відправки повідомлення про помилку компонента:', { error: replyError });
