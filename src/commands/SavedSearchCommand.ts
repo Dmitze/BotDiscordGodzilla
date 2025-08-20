@@ -138,18 +138,26 @@ export class SavedSearchCommand extends BaseCommand {
       }
       // Маппинг DriveListQuery -> SearchQuery
       const limit = Math.max(1, Math.min(25, f.pageSize ?? (this.config.drive?.pageSize ?? 10)));
+      const filterObj: any = {};
+      const mime = Array.isArray(f.mimeIncludes) && f.mimeIncludes.length ? f.mimeIncludes : null;
+      const owner = Array.isArray(f.ownerAllowlist) && f.ownerAllowlist.length ? f.ownerAllowlist : null;
+      const modifiedFrom = f.dateFrom ? new Date(f.dateFrom).getTime() : null;
+      const modifiedTo = f.dateTo ? new Date(f.dateTo).getTime() : null;
+      const sizeFrom = typeof f.sizeMin === 'number' ? Math.max(0, f.sizeMin) * 1024 * 1024 : null;
+      const sizeTo = typeof f.sizeMax === 'number' ? Math.max(0, f.sizeMax) * 1024 * 1024 : null;
+      const tags = Array.isArray(f.tags) && f.tags.length ? f.tags : null;
+      if (mime) filterObj.mime = mime;
+      if (owner) filterObj.owner = owner;
+      if (typeof modifiedFrom === 'number' && !Number.isNaN(modifiedFrom)) filterObj.modifiedFrom = modifiedFrom;
+      if (typeof modifiedTo === 'number' && !Number.isNaN(modifiedTo)) filterObj.modifiedTo = modifiedTo;
+      if (typeof sizeFrom === 'number') filterObj.sizeFrom = sizeFrom;
+      if (typeof sizeTo === 'number') filterObj.sizeTo = sizeTo;
+      if (tags) filterObj.tags = tags;
+
       const q: SearchQuery = {
         text: (f.query || '').toString(),
         limit,
-        filters: {
-          mime: Array.isArray(f.mimeIncludes) && f.mimeIncludes.length ? f.mimeIncludes : undefined,
-          owner: Array.isArray(f.ownerAllowlist) && f.ownerAllowlist.length ? f.ownerAllowlist : undefined,
-          modifiedFrom: f.dateFrom ? (new Date(f.dateFrom).getTime() || undefined) : undefined,
-          modifiedTo: f.dateTo ? (new Date(f.dateTo).getTime() || undefined) : undefined,
-          sizeFrom: typeof f.sizeMin === 'number' ? Math.max(0, f.sizeMin) * 1024 * 1024 : undefined,
-          sizeTo: typeof f.sizeMax === 'number' ? Math.max(0, f.sizeMax) * 1024 * 1024 : undefined,
-          tags: Array.isArray(f.tags) && f.tags.length ? f.tags : undefined,
-        },
+        ...(Object.keys(filterObj).length ? { filters: filterObj } as any : {}),
       };
       let hits: Awaited<ReturnType<SearchIndex['search']>>;
       try {
