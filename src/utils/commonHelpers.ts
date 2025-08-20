@@ -4,15 +4,8 @@
  * Версія 1.0.0 - Створено для рефакторингу
  */
 
-import {
-  EmbedBuilder,
-  ChatInputCommandInteraction,
-  User,
-  Guild,
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
-} from 'discord.js';
+import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
+import type { ChatInputCommandInteraction, User, Guild } from 'discord.js';
 import logger from './logger';
 
 // Константи для стандартних значень
@@ -88,6 +81,10 @@ export class EmbedFactory {
         value: 'Зверніться до адміністрації сервера або перевірте документацію.',
         inline: false,
       });
+    } else {
+      // Явно ініціалізуємо порожній список полів, щоб перевірки типу some() повертали boolean
+      // (уникаємо undefined, який ламає очікування тестів)
+      embed.setFields([]);
     }
 
     return embed;
@@ -146,7 +143,7 @@ export class EmbedFactory {
     description: string,
     currentPage: number,
     totalPages: number,
-    _data?: any
+    _data?: unknown
   ): EmbedBuilder {
     const embed = this.createBase(title, description);
 
@@ -347,14 +344,17 @@ export class DataUtils {
    */
   static deepClone<T>(obj: T): T {
     if (obj === null || typeof obj !== 'object') return obj;
-    if (obj instanceof Date) return new Date(obj.getTime()) as any;
-    if (obj instanceof Array) return obj.map(item => this.deepClone(item)) as any;
+    if (obj instanceof Date) return new Date(obj.getTime()) as unknown as T;
+    if (Array.isArray(obj)) {
+      return (obj.map(item => this.deepClone(item)) as unknown) as T;
+    }
     if (typeof obj === 'object') {
-      const copy: any = {};
-      Object.keys(obj).forEach(key => {
-        copy[key] = this.deepClone((obj as any)[key]);
+      const source = obj as unknown as Record<string, unknown>;
+      const copy: Record<string, unknown> = {};
+      Object.keys(source).forEach(key => {
+        copy[key] = this.deepClone(source[key]);
       });
-      return copy;
+      return copy as unknown as T;
     }
     return obj;
   }
