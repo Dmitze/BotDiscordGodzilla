@@ -16,7 +16,8 @@ export class OCRCommand extends BaseCommand {
       config,
       {
         category: 'documents',
-        usage: '/ocr [image] | [drive_id]'
+        usage: '/ocr [image] | [drive_id]',
+        i18n: { nameKey: 'commands.ocr.name', descriptionKey: 'ocr.command.description' }
       },
       (builder: SlashCommandBuilder) => {
         builder
