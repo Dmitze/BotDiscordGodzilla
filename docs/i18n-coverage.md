@@ -1,10 +1,10 @@
 # i18n Coverage Report
 
-Generated: 2025-08-20T11:54:36.928Z
+Generated: 2025-08-20T13:08:31.321Z
 
-- Total used keys in code: 230
-- Present in uk.json: 230
-- Present in en.json: 230
+- Total used keys in code: 231
+- Present in uk.json: 231
+- Present in en.json: 231
 - Missing in uk.json: 0
 - Missing in en.json: 0
 
