@@ -173,17 +173,12 @@ class Logger {
       // Налаштування обробки необроблених помилок
       this.setupExceptionHandling();
 
-<<<<<<< HEAD
       // Запуск періодичних завдань (пропускаємо у тестах)
       if (process.env['NODE_ENV'] !== 'test' && !process.env['JEST_WORKER_ID']) {
         this.startPeriodicTasks();
       } else {
         console.log('⏭️ Пропуск періодичних завдань логера у тестовому середовищі');
       }
-=======
-      // Запуск періодичних завдань
-      this.startPeriodicTasks();
->>>>>>> b983a8fb (utils(logger): оновлено logger)
 
       this.isInitialized = true;
       console.log('✅ Логер успішно ініціалізовано');
@@ -249,7 +244,6 @@ class Logger {
    */
   private createTransports(): winston.transport[] {
     const formats = this.createFormats();
-<<<<<<< HEAD
     // У тестовому середовищі використовуємо лише консольний транспорт,
     // щоб уникнути помилки winston "write after end" при завершенні Jest
     if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
@@ -262,8 +256,6 @@ class Logger {
         }),
       ];
     }
-=======
->>>>>>> b983a8fb (utils(logger): оновлено logger)
 
     return [
       // Консольний транспорт
