@@ -10,6 +10,7 @@ import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
 import { replyWithPrivacy } from '@/ui/reply';
+import { tUser } from '@/i18n';
 
 // Імпорт всіх команд
 import { SearchCommand } from '@/commands/SearchCommand';
@@ -81,7 +82,7 @@ export class CommandManager {
       const fileId = parts[2];
       const pageIndex = parts[3] ? parseInt(parts[3], 10) : 0;
       if (!fileId) {
-        await replyWithPrivacy(interaction as any, { content: '❌ Невірний ідентифікатор файлу.' });
+        await replyWithPrivacy(interaction as any, { content: tUser('files.validation.invalidFileId', interaction) });
         return;
       }
 
@@ -89,13 +90,13 @@ export class CommandManager {
         | import('@/services/DriveIndexerService').DriveIndexerService
         | undefined;
       if (!driveIndexer) {
-        await replyWithPrivacy(interaction as any, { content: 'Пошук наразі недоступний.' });
+        await replyWithPrivacy(interaction as any, { content: tUser('search.error.noService', interaction) });
         return;
       }
 
       const chunks = await driveIndexer.getTextChunks(fileId, 1800);
       if (!chunks.length) {
-        await replyWithPrivacy(interaction as any, { content: 'Немає тексту для відображення.' });
+        await replyWithPrivacy(interaction as any, { content: tUser('files.error.noText', interaction) });
         return;
       }
 
@@ -128,11 +129,11 @@ export class CommandManager {
         return;
       }
 
-      await replyWithPrivacy(interaction as any, { content: 'Невідома дія.' });
+      await replyWithPrivacy(interaction as any, { content: tUser('files.error.unknownSubcommand', interaction) });
     } catch (e) {
       logger.error('search_button_failed', { error: e instanceof Error ? e.message : String(e) });
       try {
-        await replyWithPrivacy(interaction as any, { content: '❌ Помилка обробки кнопки.' });
+        await replyWithPrivacy(interaction as any, { content: tUser('workspace.common.execError', interaction) });
       } catch {
         // ignore
       }
