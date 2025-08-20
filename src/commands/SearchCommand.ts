@@ -93,6 +93,10 @@ export class SearchCommand extends BaseCommand {
           '/пошук запит:техніка дата_від:01.01.2024 дата_до:31.12.2024',
           '/пошук запит:зброя підрозділ:рота пріоритет:критичний',
         ],
+        i18n: {
+          nameKey: 'commands.search.name',
+          descriptionKey: 'commands.search.description',
+        },
       },
       (builder: SlashCommandBuilder) => {
         return builder
