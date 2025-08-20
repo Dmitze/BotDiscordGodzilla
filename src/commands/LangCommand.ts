@@ -19,7 +19,7 @@ export class LangCommand extends BaseCommand {
       'lang',
       t('lang.command.description'),
       config,
-      { category: 'settings' },
+      { category: 'settings', i18n: { nameKey: 'commands.lang.name', descriptionKey: 'lang.command.description' } },
       builder => {
         builder
           .addSubcommand(sub =>
