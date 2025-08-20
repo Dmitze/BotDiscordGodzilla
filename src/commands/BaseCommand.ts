@@ -21,6 +21,7 @@ import type {
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
 import { UserPreferencesService } from '@/services/UserPreferencesService';
+import { t } from '@/i18n';
 import { replyWithPrivacy } from '@/ui/reply';
 
 // Константи для конфігурації команд
@@ -46,6 +47,10 @@ export interface CommandData {
   category?: string;
   usage?: string;
   examples?: string[];
+  i18n?: {
+    nameKey?: string;
+    descriptionKey?: string;
+  };
 }
 
 export interface CommandExecuteOptions {
@@ -113,6 +118,22 @@ export abstract class BaseCommand {
 
     // Створення SlashCommandBuilder
     this.data = new SlashCommandBuilder().setName(name).setDescription(description);
+
+    // Локалізації імені/опису команди (без зміни стабільного ідентифікатора name)
+    if (options.i18n?.nameKey) {
+      try {
+        const nameUk = t(options.i18n.nameKey, undefined, 'uk');
+        const nameEn = t(options.i18n.nameKey, undefined, 'en');
+        this.data.setNameLocalizations({ uk: nameUk, 'en-US': nameEn });
+      } catch {}
+    }
+    if (options.i18n?.descriptionKey) {
+      try {
+        const descUk = t(options.i18n.descriptionKey, undefined, 'uk');
+        const descEn = t(options.i18n.descriptionKey, undefined, 'en');
+        this.data.setDescriptionLocalizations({ uk: descUk, 'en-US': descEn });
+      } catch {}
+    }
 
     // Додавання опцій через builder функцію
     if (builder) {
