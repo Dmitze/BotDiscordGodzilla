@@ -3,6 +3,7 @@ import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
 import { DuplicateResolver } from '@/components/DuplicateResolver';
+import { replyWithPrivacy } from '@/ui/reply';
 import { uiState } from '@/services/UIStateService';
 
 export class AnalyzeCommand extends BaseCommand {
@@ -51,7 +52,7 @@ export class AnalyzeCommand extends BaseCommand {
         | undefined;
 
       if (!indexer) {
-        await interaction.reply({ content: '🔎 Індексатор недоступний', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: '🔎 Індексатор недоступний' });
         return;
       }
 
@@ -63,7 +64,7 @@ export class AnalyzeCommand extends BaseCommand {
       if (query) {
         const results = await indexer.search(query, 10);
         if (!results.length) {
-          await interaction.reply({ content: 'Нічого не знайдено', ephemeral: true });
+          await replyWithPrivacy(interaction as any, { content: 'Нічого не знайдено' });
           return;
         }
         if (results.length === 1) {
@@ -90,14 +91,14 @@ export class AnalyzeCommand extends BaseCommand {
         const key = uiState.makeKey({ scope, userId, nonce });
         uiState.set(key, files, 300);
         const { embed, rows } = DuplicateResolver.buildPage({ scope, userId, nonce, files, title: 'Знайдено кілька збігів' });
-        await interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
+        await replyWithPrivacy(interaction as any, { embeds: [embed], components: rows });
         return;
       }
 
-      await interaction.reply({ content: 'Вкажіть docid або query', ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: 'Вкажіть docid або query' });
     } catch (error) {
       logger.error('analyze_execute_error', { error: error instanceof Error ? error.message : String(error) });
-      await interaction.reply({ content: '❌ Помилка аналізу', ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: '❌ Помилка аналізу' });
     }
   }
 
@@ -108,7 +109,7 @@ export class AnalyzeCommand extends BaseCommand {
   ): Promise<void> {
     const entry = await indexer.getEntry(fileId);
     if (!entry) {
-      await interaction.reply({ content: 'Документ не індексовано або відсутній', ephemeral: true });
+      await replyWithPrivacy(interaction as any, { content: 'Документ не індексовано або відсутній' });
       return;
     }
 
