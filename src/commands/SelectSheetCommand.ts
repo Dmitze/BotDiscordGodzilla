@@ -20,7 +20,7 @@ export class SelectSheetCommand extends BaseCommand {
       'select_sheet',
       t('sheets.command.description'),
       config,
-      {},
+      { i18n: { nameKey: 'commands.sheets.name', descriptionKey: 'sheets.command.description' } },
       (builder: SlashCommandBuilder) => {
         builder
           .setDescription(t('sheets.opt.mode.description'))
