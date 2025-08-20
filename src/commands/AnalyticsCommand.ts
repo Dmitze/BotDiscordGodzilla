@@ -139,7 +139,7 @@ export class AnalyticsCommand extends BaseCommand {
   }
 
   private async handleStatistics(interaction: ChatInputCommandInteraction): Promise<void> {
-    const category = interaction.options.getString('категорія', true);
+    const category = interaction.options.getString('категорія');
 
     const embed = new EmbedBuilder()
       .setTitle('📈 Статистика та метрики')
@@ -164,7 +164,7 @@ export class AnalyticsCommand extends BaseCommand {
   }
 
   private async handleTrends(interaction: ChatInputCommandInteraction): Promise<void> {
-    const period = interaction.options.getString('період', true);
+    const period = interaction.options.getString('період');
     try {
       const analyticsService = (interaction.client as any)?.serviceContainer?.get('AnalyticsService');
       const trends = await analyticsService.getTrends(period);
