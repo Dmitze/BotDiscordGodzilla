@@ -15,10 +15,10 @@ function makeBot(overrides: Partial<any> = {}) {
     searchIndex: { upsert: jest.fn(), search: jest.fn() },
     metrics: { incCounter: jest.fn(), observeHistogram: jest.fn() },
     scheduler: { scheduleJob: jest.fn() },
-    ...(overrides.services || {}),
+    ...((overrides as any)['services'] || {}),
   };
   return {
-    config: { ...config, ...(overrides.config || {}) },
+    config: { ...config, ...((overrides as any)['config'] || {}) },
     getService: (name: string) => services[name],
   } as any;
 }
