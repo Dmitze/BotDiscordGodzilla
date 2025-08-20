@@ -152,11 +152,30 @@ export class SecurityManager {
   }
 
   private startPeriodicTasks(): void {
+<<<<<<< HEAD
     if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
       return;
     }
     setInterval(() => this.cleanupRateLimitCache(), 5 * 60 * 1000);
     setInterval(() => this.cleanupSuspiciousActivities(), 10 * 60 * 1000);
+=======
+    // Очищення rate limit кешу кожні 5 хвилин
+    setInterval(
+      () => {
+        this.cleanupRateLimitCache();
+      },
+      5 * 60 * 1000
+    );
+
+    // Очищення підозрілої активності кожні 10 хвилин
+    setInterval(
+      () => {
+        this.cleanupSuspiciousActivities();
+      },
+      10 * 60 * 1000
+    );
+
+>>>>>>> 11857d14 (utils(security): оновлено security)
     logger.info('⏰ Періодичні завдання безпеки запущено');
   }
 
@@ -180,7 +199,11 @@ export class SecurityManager {
         errors.push(
           `Введення занадто довге (${input.length} символів, максимум ${SECURITY_CONSTANTS.MAX_INPUT_LENGTH})`
         );
+<<<<<<< HEAD
         input = input.slice(0, SECURITY_CONSTANTS.MAX_INPUT_LENGTH);
+=======
+        sanitizedValue = input.substring(0, SECURITY_CONSTANTS.MAX_INPUT_LENGTH);
+>>>>>>> 11857d14 (utils(security): оновлено security)
       }
 
       // Basic suspicious patterns
@@ -194,6 +217,7 @@ export class SecurityManager {
         }
       }
 
+<<<<<<< HEAD
       // Approximate SQLi detection
       const sqlPatterns = [
         /(\b(union|select|insert|update|delete|drop|create|alter)\b)/i,
@@ -208,6 +232,18 @@ export class SecurityManager {
           });
           break;
         }
+=======
+      // Перевірка на SQL ін'єкції
+      const sqlResult = this.checkForSQLInjection(input);
+      if (sqlResult.found) {
+        errors.push("Виявлено потенційну SQL ін'єкцію");
+        this.recordSecurityEvent('suspicious_activity', context.userId || 'unknown', {
+          subtype: 'sql_injection_attempt',
+          pattern: sqlResult.pattern,
+          input: input.substring(0, 100),
+        });
+        this.stats.sqlInjectionAttempts++;
+>>>>>>> 11857d14 (utils(security): оновлено security)
       }
 
       if (!SECURITY_CONSTANTS.ALLOWED_CHARS.test(input)) {
@@ -275,7 +311,18 @@ export class SecurityManager {
       .replace(/\s+/g, ' ');
   }
 
+<<<<<<< HEAD
   public checkRateLimit(userId: string): { allowed: boolean; remaining: number; resetTime: number } {
+=======
+  /**
+   * Перевірка rate limit
+   */
+  public checkRateLimit(userId: string): {
+    allowed: boolean;
+    remaining: number;
+    resetTime: number;
+  } {
+>>>>>>> 11857d14 (utils(security): оновлено security)
     try {
       const now = Date.now();
       const info = this.rateLimitMap.get(userId);
@@ -303,10 +350,57 @@ export class SecurityManager {
   }
 
   public validateUrl(url: string): SecurityValidationResult {
+<<<<<<< HEAD
     const errors: string[] = [];
     const warnings: string[] = [];
     if (url.length > SECURITY_CONSTANTS.MAX_URL_LENGTH) {
       errors.push(`URL занадто довгий (${url.length} символів, максимум ${SECURITY_CONSTANTS.MAX_URL_LENGTH})`);
+=======
+    try {
+      const errors: string[] = [];
+      const warnings: string[] = [];
+
+      // Перевірка довжини
+      if (url.length > SECURITY_CONSTANTS.MAX_URL_LENGTH) {
+        errors.push(
+          `URL занадто довгий (${url.length} символів, максимум ${SECURITY_CONSTANTS.MAX_URL_LENGTH})`
+        );
+      }
+
+      // Перевірка протоколу
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        errors.push('URL повинен починатися з http:// або https://');
+      }
+
+      // Перевірка дозволених доменів
+      if (!SECURITY_CONSTANTS.ALLOWED_URLS.test(url)) {
+        warnings.push('URL не з дозволеного домену');
+      }
+
+      // Перевірка на підозрілі патерни
+      if (url.includes('javascript:') || url.includes('data:text/html')) {
+        errors.push('URL містить підозрілі патерни');
+      }
+
+      return {
+        isValid: errors.length === 0,
+        sanitizedValue: url,
+        errors,
+        warnings,
+      };
+    } catch (error) {
+      handleError(error, {
+        serviceName: 'SecurityManager',
+        additionalContext: { operation: 'validateUrl', url },
+      });
+
+      return {
+        isValid: false,
+        sanitizedValue: '',
+        errors: ['Помилка валідації URL'],
+        warnings: [],
+      };
+>>>>>>> 11857d14 (utils(security): оновлено security)
     }
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       errors.push('URL повинен починатися з http:// або https://');
@@ -364,9 +458,23 @@ export class SecurityManager {
   }
 
   private updateStats(_success: boolean, duration: number): void {
+<<<<<<< HEAD
     this.stats.totalValidations++;
     this.stats.totalValidationTime += duration;
     this.stats.averageValidationTime = this.stats.totalValidationTime / this.stats.totalValidations;
+=======
+    try {
+      this.stats.totalValidations++;
+      this.stats.totalValidationTime += duration;
+      this.stats.averageValidationTime =
+        this.stats.totalValidationTime / this.stats.totalValidations;
+    } catch (error) {
+      handleError(error, {
+        serviceName: 'SecurityManager',
+        additionalContext: { operation: 'updateStats' },
+      });
+    }
+>>>>>>> 11857d14 (utils(security): оновлено security)
   }
 
   public getStats(): SecurityStats {
