@@ -1,5 +1,32 @@
 {
   "key": "",
+  "commands": {
+    "search": {
+      "name": "пошук",
+      "description": "🔍 Гнучкий пошук по документах"
+    },
+    "ai": {
+      "name": "асистент"
+    },
+    "ocr": {
+      "name": "ocr"
+    },
+    "doc": {
+      "name": "док"
+    },
+    "sheets": {
+      "name": "таблиці"
+    },
+    "ws": {
+      "name": "ws"
+    },
+    "lang": {
+      "name": "мова"
+    },
+    "files": {
+      "name": "файли"
+    }
+  },
   "ai": {
     "command": {
       "description": "🤖 AI-асистент для роботи з Google Sheets"
@@ -204,7 +231,8 @@
     "validation": {
       "failed": "❌ Помилка валідації:\n{{errors}}",
       "queryTooShort": "Запит повинен містити мінімум 2 символи",
-      "fileIdTooShort": "ID файлу повинен містити мінімум 10 символів"
+      "fileIdTooShort": "ID файлу повинен містити мінімум 10 символів",
+      "invalidFileId": "❌ Невірний ідентифікатор файлу."
     },
     "error": {
       "serviceUnavailable": "❌ GoogleService недоступний",
