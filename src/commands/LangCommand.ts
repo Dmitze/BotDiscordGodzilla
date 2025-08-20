@@ -1,9 +1,9 @@
-import { SlashCommandStringOption } from 'discord.js';
-import { BaseCommand } from './BaseCommand';
+import type { SlashCommandStringOption } from 'discord.js';
+import { BaseCommand, type CommandExecuteOptions } from './BaseCommand';
 import type { BotConfig } from '@/types';
-import type { CommandExecuteOptions } from './BaseCommand';
 import { t } from '@/i18n';
 import { UserPreferencesService, type SupportedLocale } from '@/services/UserPreferencesService';
+import { replyWithPrivacy } from '@/ui/reply';
 
 function toSupportedLocale(input: string): SupportedLocale {
   const lc = input.toLowerCase();
@@ -57,23 +57,17 @@ export class LangCommand extends BaseCommand {
       const localeInput = interaction.options.getString('locale', true);
       const normalized = toSupportedLocale(localeInput);
       UserPreferencesService.setLocale(userId, normalized);
-      await interaction.reply({
-        content: t('lang.reply.setOk', { locale: normalized }),
-        ephemeral: true,
-      });
+      await replyWithPrivacy(interaction, t('lang.reply.setOk', { locale: normalized }));
       return;
     }
 
     if (sub === 'show') {
       const userId = interaction.user.id;
       const current = UserPreferencesService.getLocale(userId);
-      await interaction.reply({
-        content: t('lang.reply.current', { locale: current }),
-        ephemeral: true,
-      });
+      await replyWithPrivacy(interaction, t('lang.reply.current', { locale: current }));
       return;
     }
 
-    await interaction.reply({ content: t('lang.reply.unknownSub'), ephemeral: true });
+    await replyWithPrivacy(interaction, t('lang.reply.unknownSub'));
   }
 }
