@@ -42,6 +42,10 @@ interface MetricsCollection {
   fileOperationLatency: Histogram<string>;
   textSizeBytes: Histogram<string>;
   mimeTypeTotal: Counter<string>;
+  // Labeled extensions (do not break existing ones)
+  googleApiRequestsLabeled: Counter<string>;
+  commandDurationLabeled: Histogram<string>;
+  fileOperationsLabeled: Counter<string>;
 }
 
 export class MetricsService extends BaseServiceClass {
@@ -312,6 +316,29 @@ export class MetricsService extends BaseServiceClass {
           labelNames: ['mime'],
           registers: [this.registry],
         }),
+
+        // ——— Labeled extensions ———
+        googleApiRequestsLabeled: new Counter({
+          name: 'discord_bot_google_api_requests_labeled_total',
+          help: 'Google API запити з деталізованими лейблами',
+          labelNames: ['service', 'endpoint', 'status', 'guildId', 'route', 'mime'],
+          registers: [this.registry],
+        }),
+
+        commandDurationLabeled: new Histogram({
+          name: 'discord_bot_command_duration_labeled_seconds',
+          help: 'Тривалість виконання команд з guildId',
+          labelNames: ['command', 'guildId'],
+          buckets: [0.1, 0.5, 1, 2, 5, 10],
+          registers: [this.registry],
+        }),
+
+        fileOperationsLabeled: new Counter({
+          name: 'discord_bot_file_operations_labeled_total',
+          help: 'Файлові операції з деталізованими лейблами',
+          labelNames: ['operation', 'status', 'mime', 'fileId', 'userId', 'guildId', 'route'],
+          registers: [this.registry],
+        }),
       };
 
       this.stats.metricsCount = Object.keys(this.metrics).length;
@@ -574,6 +601,40 @@ export class MetricsService extends BaseServiceClass {
   }
 
   /**
+   * Labeled variant for command duration with guildId
+   */
+  public measureCommandDurationLabeled(command: string, guildId: string | undefined, durationMs: number): void {
+    if (!this.metrics) return;
+    this.metrics.commandDurationLabeled.observe({ command, guildId: guildId ?? 'unknown' }, durationMs / 1000);
+  }
+
+  /**
+   * Labeled Google API metrics with guildId/route/mime
+   */
+  public updateGoogleApiMetricsLabeled(params: {
+    service: string;
+    endpoint: string;
+    status: string;
+    durationMs: number;
+    guildId?: string | null;
+    route?: string | null;
+    mime?: string | null;
+  }): void {
+    if (!this.metrics) return;
+    const { service, endpoint, status, durationMs, guildId, route, mime } = params;
+    this.metrics.googleApiRequestsLabeled.inc({
+      service,
+      endpoint,
+      status,
+      guildId: guildId ?? 'unknown',
+      route: route ?? 'unknown',
+      mime: mime ?? 'unknown',
+    });
+    // keep response time in base histogram to avoid label bloat
+    this.metrics.googleApiResponseTime.observe({ service }, durationMs / 1000);
+  }
+
+  /**
    * Оновлення метрик кешу
    */
   public updateCacheMetrics(cacheStats: CacheStats): void {
@@ -661,6 +722,31 @@ export class MetricsService extends BaseServiceClass {
   public observeFileOperationLatency(operation: string, mime: string | null, durationMs: number): void {
     if (!this.metrics) return;
     this.metrics.fileOperationLatency.observe({ operation, mime: mime ?? 'unknown' }, durationMs / 1000);
+  }
+
+  /**
+   * Labeled file operation counter (adds guildId/route)
+   */
+  public recordFileOperationLabeled(params: {
+    operation: string;
+    status: 'success' | 'error' | string;
+    mime?: string | null;
+    fileId?: string | null;
+    userId?: string | null;
+    guildId?: string | null;
+    route?: string | null;
+  }): void {
+    if (!this.metrics) return;
+    const { operation, status, mime, fileId, userId, guildId, route } = params;
+    this.metrics.fileOperationsLabeled.inc({
+      operation,
+      status,
+      mime: mime ?? 'unknown',
+      fileId: fileId ?? 'unknown',
+      userId: userId ?? 'unknown',
+      guildId: guildId ?? 'unknown',
+      route: route ?? 'unknown',
+    });
   }
 
   /**
