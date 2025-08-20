@@ -6,6 +6,7 @@ import type { GoogleService } from '@/services/GoogleService';
 import type { SearchIndex, SearchQuery } from '@/search/SearchIndex';
 import { defaultWorkspaceService, WorkspaceService } from '@/services/WorkspaceService';
 import type { DriveListQuery } from '@/types/drive';
+import { replyWithPrivacy } from '@/ui/reply';
 
 function getWorkspace(interaction: any): WorkspaceService {
   const svc = (interaction.client as any)?.serviceContainer?.get?.('workspace');
@@ -75,13 +76,13 @@ export class SavedSearchCommand extends BaseCommand {
       if (sub === 'run') return this.handleRun(interaction);
       if (sub === 'list') return this.handleList(interaction);
       if (sub === 'remove') return this.handleRemove(interaction);
-      await interaction.reply({ content: t('workspace.common.unknownSub'), ephemeral: true });
+      await replyWithPrivacy(interaction, t('workspace.common.unknownSub'));
     } catch (error) {
       logger.error('SavedSearchCommand failed', { error: String(error) });
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ content: t('workspace.common.execError') });
       } else {
-        await interaction.reply({ content: t('workspace.common.execError'), ephemeral: true });
+        await replyWithPrivacy(interaction, t('workspace.common.execError'));
       }
     }
   }
@@ -109,7 +110,7 @@ export class SavedSearchCommand extends BaseCommand {
     const ws = getWorkspace(interaction);
     const filters = this.extractFilters(interaction);
     const res = await ws.saveSearch(userId, name, filters);
-    await interaction.reply({ content: t('workspace.search.saved', { name: res.search.name }), ephemeral: true });
+    await replyWithPrivacy(interaction, t('workspace.search.saved', { name: res.search.name }));
   }
 
   private async handleRun(interaction: any): Promise<void> {
@@ -121,7 +122,7 @@ export class SavedSearchCommand extends BaseCommand {
     if (searchIndex) {
       const saved = ws.getSavedSearch(userId, name);
       if (!saved) {
-        await interaction.reply({ content: t('workspace.search.runNotFound'), ephemeral: true });
+        await replyWithPrivacy(interaction, t('workspace.search.runNotFound'));
         return;
       }
       // Применяем политики из конфига
@@ -166,45 +167,45 @@ export class SavedSearchCommand extends BaseCommand {
         // Фоллбек на Google, если индекс недоступен
         const google = getGoogle(interaction);
         if (!google) {
-          await interaction.reply({ content: t('files.error.serviceUnavailable'), ephemeral: true });
+          await replyWithPrivacy(interaction, t('files.error.serviceUnavailable'));
           return;
         }
         const result = await ws.runSearch(userId, name, { google, config: this.config });
         const items = Array.isArray((result as any)?.files) ? (result as any).files : [];
         const pageSize = this.config.drive?.pageSize ?? 10;
         const lines = items.slice(0, pageSize).map((f: any) => `• ${f.name || f.id}`);
-        await interaction.reply({ content: `${t('workspace.search.listTitle')}` + "\n" + lines.join('\n'), ephemeral: true });
+        await replyWithPrivacy(interaction, `${t('workspace.search.listTitle')}` + "\n" + lines.join('\n'));
         return;
       }
       const items = hits?.hits || [];
       if (!items.length) {
-        await interaction.reply({ content: t('files.result.searchEmpty', { query: '' }), ephemeral: true });
+        await replyWithPrivacy(interaction, t('files.result.searchEmpty', { query: '' }));
         return;
       }
       const lines = items.map((h: any) => `• ${h.name || h.fileId}`);
-      await interaction.reply({ content: `${t('workspace.search.listTitle')}` + "\n" + lines.join('\n'), ephemeral: true });
+      await replyWithPrivacy(interaction, `${t('workspace.search.listTitle')}` + "\n" + lines.join('\n'));
       return;
     }
 
     // Если индекса нет — прежнее поведение через Google
     const google = getGoogle(interaction);
     if (!google) {
-      await interaction.reply({ content: t('files.error.serviceUnavailable'), ephemeral: true });
+      await replyWithPrivacy(interaction, t('files.error.serviceUnavailable'));
       return;
     }
     const result = await ws.runSearch(userId, name, { google, config: this.config });
     if (!result) {
-      await interaction.reply({ content: t('workspace.search.runNotFound'), ephemeral: true });
+      await replyWithPrivacy(interaction, t('workspace.search.runNotFound'));
       return;
     }
     const items = Array.isArray((result as any).files) ? (result as any).files : [];
     if (!items.length) {
-      await interaction.reply({ content: t('files.result.searchEmpty', { query: '' }), ephemeral: true });
+      await replyWithPrivacy(interaction, t('files.result.searchEmpty', { query: '' }));
       return;
     }
     const pageSize = this.config.drive?.pageSize ?? 10;
     const lines = items.slice(0, pageSize).map((f: any) => `• ${f.name || f.id}`);
-    await interaction.reply({ content: `${t('workspace.search.listTitle')}` + "\n" + lines.join('\n'), ephemeral: true });
+    await replyWithPrivacy(interaction, `${t('workspace.search.listTitle')}` + "\n" + lines.join('\n'));
   }
 
   private async handleList(interaction: any): Promise<void> {
@@ -212,11 +213,11 @@ export class SavedSearchCommand extends BaseCommand {
     const ws = getWorkspace(interaction);
     const list = await ws.listSearches(userId);
     if (!list.length) {
-      await interaction.reply({ content: t('workspace.search.listEmpty'), ephemeral: true });
+      await replyWithPrivacy(interaction, t('workspace.search.listEmpty'));
       return;
     }
     const lines = list.map(s => `• ${s.name}`);
-    await interaction.reply({ content: `${t('workspace.search.listTitle')}\n${lines.join('\n')}`, ephemeral: true });
+    await replyWithPrivacy(interaction, `${t('workspace.search.listTitle')}\n${lines.join('\n')}`);
   }
 
   private async handleRemove(interaction: any): Promise<void> {
@@ -224,6 +225,6 @@ export class SavedSearchCommand extends BaseCommand {
     const name = interaction.options.getString('name', true);
     const ws = getWorkspace(interaction);
     const ok = await ws.removeSearch(userId, name);
-    await interaction.reply({ content: ok ? t('workspace.search.removed') : t('workspace.common.notFound'), ephemeral: true });
+    await replyWithPrivacy(interaction, ok ? t('workspace.search.removed') : t('workspace.common.notFound'));
   }
 }
