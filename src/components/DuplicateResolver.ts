@@ -1,4 +1,5 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, StringSelectMenuBuilder, type ButtonInteraction, type StringSelectMenuInteraction, type Interaction } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, StringSelectMenuBuilder, type StringSelectMenuInteraction, type Interaction, type ButtonInteraction } from 'discord.js';
+import { replyWithPrivacy } from '@/ui/reply';
 import type { DriveFile } from '@/types/drive';
 import logger from '@/utils/logger';
 
@@ -101,7 +102,7 @@ export class DuplicateResolver {
 
       // Только владелец может интерактить
       if ((interaction as any).user?.id && (interaction as any).user.id !== userId) {
-        await (interaction as any).reply?.({ content: '⛔ Це меню не для вас', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: '⛔ Це меню не для вас' });
         return;
       }
 
@@ -117,7 +118,7 @@ export class DuplicateResolver {
         const select = interaction as StringSelectMenuInteraction;
         const [fileId] = select.values ?? [];
         if (!fileId) {
-          await select.reply({ content: '❌ Не обрано елемент', ephemeral: true });
+          await replyWithPrivacy(select as any, { content: '❌ Не обрано елемент' });
           return;
         }
         await resolver.onSelect({ scope, userId, fileId, nonce });
@@ -145,7 +146,7 @@ export class DuplicateResolver {
     } catch (error) {
       logger.error('❌ DuplicateResolver.handleComponent error', { error: String(error) });
       try {
-        await (interaction as any).reply?.({ content: '❌ Помилка', ephemeral: true });
+        await replyWithPrivacy(interaction as any, { content: '❌ Помилка' });
       } catch {
         // ignore
       }
