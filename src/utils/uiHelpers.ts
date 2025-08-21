@@ -13,6 +13,7 @@ import {
 } from 'discord.js';
 
 import logger from './logger';
+import { t } from '@/i18n';
 
 // Кольори для різних типів повідомлень
 const COLORS = {
@@ -288,7 +289,7 @@ class UIHelper {
     row.addComponents(
       new ButtonBuilder()
         .setCustomId(customIds['prev'] ?? 'prev_page')
-        .setLabel('◀️ Попередня')
+        .setLabel(t('components.buttons.prev'))
         .setStyle(ButtonStyle.Primary)
         .setDisabled(currentPage === 0)
     );
@@ -297,7 +298,7 @@ class UIHelper {
     row.addComponents(
       new ButtonBuilder()
         .setCustomId(customIds['next'] ?? 'next_page')
-        .setLabel('Наступна ▶️')
+        .setLabel(t('components.buttons.next'))
         .setStyle(ButtonStyle.Primary)
         .setDisabled(currentPage >= totalPages - 1)
     );
@@ -306,7 +307,7 @@ class UIHelper {
     row.addComponents(
       new ButtonBuilder()
         .setCustomId(customIds['close'] ?? 'close')
-        .setLabel('❌ Закрити')
+        .setLabel(t('components.buttons.close'))
         .setStyle(ButtonStyle.Danger)
     );
 
