@@ -1,5 +1,10 @@
 {
   "key": "",
+  "common": {
+    "error": {
+      "unexpected": "❌ Unexpected error. Please try again or contact the administrator."
+    }
+  },
   "commands": {
     "search": {
       "name": "search",
@@ -163,6 +168,76 @@
     }
   }
   ,
+  "operations": {
+    "error": {
+      "unknownSubcommand": "❌ Unknown subcommand",
+      "general": "❌ Operations command error",
+      "getSituation": "❌ Failed to get situation",
+      "unknownAction": "❌ Unknown action",
+      "coordination": { "error": "❌ Coordination error" },
+      "intelligence": { "error": "❌ Intelligence error" }
+    },
+    "common": {
+      "active": "✅ Active",
+      "primary": "Primary",
+      "operational": "✅ Operational",
+      "ready": "✅ Ready",
+      "high": "High",
+      "confirmed": "Confirmed",
+      "status": "Status",
+      "taskCreated": "✅ Task created",
+      "statusUpdated": "✅ Status updated",
+      "taskCompleted": "✅ Task completed",
+      "messageSent": "✅ Message delivered",
+      "allUnits": "All units",
+      "allAreas": "All areas",
+      "notSpecified": "Not specified",
+      "time2hAgo": "2 hours ago"
+    },
+    "situation": {
+      "title": "📊 Operational situation",
+      "descAll": "**General operational situation**",
+      "descSector": "**Operational situation in sector {{sector}}**",
+      "fields": {
+        "sectorA": "Sector A",
+        "sectorB": "Sector B",
+        "sectorC": "Sector C",
+        "sectorD": "Sector D",
+        "stable": "✅ Stable",
+        "active": "⚠️ Active operations",
+        "controlled": "✅ Controlled",
+        "attention": "🟡 Needs attention",
+        "status": "Status",
+        "activeTasks": "Active tasks",
+        "units": "Units"
+      }
+    },
+    "tasks": {
+      "title": "🎯 Task management",
+      "none": "No tasks found",
+      "error": "❌ Failed to fetch tasks",
+      "current": "**Current tasks**",
+      "new": {
+        "desc": "**New task**\n\nData: {{data}}"
+      },
+      "update": {
+        "desc": "**Status update**\n\nData: {{data}}"
+      },
+      "complete": {
+        "desc": "**Task completion**\n\nData: {{data}}"
+      },
+      "archive": {
+        "title": "**Task archive**"
+      },
+      "fields": {
+        "active": "Active tasks",
+        "inProgress": "In progress",
+        "pending": "Pending",
+        "completed": "Completed",
+        "archived": "Archived"
+      }
+    }
+  },
   "ocr": {
     "command": {
       "description": "Recognize text in an image (offline Tesseract or Google Vision)"
