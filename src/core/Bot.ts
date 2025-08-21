@@ -246,8 +246,12 @@ export class Bot extends BaseServiceClass {
       } else {
         logger.info('💤 Chat mode disabled — ChatRouter не підключено');
       }
-      // Запуск health check
-      this.startHealthCheck();
+      // Запуск health check (пропускаємо у тестовому середовищі)
+      if (process.env['NODE_ENV'] === 'test' || process.env['DISABLE_BOT_HEALTHCHECK'] === 'true') {
+        logger.info('🧪 Режим тесту/відключено: health check бота не запускається', { type: 'bot', event: 'health_check_skipped' } as const);
+      } else {
+        this.startHealthCheck();
+      }
 
       const initDuration = Date.now() - startTime;
       const meta = { type: 'bot', event: 'initialized', durationMs: initDuration };
@@ -790,6 +794,8 @@ export class Bot extends BaseServiceClass {
    * Запуск health check
    */
   private startHealthCheck(): void {
+    // Захист від повторного запуску
+    if (this.healthCheckInterval) return;
     this.healthCheckInterval = setInterval(async () => {
       try {
         const health = await this.onHealthCheck();
