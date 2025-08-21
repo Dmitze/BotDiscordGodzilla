@@ -116,21 +116,82 @@ jest.mock('../utils/logger', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     return jest.requireActual('../utils/logger');
   }
-  const noop = () => {};
-  const asyncNoop = async () => undefined;
-  const mockLogger = {
-    info: noop,
-    warn: noop,
-    error: noop,
-    debug: noop,
-    security: noop,
-    performance: noop,
-    commands: noop,
-    api: noop,
-    system: noop,
-    cleanup: asyncNoop,
+  const buffer: Array<{ level: string; message: unknown; meta?: Record<string, unknown> }> = [];
+  const SECRET_KEYS = new Set([
+    'token', 'apikey', 'api_key', 'password', 'pass', 'secret', 'clientsecret',
+    'authorization', 'auth', 'bearer', 'session', 'cookie', 'cookies'
+  ]);
+  const redact = (key: string, value: unknown, seen: WeakSet<object>): unknown => {
+    if (value == null) return value as unknown;
+    if (SECRET_KEYS.has(key.toLowerCase())) return '[REDACTED]';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+      if (seen.has(value as object)) return '[CIRCULAR]';
+      seen.add(value as object);
+      if (Array.isArray(value)) return value.map(v => redact(key, v, seen));
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        out[k] = redact(k, v, seen);
+      }
+      return out;
+    }
+    return value;
   };
-  return { __esModule: true, default: mockLogger };
+  const sanitizeMeta = (meta?: Record<string, unknown>) => {
+    if (!meta) return meta;
+    const seen = new WeakSet<object>();
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(meta)) out[k] = redact(k, v, seen);
+    return out;
+  };
+  const push = (level: string, message?: unknown, meta?: Record<string, unknown>) => {
+    buffer.push({ level, message, meta: sanitizeMeta(meta) });
+  };
+  const makeFn = (level: string) => jest.fn((message?: unknown, meta?: Record<string, unknown>) => push(level, message, meta));
+  const info = makeFn('info');
+  const warn = makeFn('warn');
+  const error = makeFn('error');
+  const debug = makeFn('debug');
+  const security = makeFn('security');
+  const performance = makeFn('performance');
+  const commands = makeFn('commands');
+  const api = makeFn('api');
+  const system = makeFn('system');
+  const getLogBuffer = () => buffer;
+  const clearLogBuffer = () => { buffer.length = 0; };
+  const setLogLevel = jest.fn((_level: string) => {});
+  const startTimer = jest.fn(() => ({ start: Date.now() }));
+  const endTimer = jest.fn((_ctx?: Record<string, unknown>) => {});
+  const withTimer = jest.fn(async <T>(op: string, fn: () => Promise<T> | T) => {
+    startTimer();
+    const res = await fn();
+    endTimer({ operation: op });
+    return res;
+  });
+  const child = jest.fn(() => mockLogger);
+  const toJSON = jest.fn(() => ({ size: buffer.length }));
+  const cleanup = jest.fn(async () => undefined);
+  const mockLogger = {
+    info,
+    warn,
+    error,
+    debug,
+    security,
+    performance,
+    commands,
+    api,
+    system,
+    getLogBuffer,
+    clearLogBuffer,
+    setLogLevel,
+    startTimer,
+    endTimer,
+    withTimer,
+    child,
+    toJSON,
+    cleanup,
+  };
+  return { __esModule: true, default: mockLogger, mockLogger, ...mockLogger };
 });
 
 // Завантаження змінних середовища
