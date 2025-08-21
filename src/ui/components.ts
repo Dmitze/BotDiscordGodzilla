@@ -16,7 +16,7 @@ export function buildSearchPaginationRows(params: {
   allowLink: boolean;
   folderId?: string;
   buildId: BuildIdFn;
-}) {
+}): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
   const { sid, safePage, totalPages, changesOnly, allowLink, folderId, buildId } = params;
   const ts = Math.floor(Date.now() / 1000);
 
@@ -55,7 +55,7 @@ export function buildSearchPaginationRows(params: {
 
   if (allowLink && folderId && folderId !== 'root') {
     const folderUrl = `https://drive.google.com/drive/folders/${encodeURIComponent(folderId)}`;
-    const linkBtn = new ButtonBuilder().setLabel('Джерело').setStyle(ButtonStyle.Link).setURL(folderUrl);
+    const linkBtn = new ButtonBuilder().setLabel(t('files.buttons.source')).setStyle(ButtonStyle.Link).setURL(folderUrl);
     rows.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn));
   }
 
