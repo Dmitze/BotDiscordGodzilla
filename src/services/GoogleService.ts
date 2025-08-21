@@ -1020,14 +1020,28 @@ export class GoogleService extends BaseServiceClass {
       // Ініціалізація кешу
       await this.cacheService.initialize();
 
-      // Створення автентифікації
-      await this.initializeAuth();
+      // У тестовому режимі або коли сервіс вимкнено/немає credentials — пропускаємо зовнішню ініціалізацію
+      const disabled =
+        process.env['NODE_ENV'] === 'test' ||
+        process.env['DISABLE_GOOGLE_SERVICE'] === 'true' ||
+        !this.config.google?.credentials;
 
-      // Ініціалізація API клієнтів
-      this.initializeAPIs();
+      if (disabled) {
+        logger.warn('🧪 Режим тесту/відключено/немає credentials: пропущено auth/API/pool для GoogleService', {
+          type: 'system',
+          event: 'google_service_init_skipped_external',
+          component: 'GoogleService',
+        });
+      } else {
+        // Створення автентифікації
+        await this.initializeAuth();
 
-      // Створення connection pool
-      this.initializeConnectionPool();
+        // Ініціалізація API клієнтів
+        this.initializeAPIs();
+
+        // Створення connection pool
+        this.initializeConnectionPool();
+      }
 
       logger.info('✅ Google Service ініціалізовано', {
         type: 'system',
