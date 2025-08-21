@@ -16,9 +16,10 @@ import { BaseCommand, type CommandExecuteOptions } from './BaseCommand';
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
 import type { GoogleService } from '@/services/GoogleService';
-import { t } from '@/i18n';
+import { t, tUser } from '@/i18n';
 import { buildSearchPaginationRows } from '@/ui/components';
 import type { SearchIndex, SearchQuery } from '@/search/SearchIndex';
+import { replyWithPrivacy } from '@/ui/reply';
 
 // Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
@@ -208,12 +209,12 @@ export class SearchCommand extends BaseCommand {
 
           // Порожні результати
           if (!rows || (Array.isArray(rows) && rows.length === 0)) {
-            await interaction.reply({ content: 'Результатів не знайдено', ephemeral: true });
+            await replyWithPrivacy(interaction as any, { content: tUser('search.reply.noResults', interaction) });
             return;
           }
 
           // Базова відповідь
-          await interaction.reply({ content: '✅ Знайдено результати', ephemeral: false });
+          await replyWithPrivacy(interaction as any, { content: tUser('search.reply.found', interaction) });
           return;
         }
       }
