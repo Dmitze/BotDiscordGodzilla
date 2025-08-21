@@ -105,11 +105,19 @@ export class AIService extends BaseServiceClass {
       // Валідація конфігурації
       this.validateConfiguration();
 
-      // Запуск очищення пам'яті
-      this.startMemoryCleanup();
+      // Запуск очищення пам'яті (пропускаємо у тестовому середовищі)
+      if (process.env['NODE_ENV'] === 'test' || process.env['DISABLE_AI_TIMERS'] === 'true') {
+        logger.info("🧪 Режим тесту/відключено: очищення пам'яті не запускається");
+      } else {
+        this.startMemoryCleanup();
+      }
 
-      // Запуск health check
-      this.startHealthCheck();
+      // Запуск health check (пропускаємо у тестовому середовищі)
+      if (process.env['NODE_ENV'] === 'test' || process.env['DISABLE_AI_TIMERS'] === 'true' || process.env['DISABLE_AI_HEALTHCHECK'] === 'true') {
+        logger.info('🧪 Режим тесту/відключено: health check AI сервісу не запускається');
+      } else {
+        this.startHealthCheck();
+      }
 
       logger.info('✅ AI сервіс ініціалізовано');
     } catch (error) {
@@ -729,6 +737,8 @@ export class AIService extends BaseServiceClass {
    * Запуск очищення пам'яті
    */
   private startMemoryCleanup(): void {
+    // Захист від повторного запуску
+    if (this.memoryCleanupInterval) return;
     this.memoryCleanupInterval = setInterval(() => {
       this.cleanupMemory();
     }, AI_SERVICE_CONSTANTS.MEMORY_CLEANUP_INTERVAL);
@@ -740,6 +750,8 @@ export class AIService extends BaseServiceClass {
    * Запуск health check
    */
   private startHealthCheck(): void {
+    // Захист від повторного запуску
+    if (this.healthCheckInterval) return;
     this.healthCheckInterval = setInterval(async () => {
       try {
         const health = await this.onHealthCheck();
