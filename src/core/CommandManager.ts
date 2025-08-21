@@ -11,6 +11,7 @@ import type { GoogleService } from '@/services/GoogleService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
 import { replyWithPrivacy } from '@/ui/reply';
 import { tUser } from '@/i18n';
+import { AppError } from '@/core/errors/AppError';
 
 // Імпорт всіх команд
 import { SearchCommand } from '@/commands/SearchCommand';
@@ -548,23 +549,28 @@ export class CommandManager {
         channelId: (interaction as any)?.channelId ?? 'unknown',
       });
     } catch (error) {
-      logger.error('❌ Помилка виконання команди', {
+      const appErr = error instanceof AppError
+        ? error
+        : new AppError('UNEXPECTED_ERROR', 'common.error.unexpected', error);
+
+      // Stable logging code + context
+      const logObj = {
         type: 'command',
         event: 'execute_error',
         commandName: interaction.commandName,
         userId: (interaction as any)?.user?.id ?? 'unknown',
         ...(interaction.guildId ? { guildId: interaction.guildId } : {}),
         channelId: (interaction as any)?.channelId ?? 'unknown',
-        errorMessage: String(error),
-      });
+        code: appErr.code,
+        errorMessage: String((appErr.cause as any)?.message ?? appErr.message ?? error),
+      } as Record<string, unknown>;
+      logger.error('❌ Помилка виконання команди', logObj);
 
-      const errorMessage =
-        '❌ Помилка при виконанні команди. Спробуйте ще раз або зверніться до адміністратора.';
-
+      const localized = tUser(appErr.userMessageKey, interaction as any, appErr.meta as any);
       if (interaction.replied || interaction.deferred) {
-        await interaction.editReply({ content: errorMessage });
+        await interaction.editReply({ content: localized });
       } else {
-        await replyWithPrivacy(interaction as any, { content: errorMessage });
+        await replyWithPrivacy(interaction as any, { content: localized });
       }
     }
   }
