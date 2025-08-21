@@ -139,13 +139,14 @@ export class AnalyticsCommand extends BaseCommand {
   }
 
   private async handleStatistics(interaction: ChatInputCommandInteraction): Promise<void> {
-    const category = interaction.options.getString('категорія');
+    const categoryRaw = interaction.options.getString('категорія');
 
     const embed = new EmbedBuilder()
       .setTitle('📈 Статистика та метрики')
       .setColor(0xff6b6b)
       .setTimestamp();
 
+    const category = categoryRaw ?? 'general';
     const categoryName = this.getCategoryName(category);
 
     embed.setDescription(`**${categoryName}**`);
