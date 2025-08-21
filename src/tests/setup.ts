@@ -108,6 +108,31 @@ jest.mock('redis', () => {
   };
 });
 
+// Умовне приглушення модулю логера у тестах (використовуємо реальний логер лише у VERBOSE режимі)
+jest.mock('../utils/logger', () => {
+  const VERBOSE = process.env['TEST_VERBOSE_LOGS'] === 'true';
+  if (VERBOSE) {
+    // Повертаємо реальний модуль, щоб бачити повні логи, коли це потрібно
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return jest.requireActual('../utils/logger');
+  }
+  const noop = () => {};
+  const asyncNoop = async () => undefined;
+  const mockLogger = {
+    info: noop,
+    warn: noop,
+    error: noop,
+    debug: noop,
+    security: noop,
+    performance: noop,
+    commands: noop,
+    api: noop,
+    system: noop,
+    cleanup: asyncNoop,
+  };
+  return { __esModule: true, default: mockLogger };
+});
+
 // Завантаження змінних середовища
 config({ path: '.env.test' });
 
