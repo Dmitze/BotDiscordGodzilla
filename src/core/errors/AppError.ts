@@ -10,7 +10,9 @@ export class AppError extends Error {
     this.code = code;
     this.userMessageKey = userMessageKey;
     this.cause = cause;
-    this.meta = meta;
+    if (meta !== undefined) {
+      this.meta = meta;
+    }
   }
 
   toLog(): { code: string; message: string; meta?: Record<string, unknown> | undefined } {
