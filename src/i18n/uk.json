@@ -1,5 +1,10 @@
 {
   "key": "",
+  "common": {
+    "error": {
+      "unexpected": "❌ Несподівана помилка. Спробуйте ще раз або зверніться до адміністратора."
+    }
+  },
   "commands": {
     "search": {
       "name": "пошук",
@@ -386,6 +391,115 @@
     }
   }
   ,
+  "operations": {
+    "error": {
+      "unknownSubcommand": "❌ Невідома підкоманда",
+      "general": "❌ Помилка оперативного управління",
+      "getSituation": "❌ Помилка отримання ситуації",
+      "unknownAction": "❌ Невідома дія",
+      "coordination": { "error": "❌ Помилка координації" },
+      "intelligence": { "error": "❌ Помилка розвідки" }
+    },
+    "common": {
+      "active": "✅ Активна",
+      "primary": "Основний",
+      "operational": "✅ Працює",
+      "ready": "✅ Готовий",
+      "high": "Висока",
+      "confirmed": "Підтверджено",
+      "status": "Статус",
+      "taskCreated": "✅ Завдання створено",
+      "statusUpdated": "✅ Статус оновлено",
+      "taskCompleted": "✅ Завдання завершено",
+      "messageSent": "✅ Повідомлення передано",
+      "allUnits": "Всі підрозділи",
+      "allAreas": "Всі райони",
+      "notSpecified": "Не вказано",
+      "time2hAgo": "2 години тому"
+    },
+    "coordination": {
+      "title": "🔄 Координація між підрозділами",
+      "desc": "**{{typeName}}**\n\nПідрозділ: {{unit}}",
+      "fields": {
+        "status": "Статус координації",
+        "participants": "Учасники",
+        "channel": "Канал зв'язку"
+      }
+    },
+    "situation": {
+      "title": "📊 Оперативна ситуація",
+      "descAll": "**Загальна оперативна ситуація**",
+      "descSector": "**Оперативна ситуація в секторі {{sector}}**",
+      "fields": {
+        "sectorA": "Сектор А",
+        "sectorB": "Сектор Б",
+        "sectorC": "Сектор В",
+        "sectorD": "Сектор Г",
+        "stable": "✅ Стабільна ситуація",
+        "active": "⚠️ Активні дії",
+        "controlled": "✅ Контрольована ситуація",
+        "attention": "🟡 Потребує уваги",
+        "status": "Статус",
+        "activeTasks": "Активні завдання",
+        "units": "Підрозділи"
+      }
+    },
+    "intelligence": {
+      "title": "🔍 Розвідувальні дані",
+      "desc": "**{{typeName}}**\n\nРайон: {{area}}",
+      "fields": {
+        "lastData": "Останні дані",
+        "reliability": "Достовірність",
+        "source": "Джерело"
+      }
+    },
+    "communications": {
+      "title": "📡 Управління зв'язком",
+      "action": {
+        "status": "**Статус зв'язку**",
+        "channels": "**Налаштування каналів**",
+        "message": "**Передача повідомлення**\n\nКанал: {{channel}}\nПовідомлення: {{message}}",
+        "quality": "**Перевірка якості зв'язку**",
+        "backup": "**Резервні канали**"
+      },
+      "fields": {
+        "primaryChannel": "Основний канал",
+        "backupChannel": "Резервний канал",
+        "signalQuality": "Якість сигналу",
+        "activeChannels": "Активні канали",
+        "backupChannels": "Резервні канали",
+        "latency": "Затримка",
+        "stability": "Стабільність",
+        "channel1": "Канал 1",
+        "channel2": "Канал 2"
+      }
+    },
+    "tasks": {
+      "title": "🎯 Управління завданнями",
+      "none": "Завдань не знайдено",
+      "error": "❌ Помилка отримання завдань",
+      "current": "**Поточні завдання**",
+      "new": {
+        "desc": "**Нове завдання**\n\nДані: {{data}}"
+      },
+      "update": {
+        "desc": "**Оновлення статусу**\n\nДані: {{data}}"
+      },
+      "complete": {
+        "desc": "**Завершення завдання**\n\nДані: {{data}}"
+      },
+      "archive": {
+        "title": "**Архів завдань**"
+      },
+      "fields": {
+        "active": "Активні завдання",
+        "inProgress": "В процесі",
+        "pending": "Очікують",
+        "completed": "Завершені",
+        "archived": "Архівовані"
+      }
+    }
+  },
   "parsers": {
     "fallback": {
       "used": "Використано запасний парсер"
