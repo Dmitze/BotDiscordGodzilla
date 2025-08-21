@@ -49,21 +49,44 @@ class GoogleDriveChangesProvider implements IDriveChangesProvider {
   }
 }
 
+// No-op provider for tests/disabled mode
+class NoOpDriveChangesProvider implements IDriveChangesProvider {
+  async getStartPageToken(): Promise<string> {
+    return 'noop-token';
+  }
+  async listChanges(_pageToken: string): Promise<{ changes: drive_v3.Schema$Change[]; newStartPageToken?: string; nextPageToken?: string }> {
+    return { changes: [] };
+  }
+}
+
 export class DriveChangesService {
   private cache: CacheService;
   private provider: IDriveChangesProvider;
   private folderId: string;
   private hideWebLink: boolean;
   private keyToken = 'drive:changes:startPageToken';
+  private disabled: boolean;
 
   constructor(config: BotConfig, provider?: IDriveChangesProvider, cache?: CacheService) {
     this.cache = cache ?? new CacheService(config);
-    this.folderId = config.drive.folderId;
-    this.hideWebLink = config.drive.hideWebLink ?? true;
-    this.provider = provider ?? new GoogleDriveChangesProvider(config);
+    const driveCfg = (config as Partial<BotConfig>).drive as Partial<BotConfig['drive']> | undefined;
+    this.folderId = (driveCfg?.folderId as string | undefined) ?? '';
+    this.hideWebLink = (driveCfg?.hideWebLink as boolean | undefined) ?? true;
+    // Determine disabled mode for tests or when flagged/missing credentials.
+    // IMPORTANT: if a custom provider is supplied (e.g., in tests), do NOT disable.
+    const envDisabled =
+      process.env['NODE_ENV'] === 'test' ||
+      process.env['DISABLE_DRIVE_CHANGES'] === 'true' ||
+      !config.google?.credentials;
+    this.disabled = envDisabled && !provider;
+    this.provider = provider ?? (this.disabled ? new NoOpDriveChangesProvider() : new GoogleDriveChangesProvider(config));
   }
 
   async initialize(): Promise<void> {
+    if (this.disabled) {
+      logger.info('🧪 DriveChangesService: тест/відключено/немає credentials — ініціалізацію зовнішніх ресурсів пропущено');
+      return;
+    }
     // ensure start token exists
     const t = await this.getStoredToken();
     if (!t) {
@@ -102,7 +125,9 @@ export class DriveChangesService {
     const removed = !!c.removed || file.trashed === true;
     const type: DriveChangeEvent['type'] = removed ? 'removed' : c.time && file.createdTime === c.time ? 'created' : 'modified';
     // filter by folder when applicable: when change includes file.parents
-    const isInFolder = Array.isArray(file.parents) ? file.parents.includes(this.folderId) : true;
+    const isInFolder = this.folderId
+      ? (Array.isArray(file.parents) ? file.parents.includes(this.folderId) : true)
+      : true;
     if (!isInFolder) return null;
     const owners = Array.isArray(file.owners)
       ? file.owners
@@ -122,6 +147,10 @@ export class DriveChangesService {
   }
 
   async pollOnce(): Promise<{ events: DriveChangeEvent[]; newToken?: string }> {
+    if (this.disabled) {
+      // Respect exactOptionalPropertyTypes — omit newToken entirely in disabled mode
+      return { events: [] };
+    }
     let pageToken = (await this.getStoredToken()) || (await this.refreshStartPageToken());
     const events: DriveChangeEvent[] = [];
     let next: string | undefined = undefined;
