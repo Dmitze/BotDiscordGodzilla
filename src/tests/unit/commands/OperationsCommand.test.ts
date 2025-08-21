@@ -112,8 +112,9 @@ describe('OperationsCommand', () => {
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(1, 'тип', true);
-      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(2, 'підрозділ');
+      // Options must be ASCII a-z per Discord API, implementation uses 'type' and 'unit'
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(1, 'type', true);
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(2, 'unit');
       expect(mockOperationsService.coordinate).toHaveBeenCalledWith('emergency');
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
@@ -139,8 +140,9 @@ describe('OperationsCommand', () => {
 
       // Проверки
       expect(mockInteraction.options.getSubcommand).toHaveBeenCalled();
-      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(1, 'тип', true);
-      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(2, 'район');
+      // Implementation uses ASCII option names 'type' and 'area'
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(1, 'type', true);
+      expect(mockInteraction.options.getString).toHaveBeenNthCalledWith(2, 'area');
       expect(mockOperationsService.getIntelligence).toHaveBeenCalledWith('daily');
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
