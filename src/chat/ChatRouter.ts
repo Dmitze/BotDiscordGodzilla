@@ -1,5 +1,4 @@
-import type { Client, Message } from 'discord.js';
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { Client, Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import logger from '@/utils/logger';
 import type { IntentDetector } from './IntentDetector';
 import type { MemoryService } from './MemoryService';
@@ -36,7 +35,7 @@ export class ChatRouter {
       } as const;
       logger.info('chat_message_in', meta);
 
-      const intent = this.intents.detect(content);
+      const intent = await this.intents.detectWithAI(content);
 
       switch (intent.type) {
         case 'SEARCH':
