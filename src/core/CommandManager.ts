@@ -121,12 +121,12 @@ export class CommandManager {
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId(`search|page|${fileId}|${Math.max(0, idx - 1)}`)
-          .setLabel('⬅️')
+          .setEmoji('⬅️')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(idx === 0),
         new ButtonBuilder()
           .setCustomId(`search|page|${fileId}|${Math.min(chunks.length - 1, idx + 1)}`)
-          .setLabel('➡️')
+          .setEmoji('➡️')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(idx >= chunks.length - 1)
       );
