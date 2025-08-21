@@ -4,6 +4,8 @@
  */
 
 import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { replyWithPrivacy } from '@/ui/reply';
+import { tUser } from '@/i18n';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
@@ -151,7 +153,7 @@ export class OperationsCommand extends BaseCommand {
           await this.handleCommunications(interaction, opsService);
           break;
         default:
-          await interaction.reply({ content: '❌ Невідома підкоманда', ephemeral: true });
+          await replyWithPrivacy(interaction, { content: tUser('operations.error.unknownSubcommand', interaction) });
       }
     } catch (error) {
       logger.error('❌ Помилка команди операцій', {
@@ -159,7 +161,7 @@ export class OperationsCommand extends BaseCommand {
         userId: (interaction as ChatInputCommandInteraction).user?.id,
         command: this.name,
       });
-      await interaction.reply({ content: '❌ Помилка оперативного управління', ephemeral: true });
+      await replyWithPrivacy(interaction, { content: tUser('operations.error.general', interaction) });
     }
   }
 
@@ -178,33 +180,33 @@ export class OperationsCommand extends BaseCommand {
         await opsService.getSituation(sector);
       }
     } catch (e) {
-      await interaction.reply({ content: '❌ Помилка отримання ситуації', ephemeral: true });
+      await replyWithPrivacy(interaction, { content: tUser('operations.error.getSituation', interaction) });
       return;
     }
 
     const embed = new EmbedBuilder()
-      .setTitle('📊 Оперативна ситуація')
+      .setTitle(tUser('operations.situation.title', interaction))
       .setColor(0xff6b6b)
       .setTimestamp();
 
     if (sector === 'all') {
-      embed.setDescription('**Загальна оперативна ситуація**');
+      embed.setDescription(tUser('operations.situation.descAll', interaction));
       embed.addFields(
-        { name: 'Сектор А', value: '✅ Стабільна ситуація', inline: true },
-        { name: 'Сектор Б', value: '⚠️ Активні дії', inline: true },
-        { name: 'Сектор В', value: '✅ Контрольована ситуація', inline: true },
-        { name: 'Сектор Г', value: '🟡 Потребує уваги', inline: true }
+        { name: tUser('operations.situation.fields.sectorA', interaction), value: tUser('operations.situation.fields.stable', interaction), inline: true },
+        { name: tUser('operations.situation.fields.sectorB', interaction), value: tUser('operations.situation.fields.active', interaction), inline: true },
+        { name: tUser('operations.situation.fields.sectorC', interaction), value: tUser('operations.situation.fields.controlled', interaction), inline: true },
+        { name: tUser('operations.situation.fields.sectorD', interaction), value: tUser('operations.situation.fields.attention', interaction), inline: true }
       );
     } else {
-      embed.setDescription(`**Оперативна ситуація в секторі ${sector}**`);
+      embed.setDescription(tUser('operations.situation.descSector', interaction, { sector }));
       embed.addFields(
-        { name: 'Статус', value: '✅ Стабільна ситуація', inline: true },
-        { name: 'Активні завдання', value: '3', inline: true },
-        { name: 'Підрозділи', value: '5', inline: true }
+        { name: tUser('operations.situation.fields.status', interaction), value: tUser('operations.situation.fields.stable', interaction), inline: true },
+        { name: tUser('operations.situation.fields.activeTasks', interaction), value: '3', inline: true },
+        { name: tUser('operations.situation.fields.units', interaction), value: '5', inline: true }
       );
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(interaction, { embeds: [embed] });
   }
 
   /**
@@ -224,7 +226,7 @@ export class OperationsCommand extends BaseCommand {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle('🎯 Управління завданнями')
+      .setTitle(tUser('operations.tasks.title', interaction))
       .setColor(0x0099ff)
       .setTimestamp();
 
@@ -233,44 +235,50 @@ export class OperationsCommand extends BaseCommand {
         try {
           const tasks = (await opsService?.getTasks?.('current')) ?? [];
           if (!tasks.length) {
-            await interaction.reply({ content: 'Завдань не знайдено', ephemeral: true });
+            await replyWithPrivacy(interaction, { content: tUser('operations.tasks.none', interaction) });
             return;
           }
         } catch (e) {
-          await interaction.reply({ content: '❌ Помилка отримання завдань', ephemeral: true });
+          await replyWithPrivacy(interaction, { content: tUser('operations.tasks.error', interaction) });
           return;
         }
-        embed.setDescription('**Поточні завдання**');
+        embed.setDescription(tUser('operations.tasks.current', interaction));
         embed.addFields(
-          { name: 'Активні завдання', value: '5', inline: true },
-          { name: 'В процесі', value: '3', inline: true },
-          { name: 'Очікують', value: '2', inline: true }
+          { name: tUser('operations.tasks.fields.active', interaction), value: '5', inline: true },
+          { name: tUser('operations.tasks.fields.inProgress', interaction), value: '3', inline: true },
+          { name: tUser('operations.tasks.fields.pending', interaction), value: '2', inline: true }
         );
         break;
       case 'new':
-        embed.setDescription(`**Нове завдання**\n\nДані: ${query || 'Не вказано'}`);
-        embed.addFields({ name: 'Статус', value: '✅ Завдання створено', inline: false });
+        embed.setDescription(
+          tUser('operations.tasks.new.desc', interaction, { data: query || tUser('operations.common.notSpecified', interaction) })
+        );
+        embed.addFields({ name: tUser('operations.common.status', interaction), value: tUser('operations.common.taskCreated', interaction), inline: false });
         break;
       case 'update':
-        embed.setDescription(`**Оновлення статусу**\n\nДані: ${query || 'Не вказано'}`);
-        embed.addFields({ name: 'Статус', value: '✅ Статус оновлено', inline: false });
+        embed.setDescription(
+          tUser('operations.tasks.update.desc', interaction, { data: query || tUser('operations.common.notSpecified', interaction) })
+        );
+        embed.addFields({ name: tUser('operations.common.status', interaction), value: tUser('operations.common.statusUpdated', interaction), inline: false });
         break;
       case 'complete':
-        embed.setDescription(`**Завершення завдання**\n\nДані: ${query || 'Не вказано'}`);
-        embed.addFields({ name: 'Статус', value: '✅ Завдання завершено', inline: false });
+        embed.setDescription(
+          tUser('operations.tasks.complete.desc', interaction, { data: query || tUser('operations.common.notSpecified', interaction) })
+        );
+        embed.addFields({ name: tUser('operations.common.status', interaction), value: tUser('operations.common.taskCompleted', interaction), inline: false });
         break;
       case 'archive':
-        embed.setDescription('**Архів завдань**');
+        embed.setDescription(tUser('operations.tasks.archive.title', interaction));
         embed.addFields(
-          { name: 'Завершені', value: '15', inline: true },
-          { name: 'Архівовані', value: '8', inline: true }
+          { name: tUser('operations.tasks.fields.completed', interaction), value: '15', inline: true },
+          { name: tUser('operations.tasks.fields.archived', interaction), value: '8', inline: true }
         );
         break;
       default:
-        embed.setDescription('❌ Невідома дія');
+        embed.setDescription(tUser('operations.error.unknownAction', interaction));
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(interaction, { embeds: [embed] });
   }
 
   /**
@@ -280,13 +288,13 @@ export class OperationsCommand extends BaseCommand {
     interaction: ChatInputCommandInteraction,
     opsService?: any
   ): Promise<void> {
-    const type = interaction.options.getString('тип', true);
-    const unit = interaction.options.getString('підрозділ');
+    const type = interaction.options.getString('type', true);
+    const unit = interaction.options.getString('unit');
 
     try {
       await opsService?.coordinate?.('emergency');
     } catch (e) {
-      await interaction.reply({ content: '❌ Помилка координації', ephemeral: true });
+      await replyWithPrivacy(interaction, { content: tUser('operations.coordination.error', interaction) });
       return;
     }
 
@@ -297,20 +305,22 @@ export class OperationsCommand extends BaseCommand {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle('🔄 Координація між підрозділами')
+      .setTitle(tUser('operations.coordination.title', interaction))
       .setColor(0xff9900)
       .setTimestamp();
 
     const typeName = this.getCoordinationTypeName(type);
 
-    embed.setDescription(`**${typeName}**\n\nПідрозділ: ${unit || 'Всі підрозділи'}`);
+    embed.setDescription(
+      tUser('operations.coordination.desc', interaction, { typeName, unit: unit || tUser('operations.common.allUnits', interaction) })
+    );
     embed.addFields(
-      { name: 'Статус координації', value: '✅ Активна', inline: true },
-      { name: 'Учасники', value: '3 підрозділи', inline: true },
-      { name: "Канал зв'язку", value: 'Основний', inline: true }
+      { name: tUser('operations.coordination.fields.status', interaction), value: tUser('operations.common.active', interaction), inline: true },
+      { name: tUser('operations.coordination.fields.participants', interaction), value: '3', inline: true },
+      { name: tUser('operations.coordination.fields.channel', interaction), value: tUser('operations.common.primary', interaction), inline: true }
     );
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(interaction, { embeds: [embed] });
   }
 
   /**
@@ -320,13 +330,13 @@ export class OperationsCommand extends BaseCommand {
     interaction: ChatInputCommandInteraction,
     _opsService?: any
   ): Promise<void> {
-    const type = interaction.options.getString('тип', true);
-    const area = interaction.options.getString('район');
+    const type = interaction.options.getString('type', true);
+    const area = interaction.options.getString('area');
 
     try {
       await _opsService?.getIntelligence?.(type);
     } catch (e) {
-      await interaction.reply({ content: '❌ Помилка розвідки', ephemeral: true });
+      await replyWithPrivacy(interaction, { content: tUser('operations.intelligence.error', interaction) });
       return;
     }
 
@@ -337,20 +347,22 @@ export class OperationsCommand extends BaseCommand {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle('🔍 Розвідувальні дані')
+      .setTitle(tUser('operations.intelligence.title', interaction))
       .setColor(0x00ff88)
       .setTimestamp();
 
     const typeName = this.getIntelligenceTypeName(type);
 
-    embed.setDescription(`**${typeName}**\n\nРайон: ${area || 'Всі райони'}`);
+    embed.setDescription(
+      tUser('operations.intelligence.desc', interaction, { typeName, area: area || tUser('operations.common.allAreas', interaction) })
+    );
     embed.addFields(
-      { name: 'Останні дані', value: '2 години тому', inline: true },
-      { name: 'Достовірність', value: 'Висока', inline: true },
-      { name: 'Джерело', value: 'Підтверджено', inline: true }
+      { name: tUser('operations.intelligence.fields.lastData', interaction), value: tUser('operations.common.time2hAgo', interaction), inline: true },
+      { name: tUser('operations.intelligence.fields.reliability', interaction), value: tUser('operations.common.high', interaction), inline: true },
+      { name: tUser('operations.intelligence.fields.source', interaction), value: tUser('operations.common.confirmed', interaction), inline: true }
     );
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(interaction, { embeds: [embed] });
   }
 
   /**
@@ -360,9 +372,9 @@ export class OperationsCommand extends BaseCommand {
     interaction: ChatInputCommandInteraction,
     _opsService?: any
   ): Promise<void> {
-    const action = interaction.options.getString('дія', true);
-    const channel = interaction.options.getString('канал');
-    const message = interaction.options.getString('повідомлення');
+    const action = interaction.options.getString('action', true);
+    const channel = interaction.options.getString('channel');
+    const message = interaction.options.getString('message');
 
     logger.info("Управління зв'язком", {
       action,
@@ -372,52 +384,55 @@ export class OperationsCommand extends BaseCommand {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle("📡 Управління зв'язком")
+      .setTitle(tUser('operations.communications.title', interaction))
       .setColor(0x9932cc)
       .setTimestamp();
 
     switch (action) {
       case 'status':
-        embed.setDescription("**Статус зв'язку**");
+        embed.setDescription(tUser('operations.communications.action.status', interaction));
         embed.addFields(
-          { name: 'Основний канал', value: '✅ Працює', inline: true },
-          { name: 'Резервний канал', value: '✅ Готовий', inline: true },
-          { name: 'Якість сигналу', value: 'Висока', inline: true }
+          { name: tUser('operations.communications.fields.primaryChannel', interaction), value: tUser('operations.common.operational', interaction), inline: true },
+          { name: tUser('operations.communications.fields.backupChannel', interaction), value: tUser('operations.common.ready', interaction), inline: true },
+          { name: tUser('operations.communications.fields.signalQuality', interaction), value: tUser('operations.common.high', interaction), inline: true }
         );
         break;
       case 'channels':
-        embed.setDescription('**Налаштування каналів**');
+        embed.setDescription(tUser('operations.communications.action.channels', interaction));
         embed.addFields(
-          { name: 'Активні канали', value: '3', inline: true },
-          { name: 'Резервні канали', value: '2', inline: true }
+          { name: tUser('operations.communications.fields.activeChannels', interaction), value: '3', inline: true },
+          { name: tUser('operations.communications.fields.backupChannels', interaction), value: '2', inline: true }
         );
         break;
       case 'message':
         embed.setDescription(
-          `**Передача повідомлення**\n\nКанал: ${channel || 'Основний'}\nПовідомлення: ${message || 'Не вказано'}`
+          tUser('operations.communications.action.message', interaction, {
+            channel: channel || tUser('operations.common.primary', interaction),
+            message: message || tUser('operations.common.notSpecified', interaction),
+          })
         );
-        embed.addFields({ name: 'Статус', value: '✅ Повідомлення передано', inline: false });
+        embed.addFields({ name: tUser('operations.common.status', interaction), value: tUser('operations.common.messageSent', interaction), inline: false });
         break;
       case 'quality':
-        embed.setDescription("**Перевірка якості зв'язку**");
+        embed.setDescription(tUser('operations.communications.action.quality', interaction));
         embed.addFields(
-          { name: 'Якість сигналу', value: '95%', inline: true },
-          { name: 'Затримка', value: '50ms', inline: true },
-          { name: 'Стабільність', value: 'Висока', inline: true }
+          { name: tUser('operations.communications.fields.signalQuality', interaction), value: '95%', inline: true },
+          { name: tUser('operations.communications.fields.latency', interaction), value: '50ms', inline: true },
+          { name: tUser('operations.communications.fields.stability', interaction), value: tUser('operations.common.high', interaction), inline: true }
         );
         break;
       case 'backup':
-        embed.setDescription('**Резервні канали**');
+        embed.setDescription(tUser('operations.communications.action.backup', interaction));
         embed.addFields(
-          { name: 'Канал 1', value: '✅ Активний', inline: true },
-          { name: 'Канал 2', value: '✅ Готовий', inline: true }
+          { name: tUser('operations.communications.fields.channel1', interaction), value: tUser('operations.common.active', interaction), inline: true },
+          { name: tUser('operations.communications.fields.channel2', interaction), value: tUser('operations.common.ready', interaction), inline: true }
         );
         break;
       default:
-        embed.setDescription('❌ Невідома дія');
+        embed.setDescription(tUser('operations.error.unknownAction', interaction));
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(interaction, { embeds: [embed] });
   }
 
   /**
