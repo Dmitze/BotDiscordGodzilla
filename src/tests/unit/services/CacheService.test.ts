@@ -25,6 +25,9 @@ describe('CacheService', () => {
   let cacheService: CacheService;
   let mockConfig: any;
   let mockRedisClient: any;
+  let consoleErrorSpy: ReturnType<typeof jest.spyOn>;
+  let consoleWarnSpy: ReturnType<typeof jest.spyOn>;
+  let consoleLogSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
     mockConfig = createMockConfig();
@@ -44,10 +47,19 @@ describe('CacheService', () => {
     };
     
     (cacheService as any).client = mockRedisClient;
+
+    // Приглушаем шумные логи ошибок/предупреждений в тестах
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    // Опционально глушим лог, чтобы не засорять вывод тестов
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
   describe('constructor', () => {
