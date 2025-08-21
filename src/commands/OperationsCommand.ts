@@ -15,7 +15,7 @@ import logger from '@/utils/logger';
 export class OperationsCommand extends BaseCommand {
   constructor(config: BotConfig) {
     // Command and option names must be lowercase ASCII (Discord constraint)
-    super('operations', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
+    super('операції', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
       return builder
         .addSubcommand((subcommand: any) =>
           subcommand
