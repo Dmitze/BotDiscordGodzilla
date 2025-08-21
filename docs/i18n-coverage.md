@@ -1,22 +1,44 @@
 # i18n Coverage Report
 
-Generated: 2025-08-21T09:26:19.492Z
+Generated: 2025-08-21T11:26:39.662Z
 
-- Total used keys in code: 306
+- Total used keys in code: 317
 - Present in uk.json: 302
 - Present in en.json: 277
-- Missing in uk.json: 4
-- Missing in en.json: 29
+- Missing in uk.json: 15
+- Missing in en.json: 40
 
-## Missing in uk.json (4)
+## Missing in uk.json (15)
 
+- components.buttons.cancel
+- components.buttons.close
+- components.buttons.next
+- components.buttons.prev
+- components.duplicateResolver.title
+- components.messages.canceled
+- components.messages.notForYou
+- components.messages.notSelected
+- components.messages.selected
+- components.pagination.pageFooter
+- components.selects.chooseOne
 - operations.coordination.error
 - operations.intelligence.error
 - search.reply.found
 - search.reply.noResults
 
-## Missing in en.json (29)
+## Missing in en.json (40)
 
+- components.buttons.cancel
+- components.buttons.close
+- components.buttons.next
+- components.buttons.prev
+- components.duplicateResolver.title
+- components.messages.canceled
+- components.messages.notForYou
+- components.messages.notSelected
+- components.messages.selected
+- components.pagination.pageFooter
+- components.selects.chooseOne
 - operations.communications.action.backup
 - operations.communications.action.channels
 - operations.communications.action.message
