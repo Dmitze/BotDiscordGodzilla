@@ -16,7 +16,6 @@ const config: Config.InitialOptions = {
       {
         tsconfig: '<rootDir>/tsconfig.jest.json',
         diagnostics: false,
-        isolatedModules: true,
       },
     ],
   },
