@@ -57,7 +57,7 @@ export class AIAssistantCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
 
   constructor(config: BotConfig, googleService?: GoogleService) {
-    super('ai', t('ai.command.description'), config, {
+    super('ai_асистент', t('ai.command.description'), config, {
       i18n: { nameKey: 'commands.ai.name', descriptionKey: 'ai.command.description' }
     }, (builder: SlashCommandBuilder): SlashCommandBuilder => {
       builder.addStringOption((option: SlashCommandStringOption) =>
