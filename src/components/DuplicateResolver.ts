@@ -1,5 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, StringSelectMenuBuilder, type StringSelectMenuInteraction, type Interaction, type ButtonInteraction } from 'discord.js';
 import { replyWithPrivacy } from '@/ui/reply';
+import { t, tUser } from '@/i18n';
 import type { DriveFile } from '@/types/drive';
 import logger from '@/utils/logger';
 
@@ -19,7 +20,7 @@ export class DuplicateResolver {
     files,
     page = 0,
     perPage = 5,
-    title = 'Знайдено кілька збігів',
+    title = t('components.duplicateResolver.title'),
   }: {
     scope: string;
     userId: string;
@@ -43,11 +44,11 @@ export class DuplicateResolver {
           .map((f, idx) => `• ${start + idx + 1}. ${f.name} (${f.mimeType})`)
           .join('\n') || '—'
       )
-      .setFooter({ text: `Сторінка ${current + 1}/${pages} | Всього: ${total}` });
+      .setFooter({ text: t('components.pagination.pageFooter', { current: current + 1, total: pages, totalItems: total }) });
 
     const select = new StringSelectMenuBuilder()
       .setCustomId(this.customId(scope, userId, nonce, 'select', current))
-      .setPlaceholder('Оберіть один варіант')
+      .setPlaceholder(t('components.selects.chooseOne'))
       .addOptions(
         ...pageItems.map((f) => ({
           label: f.name ?? '—',
@@ -59,19 +60,19 @@ export class DuplicateResolver {
     const prevBtn = new ButtonBuilder()
       .setCustomId(this.customId(scope, userId, nonce, 'prev', current))
       .setStyle(ButtonStyle.Secondary)
-      .setLabel('◀ Prev')
+      .setLabel(t('components.buttons.prev'))
       .setDisabled(current === 0);
 
     const nextBtn = new ButtonBuilder()
       .setCustomId(this.customId(scope, userId, nonce, 'next', current))
       .setStyle(ButtonStyle.Secondary)
-      .setLabel('Next ▶')
+      .setLabel(t('components.buttons.next'))
       .setDisabled(current >= pages - 1);
 
     const cancelBtn = new ButtonBuilder()
       .setCustomId(this.customId(scope, userId, nonce, 'cancel', current))
       .setStyle(ButtonStyle.Danger)
-      .setLabel('✖ Скасувати');
+      .setLabel(t('components.buttons.cancel'));
 
     const rows = [
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
@@ -102,7 +103,7 @@ export class DuplicateResolver {
 
       // Только владелец может интерактить
       if ((interaction as any).user?.id && (interaction as any).user.id !== userId) {
-        await replyWithPrivacy(interaction as any, { content: '⛔ Це меню не для вас' });
+        await replyWithPrivacy(interaction as any, { content: tUser('components.messages.notForYou', interaction as any) });
         return;
       }
 
@@ -110,7 +111,7 @@ export class DuplicateResolver {
       const perPage = resolver.perPage ?? 5;
 
       if (action === 'cancel') {
-        await (interaction as any).update?.({ content: '❌ Скасовано', components: [], embeds: [] });
+        await (interaction as any).update?.({ content: tUser('components.messages.canceled', interaction as any), components: [], embeds: [] });
         return;
       }
 
@@ -118,11 +119,11 @@ export class DuplicateResolver {
         const select = interaction as StringSelectMenuInteraction;
         const [fileId] = select.values ?? [];
         if (!fileId) {
-          await replyWithPrivacy(select as any, { content: '❌ Не обрано елемент' });
+          await replyWithPrivacy(select as any, { content: tUser('components.messages.notSelected', select as any) });
           return;
         }
         await resolver.onSelect({ scope, userId, fileId, nonce });
-        await select.update({ content: '✅ Обрано', components: [], embeds: [] });
+        await select.update({ content: tUser('components.messages.selected', select as any), components: [], embeds: [] });
         return;
       }
 
