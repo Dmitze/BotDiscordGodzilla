@@ -2,13 +2,16 @@
  * Unit тести для AIService (оновлено під актуальний API)
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { AIService } from '../../../services/AIService';
 import { createMockConfig } from '../../utils/testHelpers';
 
 describe('AIService', () => {
   let aiService: AIService;
   let mockConfig: any;
+  let consoleErrorSpy: ReturnType<typeof jest.spyOn>;
+  let consoleWarnSpy: ReturnType<typeof jest.spyOn>;
+  let consoleLogSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
     mockConfig = createMockConfig();
@@ -20,6 +23,11 @@ describe('AIService', () => {
       set: jest.fn(async () => {}),
       cleanup: jest.fn(async () => {}),
     };
+
+    // Приглушуємо шумні логи під час тестів
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(async () => {
@@ -34,6 +42,9 @@ describe('AIService', () => {
       }
     }
     jest.clearAllTimers();
+    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
   describe('constructor', () => {
