@@ -118,7 +118,8 @@
     "tesseract.js": "^6.0.1",
     "url": "^0.11.3",
     "winston": "^3.17.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
