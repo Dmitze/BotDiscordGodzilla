@@ -15,7 +15,7 @@ import logger from '@/utils/logger';
 export class OperationsCommand extends BaseCommand {
   constructor(config: BotConfig) {
     // Command and option names must be lowercase ASCII (Discord constraint)
-    super('операції', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
+    super('operations', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
       return builder
         .addSubcommand((subcommand: any) =>
           subcommand
@@ -153,7 +153,7 @@ export class OperationsCommand extends BaseCommand {
           await this.handleCommunications(interaction, opsService);
           break;
         default:
-          await replyWithPrivacy(interaction, { content: tUser('operations.error.unknownSubcommand', interaction) });
+          await replyWithPrivacy(interaction, { content: tUser('operations.error.unknownSubcommand', interaction) }, { ephemeralByDefault: true, shareFlagSupport: true });
       }
     } catch (error) {
       logger.error('❌ Помилка команди операцій', {
@@ -161,7 +161,7 @@ export class OperationsCommand extends BaseCommand {
         userId: (interaction as ChatInputCommandInteraction).user?.id,
         command: this.name,
       });
-      await replyWithPrivacy(interaction, { content: tUser('operations.error.general', interaction) });
+      await replyWithPrivacy(interaction, { content: tUser('operations.error.general', interaction) }, { ephemeralByDefault: true, shareFlagSupport: true });
     }
   }
 
@@ -180,7 +180,7 @@ export class OperationsCommand extends BaseCommand {
         await opsService.getSituation(sector);
       }
     } catch (e) {
-      await replyWithPrivacy(interaction, { content: tUser('operations.error.getSituation', interaction) });
+      await replyWithPrivacy(interaction, { content: tUser('operations.error.getSituation', interaction) }, { ephemeralByDefault: true, shareFlagSupport: true });
       return;
     }
 
@@ -206,7 +206,7 @@ export class OperationsCommand extends BaseCommand {
       );
     }
 
-    await replyWithPrivacy(interaction, { embeds: [embed] });
+    await replyWithPrivacy(interaction, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
   }
 
   /**
@@ -235,11 +235,11 @@ export class OperationsCommand extends BaseCommand {
         try {
           const tasks = (await opsService?.getTasks?.('current')) ?? [];
           if (!tasks.length) {
-            await replyWithPrivacy(interaction, { content: tUser('operations.tasks.none', interaction) });
+            await replyWithPrivacy(interaction, { content: tUser('operations.tasks.none', interaction) }, { ephemeralByDefault: true, shareFlagSupport: true });
             return;
           }
         } catch (e) {
-          await replyWithPrivacy(interaction, { content: tUser('operations.tasks.error', interaction) });
+          await replyWithPrivacy(interaction, { content: tUser('operations.tasks.error', interaction) }, { ephemeralByDefault: true, shareFlagSupport: true });
           return;
         }
         embed.setDescription(tUser('operations.tasks.current', interaction));
@@ -278,7 +278,7 @@ export class OperationsCommand extends BaseCommand {
         embed.setDescription(tUser('operations.error.unknownAction', interaction));
     }
 
-    await replyWithPrivacy(interaction, { embeds: [embed] });
+    await replyWithPrivacy(interaction, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
   }
 
   /**
@@ -294,7 +294,7 @@ export class OperationsCommand extends BaseCommand {
     try {
       await opsService?.coordinate?.('emergency');
     } catch (e) {
-      await replyWithPrivacy(interaction, { content: tUser('operations.coordination.error', interaction) });
+      await replyWithPrivacy(interaction, { content: tUser('operations.coordination.error', interaction) }, { ephemeralByDefault: true, shareFlagSupport: true });
       return;
     }
 
@@ -320,7 +320,7 @@ export class OperationsCommand extends BaseCommand {
       { name: tUser('operations.coordination.fields.channel', interaction), value: tUser('operations.common.primary', interaction), inline: true }
     );
 
-    await replyWithPrivacy(interaction, { embeds: [embed] });
+    await replyWithPrivacy(interaction, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
   }
 
   /**
@@ -336,7 +336,7 @@ export class OperationsCommand extends BaseCommand {
     try {
       await _opsService?.getIntelligence?.(type);
     } catch (e) {
-      await replyWithPrivacy(interaction, { content: tUser('operations.intelligence.error', interaction) });
+      await replyWithPrivacy(interaction, { content: tUser('operations.intelligence.error', interaction) }, { ephemeralByDefault: true, shareFlagSupport: true });
       return;
     }
 
@@ -432,7 +432,7 @@ export class OperationsCommand extends BaseCommand {
         embed.setDescription(tUser('operations.error.unknownAction', interaction));
     }
 
-    await replyWithPrivacy(interaction, { embeds: [embed] });
+    await replyWithPrivacy(interaction, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
   }
 
   /**
