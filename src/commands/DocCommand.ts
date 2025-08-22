@@ -164,10 +164,31 @@ export class DocCommand extends BaseCommand {
     if (!interaction.isButton()) return;
 
     try {
-      const parsed = parseCustomId(interaction.customId);
+      const payload = (options as any)?.context?.componentPayload as
+        | { kind?: string; documentId?: string; page?: number; pageSize?: number; format?: string; ts?: number }
+        | undefined;
+      const isSigned = !!payload && payload.kind === 'docblk';
+      const parsed = isSigned ? payload : parseCustomId(interaction.customId);
       if (!parsed || parsed.kind !== 'docblk') return;
 
-      const { documentId, page, pageSize, format, ts } = parsed;
+      const { documentId, page, pageSize, format, ts } = parsed as {
+        documentId?: string;
+        page?: number;
+        pageSize?: number;
+        format?: FormatMode | string;
+        ts?: number;
+      };
+
+      // Narrow required fields
+      if (!documentId || typeof page !== 'number' || typeof pageSize !== 'number' || !format) {
+        await replyWithPrivacy(interaction as any, { content: t('doc.sessionExpired') });
+        return;
+      }
+
+      const docId: string = documentId;
+      const pg: number = page;
+      const pgSize: number = pageSize;
+      const fmt: FormatMode = format as FormatMode;
 
       // Ограничение времени жизни: 10 минут
       const nowSec = Math.floor(Date.now() / 1000);
@@ -181,8 +202,8 @@ export class DocCommand extends BaseCommand {
         return;
       }
 
-      const blocks: DocBlock[] = await this.google.getDocumentBlocks(documentId);
-      const { embed, components } = buildBlocksPage({ blocks, documentId, page, pageSize, format });
+      const blocks: DocBlock[] = await this.google.getDocumentBlocks(docId);
+      const { embed, components } = buildBlocksPage({ blocks, documentId: docId, page: pg, pageSize: pgSize, format: fmt });
 
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed], components });
