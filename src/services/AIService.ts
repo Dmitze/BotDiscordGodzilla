@@ -348,8 +348,9 @@ export class AIService extends BaseServiceClass {
     } = options;
 
     try {
-      // Fast path for tests/perf: avoid external calls and return deterministic response
-      if (process.env['NODE_ENV'] === 'test' || process.env['AI_PERF_FAST'] === '1') {
+      // Fast path for perf or explicitly requested tests: avoid external calls and return deterministic response
+      // Note: Do NOT enable automatically for all tests; unit tests expect provider behavior and error handling.
+      if (process.env['AI_PERF_FAST'] === '1' || process.env['AI_TEST_FAST'] === '1') {
         const start = Date.now();
         const sanitizedPrompt = this.validateAndSanitizePrompt(prompt);
         const response: AIResponse = {
