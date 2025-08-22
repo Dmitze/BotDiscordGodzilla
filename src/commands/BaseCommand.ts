@@ -21,8 +21,9 @@ import type {
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
 import { UserPreferencesService } from '@/services/UserPreferencesService';
-import { t } from '@/i18n';
+import { t, tUser } from '@/i18n';
 import { replyWithPrivacy } from '@/ui/reply';
+import { verifyComponentId } from '@/security/componentId';
 
 // Константи для конфігурації команд
 const COMMAND_CONFIG = {
@@ -433,6 +434,33 @@ export abstract class BaseCommand {
         componentType: options.componentType,
         customId: options.interaction.customId,
       });
+
+      // Centralized verification of component customId (HMAC+TTL), with backward compatibility.
+      // We only enforce verification for token-like IDs that follow the signed format: header.body.sig (contain two dots)
+      const customId = options.interaction.customId;
+      const dotCount = (customId?.match(/\./g) || []).length;
+      if (dotCount === 2) {
+        const res = verifyComponentId(customId);
+        if (!res.valid) {
+          const reason = res.reason || 'invalid';
+          logger.warn('Компонент customId не пройшов верифікацію', {
+            type: 'security',
+            component: this.name,
+            event: 'component_verify_failed',
+            reason,
+          });
+
+          const key = reason === 'expired' ? 'security.component.expiredId' : 'security.component.invalidId';
+          await replyWithPrivacy(
+            options.interaction as any,
+            { content: tUser(key, options.interaction as any) },
+            { ephemeralByDefault: true, shareFlagSupport: true }
+          );
+          return;
+        }
+        // Optionally, attach verified payload to context for downstream usage
+        (options as any).context = { ...(options.context || {}), componentPayload: res.payload };
+      }
 
       await this.onComponent(options);
 
