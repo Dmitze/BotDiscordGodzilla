@@ -11,6 +11,7 @@ import type { DriveFile } from '@/types/drive';
 import type { BotConfig, CommandExecuteOptions, LogMeta } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
+import { replyWithPrivacy } from '@/ui/reply';
 
 interface DocumentAction {
   type: string;
@@ -162,7 +163,11 @@ export class DocumentsCommand extends BaseCommand {
           await this.handleOrders(interaction, documentAction);
           break;
         default:
-          await interaction.reply('❌ Невідома підкоманда');
+          await replyWithPrivacy(
+            interaction,
+            { content: '❌ Невідома підкоманда' },
+            { ephemeralByDefault: true, shareFlagSupport: true }
+          );
       }
     } catch (error) {
       logger.error('❌ Помилка команди документів', {
@@ -172,7 +177,11 @@ export class DocumentsCommand extends BaseCommand {
         userId: interaction.user?.id,
         error,
       } as LogMeta);
-      await interaction.reply('❌ Помилка обробки документів');
+      await replyWithPrivacy(
+        interaction,
+        { content: '❌ Помилка обробки документів' },
+        { ephemeralByDefault: true, shareFlagSupport: true }
+      );
     }
   }
 
@@ -220,7 +229,11 @@ export class DocumentsCommand extends BaseCommand {
         embed.setDescription('❌ Невідома дія');
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(
+      interaction,
+      { embeds: [embed] },
+      { ephemeralByDefault: true, shareFlagSupport: true }
+    );
   }
 
   /**
@@ -272,7 +285,11 @@ export class DocumentsCommand extends BaseCommand {
         embed.setDescription('❌ Невідома дія');
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(
+      interaction,
+      { embeds: [embed] },
+      { ephemeralByDefault: true, shareFlagSupport: true }
+    );
   }
 
   /**
@@ -324,7 +341,11 @@ export class DocumentsCommand extends BaseCommand {
         embed.setDescription('❌ Невідома дія');
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(
+      interaction,
+      { embeds: [embed] },
+      { ephemeralByDefault: true, shareFlagSupport: true }
+    );
   }
 
   /**
@@ -373,7 +394,11 @@ export class DocumentsCommand extends BaseCommand {
         embed.setDescription('❌ Невідома дія');
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(
+      interaction,
+      { embeds: [embed] },
+      { ephemeralByDefault: true, shareFlagSupport: true }
+    );
   }
 
   /**
@@ -422,7 +447,11 @@ export class DocumentsCommand extends BaseCommand {
         embed.setDescription('❌ Невідома дія');
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPrivacy(
+      interaction,
+      { embeds: [embed] },
+      { ephemeralByDefault: true, shareFlagSupport: true }
+    );
   }
 
   /**
