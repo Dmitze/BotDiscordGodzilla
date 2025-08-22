@@ -102,9 +102,11 @@ export class EnhancedSearchCommand extends BaseCommand {
       // Кінцевий запит: спочатку legacy, потім modern
       const query = legacyQuery ?? modernQuery;
       if (!query || query.trim().length === 0) {
-        await replyWithPrivacy(interaction as any, {
-          content: 'Будь ласка, вкажіть запит для пошуку',
-        });
+        await replyWithPrivacy(
+          interaction as any,
+          { content: 'Будь ласка, вкажіть запит для пошуку' },
+          { ephemeralByDefault: true, shareFlagSupport: true }
+        );
         return;
       }
 
@@ -123,7 +125,11 @@ export class EnhancedSearchCommand extends BaseCommand {
       const google: GoogleSvc | undefined =
         (this.googleService as unknown as GoogleSvc | undefined) ?? containerGoogle;
       if (!google) {
-        await replyWithPrivacy(interaction as any, { content: 'Помилка: сервіс пошуку недоступний' });
+        await replyWithPrivacy(
+          interaction as any,
+          { content: 'Помилка: сервіс пошуку недоступний' },
+          { ephemeralByDefault: true, shareFlagSupport: true }
+        );
         return;
       }
 
@@ -157,14 +163,22 @@ export class EnhancedSearchCommand extends BaseCommand {
         result = raw as MinimalSearchItem[] | SearchResultPage;
       } catch (e) {
         logger.error('EnhancedSearchCommand: service error', { error: String(e) });
-        await replyWithPrivacy(interaction as any, { content: 'Помилка при пошуку' });
+        await replyWithPrivacy(
+          interaction as any,
+          { content: 'Помилка при пошуку' },
+          { ephemeralByDefault: true, shareFlagSupport: true }
+        );
         return;
       }
 
       // Підтримка двох форматів відповіді: масив або обʼєкт з пагінацією
       const items: MinimalSearchItem[] = Array.isArray(result) ? result : result?.data || [];
       if (!items || items.length === 0) {
-        await replyWithPrivacy(interaction as any, { content: 'Результатів не знайдено' });
+        await replyWithPrivacy(
+          interaction as any,
+          { content: 'Результатів не знайдено' },
+          { ephemeralByDefault: true, shareFlagSupport: true }
+        );
         return;
       }
 
@@ -177,13 +191,21 @@ export class EnhancedSearchCommand extends BaseCommand {
         content = `Сторінка ${result.page} з ${result.totalPages}\n` + content;
       }
 
-      await interaction.reply({ content });
+      await replyWithPrivacy(
+        interaction as any,
+        { content },
+        { ephemeralByDefault: true, shareFlagSupport: true }
+      );
     } catch (error) {
       logger.error('Помилка покращеного пошуку', {
         error: error instanceof Error ? error.message : String(error),
         userId: options.interaction.user?.id,
       });
-      await replyWithPrivacy(options.interaction as any, { content: '❌ Помилка при виконанні пошуку' });
+      await replyWithPrivacy(
+        options.interaction as any,
+        { content: '❌ Помилка при виконанні пошуку' },
+        { ephemeralByDefault: true, shareFlagSupport: true }
+      );
     }
   }
 }
