@@ -173,6 +173,10 @@ export class SearchCommand extends BaseCommand {
           }
         }
       }, 5 * 60 * 1000);
+      // Avoid keeping the event loop alive in tests
+      if (process.env['NODE_ENV'] === 'test' && typeof (self._cleanup as any).unref === 'function') {
+        (self._cleanup as any).unref();
+      }
     }
   }
 
@@ -182,6 +186,31 @@ export class SearchCommand extends BaseCommand {
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
     const startTime = performance.now();
+    // Structured timer and metrics setup
+    const guildId = interaction.guild?.id;
+    const baseMeta: Record<string, unknown> = {
+      type: 'command',
+      component: 'SearchCommand',
+      command: 'пошук',
+      user: interaction.user.tag,
+      userId: interaction.user.id,
+      channelId: interaction.channelId,
+      ...(guildId ? { guildId } : {}),
+    };
+    const commandTimer = logger.startStructuredTimer('command_execute', baseMeta, 'info');
+    // Metrics: try labeled helper if available
+    let metrics: any = null;
+    let endMetrics: (() => number) | null = null;
+    try {
+      const sc = (interaction as any)?.client?.serviceContainer;
+      const getSvc = sc?.get?.bind(sc) as ((name: string) => any) | undefined;
+      if (getSvc) {
+        metrics = getSvc('metrics') ?? getSvc('MetricsService');
+        if (metrics?.startCommandTimerLabeled) {
+          endMetrics = metrics.startCommandTimerLabeled('пошук', guildId ?? null).end;
+        }
+      }
+    } catch {}
 
     try {
       // Легасі-шлях для сумісності з існуючими тестами: використовує serviceContainer.get('google'|'cache')
@@ -225,20 +254,12 @@ export class SearchCommand extends BaseCommand {
       // Відкладена відповідь
       await interaction.deferReply({ ephemeral: true });
 
-      // Логування початку пошуку
-      {
-        const meta: Record<string, unknown> = {
-          type: 'command',
-          component: 'SearchCommand',
-          user: interaction.user.tag,
-          userId: interaction.user.id,
-          channelId: interaction.channelId,
-          query: searchParams.query,
-          filters: searchParams,
-        };
-        if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
-        logger.info(t('search.log.start'), meta);
-      }
+      // Структурований стартовий лог
+      logger.logStructured('info', t('search.log.start'), {
+        ...baseMeta,
+        query: searchParams.query,
+        filters: searchParams,
+      });
 
       // Спроба використати персистентний SQLite-індекс, якщо доступний
       try {
@@ -305,6 +326,13 @@ export class SearchCommand extends BaseCommand {
             await interaction.editReply({ embeds: [embed], components: [] });
             const duration = performance.now() - startTime;
             this.updateSearchStats(true, duration, true);
+            // End timers + metrics before early return
+            commandTimer.end(true, { results: hits.length, cacheHit: false }, t('search.log.success'));
+            try {
+              if (endMetrics) endMetrics();
+              else if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
+              else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
+            } catch {}
             return;
           }
         }
@@ -374,38 +402,27 @@ export class SearchCommand extends BaseCommand {
       const duration = performance.now() - startTime;
       this.updateSearchStats(true, duration, searchResult.cacheHit);
 
-      // Логування успішного завершення
-      {
-        const meta: Record<string, unknown> = {
-          type: 'command',
-          component: 'SearchCommand',
-          user: interaction.user.tag,
-          userId: interaction.user.id,
-          channelId: interaction.channelId,
-          duration: `${duration.toFixed(2)}ms`,
-          results: searchResult.filteredCount,
-          cacheHit: searchResult.cacheHit,
-        };
-        if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
-        logger.info(t('search.log.success'), meta);
-      }
+      // Завершення таймерів + структурований успішний лог
+      commandTimer.end(true, { durationMs: Math.round(duration), results: searchResult.filteredCount, cacheHit: searchResult.cacheHit }, t('search.log.success'));
+      try {
+        if (endMetrics) endMetrics();
+        else if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
+        else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
+      } catch {}
     } catch (error) {
       const duration = performance.now() - startTime;
       this.updateSearchStats(false, duration, false);
 
-      {
-        const meta: Record<string, unknown> = {
-          type: 'command',
-          component: 'SearchCommand',
-          user: interaction.user.tag,
-          userId: interaction.user.id,
-          channelId: interaction.channelId,
-          error: error instanceof Error ? error.message : String(error),
-          duration: `${duration.toFixed(2)}ms`,
-        };
-        if (interaction.guild?.id) meta['guildId'] = interaction.guild.id;
-        logger.error(t('search.log.error'), meta);
-      }
+      // Завершення таймерів + структурований помилковий лог
+      commandTimer.end(false, {
+        error: error instanceof Error ? error.message : String(error),
+        durationMs: Math.round(duration),
+      }, t('search.log.error'));
+      try {
+        if (endMetrics) endMetrics();
+        else if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
+        else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
+      } catch {}
 
       await this.handleSearchError(interaction, error);
     }
