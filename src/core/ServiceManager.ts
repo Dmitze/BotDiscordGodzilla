@@ -9,6 +9,7 @@ import logger from '@/utils/logger';
 import { AIService } from '../services/AIService';
 import { GoogleService } from '../services/GoogleService';
 import { CacheService } from '../services/CacheService';
+import { MemoryCacheService } from '@/services/MemoryCacheService';
 import { MetricsService } from '../services/MetricsService';
 import { SheetsContextService } from '../services/SheetsContextService';
 import SchedulerService from '../services/SchedulerService';
@@ -105,9 +106,14 @@ class ServiceManager {
     // Google Service
     this.services.set('google', new GoogleService(this.bot.config));
 
-    // Cache Service (якщо Redis увімкнено)
-    if ((this.bot.config as any).redis?.enabled) {
+    // Cache Service: завжди доступний у контейнері
+    // - Якщо Redis увімкнено — використовуємо Redis CacheService
+    // - Інакше або у тестах — легкий MemoryCacheService
+    const useRedis = Boolean((this.bot.config as any).redis?.enabled);
+    if (useRedis) {
       this.services.set('cache', new CacheService(this.bot.config));
+    } else {
+      this.services.set('cache', new MemoryCacheService(this.bot.config));
     }
 
     // Metrics Service (якщо метрики увімкнені)
@@ -217,6 +223,16 @@ class ServiceManager {
     });
 
     await Promise.allSettled(initPromises);
+  }
+
+  /** Повертає сервіс за назвою */
+  public getService<T = any>(name: string): T | undefined {
+    return this.services.get(name) as unknown as T | undefined;
+  }
+
+  /** Список зареєстрованих сервісів */
+  public getServiceNames(): string[] {
+    return Array.from(this.services.keys());
   }
 
   /**
