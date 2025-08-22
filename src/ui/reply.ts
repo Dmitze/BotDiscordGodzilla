@@ -4,6 +4,7 @@ import type {
   InteractionReplyOptions,
   BaseMessageOptions,
 } from 'discord.js';
+import { maskReplyOptions } from '../utils/pii';
 
 /**
  * Ephemeral-first reply helper with optional public share follow-up.
@@ -44,8 +45,10 @@ export async function replyWithPrivacy(
     }
   }
 
+  // Apply PII masking to the initial content
+  const maskedContent = maskReplyOptions(content);
   const firstReply: InteractionReplyOptions =
-    typeof content === 'string' ? { content, ephemeral } : { ...content, ephemeral };
+    typeof maskedContent === 'string' ? { content: maskedContent, ephemeral } : { ...maskedContent, ephemeral };
 
   if (!interaction.deferred && !interaction.replied) {
     await interaction.reply(firstReply);
@@ -55,8 +58,10 @@ export async function replyWithPrivacy(
 
   if (share) {
     const base = publicFromPayload ?? opts.public;
+    // Mask public payload as well
+    const maskedPublic = base != null ? maskReplyOptions(base as any) : undefined;
     const publicPayload: InteractionReplyOptions =
-      typeof base === 'string' ? { content: base } : { ...(base ?? {}) };
+      typeof maskedPublic === 'string' ? { content: maskedPublic } : { ...((maskedPublic ?? {}) as InteractionReplyOptions) };
     // Enforce public visibility for shared message (strip ephemeral if present)
     const { ephemeral: _ignored, ...rest } = publicPayload as InteractionReplyOptions & {
       ephemeral?: boolean;
