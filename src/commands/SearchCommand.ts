@@ -223,7 +223,7 @@ export class SearchCommand extends BaseCommand {
       const searchParams = await this.extractAndValidateParams(interaction);
 
       // Відкладена відповідь
-      await interaction.deferReply();
+      await interaction.deferReply({ ephemeral: true });
 
       // Логування початку пошуку
       {
@@ -888,18 +888,18 @@ export class SearchCommand extends BaseCommand {
       const now = Math.floor(Date.now() / 1000);
       const session = SearchCommand.sessions.get(sid);
       if (!session) {
-        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+        await replyWithPrivacy(interaction, { content: t('doc.sessionExpired') }, { ephemeralByDefault: true, shareFlagSupport: true });
         return;
       }
       // Check server-side TTL
       if (now - session.timestamp > SearchCommand.SESSION_TTL_SEC) {
         SearchCommand.sessions.delete(sid);
-        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+        await replyWithPrivacy(interaction, { content: t('doc.sessionExpired') }, { ephemeralByDefault: true, shareFlagSupport: true });
         return;
       }
       // Owner restriction
       if (interaction.user?.id && interaction.user.id !== session.userId) {
-        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
+        await replyWithPrivacy(interaction, { content: t('doc.sessionExpired') }, { ephemeralByDefault: true, shareFlagSupport: true });
         return;
       }
       if (action === 'close') {
@@ -934,11 +934,7 @@ export class SearchCommand extends BaseCommand {
     } catch (error) {
       logger.error('SearchCommand component error', { error: String(error) });
       try {
-        if (!interaction.deferred && !interaction.replied) {
-          await interaction.reply({ content: t('files.error.process'), ephemeral: true });
-        } else {
-          await interaction.followUp({ content: t('files.error.process'), ephemeral: true });
-        }
+        await replyWithPrivacy(interaction, { content: t('files.error.process') }, { ephemeralByDefault: true, shareFlagSupport: true });
       } catch {}
     }
   }
