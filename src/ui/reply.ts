@@ -18,6 +18,10 @@ export type ShareReplyOptions = {
   public?: string | BaseMessageOptions | InteractionReplyOptions;
   // Override default ephemeral flag for the first reply
   ephemeral?: boolean;
+  // If provided, defines what the default ephemeral behavior should be when 'ephemeral' is not set
+  ephemeralByDefault?: boolean;
+  // If true, allows inferring share/public from the payload itself (e.g. payload.share === true)
+  shareFlagSupport?: boolean;
 };
 
 export async function replyWithPrivacy(
@@ -25,8 +29,23 @@ export async function replyWithPrivacy(
   content: string | InteractionReplyOptions,
   opts: ShareReplyOptions = {}
 ): Promise<void> {
-  const ephemeral = opts.ephemeral ?? true; // ephemeral by default
-  const firstReply: InteractionReplyOptions = typeof content === 'string' ? { content, ephemeral } : { ...content, ephemeral };
+  // Determine default ephemeral behavior
+  const ephemeralDefault = opts.ephemeralByDefault ?? true;
+  const ephemeral = opts.ephemeral ?? ephemeralDefault;
+
+  // Infer share/public from payload when enabled and not explicitly set
+  let share = opts.share;
+  let publicFromPayload: string | BaseMessageOptions | InteractionReplyOptions | undefined = opts.public;
+  if (share === undefined && opts.shareFlagSupport && typeof content !== 'string') {
+    const anyContent = content as any;
+    if (anyContent && (anyContent.share === true || anyContent?.flags?.share === true)) {
+      share = true;
+      publicFromPayload = publicFromPayload ?? anyContent.public;
+    }
+  }
+
+  const firstReply: InteractionReplyOptions =
+    typeof content === 'string' ? { content, ephemeral } : { ...content, ephemeral };
 
   if (!interaction.deferred && !interaction.replied) {
     await interaction.reply(firstReply);
@@ -34,11 +53,15 @@ export async function replyWithPrivacy(
     await interaction.followUp(firstReply);
   }
 
-  if (opts.share) {
-    const publicPayload: InteractionReplyOptions = typeof opts.public === 'string' ? { content: opts.public } : { ...(opts.public ?? {}) };
-    // Enforce public visibility for shared message
-    delete (publicPayload as any).ephemeral;
+  if (share) {
+    const base = publicFromPayload ?? opts.public;
+    const publicPayload: InteractionReplyOptions =
+      typeof base === 'string' ? { content: base } : { ...(base ?? {}) };
+    // Enforce public visibility for shared message (strip ephemeral if present)
+    const { ephemeral: _ignored, ...rest } = publicPayload as InteractionReplyOptions & {
+      ephemeral?: boolean;
+    };
 
-    await interaction.followUp(publicPayload);
+    await interaction.followUp(rest);
   }
 }
