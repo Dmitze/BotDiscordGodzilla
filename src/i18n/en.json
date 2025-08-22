@@ -5,6 +5,14 @@
       "unexpected": "❌ Unexpected error. Please try again or contact the administrator."
     }
   },
+  "security": {
+    "component": {
+      "expired": "⏳ Action invalid: button expired. Please try again.",
+      "invalid": "🚫 Invalid action. Please re-run the command.",
+      "expiredId": "⏳ Action invalid: button expired. Please try again.",
+      "invalidId": "🚫 Invalid action. Please re-run the command."
+    }
+  },
   "commands": {
     "search": {
       "name": "search",
