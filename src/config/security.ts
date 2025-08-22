@@ -57,9 +57,17 @@ export const SecurityConfigSchema = z.object({
 
 export type SecurityConfig = z.infer<typeof SecurityConfigSchema>;
 
+// Ensure allowlist satisfies tuple type [string, ...string[]]
+const MIME_ALLOWLIST: [string, ...string[]] = (() => {
+  const envList = jsonArr(process.env['SECURITY_MIME_ALLOWLIST'], DEFAULT_MIME_ALLOWLIST);
+  const arr = envList && envList.length > 0 ? envList : DEFAULT_MIME_ALLOWLIST;
+  // Cast is safe due to non-empty check
+  return arr as [string, ...string[]];
+})();
+
 const raw: SecurityConfig = {
   mime: {
-    allowlist: jsonArr(process.env['SECURITY_MIME_ALLOWLIST'], DEFAULT_MIME_ALLOWLIST),
+    allowlist: MIME_ALLOWLIST,
   },
   file: {
     maxBytes: num(process.env['SECURITY_MAX_BYTES'], DEFAULT_MAX_BYTES),
