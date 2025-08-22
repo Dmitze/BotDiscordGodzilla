@@ -94,7 +94,7 @@ export class AIAssistantCommand extends BaseCommand {
       }
 
       // Миттєво відправляємо defer, щоб уникнути таймауту Discord ("Приложение не отвечает")
-      await interaction.deferReply();
+      await interaction.deferReply({ ephemeral: true });
 
       // Валідація параметрів
       const commandOptions: AICommandOptions = {
