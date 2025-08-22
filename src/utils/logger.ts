@@ -426,8 +426,8 @@ class Logger {
       // Додавання до буфера
       this.addToBuffer(level, message, safeMeta);
 
-      // Логування через winston
-      this.logger.log(level, message, safeMeta);
+      // Логування через winston (object signature)
+      this.logger.log({ level, message, ...(safeMeta as Record<string, unknown>) });
 
       const duration = performance.now() - startTime;
       if (duration > 100) {
@@ -687,6 +687,45 @@ class Logger {
       type: 'system',
       component: (details as any)['component'] || 'unknown',
     });
+  }
+
+  /**
+   * Структурований лог із нормалізацією схеми полів
+   * Гарантує базову схему, санітизується стандартним шляхом
+   */
+  public logStructured(
+    level: 'info' | 'warn' | 'error' | 'debug',
+    message: string,
+    meta: LogMeta = {}
+  ): void {
+    this.log(level, message, { ...meta });
+  }
+
+  /**
+   * Таймер для структурованого логування: додає latencyMs та success автоматично
+   * При завершенні виклику end() буде записано структурований лог
+   */
+  public startStructuredTimer(
+    event: string,
+    baseMeta: LogMeta = {},
+    level: 'info' | 'warn' | 'error' | 'debug' = 'info'
+  ): { end: (success?: boolean, extraMeta?: LogMeta, message?: string) => number } {
+    const started = Date.now();
+    return {
+      end: (success: boolean = true, extraMeta: LogMeta = {}, message?: string): number => {
+        const latencyMs = Date.now() - started;
+        const meta: LogMeta = {
+          ...baseMeta,
+          ...extraMeta,
+          event,
+          success,
+          latencyMs,
+          type: (baseMeta as any)['type'] || 'structured',
+        };
+        this.log(level, message ?? `Подія: ${event}`, meta);
+        return latencyMs;
+      },
+    };
   }
 
   /**
