@@ -19,7 +19,7 @@ export class IntentDetector {
     ai?: AIService,
     opts: { aiTimeoutMs?: number; aiMaxTokens?: number } = {}
   ) {
-    this.ai = ai;
+    if (ai) this.ai = ai; // Guard assignment for exactOptionalPropertyTypes
     this.opts = opts;
   }
 
@@ -28,7 +28,7 @@ export class IntentDetector {
 
   // Allow late injection from Bot/ServiceManager
   public setAI(ai?: AIService): void {
-    this.ai = ai;
+    if (ai) this.ai = ai;
   }
 
   public setOptions(opts: { aiTimeoutMs?: number; aiMaxTokens?: number }): void {
@@ -180,7 +180,7 @@ export class IntentDetector {
       const type = (obj.type || 'UNKNOWN') as IntentType;
       const confidence = typeof obj.confidence === 'number' ? obj.confidence : 0.5;
       const params = (obj.params && typeof obj.params === 'object') ? (obj.params as Record<string, string>) : undefined;
-      const base: DetectedIntent = { type, confidence } as DetectedIntent;
+      const base: DetectedIntent = { type, confidence };
       return params ? { ...base, params } : base;
     } catch {
       return null;
