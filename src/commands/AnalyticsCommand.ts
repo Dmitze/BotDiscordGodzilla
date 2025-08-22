@@ -132,7 +132,11 @@ export class AnalyticsCommand extends BaseCommand {
       if (report.exportUrl) {
         content += `\nПосилання на експорт: ${report.exportUrl}`;
       }
-      await interaction.reply({ content });
+      await replyWithPrivacy(
+        interaction,
+        { content },
+        { ephemeralByDefault: true, shareFlagSupport: true }
+      );
     } catch (error) {
       await replyWithPrivacy(interaction, { content: '❌ Помилка генерації звіту' });
     }
@@ -158,7 +162,11 @@ export class AnalyticsCommand extends BaseCommand {
         if (typeof stats.totalUsers !== 'undefined') embed.addFields({ name: 'Користувачі', value: String(stats.totalUsers), inline: true });
         if (typeof stats.totalCommands !== 'undefined') embed.addFields({ name: 'Команди', value: String(stats.totalCommands), inline: true });
       }
-      await interaction.reply({ embeds: [embed] });
+      await replyWithPrivacy(
+        interaction,
+        { embeds: [embed] },
+        { ephemeralByDefault: true, shareFlagSupport: true }
+      );
     } catch {
       await replyWithPrivacy(interaction, { content: '❌ Помилка отримання статистики' });
     }
@@ -169,7 +177,11 @@ export class AnalyticsCommand extends BaseCommand {
     try {
       const analyticsService = (interaction.client as any)?.serviceContainer?.get('AnalyticsService');
       const trends = await analyticsService.getTrends(period);
-      await interaction.reply({ content: `✅ Тренди за період ${period}: ${trends?.trends?.length ?? 0}` });
+      await replyWithPrivacy(
+        interaction,
+        { content: `✅ Тренди за період ${period}: ${trends?.trends?.length ?? 0}` },
+        { ephemeralByDefault: true, shareFlagSupport: true }
+      );
     } catch {
       await replyWithPrivacy(interaction, { content: '❌ Помилка отримання трендів' });
     }
@@ -182,7 +194,11 @@ export class AnalyticsCommand extends BaseCommand {
       const msgs: string[] = [];
       if (data?.insights?.length) msgs.push('• ' + data.insights.join('\n• '));
       if (data?.recommendations?.length) msgs.push('\nРекомендації:\n• ' + data.recommendations.join('\n• '));
-      await interaction.reply({ content: msgs.join('\n') || 'Немає інсайтів' });
+      await replyWithPrivacy(
+        interaction,
+        { content: msgs.join('\n') || 'Немає інсайтів' },
+        { ephemeralByDefault: true, shareFlagSupport: true }
+      );
     } catch {
       await replyWithPrivacy(interaction, { content: '❌ Помилка отримання інсайтів' });
     }
