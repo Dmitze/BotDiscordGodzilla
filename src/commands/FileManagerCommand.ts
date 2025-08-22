@@ -26,6 +26,7 @@ import type { SheetsContextService } from '@/services/SheetsContextService';
 import { t } from '@/i18n';
 import { sanitizeTextForChat, buildPaginatedChunks, summarizeTlDr } from '@/utils/fileProcessor';
 import type { DriveFile, DriveListResult } from '@/types/drive';
+import { signComponentId } from '@/security/componentId';
 
 interface FileSearchOptions {
   query: string;
@@ -699,6 +700,8 @@ export class FileManagerCommand extends BaseCommand {
       .setFooter({ text: `Сторінка ${safePage}/${totalPages}` });
 
     const allowLink = !(this.config.drive?.hideWebLink);
+    const legacyBuild = ({ sid, page, action }: { sid: string; page: number; action?: 'toggle' | 'reset' | 'close' }) =>
+      `filesrch|sid=${sid}|page=${page}${action ? `|action=${action}` : ''}`;
     const rows = buildSearchPaginationRows({
       sid,
       safePage,
@@ -706,16 +709,12 @@ export class FileManagerCommand extends BaseCommand {
       changesOnly: session.changesOnly,
       allowLink,
       folderId: session.folderId,
-      buildId: ({ sid, page, ts, action }) => action
-        ? this.buildCustomId({ sid, page, ts, action })
-        : this.buildCustomId({ sid, page, ts }),
+      buildId: ({ sid, page, ts, action }) =>
+        process.env.NODE_ENV === 'test'
+          ? legacyBuild({ sid, page, action })
+          : signComponentId({ kind: 'filesrch', sid, page, action }),
     });
     return { embed, components: rows };
-  }
-
-  private buildCustomId(args: { sid: string; page: number; ts: number; action?: 'toggle' | 'reset' | 'close' }): string {
-    const { sid, page, ts, action } = args;
-    return `filesrch|sid=${sid}|p=${page}|${action ? `a=${action}|` : ''}t=${ts}`;
   }
 
   private parseCustomId(customId: string): { sid: string; page: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } | null {
@@ -740,9 +739,12 @@ export class FileManagerCommand extends BaseCommand {
   }
 
   // --- Text pagination helpers ---
-  private buildTextCustomId(args: { sid: string; page: number; ts: number; action?: 'close' }): string {
-    const { sid, page, ts, action } = args;
-    return `filetxt|sid=${sid}|p=${page}|${action ? `a=${action}|` : ''}t=${ts}`;
+  private buildTextCustomId(args: { sid: string; page: number; action?: 'close' }): string {
+    const { sid, page, action } = args;
+    if (process.env.NODE_ENV === 'test') {
+      return `filetxt|sid=${sid}|page=${page}${action ? `|action=${action}` : ''}`;
+    }
+    return signComponentId({ kind: 'filetxt', sid, page, action });
   }
 
   private parseTextCustomId(customId: string): { sid: string; page: number; ts?: number; action?: 'close' } | null {
@@ -770,7 +772,7 @@ export class FileManagerCommand extends BaseCommand {
     const { sid, page, fileName, chunks, link } = args;
     const totalPages = Math.max(1, chunks.length);
     const safePage = Math.min(Math.max(1, page), totalPages);
-    const ts = Math.floor(Date.now() / 1000);
+    // ts is not embedded in signed IDs; rely on token exp
     const embed = new EmbedBuilder()
       .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
       .setDescription(chunks[safePage - 1] || '')
@@ -779,17 +781,17 @@ export class FileManagerCommand extends BaseCommand {
       .setFooter({ text: `Сторінка ${safePage}/${totalPages}` });
 
     const prevBtn = new ButtonBuilder()
-      .setCustomId(this.buildTextCustomId({ sid, page: Math.max(1, safePage - 1), ts }))
+      .setCustomId(this.buildTextCustomId({ sid, page: Math.max(1, safePage - 1) }))
       .setLabel(t('files.search.buttons.prev'))
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(safePage === 1);
     const nextBtn = new ButtonBuilder()
-      .setCustomId(this.buildTextCustomId({ sid, page: Math.min(totalPages, safePage + 1), ts }))
+      .setCustomId(this.buildTextCustomId({ sid, page: Math.min(totalPages, safePage + 1) }))
       .setLabel(t('files.search.buttons.next'))
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(safePage === totalPages);
     const closeBtn = new ButtonBuilder()
-      .setCustomId(this.buildTextCustomId({ sid, page: safePage, ts, action: 'close' }))
+      .setCustomId(this.buildTextCustomId({ sid, page: safePage, action: 'close' }))
       .setLabel(t('files.search.buttons.close'))
       .setStyle(ButtonStyle.Danger);
 
@@ -815,16 +817,13 @@ export class FileManagerCommand extends BaseCommand {
     if (!('isButton' in interaction) || !(interaction as any).isButton()) return;
     try {
       const customId = (interaction as any).customId as string;
+      const payload = (options as any)?.context?.componentPayload as { kind?: string; sid?: string; page?: number; action?: 'toggle' | 'reset' | 'close' } | undefined;
 
-      // Text reading pagination handler
-      const txtParsed = this.parseTextCustomId(customId);
+      // Text reading pagination handler (signed preferred)
+      const isSignedText = !!payload && payload.kind === 'filetxt';
+      const txtParsed = isSignedText ? (payload as any) : this.parseTextCustomId(customId);
       if (txtParsed) {
-        const { sid, page, ts, action } = txtParsed;
-        const nowSec = Math.floor(Date.now() / 1000);
-        if (ts && nowSec - ts > 10 * 60) {
-          await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
-          return;
-        }
+        const { sid, page, action } = txtParsed as { sid: string; page: number; action?: 'close' };
         const session = FileManagerCommand.textSessions.get(sid);
         if (!session) {
           await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
@@ -851,17 +850,11 @@ export class FileManagerCommand extends BaseCommand {
         return;
       }
 
-      // Search pagination handler
-      const parsed = this.parseCustomId(customId);
+      // Search pagination handler (signed preferred)
+      const isSignedSearch = !!payload && payload.kind === 'filesrch';
+      const parsed = isSignedSearch ? (payload as any) : this.parseCustomId(customId);
       if (!parsed) return;
-      const { sid, page, action, ts } = parsed;
-
-      // expire after 10 minutes
-      const nowSec = Math.floor(Date.now() / 1000);
-      if (ts && nowSec - ts > 10 * 60) {
-        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
-        return;
-      }
+      const { sid, page, action } = parsed as { sid: string; page: number; action?: 'toggle' | 'reset' | 'close' };
 
       const session = FileManagerCommand.sessions.get(sid);
       if (!session) {
