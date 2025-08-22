@@ -283,9 +283,9 @@ class ServiceManager {
   /**
    * Отримання сервісу за назвою
    */
-  getService(name: string): Service | undefined {
-    return this.services.get(name);
-  }
+  // getService(name: string): Service | undefined { // removed duplicate; prefer generic variant above
+  //   return this.services.get(name);
+  // }
 
   /**
    * Перевірка наявності сервісу
@@ -304,9 +304,9 @@ class ServiceManager {
   /**
    * Отримання назв всіх сервісів
    */
-  getServiceNames(): string[] {
-    return Array.from(this.services.keys());
-  }
+  // getServiceNames(): string[] { // removed duplicate; prefer public generic variant above
+  //   return Array.from(this.services.keys());
+  // }
 
   /**
    * Виконання методу на всіх сервісах
