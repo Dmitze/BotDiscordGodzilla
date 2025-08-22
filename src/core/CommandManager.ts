@@ -12,6 +12,11 @@ import type { SheetsContextService } from '@/services/SheetsContextService';
 import { replyWithPrivacy } from '@/ui/reply';
 import { tUser } from '@/i18n';
 import { AppError } from '@/core/errors/AppError';
+import { normalizeText } from '@/nlp/normalize';
+import { detectIntent } from '@/nlp/IntentDetector';
+import type { ClassifyIntentFn } from '@/nlp/IntentDetector';
+import { detectLanguage } from '@/nlp/LanguageDetector';
+import { validateInput } from '@/utils/security';
 
 // Імпорт всіх команд
 import { SearchCommand } from '@/commands/SearchCommand';
@@ -464,6 +469,72 @@ export class CommandManager {
         });
       }
     });
+
+    // Гейтований слухач повідомлень для NLP intent (не впливає на поточну поведінку)
+    try {
+      if ((this.config as any)?.nlp?.enableIntent) {
+        (this.bot.client as any).on('messageCreate', async (message: any) => {
+          try {
+            if (!message || message.author?.bot) return;
+            const content: string = String(message.content ?? '');
+            if (!content.trim()) return;
+
+            // Валідація безпеки вводу
+            try {
+              const valid = await Promise.resolve(validateInput(content));
+              if (valid && (valid as any).isValid === false) {
+                // Не відповідаємо, лише лог
+                logger.debug('intent_skip_invalid', { reason: (valid as any).reason });
+                return;
+              }
+            } catch {
+              // ignore validation errors
+            }
+
+            // Нормалізація і мова
+            const normalized = normalizeText(content);
+            const lang = detectLanguage(normalized);
+
+            // Опційний AI fallback через AIService (якщо доступний)
+            let classify: ClassifyIntentFn | undefined;
+            try {
+              const ai = this.bot.getService?.('ai') as any;
+              if (ai && typeof ai.classifyIntent === 'function') {
+                classify = async (text, opts) => {
+                  const res = await ai.classifyIntent(text, opts);
+                  return { intent: res?.intent, confidence: res?.confidence };
+                };
+              }
+            } catch {
+              // no ai fallback
+            }
+
+            const options: Parameters<typeof detectIntent>[1] = {
+              timeoutMs: 2000,
+              maxTokens: 128,
+              defaultLocale: 'uk',
+            };
+            if (classify) {
+              (options as any).classifyIntent = classify;
+            }
+            const detected = await detectIntent(normalized, options);
+
+            logger.debug('intent_detected', {
+              userId: message.author?.id,
+              guildId: message.guild?.id,
+              channelId: message.channel?.id,
+              lang,
+              ...detected,
+            });
+            // На цьому етапі лише логування; маршрутизацію увімкнемо пізніше за погодженням
+          } catch (e) {
+            logger.debug('intent_listener_failed', { error: e instanceof Error ? e.message : String(e) });
+          }
+        });
+      }
+    } catch {
+      // ignore listener setup errors
+    }
   }
 
   /**
