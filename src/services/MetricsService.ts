@@ -412,6 +412,7 @@ export class MetricsService extends BaseServiceClass {
       this.server = http.createServer(async (req: any, res: any) => {
         try {
           if (req.url === this.config.metrics.path) {
+            // Prometheus scrape endpoint
             res.writeHead(200, { 'Content-Type': 'text/plain' });
 
             if (this.registry) {
@@ -420,10 +421,19 @@ export class MetricsService extends BaseServiceClass {
             } else {
               res.end('# Metrics not available');
             }
-          } else {
-            res.writeHead(404);
-            res.end('Not Found');
+            return;
           }
+
+          if (req.url === '/health' || req.url === '/ready') {
+            // Lightweight JSON health endpoints
+            const payload = JSON.stringify({ status: 'ok', service: this.name, ready: true });
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(payload);
+            return;
+          }
+
+          res.writeHead(404);
+          res.end('Not Found');
         } catch (error) {
           logger.error('Помилка обробки metrics запиту:', {
             type: 'metrics_service',
@@ -603,36 +613,38 @@ export class MetricsService extends BaseServiceClass {
   /**
    * Labeled variant for command duration with guildId
    */
-  public measureCommandDurationLabeled(command: string, guildId: string | undefined, durationMs: number): void {
-    if (!this.metrics) return;
-    this.metrics.commandDurationLabeled.observe({ command, guildId: guildId ?? 'unknown' }, durationMs / 1000);
-  }
+  // Duplicate older variant kept for history; prefer the robust version below (~766)
+  // public measureCommandDurationLabeled(command: string, guildId: string | undefined, durationMs: number): void {
+  //   if (!this.metrics) return;
+  //   this.metrics.commandDurationLabeled.observe({ command, guildId: guildId ?? 'unknown' }, durationMs / 1000);
+  // }
 
   /**
    * Labeled Google API metrics with guildId/route/mime
    */
-  public updateGoogleApiMetricsLabeled(params: {
-    service: string;
-    endpoint: string;
-    status: string;
-    durationMs: number;
-    guildId?: string | null;
-    route?: string | null;
-    mime?: string | null;
-  }): void {
-    if (!this.metrics) return;
-    const { service, endpoint, status, durationMs, guildId, route, mime } = params;
-    this.metrics.googleApiRequestsLabeled.inc({
-      service,
-      endpoint,
-      status,
-      guildId: guildId ?? 'unknown',
-      route: route ?? 'unknown',
-      mime: mime ?? 'unknown',
-    });
-    // keep response time in base histogram to avoid label bloat
-    this.metrics.googleApiResponseTime.observe({ service }, durationMs / 1000);
-  }
+  // Duplicate older variant kept for history; prefer the robust version below (~797)
+  // public updateGoogleApiMetricsLabeled(params: {
+  //   service: string;
+  //   endpoint: string;
+  //   status: string;
+  //   durationMs: number;
+  //   guildId?: string | null;
+  //   route?: string | null;
+  //   mime?: string | null;
+  // }): void {
+  //   if (!this.metrics) return;
+  //   const { service, endpoint, status, durationMs, guildId, route, mime } = params;
+  //   this.metrics.googleApiRequestsLabeled.inc({
+  //     service,
+  //     endpoint,
+  //     status,
+  //     guildId: guildId ?? 'unknown',
+  //     route: route ?? 'unknown',
+  //     mime: mime ?? 'unknown',
+  //   });
+  //   // keep response time in base histogram to avoid label bloat
+  //   this.metrics.googleApiResponseTime.observe({ service }, durationMs / 1000);
+  // }
 
   /**
    * Оновлення метрик кешу
@@ -747,6 +759,61 @@ export class MetricsService extends BaseServiceClass {
       guildId: guildId ?? 'unknown',
       route: route ?? 'unknown',
     });
+  }
+
+  /**
+   * Вимірювання тривалості виконання команди з детальними лейблами
+   * Передавайте durationMs у мілісекундах
+   */
+  public measureCommandDurationLabeled(
+    command: string,
+    guildId: string | null,
+    durationMs: number
+  ): void {
+    if (!this.metrics) return;
+    this.metrics.commandDurationLabeled.observe(
+      { command, guildId: guildId ?? 'unknown' },
+      durationMs / 1000
+    );
+  }
+
+  /**
+   * Зручний таймер для команд: повертає end(success?) який зафіксує тривалість
+   */
+  public startCommandTimerLabeled(command: string, guildId?: string | null): { end: () => number } {
+    const started = Date.now();
+    return {
+      end: () => {
+        const dur = Date.now() - started;
+        try {
+          this.measureCommandDurationLabeled(command, guildId ?? null, dur);
+        } catch {}
+        return dur;
+      },
+    };
+  }
+
+  /**
+   * Оновлення Google API метрик з розширеними лейблами (guildId/route/mime)
+   */
+  public updateGoogleApiMetricsLabeled(
+    service: string,
+    endpoint: string,
+    status: string,
+    durationMs: number,
+    labels?: { guildId?: string | null; route?: string | null; mime?: string | null }
+  ): void {
+    if (!this.metrics) return;
+    const guildId = labels?.guildId ?? 'unknown';
+    const route = labels?.route ?? 'unknown';
+    const mime = labels?.mime ?? 'unknown';
+    try {
+      this.metrics.googleApiRequestsLabeled.inc({ service, endpoint, status, guildId, route, mime });
+    } catch {}
+    try {
+      // Також оновимо базові метрики для зворотної сумісності
+      this.updateGoogleApiMetrics(service, endpoint, status, durationMs);
+    } catch {}
   }
 
   /**
