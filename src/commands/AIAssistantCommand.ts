@@ -57,7 +57,7 @@ export class AIAssistantCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
 
   constructor(config: BotConfig, googleService?: GoogleService) {
-    super('ai_асистент', t('ai.command.description'), config, {
+    super('ai', t('ai.command.description'), config, {
       i18n: { nameKey: 'commands.ai.name', descriptionKey: 'ai.command.description' }
     }, (builder: SlashCommandBuilder): SlashCommandBuilder => {
       builder.addStringOption((option: SlashCommandStringOption) =>
@@ -164,7 +164,7 @@ export class AIAssistantCommand extends BaseCommand {
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
-        await replyWithPrivacy(interaction as any, { content: errorMessage });
+        await replyWithPrivacy(interaction as any, { content: errorMessage }, { ephemeralByDefault: true, shareFlagSupport: true });
       }
     }
   }
@@ -222,7 +222,11 @@ export class AIAssistantCommand extends BaseCommand {
           command: interaction.commandName,
         });
 
-        await replyWithPrivacy(interaction as any, { content: t('ai.error.accessDenied', { reason: result.reason || '' }) });
+        await replyWithPrivacy(
+          interaction as any,
+          { content: t('ai.error.accessDenied', { reason: result.reason || '' }) },
+          { ephemeralByDefault: true, shareFlagSupport: true }
+        );
         return false;
       }
 
@@ -249,7 +253,11 @@ export class AIAssistantCommand extends BaseCommand {
         severity: 'high',
       });
       // За замовчуванням не пускати у разі помилки
-      await replyWithPrivacy(interaction as any, { content: t('ai.error.permissionCheck') });
+      await replyWithPrivacy(
+        interaction as any,
+        { content: t('ai.error.permissionCheck') },
+        { ephemeralByDefault: true, shareFlagSupport: true }
+      );
       return false;
     }
   }
