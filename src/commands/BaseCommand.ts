@@ -594,7 +594,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await replyWithPrivacy(interaction as any, { embeds: [embed] });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
       }
     } catch (error) {
       logger.error('Помилка відправки cooldown повідомлення:', { error });
@@ -618,7 +618,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await replyWithPrivacy(interaction as any, { embeds: [embed] });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
       }
     } catch (error) {
       logger.error('Помилка відправки кешованого результату:', { error });
@@ -643,7 +643,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await replyWithPrivacy(interaction as any, { embeds: [embed] });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
       }
     } catch (error) {
       logger.error('Помилка відправки повідомлення про валідацію:', { error });
@@ -664,7 +664,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await replyWithPrivacy(interaction as any, { embeds: [embed] });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
       }
     } catch (error) {
       logger.error('Помилка відправки повідомлення про зупинку:', { error });
@@ -703,7 +703,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await replyWithPrivacy(interaction as any, { embeds: [embed] });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
       }
     } catch (replyError) {
       logger.error('Помилка відправки повідомлення про помилку:', { error: replyError });
@@ -747,7 +747,7 @@ export abstract class BaseCommand {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await replyWithPrivacy(interaction as any, { embeds: [embed] });
+        await replyWithPrivacy(interaction as any, { embeds: [embed] }, { ephemeralByDefault: true, shareFlagSupport: true });
       }
     } catch (replyError) {
       logger.error('Помилка відправки повідомлення про помилку компонента:', { error: replyError });
