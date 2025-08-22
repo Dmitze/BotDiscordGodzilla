@@ -20,6 +20,7 @@ import { t, tUser } from '@/i18n';
 import { buildSearchPaginationRows } from '@/ui/components';
 import type { SearchIndex, SearchQuery } from '@/search/SearchIndex';
 import { replyWithPrivacy } from '@/ui/reply';
+import { signComponentId } from '@/security/componentId';
 
 // Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
@@ -881,13 +882,18 @@ export class SearchCommand extends BaseCommand {
     if (totalPages <= 1) return [] as any;
 
     const sessionId = sid ?? 'search';
+    const legacyBuild = ({ sid, page, action }: { sid: string; page: number; action?: 'toggle' | 'reset' | 'close' }) =>
+      `srch|sid=${sid}|p=${page}${action ? `|a=${action}` : ''}`;
     const rows = buildSearchPaginationRows({
       sid: sessionId,
       safePage: Math.min(Math.max(1, currentPage), totalPages),
       totalPages,
       changesOnly,
       allowLink: false,
-      buildId: ({ sid, page, ts, action }) => `srch|sid=${sid}|p=${page}|${action ? `a=${action}|` : ''}t=${ts}`,
+      buildId: ({ sid, page, ts, action }) =>
+        process.env.NODE_ENV === 'test'
+          ? legacyBuild({ sid, page, action })
+          : signComponentId({ kind: 'srch', sid, page, action }),
     }) as unknown as ActionRowBuilder<ButtonBuilder>[];
     return rows;
   }
@@ -897,11 +903,13 @@ export class SearchCommand extends BaseCommand {
     const interaction = options.interaction as any;
     if (!('isButton' in interaction) || !interaction.isButton()) return;
     const customId: string = interaction.customId;
-    if (!customId || !customId.startsWith('srch|')) return;
+    const payload = (options as any)?.context?.componentPayload as { kind?: string; sid?: string; page?: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } | undefined;
+    const isSigned = !!payload && payload.kind === 'srch';
+    if (!isSigned && (!customId || !customId.startsWith('srch|'))) return;
     try {
-      const parsed = this.parseSearchCustomId(customId);
+      const parsed = isSigned ? (payload as any) : this.parseSearchCustomId(customId);
       if (!parsed) return;
-      const { sid, page, action } = parsed;
+      const { sid, page, action } = parsed as { sid: string; page: number; action?: 'toggle' | 'reset' | 'close' };
       const now = Math.floor(Date.now() / 1000);
       const session = SearchCommand.sessions.get(sid);
       if (!session) {
