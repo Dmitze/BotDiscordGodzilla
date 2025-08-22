@@ -65,7 +65,9 @@ describe('DocumentsCommand', () => {
       await documentsCommand.execute(mockInteraction);
 
       expect(mockInteraction.reply).toHaveBeenCalledWith(
-        expect.stringContaining('Невідома підкоманда')
+        expect.objectContaining({
+          content: expect.stringContaining('Невідома підкоманда'),
+        })
       );
     });
 
@@ -79,7 +81,9 @@ describe('DocumentsCommand', () => {
       await documentsCommand.execute(mockInteraction);
 
       expect(mockInteraction.reply).toHaveBeenCalledWith(
-        expect.stringContaining('Помилка обробки документів')
+        expect.objectContaining({
+          content: expect.stringContaining('Помилка обробки документів'),
+        })
       );
     });
   });
