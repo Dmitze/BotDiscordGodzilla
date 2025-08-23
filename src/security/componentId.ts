@@ -52,7 +52,7 @@ function fromCompactPayload<T extends Record<string, any>>(obj: Record<string, a
   const out: Record<string, any> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (k === 'e') {
-      out.exp = v as number;
+      (out as any)['exp'] = v as number;
       continue;
     }
     const full = expandMap[k] || k;
