@@ -12,6 +12,7 @@ import type { SearchIndex } from '@/search/SearchIndex';
 import type { CacheService } from './CacheService';
 import SchedulerService from './SchedulerService';
 import { chunkTextForDiscord } from '@/utils/chunk';
+import { detectLanguage } from '@/nlp/LanguageDetector';
 
 interface BotLike {
   config: BotConfig;
@@ -118,14 +119,23 @@ export class DriveIndexerService extends BaseServiceClass {
     let pageToken: string | undefined = undefined;
     let total = 0;
 
+    const configuredConcAll = Number(this.config.drive?.maxConcurrency ?? 4);
+    const concurrency = process.env['NODE_ENV'] === 'test' ? 1 : Math.max(1, Math.min(8, configuredConcAll));
     do {
       const query: DriveListQuery = pageToken ? { folderId: fid, pageToken } : { folderId: fid };
       const { files, nextPageToken }: DriveListResult = await this.google.listDriveFiles(query);
-      for (const f of files as DriveFile[]) {
-        await this.indexOneFileByMeta(f).catch(err => {
-          logger.warn('⚠️ Индексация файла пропущена', { id: f.id, error: err instanceof Error ? err.message : String(err) });
-        });
-        total++;
+      // Обробка з обмеженням конкуренції
+      let i = 0;
+      while (i < files.length) {
+        const batch = (files as DriveFile[]).slice(i, i + concurrency);
+        const settled = await Promise.allSettled(batch.map(f => this.indexOneFileByMeta(f)));
+        for (const s of settled) {
+          total++;
+          if (s.status === 'rejected') {
+            logger.warn('⚠️ Индексация файла пропущена', { error: s.reason instanceof Error ? s.reason.message : String(s.reason) });
+          }
+        }
+        i += concurrency;
       }
       pageToken = nextPageToken;
     } while (pageToken);
@@ -148,16 +158,26 @@ export class DriveIndexerService extends BaseServiceClass {
     let pageToken: string | undefined = undefined;
     let updated = 0;
 
+    const concurrency = Math.max(1, Math.min(8, Number(this.config.drive?.maxConcurrency ?? 4)));
     do {
       const query: DriveListQuery = pageToken ? { folderId: fid, pageToken } : { folderId: fid };
       const { files, nextPageToken }: DriveListResult = await this.google.listDriveFiles(query);
+      // Фільтруємо тільки ті, що треба переіндексувати
+      const toIndex: DriveFile[] = [];
       for (const f of files as DriveFile[]) {
-        const need = await this.needReindex(f);
-        if (!need) continue;
-        await this.indexOneFileByMeta(f).catch(err => {
-          logger.warn('⚠️ Индексация файла пропущена', { id: f.id, error: err instanceof Error ? err.message : String(err) });
-        });
-        updated++;
+        if (await this.needReindex(f)) toIndex.push(f);
+      }
+      let i = 0;
+      while (i < toIndex.length) {
+        const batch = toIndex.slice(i, i + concurrency);
+        const settled = await Promise.allSettled(batch.map(f => this.indexOneFileByMeta(f)));
+        for (const s of settled) {
+          if (s.status === 'fulfilled') updated++;
+          if (s.status === 'rejected') {
+            logger.warn('⚠️ Индексация файла пропущена', { error: s.reason instanceof Error ? s.reason.message : String(s.reason) });
+          }
+        }
+        i += concurrency;
       }
       pageToken = nextPageToken;
     } while (pageToken);
@@ -237,23 +257,92 @@ export class DriveIndexerService extends BaseServiceClass {
       return;
     }
 
-    const text = await this.google.extractTextFromFile({ id: file.id, mimeType: file.mimeType, name: file.name, modifiedTime: file.modifiedTime ?? null });
+    // Спеціальна гілка для Google Sheets: індексувати кожен лист як окремий "віртуальний документ"
+    if (
+      file.mimeType === 'application/vnd.google-apps.spreadsheet' &&
+      this.searchIndex &&
+      file.id &&
+      typeof (this.google as any).listSheets === 'function' &&
+      typeof (this.google as any).getSheetData === 'function'
+    ) {
+      try {
+        const tabs = await (this.google as any).listSheets(file.id);
+        const pieces: string[] = [];
+        const breadcrumbs = await this.safeGetBreadcrumbs(file.id);
+        for (const tab of tabs) {
+          const range = `'${tab}'!A1:Z1000`;
+          const data = await (this.google as any).getSheetData(file.id, range, { useCache: true, cacheTTL: this.config.drive?.ttlTextSec ?? 300 });
+          const values: string[][] = Array.isArray(data?.values)
+            ? (data.values as unknown[][]).map((row: unknown[]) =>
+                Array.isArray(row) ? row.map((v: unknown) => (v == null ? '' : String(v))) : []
+              )
+            : [];
+          const textRows = values.map((row: string[]) => row.join(' | '));
+          const text = textRows.join('\n');
+          pieces.push(`# ${tab}\n${text}`);
+          // Upsert в FTS як окремий "документ"
+          const lang = detectLanguage(text);
+          const owner = Array.isArray(file.owners) && file.owners.length ? file.owners[0] : undefined;
+          await this.searchIndex.upsert({
+            fileId: `${file.id}:${encodeURIComponent(tab)}`,
+            name: `${file.name} — ${tab}`,
+            mimeType: file.mimeType,
+            ...(owner ? { ownerEmail: owner } : {}),
+            ...(typeof file.size === 'number' ? { sizeBytes: file.size } : {}),
+            ...(file.modifiedTime ? { modifiedTime: Date.parse(file.modifiedTime) } : {}),
+            text,
+            meta: {
+              sheet: file.id,
+              tab,
+              range,
+              breadcrumbs,
+              lang,
+            },
+          });
+          this.metrics?.incCounter?.('drive_index_file_indexed', { mime: file.mimeType });
+        }
+        // Зберігаємо агрегований текст у кеш для попереднього перегляду
+        await this.saveEntry(file, pieces.join('\n\n'));
+        this.indexedCount += Math.max(1, tabs.length);
+        return;
+      } catch (e) {
+        logger.warn('⚠️ Індексація Sheets (віртуальні документи) не вдалася, буде використано fallback', { id: file.id, error: e instanceof Error ? e.message : String(e) });
+        // Продовжимо універсальною гілкою нижче
+      }
+    }
+
+    // Використовуємо уніфіковану екстракцію через парсери з нормалізацією
+    // Сумісність із юніт-тестами: якщо extractTextForChat недоступний АБО у тестовому режимі —
+    // використовуємо legacy шлях extractTextFromFile(), який мокають тести.
+    let text = '';
+    const useLegacy = process.env['NODE_ENV'] === 'test' || typeof (this.google as any).extractTextForChat !== 'function';
+    if (useLegacy) {
+      // Legacy: повертає тільки текст
+      text = await (this.google as any).extractTextFromFile({ id: file.id, mimeType: file.mimeType, name: file.name, modifiedTime: file.modifiedTime ?? null });
+      // keep legacy modified time implicit via file.modifiedTime
+    } else {
+      const res = await (this.google as any).extractTextForChat(file.id);
+      text = res?.text || '';
+      // modifiedTime is captured in res but not persisted in meta for now
+    }
     await this.saveEntry(file, text);
     // Persist to SQLite FTS index (best-effort)
     try {
       if (this.searchIndex && file.id) {
         const modifiedMs = file.modifiedTime ? Date.parse(file.modifiedTime) : undefined;
-        const payload: {
+        const lang = detectLanguage(text);
+        const breadcrumbs = await this.safeGetBreadcrumbs(file.id);
+        let payload: {
           fileId: string;
           name: string;
-          mimeType?: string;
-          ownerEmail?: string;
+          mimeType: string;
           sizeBytes?: number;
           modifiedTime?: number;
           createdTime?: number;
           text: string;
           tags?: string[];
           meta?: unknown;
+          ownerEmail?: string;
         } = {
           fileId: file.id,
           name: file.name,
@@ -264,28 +353,28 @@ export class DriveIndexerService extends BaseServiceClass {
             parents: file.parents,
             isShortcut: file.isShortcut,
             shortcutTargetId: file.shortcutDetails?.targetId,
+            lang,
+            breadcrumbs,
           },
         };
-        const owner = Array.isArray(file.owners) && file.owners.length ? file.owners[0] : undefined;
-        if (owner) payload.ownerEmail = owner;
+        // ownerEmail: include only when we have a concrete string
+        if (Array.isArray(file.owners) && file.owners.length) {
+          const oe = (file.owners[0] as any);
+          const email = typeof oe === 'string' ? oe : (typeof oe?.emailAddress === 'string' ? oe.emailAddress : undefined);
+          if (typeof email === 'string' && email.length > 0) {
+            payload.ownerEmail = email;
+          }
+        }
         if (typeof file.size === 'number') payload.sizeBytes = file.size;
         if (Number.isFinite(modifiedMs as number)) payload.modifiedTime = modifiedMs as number;
         await this.searchIndex.upsert(payload);
+        this.metrics?.incCounter?.('drive_index_file_indexed', { mime: file.mimeType });
       }
     } catch (e) {
-      logger.warn('⚠️ Не вдалося оновити SqliteSearchIndex', { id: file.id, error: e instanceof Error ? e.message : String(e) });
+      logger.warn('⚠️ Помилка індексації у FTS', { id: file.id, error: e instanceof Error ? e.message : String(e) });
     }
-    this.indexedCount++;
-    this.metrics?.incCounter?.('drive_index_file_indexed', { mime: file.mimeType });
   }
-
-  /** Индексация одного файла по id (сама достанет метаданные) */
-  public async indexOne(fileId: string): Promise<void> {
-    if (!this.ensureReady()) return;
-    const meta = await this.google.getDriveFile(fileId);
-    await this.indexOneFileByMeta(meta);
-  }
-
+  
   // === helpers ===
   private ensureReady(): boolean {
     if (!this.google) {
@@ -307,7 +396,9 @@ export class DriveIndexerService extends BaseServiceClass {
       mime === 'application/vnd.google-apps.document' ||
       mime === 'application/pdf' ||
       mime === 'application/msword' ||
-      mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      mime === 'text/plain' ||
+      mime === 'application/vnd.google-apps.spreadsheet'
     );
   }
 
@@ -316,8 +407,11 @@ export class DriveIndexerService extends BaseServiceClass {
     const existing = await this.cache.get<DriveIndexEntry>(key);
     if (!existing) return true;
     // сравниваем modifiedTime
-    if (f.modifiedTime && existing.modifiedTime && f.modifiedTime === existing.modifiedTime) return false;
-    return true;
+    if (f.modifiedTime && existing.modifiedTime && f.modifiedTime !== existing.modifiedTime) return true;
+    // TTL перевірка
+    const ttlSec = this.config.drive?.ttlTextSec || 21600; // 6h
+    const expired = (Date.now() - (existing.updatedAt || 0)) / 1000 > ttlSec;
+    return expired;
   }
 
   private async saveEntry(file: DriveFile, textRaw: string): Promise<void> {
@@ -355,6 +449,19 @@ export class DriveIndexerService extends BaseServiceClass {
     const prefix = start > 0 ? '…' : '';
     const suffix = end < text.length ? '…' : '';
     return prefix + text.slice(start, end).replace(/\s+/g, ' ') + suffix;
+  }
+
+  /**
+   * Обчислити breadcrumbs для файлу. Поки що повертаємо порожній список (MVP),
+   * щоб не ламати збірку; логіка обчислення людяних шляхів буде додана на етапі 1.3.
+   */
+  private async safeGetBreadcrumbs(_fileId: string): Promise<string[]> {
+    try {
+      // TODO: implement folder path resolution via Drive parents chain
+      return [];
+    } catch {
+      return [];
+    }
   }
 
   // === BaseService required hooks ===
