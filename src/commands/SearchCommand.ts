@@ -890,9 +890,9 @@ export class SearchCommand extends BaseCommand {
       totalPages,
       changesOnly,
       allowLink: false,
-      buildId: ({ sid, page, ts, action }) =>
-        process.env.NODE_ENV === 'test'
-          ? legacyBuild({ sid, page, action })
+      buildId: ({ sid, page, action }) =>
+        process.env['NODE_ENV'] === 'test'
+          ? (action != null ? legacyBuild({ sid, page, action }) : legacyBuild({ sid, page }))
           : signComponentId({ kind: 'srch', sid, page, action }),
     }) as unknown as ActionRowBuilder<ButtonBuilder>[];
     return rows;
