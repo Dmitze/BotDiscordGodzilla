@@ -37,3 +37,11 @@ CREATE TABLE IF NOT EXISTS document_versions (
 CREATE INDEX IF NOT EXISTS idx_documents_mime ON documents(mimeType);
 CREATE INDEX IF NOT EXISTS idx_documents_owner ON documents(ownerEmail);
 CREATE INDEX IF NOT EXISTS idx_documents_modified ON documents(modifiedTime);
+
+-- Cache for normalized content by hash (optional, used by higher-level services)
+CREATE TABLE IF NOT EXISTS segment_cache (
+  contentHash TEXT PRIMARY KEY,
+  text TEXT,
+  normText TEXT,
+  updatedAt INTEGER
+);
