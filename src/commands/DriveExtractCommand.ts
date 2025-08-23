@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import type { SlashCommandBuilder} from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { BaseCommand } from '@/commands/BaseCommand';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
