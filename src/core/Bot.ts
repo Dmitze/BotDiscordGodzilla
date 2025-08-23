@@ -16,7 +16,6 @@ import ServiceManager from './ServiceManager';
 import logger from '@/utils/logger';
 import { ChatRouter } from '@/chat/ChatRouter';
 import { IntentDetector } from '@/chat/IntentDetector';
-import type { AIService } from '@/services/AIService';
 import { MemoryService } from '@/chat/MemoryService';
 
 // Константи для конфігурації бота
