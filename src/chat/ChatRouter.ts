@@ -160,7 +160,21 @@ export class ChatRouter {
       content,
       ts: Date.now(),
     });
-    await msg.reply('Принято. Чат-режим активен. Генерация ответа ИИ будет подключена на следующем шаге.');
+    try {
+      const rag = this.getService?.('rag') as any;
+      if (rag?.answer) {
+        const res = await rag.answer(content, {
+          k: Number(process.env['RETRIEVER_K'] ?? 6),
+          alpha: Number(process.env['RETRIEVER_ALPHA'] ?? 0.5),
+        }, { maskPII: true }, { maxTokens: Number(process.env['AI_MAX_TOKENS'] ?? 512) });
+        const cite = res.chunks?.map((c: any, i: number) => `[${i + 1}] ${c.name}`).join(', ') || '—';
+        await msg.reply(`${res.answer}\n\nДжерела: ${cite}`);
+        return;
+      }
+      await msg.reply('Прийнято. Генератор відповідей ІІ наразі недоступний. Спробуйте /ai');
+    } catch (e) {
+      await msg.reply('❌ Помилка генерації відповіді. Спробуйте ще раз пізніше.');
+    }
   }
 
   private async replyUnknown(msg: Message): Promise<void> {
