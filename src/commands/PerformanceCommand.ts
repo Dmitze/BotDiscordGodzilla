@@ -3,7 +3,8 @@
  * Відстеження метрик та оптимізація системи
  */
 
-import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import type { ChatInputCommandInteraction } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';

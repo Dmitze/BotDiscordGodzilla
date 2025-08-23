@@ -4,21 +4,22 @@ import { t } from '@/i18n';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
 import type { SearchIndex, SearchQuery } from '@/search/SearchIndex';
-import { defaultWorkspaceService, WorkspaceService } from '@/services/WorkspaceService';
+import type { WorkspaceService } from '@/services/WorkspaceService';
+import { defaultWorkspaceService } from '@/services/WorkspaceService';
 import type { DriveListQuery } from '@/types/drive';
 import { replyWithPrivacy } from '@/ui/reply';
 
 function getWorkspace(interaction: any): WorkspaceService {
-  const svc = (interaction.client as any)?.serviceContainer?.get?.('workspace');
+  const svc = (interaction.client)?.serviceContainer?.get?.('workspace');
   return (svc as WorkspaceService) || defaultWorkspaceService;
 }
 
 function getGoogle(interaction: any): GoogleService | undefined {
-  return ((interaction.client as any)?.serviceContainer?.get?.('google') as GoogleService) || undefined;
+  return ((interaction.client)?.serviceContainer?.get?.('google') as GoogleService) || undefined;
 }
 
 function getSearchIndex(interaction: any): SearchIndex | undefined {
-  return ((interaction.client as any)?.serviceContainer?.get?.('searchIndex') as SearchIndex) || undefined;
+  return ((interaction.client)?.serviceContainer?.get?.('searchIndex') as SearchIndex) || undefined;
 }
 
 export class SavedSearchCommand extends BaseCommand {
@@ -131,7 +132,7 @@ export class SavedSearchCommand extends BaseCommand {
       // Политики allowedMime/ownerAllowlist
       if (Array.isArray(cfg.allowedMime) && cfg.allowedMime.length) {
         f.mimeIncludes = Array.isArray(f.mimeIncludes) && f.mimeIncludes.length
-          ? f.mimeIncludes.filter((m: string) => cfg.allowedMime!.includes(m))
+          ? f.mimeIncludes.filter((m: string) => cfg.allowedMime.includes(m))
           : cfg.allowedMime;
       }
       if (Array.isArray(cfg.ownerAllowlist) && cfg.ownerAllowlist.length) {

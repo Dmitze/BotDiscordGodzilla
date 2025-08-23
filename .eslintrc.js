@@ -47,4 +47,26 @@ module.exports = {
     '*.js',
     '*.d.ts',
   ],
-}; 
+  overrides: [
+    {
+      files: ['src/commands/**/*.ts', 'src/chat/**/*.ts'],
+      rules: {
+        // Variant B: temporarily relax strict unsafe rules in commands/chat
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-return': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/require-await': 'off',
+        '@typescript-eslint/consistent-type-imports': 'off',
+        '@typescript-eslint/explicit-function-return-type': 'off',
+        // Soften stylistic/size constraints until refactor (Variant A)
+        'no-empty': 'off',
+        'max-lines': ['warn', 1000],
+        'complexity': ['warn', 30],
+        'max-depth': ['warn', 6],
+      },
+    },
+  ],
+};

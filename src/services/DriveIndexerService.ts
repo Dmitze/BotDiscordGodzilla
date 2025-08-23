@@ -10,7 +10,7 @@ import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import type { GoogleService } from './GoogleService';
 import type { SearchIndex } from '@/search/SearchIndex';
 import type { CacheService } from './CacheService';
-import SchedulerService from './SchedulerService';
+import type SchedulerService from './SchedulerService';
 import { chunkTextForDiscord } from '@/utils/chunk';
 import { detectLanguage } from '@/nlp/LanguageDetector';
 
@@ -73,7 +73,7 @@ export class DriveIndexerService extends BaseServiceClass {
     // Метрики опционально
     try {
       const m = this.bot.getService('metrics');
-      if (m) this.metrics = m as any;
+      if (m) this.metrics = m;
     } catch {
       // ignore if metrics not registered
     }
@@ -127,7 +127,7 @@ export class DriveIndexerService extends BaseServiceClass {
       // Обробка з обмеженням конкуренції
       let i = 0;
       while (i < files.length) {
-        const batch = (files as DriveFile[]).slice(i, i + concurrency);
+        const batch = (files).slice(i, i + concurrency);
         const settled = await Promise.allSettled(batch.map(f => this.indexOneFileByMeta(f)));
         for (const s of settled) {
           total++;
@@ -164,7 +164,7 @@ export class DriveIndexerService extends BaseServiceClass {
       const { files, nextPageToken }: DriveListResult = await this.google.listDriveFiles(query);
       // Фільтруємо тільки ті, що треба переіндексувати
       const toIndex: DriveFile[] = [];
-      for (const f of files as DriveFile[]) {
+      for (const f of files) {
         if (await this.needReindex(f)) toIndex.push(f);
       }
       let i = 0;
@@ -217,7 +217,7 @@ export class DriveIndexerService extends BaseServiceClass {
           ...(entry.modifiedTime ? { modifiedTime: entry.modifiedTime } : {}),
           ...(entry.owners ? { owners: entry.owners } : {}),
           ...(typeof entry.size === 'number' ? { size: entry.size } : {}),
-        } as any;
+        };
 
         results.push({ file: fileObj, score: 1 / (1 + idx) });
       }
@@ -332,7 +332,7 @@ export class DriveIndexerService extends BaseServiceClass {
         const modifiedMs = file.modifiedTime ? Date.parse(file.modifiedTime) : undefined;
         const lang = detectLanguage(text);
         const breadcrumbs = await this.safeGetBreadcrumbs(file.id);
-        let payload: {
+        const payload: {
           fileId: string;
           name: string;
           mimeType: string;

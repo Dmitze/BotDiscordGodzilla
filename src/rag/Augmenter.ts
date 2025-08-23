@@ -21,7 +21,13 @@ export class Augmenter {
       const snippet = mask ? maskText(d.snippet) : d.snippet;
       const cost = estimateTokens(snippet) + estimateTokens(d.name);
       if (cost > budget) continue;
-      out.push({ fileId: d.fileId, name: d.name, snippet, score: d.fusedScore, url: undefined });
+      const chunk: ContextChunk = {
+        fileId: d.fileId,
+        name: d.name,
+        snippet,
+        ...(d.fusedScore !== undefined ? { score: d.fusedScore } : {}),
+      };
+      out.push(chunk);
       budget -= cost;
       if (out.length >= maxChunks) break;
       if (budget <= 64) break;

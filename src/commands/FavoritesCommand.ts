@@ -3,16 +3,17 @@ import { BaseCommand } from './BaseCommand';
 import { t } from '@/i18n';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
-import { defaultWorkspaceService, WorkspaceService } from '@/services/WorkspaceService';
+import type { WorkspaceService } from '@/services/WorkspaceService';
+import { defaultWorkspaceService } from '@/services/WorkspaceService';
 import { replyWithPrivacy } from '@/ui/reply';
 
 function getWorkspace(interaction: any): WorkspaceService {
-  const svc = (interaction.client as any)?.serviceContainer?.get?.('workspace');
+  const svc = (interaction.client)?.serviceContainer?.get?.('workspace');
   return (svc as WorkspaceService) || defaultWorkspaceService;
 }
 
 function getGoogle(interaction: any): GoogleService | undefined {
-  return ((interaction.client as any)?.serviceContainer?.get?.('google') as GoogleService) || undefined;
+  return ((interaction.client)?.serviceContainer?.get?.('google') as GoogleService) || undefined;
 }
 
 export class FavoritesCommand extends BaseCommand {

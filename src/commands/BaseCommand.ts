@@ -4,11 +4,12 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import type {
-  ChatInputCommandInteraction,
-  AutocompleteInteraction,
-  MessageComponentInteraction,
+import {
+  SlashCommandBuilder,
+  EmbedBuilder,
+  type ChatInputCommandInteraction,
+  type AutocompleteInteraction,
+  type MessageComponentInteraction,
 } from 'discord.js';
 
 import type {

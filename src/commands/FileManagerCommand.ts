@@ -306,7 +306,7 @@ export class FileManagerCommand extends BaseCommand {
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ];
         const fromCfg = Array.isArray(this.config.drive?.allowedMime)
-          ? (this.config.drive?.allowedMime as string[])
+          ? (this.config.drive?.allowedMime)
           : [];
         const set = Array.from(new Set([...fromCfg, ...base]));
         for (const m of set) {
@@ -1094,7 +1094,7 @@ export class FileManagerCommand extends BaseCommand {
         }
       }
 
-      const extracted = await (svc as GoogleService).extractTextForChat(options.fileId);
+      const extracted = await (svc).extractTextForChat(options.fileId);
       const safeText = String(extracted?.text || '').trim();
 
       if (!safeText) {

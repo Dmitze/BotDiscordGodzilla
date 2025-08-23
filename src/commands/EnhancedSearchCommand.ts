@@ -103,7 +103,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       const query = legacyQuery ?? modernQuery;
       if (!query || query.trim().length === 0) {
         await replyWithPrivacy(
-          interaction as any,
+          interaction,
           { content: 'Будь ласка, вкажіть запит для пошуку' },
           { ephemeralByDefault: true, shareFlagSupport: true }
         );
@@ -126,7 +126,7 @@ export class EnhancedSearchCommand extends BaseCommand {
         (this.googleService as unknown as GoogleSvc | undefined) ?? containerGoogle;
       if (!google) {
         await replyWithPrivacy(
-          interaction as any,
+          interaction,
           { content: 'Помилка: сервіс пошуку недоступний' },
           { ephemeralByDefault: true, shareFlagSupport: true }
         );
@@ -164,7 +164,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       } catch (e) {
         logger.error('EnhancedSearchCommand: service error', { error: String(e) });
         await replyWithPrivacy(
-          interaction as any,
+          interaction,
           { content: 'Помилка при пошуку' },
           { ephemeralByDefault: true, shareFlagSupport: true }
         );
@@ -175,7 +175,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       const items: MinimalSearchItem[] = Array.isArray(result) ? result : result?.data || [];
       if (!items || items.length === 0) {
         await replyWithPrivacy(
-          interaction as any,
+          interaction,
           { content: 'Результатів не знайдено' },
           { ephemeralByDefault: true, shareFlagSupport: true }
         );
@@ -192,7 +192,7 @@ export class EnhancedSearchCommand extends BaseCommand {
       }
 
       await replyWithPrivacy(
-        interaction as any,
+        interaction,
         { content },
         { ephemeralByDefault: true, shareFlagSupport: true }
       );
@@ -202,7 +202,7 @@ export class EnhancedSearchCommand extends BaseCommand {
         userId: options.interaction.user?.id,
       });
       await replyWithPrivacy(
-        options.interaction as any,
+        options.interaction,
         { content: '❌ Помилка при виконанні пошуку' },
         { ephemeralByDefault: true, shareFlagSupport: true }
       );

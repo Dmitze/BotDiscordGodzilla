@@ -4,7 +4,8 @@
  * Версія 1.0.0 - Нова реалізація
  */
 
-import { GuildMember, User, PermissionResolvable, PermissionFlagsBits } from 'discord.js';
+import type { GuildMember, User, PermissionResolvable} from 'discord.js';
+import { PermissionFlagsBits } from 'discord.js';
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 
@@ -74,8 +75,8 @@ export class PermissionManager {
   constructor(_config: BotConfig) {
     if (PermissionManager.instance) {
       // If existing instance was cleaned up in previous test run, re-initialize it
-      if (!(PermissionManager.instance as PermissionManager).isInitialized) {
-        (PermissionManager.instance as PermissionManager).initialize();
+      if (!(PermissionManager.instance).isInitialized) {
+        (PermissionManager.instance).initialize();
       }
       return PermissionManager.instance;
     }

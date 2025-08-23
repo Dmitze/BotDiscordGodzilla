@@ -179,7 +179,7 @@ export class IntentDetector {
       const obj = JSON.parse(raw) as Partial<DetectedIntent & { type: string }>;
       const type = (obj.type || 'UNKNOWN') as IntentType;
       const confidence = typeof obj.confidence === 'number' ? obj.confidence : 0.5;
-      const params = (obj.params && typeof obj.params === 'object') ? (obj.params as Record<string, string>) : undefined;
+      const params = (obj.params && typeof obj.params === 'object') ? (obj.params) : undefined;
       const base: DetectedIntent = { type, confidence };
       return params ? { ...base, params } : base;
     } catch {

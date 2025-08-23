@@ -1,5 +1,5 @@
-import { EmbedBuilder, Colors, APIEmbedField } from 'discord.js';
-import type { Interaction } from 'discord.js';
+import { EmbedBuilder, Colors } from 'discord.js';
+import type { Interaction , APIEmbedField } from 'discord.js';
 import { tUser } from '@/i18n';
 
 export interface LocalizedField {

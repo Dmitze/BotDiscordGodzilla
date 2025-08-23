@@ -399,7 +399,7 @@ function parseCustomId(customId: string):
     format: f,
   };
   if (Number.isFinite(t)) {
-    result.ts = t as number;
+    result.ts = t;
   }
   return result;
 }

@@ -1,5 +1,6 @@
 import type { SearchIndex } from '@/search/SearchIndex';
 import type { AIService } from '@/services/AIService';
+import type { AIRequestOptions } from '@/types';
 import { Retriever } from './Retriever';
 import { Augmenter } from './Augmenter';
 import type { RetrieverOptions, AugmentOptions, ContextChunk, GenerateWithContextOptions } from './types';
@@ -16,8 +17,12 @@ export class RagPipeline {
   private readonly retriever: Retriever;
   private readonly augmenter: Augmenter;
 
-  constructor(private readonly search: SearchIndex, private readonly ai: AIService) {
-    this.retriever = new Retriever(search);
+  constructor(
+    search: SearchIndex,
+    private readonly ai: AIService,
+    embeddings?: { embed: (text: string) => Promise<number[]> }
+  ) {
+    this.retriever = new Retriever(search, embeddings);
     this.augmenter = new Augmenter();
   }
 
@@ -37,12 +42,12 @@ export class RagPipeline {
     const system = 'Ти — помічник, який відповідає стисло, українською, з посиланнями на джерела.';
     const prompt = `${system}\n\nПитання:\n${query}\n\nКонтекст (релевантні уривки):\n${sources}\n\nВідповідь: наведи коротку відповідь та в кінці перелік джерел у форматі [1], [2], ... з короткими назвами.`;
 
-    const resp = await this.ai.generateResponse(prompt, {
-      model: genOpts.model,
-      maxTokens: genOpts.maxTokens,
-      temperature: genOpts.temperature,
-      useCache: true,
-    });
+    const req: AIRequestOptions = { useCache: true };
+    if (typeof genOpts.model === 'string') req.model = genOpts.model;
+    if (typeof genOpts.maxTokens === 'number') req.maxTokens = genOpts.maxTokens;
+    if (typeof genOpts.temperature === 'number') req.temperature = genOpts.temperature;
+
+    const resp = await this.ai.generateResponse(prompt, req);
 
     return {
       answer: resp.content,
