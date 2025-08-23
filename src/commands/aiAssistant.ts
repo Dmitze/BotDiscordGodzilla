@@ -9,6 +9,7 @@ interface BotLike {
 
 export async function execute(interaction: ChatInputCommandInteraction, bot?: BotLike): Promise<void> {
   const ai = bot?.getService?.('ai') as any;
+  const rag = bot?.getService?.('rag') as any;
   const cache = bot?.getService?.('cache') as any;
   const metrics = bot?.getService?.('metrics') as any;
 
@@ -33,10 +34,26 @@ export async function execute(interaction: ChatInputCommandInteraction, bot?: Bo
     }
 
     if (!answer) {
-      if (!ai?.generateResponse) {
-        throw new Error('AI service unavailable');
+      // Try RAG first if available
+      if (rag?.answer && typeof rag.answer === 'function') {
+        const res = await rag.answer(query, {
+          k: Number(process.env['RETRIEVER_K'] ?? 6),
+          alpha: Number(process.env['RETRIEVER_ALPHA'] ?? 0.5),
+        }, {
+          maskPII: true,
+          maxTokens: Number(process.env['RAG_MAX_CONTEXT_TOKENS'] ?? 1200),
+        }, {
+          maxTokens: Number(process.env['AI_MAX_TOKENS'] ?? 512),
+        });
+        const sources = res.chunks?.map((c: any, i: number) => `[${i + 1}] ${c.name}`).join(', ');
+        answer = `${res.answer}\n\nДжерела: ${sources || '—'}`;
+      } else {
+        if (!ai?.generateResponse) {
+          throw new Error('AI service unavailable');
+        }
+        const plain = await ai.generateResponse(String(query || 'Запит від користувача'), { maxTokens: 512 });
+        answer = typeof plain === 'string' ? plain : String(plain?.content ?? '');
       }
-      answer = await ai.generateResponse({ query, context, mode });
       await cache?.set?.(cacheKey, answer);
     }
 
