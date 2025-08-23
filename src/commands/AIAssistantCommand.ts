@@ -164,7 +164,7 @@ export class AIAssistantCommand extends BaseCommand {
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
-        await replyWithPrivacy(interaction as any, { content: errorMessage }, { ephemeralByDefault: true, shareFlagSupport: true });
+        await replyWithPrivacy(interaction, { content: errorMessage }, { ephemeralByDefault: true, shareFlagSupport: true });
       }
     }
   }
@@ -202,7 +202,7 @@ export class AIAssistantCommand extends BaseCommand {
       const { PermissionManager } = await import('../core/PermissionManager');
       const permissionManager = new PermissionManager(this.config);
       const member: GuildMember | null = interaction.member instanceof (await import('discord.js')).GuildMember
-        ? (interaction.member as GuildMember)
+        ? (interaction.member)
         : null;
       const result = await permissionManager.checkPermission(
         interaction.user,
@@ -355,7 +355,7 @@ export class AIAssistantCommand extends BaseCommand {
       }
       for (const f of candidates.slice(0, 5)) {
         try {
-          const text = await this.googleService.extractTextFromImage(f as DriveIndexedFile);
+          const text = await this.googleService.extractTextFromImage(f);
           if (!text.trim()) continue;
           const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
           return { response: t('ai.ocr.result', { name: String(f.name ?? ''), id: String(f.id ?? ''), preview }), confidence: 0.9, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
@@ -404,7 +404,7 @@ export class AIAssistantCommand extends BaseCommand {
           const headers = headerRow.map(h => String(h ?? '').trim());
           return rest.map((rowArr) => {
             const obj: Record<string, unknown> = {};
-            headers.forEach((h, i) => { if (!h) return; obj[h] = (rowArr as unknown[])[i]; });
+            headers.forEach((h, i) => { if (!h) return; obj[h] = (rowArr)[i]; });
             return obj;
           });
         } catch { return []; }
@@ -442,7 +442,7 @@ export class AIAssistantCommand extends BaseCommand {
               return null;
             };
             filtered = rows.filter(r => {
-              const v = (r as Record<string, unknown>)[dateKey!];
+              const v = (r)[dateKey];
               const d = toDate(v);
               return d instanceof Date && !isNaN(+d) && d.getMonth() + 1 === monthNum;
             });
@@ -489,7 +489,7 @@ export class AIAssistantCommand extends BaseCommand {
       }
       for (const f of candidates.slice(0, 5)) {
         try {
-          const text = await this.googleService.extractTextFromFile(f as DriveIndexedFile);
+          const text = await this.googleService.extractTextFromFile(f);
           if (!text.trim()) continue;
           const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
           return { response: `Файл: ${String(f.name)} (id: ${String(f.id)})\n\n${preview}`, confidence: 0.9, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
@@ -545,7 +545,7 @@ export class AIAssistantCommand extends BaseCommand {
           const headerRow = (rows[0] as unknown[] | undefined) ?? [];
           const rest = (rows.slice(1) as unknown[][]) ?? [];
           const headers = headerRow.map(h => String(h ?? '').trim());
-          return rest.map((rowArr) => { const obj: Record<string, unknown> = {}; headers.forEach((h, i) => { if (!h) return; obj[h] = (rowArr as unknown[])[i]; }); return obj; });
+          return rest.map((rowArr) => { const obj: Record<string, unknown> = {}; headers.forEach((h, i) => { if (!h) return; obj[h] = (rowArr)[i]; }); return obj; });
         } catch { return []; }
       };
       const readExcelBuffer = (buf: Buffer): Array<Record<string, unknown>> => {
