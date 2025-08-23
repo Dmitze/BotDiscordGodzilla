@@ -14,9 +14,17 @@ import type {
   ChatInputCommandInteraction,
   GuildMember,
 } from 'discord.js';
-import * as xlsx from 'xlsx';
 import { AnalyticsService } from '@/services/AnalyticsService';
 import { t } from '@/i18n';
+import {
+  tokenizeName,
+  findMonthNumber,
+  isImageMime,
+  isDocLikeMime,
+  ensureDriveIndex,
+  readGoogleSheet,
+  readExcelBuffer,
+} from '@/commands/modules/aiAssistant/helpers';
 
 interface AIQueryResult {
   response: string;
@@ -327,294 +335,272 @@ export class AIAssistantCommand extends BaseCommand {
     query: string,
     _context?: string
   ): Promise<AIQueryResult> {
-    const q = (query || '').toLowerCase();
+    const handlers = this.getQueryHandlers(query);
+    const normalized = this.normalizeQuery(query);
+    const handled = await this.runHandlers(handlers, normalized);
+    if (handled) return handled;
+    return this.buildDefaultAIQueryResult(query);
+  }
 
-    // 1) OCR зображень
-    const intentOcrImage = /(картин|изображен|image|photo|png|jpg|jpeg)/i.test(q) && /(ocr|текст|прочитай|извле(ки|чи))/i.test(q);
-    if (intentOcrImage) {
-      if (!this.googleService) {
-        return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
-      }
-      const folderId = this.config.google.driveFolderId;
-      if (!folderId) {
-        return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
-      }
-      const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || []).filter(w => w.length >= 2).slice(0, 5);
-      const nameQuery = nameTokens.join(' ').trim();
-      let index = await this.googleService.getDriveIndex(folderId);
-      if (!index) index = await this.googleService.buildDriveIndex(folderId, { ttlSeconds: 1800, recursive: true, maxDepth: -1 });
-      const qlc = (s: string) => s.toLowerCase();
-      const matchesName = (name?: string) => !nameQuery || qlc(name || '').includes(qlc(nameQuery));
-      const isImage = (mt?: string) => !!(mt && /^image\//i.test(mt));
-      const candidates = (index || []).filter((f: unknown) => {
-        const file = f as DriveIndexedFile;
-        return isImage(file.mimeType) && matchesName(file.name);
-      }) as DriveIndexedFile[];
-      if (!candidates.length) {
-        return { response: t('ai.ocr.noImages'), confidence: 0.85, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
-      }
-      for (const f of candidates.slice(0, 5)) {
-        try {
-          const text = await this.googleService.extractTextFromImage(f);
-          if (!text.trim()) continue;
-          const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
-          return { response: t('ai.ocr.result', { name: String(f.name ?? ''), id: String(f.id ?? ''), preview }), confidence: 0.9, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
-        } catch (e) {
-          logger.warn('OCR error', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: f.id, err: e instanceof Error ? e.message : String(e) });
-        }
-      }
-      return { response: t('ai.ocr.cannotRead'), confidence: 0.7, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+  /**
+   * Повертає впорядкований список обробників, які намагаються розпізнати намір запиту
+   */
+  private getQueryHandlers(query: string): ReadonlyArray<(q: string) => Promise<AIQueryResult | null>> {
+    return [
+      (q) => this.tryOcrImage(query, q),
+      (q) => this.tryTableAnalytics(query, q),
+      (q) => this.tryExtractText(query, q),
+      (q) => this.tryAnalyzeBuses(query, q),
+      (q) => this.tryListSheets(query, q),
+    ] as const;
+  }
+
+  /**
+   * Нормалізує вхідний текст запиту для порівнянь
+   */
+  private normalizeQuery(query: string): string {
+    return (query || '').toLowerCase();
+  }
+
+  /**
+   * Послідовно виконує обробники та повертає перший успішний результат
+   */
+  private async runHandlers(
+    handlers: ReadonlyArray<(q: string) => Promise<AIQueryResult | null>>,
+    normalizedQuery: string
+  ): Promise<AIQueryResult | null> {
+    for (const handle of handlers) {
+      const res = await handle(normalizedQuery);
+      if (res) return res;
     }
+    return null;
+  }
 
-    // 2) Аналітика таблиць за статусом (опціонально за місяць)
-    const intentAnalytics = /(группируй|сгруппируй|групу(ва|пу)й|посчитай|підрахуй)/i.test(q) && /(статус|status)/i.test(q);
-    if (intentAnalytics) {
-      if (!this.googleService) {
-        return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
-      }
-      const folderId = this.config.google.driveFolderId;
-      if (!folderId) {
-        return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
-      }
-
-      const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || []).filter(w => w.length >= 2).slice(0, 5);
-      const nameQuery = nameTokens.join(' ').trim();
-      const monthMap: Record<string, number> = { 'январ':1, 'лют':2, 'фев':2, 'берез':3, 'март':3, 'квіт':4, 'апрел':4, 'май':5, 'трав':5, 'июн':6, 'черв':6, 'июл':7, 'лип':7, 'авг':8, 'серп':8, 'сен':9, 'верес':9, 'окт':10, 'жовт':10, 'нояб':11, 'листоп':11, 'дек':12, 'груд':12 };
-      const monthKey = Object.keys(monthMap).find(k => q.includes(k));
-      const monthNum = monthKey ? monthMap[monthKey] : undefined;
-
-      const files = await this.googleService.listDriveFilesInFolder(folderId, { recursive: true, type: 'any', limit: 100, maxDepth: -1, ...(nameQuery ? { query: nameQuery } : {}) });
-      const tableLike = files.filter(f => {
-        const mt = (f.mimeType || '');
-        return mt === 'application/vnd.google-apps.spreadsheet' || mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || mt === 'application/vnd.ms-excel';
-      });
-      if (!tableLike.length) {
-        return { response: t('ai.analytics.noTables'), confidence: 0.85, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
-      }
-
-      const readGoogleSheet = async (spreadsheetId: string): Promise<Array<Record<string, unknown>>> => {
-        try {
-          const sheetTitles = await this.googleService!.listSheets(spreadsheetId);
-          const first = sheetTitles[0] || 'Лист1';
-          const data = await this.googleService!.getSheetData(spreadsheetId, `${first}!A1:Z2000`);
-          const rows = (data.values || []) as unknown[];
-          if (!rows.length) return [];
-          const headerRow = (rows[0] as unknown[] | undefined) ?? [];
-          const rest = (rows.slice(1) as unknown[][]) ?? [];
-          const headers = headerRow.map(h => String(h ?? '').trim());
-          return rest.map((rowArr) => {
-            const obj: Record<string, unknown> = {};
-            headers.forEach((h, i) => { if (!h) return; obj[h] = (rowArr)[i]; });
-            return obj;
-          });
-        } catch { return []; }
-      };
-      const readExcelBuffer = (buf: Buffer): Array<Record<string, unknown>> => {
-        try {
-          const wb = xlsx.read(buf, { type: 'buffer' });
-          const firstName = wb.SheetNames[0];
-          if (!firstName) return [];
-          const sheet = wb.Sheets[firstName];
-          if (!sheet) return [];
-          return xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
-        } catch { return []; }
-      };
-
-      const analytics = new AnalyticsService();
-      for (const f of tableLike.slice(0, 5)) {
-        try {
-          const mt = f.mimeType || '';
-          let rows: Array<Record<string, unknown>> = [];
-          if (mt === 'application/vnd.google-apps.spreadsheet') rows = await readGoogleSheet(f.id!);
-          else rows = readExcelBuffer(await this.googleService.downloadDriveFile(f.id!));
-          if (!rows.length) continue;
-          const schema = analytics.inferSchema(rows);
-          const statusKey = schema.find(k => /статус|status/i.test(k)) || schema[0];
-          const dateKey = schema.find(k => /дата|date/i.test(k));
-          let filtered = rows;
-          if (monthNum && dateKey) {
-            const toDate = (v: unknown): Date | null => {
-              if (v instanceof Date && !isNaN(+v)) return v;
-              if (typeof v === 'string' || typeof v === 'number') {
-                const d = new Date(v);
-                return isNaN(+d) ? null : d;
-              }
-              return null;
-            };
-            filtered = rows.filter(r => {
-              const v = (r)[dateKey];
-              const d = toDate(v);
-              return d instanceof Date && !isNaN(+d) && d.getMonth() + 1 === monthNum;
-            });
-          }
-          if (!statusKey) continue;
-          const groups = analytics.groupBy(filtered, [statusKey]);
-          const lines: string[] = [];
-          for (const [gk, arr] of Object.entries(groups)) {
-            const cnt = (arr as unknown[]).length;
-            lines.push(`${gk || '—'}: ${cnt}`);
-          }
-          const head = `Файл: ${f.name} (id: ${f.id})`;
-          return { response: head + '\n' + lines.join('\n'), confidence: 0.9, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
-        } catch (e) {
-          logger.warn('Analytics failed for file', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: f.id, err: e instanceof Error ? e.message : String(e) });
-        }
-      }
-      return { response: 'Не вдалося виконати аналітику: дані порожні або структура невідома.', confidence: 0.7, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
-    }
-
-    // 3) Витягти текст з Docs/Word/PDF
-    const intentExtractText = /(pdf|word|docx|docs?|документ|файл)/i.test(q) && /(покажи|выведи|витягни|извле(ки|чи)|текст)/i.test(q);
-    if (intentExtractText) {
-      if (!this.googleService) {
-        return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
-      }
-      const folderId = this.config.google.driveFolderId;
-      if (!folderId) {
-        return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
-      }
-      const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || []).filter(w => w.length >= 2).slice(0, 5);
-      const nameQuery = nameTokens.join(' ').trim();
-      let index = await this.googleService.getDriveIndex(folderId);
-      if (!index) index = await this.googleService.buildDriveIndex(folderId, { ttlSeconds: 1800, recursive: true, maxDepth: -1 });
-      const qlc = (s: string) => s.toLowerCase();
-      const matchesName = (name?: string) => !nameQuery || qlc(name || '').includes(qlc(nameQuery));
-      const isDocLike = (mt?: string) => mt === 'application/vnd.google-apps.document' || mt === 'application/pdf' || mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mt === 'application/msword';
-      const candidates = (index || []).filter((f: unknown) => {
-        const file = f as DriveIndexedFile;
-        return isDocLike(file.mimeType) && matchesName(file.name);
-      }) as DriveIndexedFile[];
-      if (!candidates.length) {
-        return { response: 'Не знайдено відповідних документів (Docs/Word/PDF) за вашим описом.', confidence: 0.85, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
-      }
-      for (const f of candidates.slice(0, 5)) {
-        try {
-          const text = await this.googleService.extractTextFromFile(f);
-          if (!text.trim()) continue;
-          const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
-          return { response: `Файл: ${String(f.name)} (id: ${String(f.id)})\n\n${preview}`, confidence: 0.9, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
-        } catch (e) {
-          logger.warn('Не вдалося витягти текст з документу', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: f.id, fileName: f.name, error: e instanceof Error ? e.message : String(e) });
-        }
-      }
-      return { response: 'Не вдалося витягти текст: документи порожні або формат не підтримується. Уточніть назву файла або надішліть приклад.', confidence: 0.7, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
-    }
-
-    // 4) Аналіз автобусів у таблицях
-    const intentAnalyzeBuses = /автобус|bus/.test(q) && /(сколько|скiльки|скільки|осталось|залишил(о|ось)|бг|остат)/.test(q);
-    if (intentAnalyzeBuses) {
-      if (!this.googleService) {
-        return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
-      }
-      const nameTokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || []).filter(w => w.length >= 2).slice(0, 4);
-      const folderId = this.config.google.driveFolderId;
-      if (!folderId) {
-        return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
-      }
-      const nameQuery = nameTokens.join(' ').trim();
-      const baseOpts: { recursive?: boolean; type?: 'sheet' | 'folder' | 'any'; query?: string; limit?: number; pageToken?: string; maxDepth?: number } = { recursive: true, type: 'any', limit: 100, maxDepth: -1 };
-      if (nameQuery) baseOpts.query = nameQuery;
-      const files = await this.googleService.listDriveFilesInFolder(folderId, baseOpts);
-      const candidates = files.filter(f => {
-        const mt = f.mimeType || '';
-        return mt === 'application/vnd.google-apps.spreadsheet' || mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || mt === 'application/vnd.ms-excel';
-      });
-      if (!candidates.length) {
-        return { response: 'Не знайдено придатних таблиць (Google Sheets/Excel) за вашим описом.', confidence: 0.85, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
-      }
-      const countBuses = (rows: Array<Record<string, any>>): number => {
-        if (!rows.length) return 0;
-        const norm = (s: unknown) => String(s ?? '').toLowerCase();
-        const keys = Object.keys(rows[0] || {});
-        const typeKey = keys.find(k => /(тип|вид|категор|vehicle|type|category)/i.test(k)) || (keys[0] as string | undefined);
-        const statusKey = keys.find(k => /(статус|state|status)/i.test(k)) || ((keys[1] as string | undefined) ?? (keys[0] as string | undefined));
-        if (!typeKey || !statusKey) return 0;
-        let count = 0;
-        for (const r of rows) {
-          if (/автобус|bus/i.test(norm(r[typeKey])) && /(бг|остат|остал|залиш|в наличии|на складе)/i.test(norm(r[statusKey]))) count++;
-        }
-        return count;
-      };
-      const readGoogleSheet = async (spreadsheetId: string): Promise<Array<Record<string, unknown>>> => {
-        try {
-          const sheetTitles = await this.googleService!.listSheets(spreadsheetId);
-          const first = sheetTitles[0] || 'Лист1';
-          const data = await this.googleService!.getSheetData(spreadsheetId, `${first}!A1:Z1000`);
-          const rows = (data.values || []) as unknown[];
-          if (!rows.length) return [];
-          const headerRow = (rows[0] as unknown[] | undefined) ?? [];
-          const rest = (rows.slice(1) as unknown[][]) ?? [];
-          const headers = headerRow.map(h => String(h ?? '').trim());
-          return rest.map((rowArr) => { const obj: Record<string, unknown> = {}; headers.forEach((h, i) => { if (!h) return; obj[h] = (rowArr)[i]; }); return obj; });
-        } catch { return []; }
-      };
-      const readExcelBuffer = (buf: Buffer): Array<Record<string, unknown>> => {
-        try {
-          const wb = xlsx.read(buf, { type: 'buffer' });
-          const firstName = wb.SheetNames[0];
-          if (!firstName) return [];
-          const sheet = wb.Sheets[firstName];
-          if (!sheet) return [];
-          return xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
-        } catch { return []; }
-      };
-      for (const f of candidates.slice(0, 5)) {
-        try {
-          const mt = f.mimeType || '';
-          let rows: Array<Record<string, any>> = [];
-          if (mt === 'application/vnd.google-apps.spreadsheet') rows = await readGoogleSheet(f.id!);
-          else rows = readExcelBuffer(await this.googleService.downloadDriveFile(f.id!));
-          if (!rows.length) continue;
-          const total = countBuses(rows);
-          return { response: `Файл: ${f.name} (id: ${f.id})\nРезультат: автобусів зі статусом БГ/залишок — ${total} шт.`, confidence: 0.92, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
-        } catch (e) {
-          logger.warn('Не вдалося обробити файл-кандидат', { type: 'command', component: 'AIAssistantCommand.processAIQuery', fileId: (f as any).id, fileName: (f as any).name, error: e instanceof Error ? e.message : String(e) });
-        }
-      }
-      return { response: 'Не вдалося виконати аналіз: таблиці порожні або структура невідома.', confidence: 0.7, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
-    }
-
-    // 5) Список таблиць/Excel у папці
-    const intentListSheets = /таблиц|таблицы|лист(ы|и)?|sheets?|список.*таблиц|какие.*таблиц|google\s*диск|google\s*sheets/.test(q) && /какие|покажи|список|list|что|найд/i.test(q);
-    if (intentListSheets) {
-      try {
-        if (!this.googleService) {
-          return { response: 'GoogleService не доступний для цієї команди. Перевірте ініціалізацію сервісів або конфігурацію.', confidence: 0.6, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
-        }
-        const folderId = this.config.google.driveFolderId;
-        if (!folderId) {
-          return { response: 'Не налаштовано google.driveFolderId у конфігурації. Додайте ID каталогу з таблицями.', confidence: 0.6, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
-        }
-        const files = await this.googleService.listDriveFilesInFolder(folderId, { recursive: true, type: 'sheet', limit: 50, maxDepth: -1 });
-        if (!files.length) {
-          const spreadsheetId = this.config.google.spreadsheetId;
-          if (spreadsheetId) {
-            try {
-              const sheetTitles = await this.googleService.listSheets(spreadsheetId);
-              if (sheetTitles && sheetTitles.length >= 0) {
-                return { response: 'Таблиці не знайдені у вказаній папці Google Drive. Проте доступ до таблиці з конфігурації працює. Переконайтесь, що потрібні файли знаходяться у цій папці або змініть GOOGLE_DRIVE_FOLDER_ID на правильну папку.', confidence: 0.92, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
-              }
-            } catch {
-              return { response: 'Не вдалось отримати доступ до таблиць: папка порожня або недоступна, а також немає доступу до таблиці з конфігурації. Перевірте, що ви надали доступ сервісному акаунту та що файли знаходяться у вказаній папці.', confidence: 0.7, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
-            }
-          }
-          return { response: 'Таблиці не знайдені у вказаній папці Google Drive.', confidence: 0.9, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
-        }
-        const lines = files.slice(0, 20).map((f, idx) => {
-          const mime = f.mimeType || '';
-          const label = mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ? 'Excel (.xlsx)' : mime === 'application/vnd.ms-excel' ? 'Excel (.xls)' : 'Google Sheets';
-          return `${idx + 1}. ${f.name} [${label}] (id: ${f.id})`;
-        });
-        const more = files.length > 20 ? `\n… та ще ${files.length - 20}` : '';
-        return { response: `Знайдено ${files.length} таблиць/Excel-файлів:\n\n${lines.join('\n')}${more}`, confidence: 0.95, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
-      } catch (error) {
-        logger.error('Помилка отримання списку таблиць', { type: 'command', component: 'AIAssistantCommand.processAIQuery', error: error instanceof Error ? error.message : String(error) });
-        return { response: 'Сталася помилка при отриманні списку таблиць Google. Спробуйте пізніше або перевірте доступи.', confidence: 0.4, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
-      }
-    }
-
-    // 6) Fallback
+  /**
+   * Базова відповідь за замовчуванням, якщо намір не розпізнано
+   */
+  private buildDefaultAIQueryResult(query: string): AIQueryResult {
     const response = `Це тимчасова відповідь AI на запит: "${query}"`;
     return { response, confidence: 0.8, action: 'search', actionData: { type: 'search', format: 'text' } };
+  }
+
+  private async tryOcrImage(query: string, q: string): Promise<AIQueryResult | null> {
+    const intent = /(картин|изображен|image|photo|png|jpg|jpeg)/i.test(q) && /(ocr|текст|прочитай|извле(ки|чи))/i.test(q);
+    if (!intent) return null;
+    if (!this.googleService) {
+      return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const folderId = this.config.google.driveFolderId;
+    if (!folderId) {
+      return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const nameQuery = tokenizeName(query, 5);
+    const index = await ensureDriveIndex(this.googleService, folderId);
+    const qlc = (s: string) => s.toLowerCase();
+    const matchesName = (name?: string) => !nameQuery || qlc(name || '').includes(qlc(nameQuery));
+    const candidates = (index || []).filter((f: unknown) => {
+      const file = f as DriveIndexedFile;
+      return isImageMime(file.mimeType) && matchesName(file.name);
+    }) as DriveIndexedFile[];
+    if (!candidates.length) {
+      return { response: t('ai.ocr.noImages'), confidence: 0.85, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+    }
+    for (const f of candidates.slice(0, 5)) {
+      try {
+        const text = await this.googleService.extractTextFromImage(f);
+        if (!text.trim()) continue;
+        const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
+        return { response: t('ai.ocr.result', { name: String(f.name ?? ''), id: String(f.id ?? ''), preview }), confidence: 0.9, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+      } catch (e) {
+        logger.warn('OCR error', { type: 'command', component: 'AIAssistantCommand.tryOcrImage', fileId: f.id, err: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { response: t('ai.ocr.cannotRead'), confidence: 0.7, action: 'ocr_image', actionData: { type: 'analyze', format: 'text' } };
+  }
+
+  private async tryTableAnalytics(query: string, q: string): Promise<AIQueryResult | null> {
+    const intent = /(группируй|сгруппируй|групу(ва|пу)й|посчитай|підрахуй)/i.test(q) && /(статус|status)/i.test(q);
+    if (!intent) return null;
+    if (!this.googleService) {
+      return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const folderId = this.config.google.driveFolderId;
+    if (!folderId) {
+      return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const nameQuery = tokenizeName(query, 5);
+    const monthNum = findMonthNumber(q);
+    const files = await this.googleService.listDriveFilesInFolder(folderId, { recursive: true, type: 'any', limit: 100, maxDepth: -1, ...(nameQuery ? { query: nameQuery } : {}) });
+    const tableLike = files.filter(f => {
+      const mt = (f.mimeType || '');
+      return mt === 'application/vnd.google-apps.spreadsheet' || mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || mt === 'application/vnd.ms-excel';
+    });
+    if (!tableLike.length) {
+      return { response: t('ai.analytics.noTables'), confidence: 0.85, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const analytics = new AnalyticsService();
+    for (const f of tableLike.slice(0, 5)) {
+      try {
+        const mt = f.mimeType || '';
+        let rows: Array<Record<string, unknown>> = [];
+        if (mt === 'application/vnd.google-apps.spreadsheet') rows = await readGoogleSheet(this.googleService, f.id!);
+        else rows = readExcelBuffer(await this.googleService.downloadDriveFile(f.id!));
+        if (!rows.length) continue;
+        const schema = analytics.inferSchema(rows);
+        const statusKey = schema.find(k => /статус|status/i.test(k)) || schema[0];
+        const dateKey = schema.find(k => /дата|date/i.test(k));
+        let filtered = rows;
+        if (monthNum && dateKey) {
+          const toDate = (v: unknown): Date | null => {
+            if (v instanceof Date && !isNaN(+v)) return v;
+            if (typeof v === 'string' || typeof v === 'number') {
+              const d = new Date(v);
+              return isNaN(+d) ? null : d;
+            }
+            return null;
+          };
+          filtered = rows.filter(r => {
+            const v = (r)[dateKey];
+            const d = toDate(v);
+            return d instanceof Date && !isNaN(+d) && d.getMonth() + 1 === monthNum;
+          });
+        }
+        if (!statusKey) continue;
+        const groups = analytics.groupBy(filtered, [statusKey]);
+        const lines: string[] = [];
+        for (const [gk, arr] of Object.entries(groups)) {
+          const cnt = (arr as unknown[]).length;
+          lines.push(`${gk || '—'}: ${cnt}`);
+        }
+        const head = `Файл: ${f.name} (id: ${f.id})`;
+        return { response: head + '\n' + lines.join('\n'), confidence: 0.9, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+      } catch (e) {
+        logger.warn('Analytics failed for file', { type: 'command', component: 'AIAssistantCommand.tryTableAnalytics', fileId: f.id, err: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { response: 'Не вдалося виконати аналітику: дані порожні або структура невідома.', confidence: 0.7, action: 'table_analytics', actionData: { type: 'analyze', format: 'text' } };
+  }
+
+  private async tryExtractText(query: string, q: string): Promise<AIQueryResult | null> {
+    const intent = /(pdf|word|docx|docs?|документ|файл)/i.test(q) && /(покажи|выведи|витягни|извле(ки|чи)|текст)/i.test(q);
+    if (!intent) return null;
+    if (!this.googleService) {
+      return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const folderId = this.config.google.driveFolderId;
+    if (!folderId) {
+      return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const nameQuery = tokenizeName(query, 5);
+    const index = await ensureDriveIndex(this.googleService, folderId);
+    const qlc = (s: string) => s.toLowerCase();
+    const matchesName = (name?: string) => !nameQuery || qlc(name || '').includes(qlc(nameQuery));
+    const candidates = (index || []).filter((f: unknown) => {
+      const file = f as DriveIndexedFile;
+      return isDocLikeMime(file.mimeType) && matchesName(file.name);
+    }) as DriveIndexedFile[];
+    if (!candidates.length) {
+      return { response: 'Не знайдено відповідних документів (Docs/Word/PDF) за вашим описом.', confidence: 0.85, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
+    }
+    for (const f of candidates.slice(0, 5)) {
+      try {
+        const text = await this.googleService.extractTextFromFile(f);
+        if (!text.trim()) continue;
+        const preview = text.length > 1500 ? text.slice(0, 1500) + '…' : text;
+        return { response: `Файл: ${String(f.name)} (id: ${String(f.id)})\n\n${preview}`, confidence: 0.9, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
+      } catch (e) {
+        logger.warn('Не вдалося витягти текст з документу', { type: 'command', component: 'AIAssistantCommand.tryExtractText', fileId: f.id, fileName: f.name, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { response: 'Не вдалося витягти текст: документи порожні або формат не підтримується. Уточніть назву файла або надішліть приклад.', confidence: 0.7, action: 'extract_text', actionData: { type: 'analyze', format: 'text' } };
+  }
+
+  private async tryAnalyzeBuses(query: string, q: string): Promise<AIQueryResult | null> {
+    const intent = /автобус|bus/.test(q) && /(сколько|скiльки|скільки|осталось|залишил(о|ось)|бг|остат)/.test(q);
+    if (!intent) return null;
+    if (!this.googleService) {
+      return { response: t('ai.error.googleUnavailable'), confidence: 0.6, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const nameQuery = tokenizeName(query, 4);
+    const folderId = this.config.google.driveFolderId;
+    if (!folderId) {
+      return { response: t('ai.error.missingDriveFolderId'), confidence: 0.7, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const baseOpts: { recursive?: boolean; type?: 'sheet' | 'folder' | 'any'; query?: string; limit?: number; pageToken?: string; maxDepth?: number } = { recursive: true, type: 'any', limit: 100, maxDepth: -1 };
+    if (nameQuery) baseOpts.query = nameQuery;
+    const files = await this.googleService.listDriveFilesInFolder(folderId, baseOpts);
+    const candidates = files.filter(f => {
+      const mt = f.mimeType || '';
+      return mt === 'application/vnd.google-apps.spreadsheet' || mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || mt === 'application/vnd.ms-excel';
+    });
+    if (!candidates.length) {
+      return { response: 'Не знайдено придатних таблиць (Google Sheets/Excel) за вашим описом.', confidence: 0.85, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
+    }
+    const countBuses = (rows: Array<Record<string, any>>): number => {
+      if (!rows.length) return 0;
+      const norm = (s: unknown) => String(s ?? '').toLowerCase();
+      const keys = Object.keys(rows[0] || {});
+      const typeKey = keys.find(k => /(тип|вид|категор|vehicle|type|category)/i.test(k)) || (keys[0] as string | undefined);
+      const statusKey = keys.find(k => /(статус|state|status)/i.test(k)) || ((keys[1] as string | undefined) ?? (keys[0] as string | undefined));
+      if (!typeKey || !statusKey) return 0;
+      let count = 0;
+      for (const r of rows) {
+        if (/автобус|bus/i.test(norm(r[typeKey])) && /(бг|остат|остал|залиш|в наличии|на складе)/i.test(norm(r[statusKey]))) count++;
+      }
+      return count;
+    };
+    for (const f of candidates.slice(0, 5)) {
+      try {
+        const mt = f.mimeType || '';
+        let rows: Array<Record<string, any>> = [];
+        if (mt === 'application/vnd.google-apps.spreadsheet') rows = await readGoogleSheet(this.googleService, f.id!, 'A1:Z1000');
+        else rows = readExcelBuffer(await this.googleService.downloadDriveFile(f.id!)) as Array<Record<string, any>>;
+        if (!rows.length) continue;
+        const total = countBuses(rows);
+        return { response: `Файл: ${f.name} (id: ${f.id})\nРезультат: автобусів зі статусом БГ/залишок — ${total} шт.`, confidence: 0.92, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
+      } catch (e) {
+        logger.warn('Не вдалося обробити файл-кандидат', { type: 'command', component: 'AIAssistantCommand.tryAnalyzeBuses', fileId: (f as any).id, fileName: (f as any).name, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { response: 'Не вдалося виконати аналіз: таблиці порожні або структура невідома.', confidence: 0.7, action: 'analyze_buses', actionData: { type: 'analyze', format: 'text' } };
+  }
+
+  private async tryListSheets(_query: string, q: string): Promise<AIQueryResult | null> {
+    const intent = /таблиц|таблицы|лист(ы|и)?|sheets?|список.*таблиц|какие.*таблиц|google\s*диск|google\s*sheets/.test(q) && /какие|покажи|список|list|что|найд/i.test(q);
+    if (!intent) return null;
+    try {
+      if (!this.googleService) {
+        return { response: 'GoogleService не доступний для цієї команди. Перевірте ініціалізацію сервісів або конфігурацію.', confidence: 0.6, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
+      }
+      const folderId = this.config.google.driveFolderId;
+      if (!folderId) {
+        return { response: 'Не налаштовано google.driveFolderId у конфігурації. Додайте ID каталогу з таблицями.', confidence: 0.6, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
+      }
+      const files = await this.googleService.listDriveFilesInFolder(folderId, { recursive: true, type: 'sheet', limit: 50, maxDepth: -1 });
+      if (!files.length) {
+        const spreadsheetId = this.config.google.spreadsheetId;
+        if (spreadsheetId) {
+          try {
+            const sheetTitles = await this.googleService.listSheets(spreadsheetId);
+            if (sheetTitles && sheetTitles.length >= 0) {
+              return { response: 'Таблиці не знайдені у вказаній папці Google Drive. Проте доступ до таблиці з конфігурації працює. Переконайтесь, що потрібні файли знаходяться у цій папці або змініть GOOGLE_DRIVE_FOLDER_ID на правильну папку.', confidence: 0.92, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
+            }
+          } catch {
+            return { response: 'Не вдалось отримати доступ до таблиць: папка порожня або недоступна, а також немає доступу до таблиці з конфігурації. Перевірте, що ви надали доступ сервісному акаунту та що файли знаходяться у вказаній папці.', confidence: 0.7, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
+          }
+        }
+        return { response: 'Таблиці не знайдені у вказаній папці Google Drive.', confidence: 0.9, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
+      }
+      const lines = files.slice(0, 20).map((f, idx) => {
+        const mime = f.mimeType || '';
+        const label = mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ? 'Excel (.xlsx)' : mime === 'application/vnd.ms-excel' ? 'Excel (.xls)' : 'Google Sheets';
+        return `${idx + 1}. ${f.name} [${label}] (id: ${f.id})`;
+      });
+      const more = files.length > 20 ? `\n… та ще ${files.length - 20}` : '';
+      return { response: `Знайдено ${files.length} таблиць/Excel-файлів:\n\n${lines.join('\n')}${more}`, confidence: 0.95, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
+    } catch (error) {
+      logger.error('Помилка отримання списку таблиць', { type: 'command', component: 'AIAssistantCommand.tryListSheets', error: error instanceof Error ? error.message : String(error) });
+      return { response: 'Сталася помилка при отриманні списку таблиць Google. Спробуйте пізніше або перевірте доступи.', confidence: 0.4, action: 'list_sheets', actionData: { type: 'list', format: 'text' } };
+    }
   }
 }
