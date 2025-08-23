@@ -259,20 +259,18 @@ export class SqliteSearchIndex implements SearchIndex {
       previousHash: prev?.contentHash,
     };
     // naive meta diff
-    const latestMeta = parseJson(latest?.meta);
-    const prevMeta = parseJson(prev?.meta);
-    if (latestMeta && prevMeta) {
-      const changed: Record<string, { old?: unknown; new?: unknown }> = {};
-      const keys = new Set([...Object.keys(latestMeta), ...Object.keys(prevMeta)]);
-      for (const k of keys) {
-        const a = latestMeta[k];
-        const b = prevMeta[k];
-        if (JSON.stringify(a) !== JSON.stringify(b)) {
-          changed[k] = { old: b, new: a };
-        }
+    const latestMeta = (parseJson<Record<string, unknown>>(latest?.meta)) ?? {};
+    const prevMeta = (parseJson<Record<string, unknown>>(prev?.meta)) ?? {};
+    const changed: Record<string, { old?: unknown; new?: unknown }> = {};
+    const keys = new Set([...Object.keys(latestMeta), ...Object.keys(prevMeta)]);
+    for (const k of keys) {
+      const a = latestMeta[k];
+      const b = prevMeta[k];
+      if (JSON.stringify(a) !== JSON.stringify(b)) {
+        changed[k] = { old: b, new: a };
       }
-      if (Object.keys(changed).length) res.diffMeta = changed;
     }
+    if (Object.keys(changed).length) res.diffMeta = changed;
     return res;
   }
 }
