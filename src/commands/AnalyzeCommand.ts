@@ -47,30 +47,30 @@ export class AnalyzeCommand extends BaseCommand {
       const docId = interaction.options.getString('docid');
       const query = interaction.options.getString('query');
 
-      const indexer = (interaction.client as any).serviceContainer?.get?.('driveIndexer') as
+      const indexer = (interaction.client).serviceContainer?.get?.('driveIndexer') as
         | import('@/services/DriveIndexerService').DriveIndexerService
         | undefined;
 
       if (!indexer) {
-        await replyWithPrivacy(interaction as any, { content: '🔎 Індексатор недоступний' });
+        await replyWithPrivacy(interaction, { content: '🔎 Індексатор недоступний' });
         return;
       }
 
       if (docId) {
-        await this.analyzeById(interaction as any, indexer, docId);
+        await this.analyzeById(interaction, indexer, docId);
         return;
       }
 
       if (query) {
         const results = await indexer.search(query, 10);
         if (!results.length) {
-          await replyWithPrivacy(interaction as any, { content: 'Нічого не знайдено' });
+          await replyWithPrivacy(interaction, { content: 'Нічого не знайдено' });
           return;
         }
         if (results.length === 1) {
           const first = results.at(0);
           if (first?.file?.id) {
-            await this.analyzeById(interaction as any, indexer, first.file.id);
+            await this.analyzeById(interaction, indexer, first.file.id);
             return;
           }
           return;
@@ -91,14 +91,14 @@ export class AnalyzeCommand extends BaseCommand {
         const key = uiState.makeKey({ scope, userId, nonce });
         uiState.set(key, files, 300);
         const { embed, rows } = DuplicateResolver.buildPage({ scope, userId, nonce, files, title: 'Знайдено кілька збігів' });
-        await replyWithPrivacy(interaction as any, { embeds: [embed], components: rows });
+        await replyWithPrivacy(interaction, { embeds: [embed], components: rows });
         return;
       }
 
-      await replyWithPrivacy(interaction as any, { content: 'Вкажіть docid або query' });
+      await replyWithPrivacy(interaction, { content: 'Вкажіть docid або query' });
     } catch (error) {
       logger.error('analyze_execute_error', { error: error instanceof Error ? error.message : String(error) });
-      await replyWithPrivacy(interaction as any, { content: '❌ Помилка аналізу' });
+      await replyWithPrivacy(interaction, { content: '❌ Помилка аналізу' });
     }
   }
 
@@ -109,7 +109,7 @@ export class AnalyzeCommand extends BaseCommand {
   ): Promise<void> {
     const entry = await indexer.getEntry(fileId);
     if (!entry) {
-      await replyWithPrivacy(interaction as any, { content: 'Документ не індексовано або відсутній' });
+      await replyWithPrivacy(interaction, { content: 'Документ не індексовано або відсутній' });
       return;
     }
 
@@ -129,17 +129,17 @@ export class AnalyzeCommand extends BaseCommand {
 
   protected override async onComponent(options: { interaction: any }): Promise<void> {
     const { interaction } = options;
-    const customId = (interaction as any).customId as string | undefined;
+    const customId = (interaction).customId as string | undefined;
     if (!customId || !customId.startsWith(DuplicateResolver.PREFIX)) return;
 
-    await DuplicateResolver.handleComponent(interaction as any, {
+    await DuplicateResolver.handleComponent(interaction, {
       fetchFiles: async ({ scope, userId, nonce }) => {
         const key = uiState.makeKey({ scope, userId, nonce });
         return uiState.get<any[]>(key) ?? [];
       },
       onSelect: async ({ fileId }) => {
         try {
-          const indexer = (interaction.client as any).serviceContainer?.get?.('driveIndexer') as
+          const indexer = (interaction.client).serviceContainer?.get?.('driveIndexer') as
             | import('@/services/DriveIndexerService').DriveIndexerService
             | undefined;
           if (!indexer) return;
