@@ -19,6 +19,7 @@ import type { SearchIndex } from '@/search/SearchIndex';
 import { DriveChangesService } from '../services/DriveChangesService';
 import type { BotConfig } from '@/types';
 import { WorkspaceDbService } from '@/services/WorkspaceDbService';
+import { RagService } from '@/services/RagService';
 
 interface Bot {
   config: BotConfig;
@@ -160,7 +161,10 @@ class ServiceManager {
 
     // Persistent Search Index (SQLite FTS5)
     try {
-      const dbPath = process.env['BOT_INDEX_DB_PATH'] || './data/search-index.db';
+      const dbPath =
+        process.env['SEARCH_INDEX_PATH'] ||
+        process.env['BOT_INDEX_DB_PATH'] ||
+        './data/search-index.db';
       const searchIndex: SearchIndex = new SqliteSearchIndex({ dbPath });
       this.services.set('searchIndex', searchIndex as unknown as Service);
       logger.info('🗂️ SqliteSearchIndex зареєстровано', {
@@ -169,6 +173,29 @@ class ServiceManager {
         component: 'ServiceManager',
         dbPath,
       });
+
+      // RAG Service (depends on AI + SearchIndex)
+      try {
+        const aiSvc = this.services.get('ai');
+        if (aiSvc) {
+          const rag = new RagService(searchIndex as any, aiSvc as any);
+          this.services.set('rag', rag as unknown as Service);
+          logger.info('🧩 RagService зареєстровано', {
+            type: 'service_manager',
+            event: 'rag_registered',
+            component: 'ServiceManager',
+          });
+        } else {
+          logger.warn('RagService не зареєстровано: AI service недоступний');
+        }
+      } catch (er) {
+        logger.error('❌ Не вдалося створити RagService', {
+          type: 'service_manager',
+          event: 'rag_register_failed',
+          component: 'ServiceManager',
+          errorMessage: er instanceof Error ? er.message : String(er),
+        });
+      }
     } catch (e) {
       logger.error('❌ Не вдалося створити SqliteSearchIndex', {
         type: 'service_manager',
