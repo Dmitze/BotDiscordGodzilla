@@ -737,7 +737,7 @@ export class GoogleService extends BaseServiceClass {
       return r as unknown as { data: unknown };
     }, 'drive', undefined, 'drive.files.get.media');
 
-    const buf = await this.dataToBuffer(resp.data as unknown as any);
+    const buf = await this.dataToBuffer(resp.data as any);
     try {
       const ttl = this.config.drive.ttlTextSec ?? 300;
       await this.cacheService.set(cacheKey, buf, ttl);
@@ -782,7 +782,7 @@ export class GoogleService extends BaseServiceClass {
       return r as unknown as { data: unknown };
     }, 'drive', undefined, 'drive.files.export');
 
-    const buf = await this.dataToBuffer(resp.data as unknown as any);
+    const buf = await this.dataToBuffer(resp.data as any);
     try {
       const ttl = this.config.drive.ttlTextSec ?? 300;
       await this.cacheService.set(cacheKey, buf, ttl);
@@ -2206,7 +2206,7 @@ export class GoogleService extends BaseServiceClass {
 
         // Парсинг контенту документа через DocsService
         const docsSvc = this.getDocsService();
-        const content = docsSvc.extractTextFromDoc(response.data as docs_v1.Schema$Document);
+        const content = docsSvc.extractTextFromDoc(response.data);
         return content;
       }, 'docs');
 
