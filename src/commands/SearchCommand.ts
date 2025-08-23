@@ -4,12 +4,13 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import {
+import type {
   SlashCommandBuilder,
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ChatInputCommandInteraction,
+  ChatInputCommandInteraction} from 'discord.js';
+import {
+  EmbedBuilder
 } from 'discord.js';
 import type { BotConfig, SheetData, SearchParams } from '@/types';
 import { BaseCommand, type CommandExecuteOptions } from './BaseCommand';
@@ -365,8 +366,8 @@ export class SearchCommand extends BaseCommand {
             for (const d of docs.slice(0, 5)) {
               await workspace.addRecent(interaction.user.id, {
                 fileId: d.id as string,
-                name: d.name as string | undefined,
-                snippet: d.snippet as string | undefined,
+                name: d.name,
+                snippet: d.snippet,
                 openedAt: now,
               });
             }
@@ -550,9 +551,9 @@ export class SearchCommand extends BaseCommand {
         throw new Error(t('search.error.noData'));
       }
 
-      const values = sheetData.values as string[][];
+      const values = sheetData.values;
       const headers = values[0] as string[];
-      const rows = values.slice(1) as string[][];
+      const rows = values.slice(1);
 
       // Фільтрація даних
       const filteredRows = this.filterData(rows, headers, searchParams);
