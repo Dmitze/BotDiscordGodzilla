@@ -20,6 +20,7 @@ import { DriveChangesService } from '../services/DriveChangesService';
 import type { BotConfig } from '@/types';
 import { WorkspaceDbService } from '@/services/WorkspaceDbService';
 import { RagService } from '@/services/RagService';
+import { EmbeddingsService } from '@/services/EmbeddingsService';
 
 interface Bot {
   config: BotConfig;
@@ -130,20 +131,20 @@ class ServiceManager {
     this.services.set('sheetsContext', new SheetsContextService(this.bot.config));
 
     // Drive Changes Service (polling changes)
-    this.services.set('driveChanges', new DriveChangesService(this.bot.config as BotConfig));
+    this.services.set('driveChanges', new DriveChangesService(this.bot.config));
 
     // Drive Indexer Service (потребує доступу до інших сервісів через getService)
     this.services.set(
       'driveIndexer',
       new DriveIndexerService({
-        config: this.bot.config as BotConfig,
+        config: this.bot.config,
         getService: (name: string) => this.getService(name),
       } as any)
     );
 
     // Workspace (персональний простір користувача) на SQLite
     try {
-      const workspace = new WorkspaceDbService(this.bot.config as BotConfig);
+      const workspace = new WorkspaceDbService(this.bot.config);
       this.services.set('workspace', workspace as unknown as Service);
       logger.info('🗂️ WorkspaceDbService зареєстровано', {
         type: 'service_manager',
@@ -174,11 +175,34 @@ class ServiceManager {
         dbPath,
       });
 
-      // RAG Service (depends on AI + SearchIndex)
+      // Embeddings Service (optional, can fallback to mock)
+      try {
+        const embeddings = new EmbeddingsService(this.bot.config);
+        this.services.set('embeddings', embeddings as unknown as Service);
+        logger.info('🧮 EmbeddingsService зареєстровано', {
+          type: 'service_manager',
+          event: 'embeddings_registered',
+          component: 'ServiceManager',
+        });
+      } catch (er) {
+        logger.error('❌ Не вдалося створити EmbeddingsService', {
+          type: 'service_manager',
+          event: 'embeddings_register_failed',
+          component: 'ServiceManager',
+          errorMessage: er instanceof Error ? er.message : String(er),
+        });
+      }
+
+      // RAG Service (depends on AI + SearchIndex + (optional) Embeddings)
       try {
         const aiSvc = this.services.get('ai');
+        const emb = this.services.get('embeddings');
         if (aiSvc) {
-          const rag = new RagService(searchIndex as any, aiSvc as any);
+          const rag = new RagService(
+            searchIndex as any,
+            aiSvc as any,
+            (emb as unknown as { embed: (t: string) => Promise<number[]> } | undefined)
+          );
           this.services.set('rag', rag as unknown as Service);
           logger.info('🧩 RagService зареєстровано', {
             type: 'service_manager',
