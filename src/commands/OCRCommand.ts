@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import type { SlashCommandBuilder } from 'discord.js';
 import type { Attachment } from 'discord.js';
 import { BaseCommand } from '@/commands/BaseCommand';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
