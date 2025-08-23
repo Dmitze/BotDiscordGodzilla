@@ -4,15 +4,16 @@
  * TypeScript версія 3.0.0
  */
 
+import type {
+  EmbedBuilder} from 'discord.js';
 import {
   SlashCommandBuilder,
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
 } from 'discord.js';
 
-import { GoogleService } from '@/services/GoogleService';
+import type { GoogleService } from '@/services/GoogleService';
 import { sanitizeInput, validateCommandOptions } from '@/utils/security';
 import logger from '@/utils/logger';
 import { UIHelper } from '@/utils/uiHelpers';
@@ -204,7 +205,7 @@ class StatisticsCommand {
       sheets,
       range,
       columnType,
-      operation: operation as any,
+      operation: operation,
       groupBy,
       filters,
     };
@@ -329,7 +330,7 @@ class StatisticsCommand {
           continue;
         }
 
-        const row: string[] = (data.values[0] ?? []) as string[]; // Перший рядок
+        const row: string[] = (data.values[0] ?? []); // Перший рядок
         const [startRef, endRef] = config.range.includes(':')
           ? (config.range.split(':') as [string, string])
           : ([config.range, config.range] as [string, string]);

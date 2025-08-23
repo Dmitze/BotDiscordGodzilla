@@ -102,7 +102,7 @@ export class CommandManager {
       const fileId = parts[2];
       const pageIndex = parts[3] ? parseInt(parts[3], 10) : 0;
       if (!fileId) {
-        await replyWithPrivacy(interaction as any, { content: tUser('files.validation.invalidFileId', interaction) });
+        await replyWithPrivacy(interaction, { content: tUser('files.validation.invalidFileId', interaction) });
         return;
       }
 
@@ -110,13 +110,13 @@ export class CommandManager {
         | import('@/services/DriveIndexerService').DriveIndexerService
         | undefined;
       if (!driveIndexer) {
-        await replyWithPrivacy(interaction as any, { content: tUser('search.error.noService', interaction) });
+        await replyWithPrivacy(interaction, { content: tUser('search.error.noService', interaction) });
         return;
       }
 
       const chunks = await driveIndexer.getTextChunks(fileId, 1800);
       if (!chunks.length) {
-        await replyWithPrivacy(interaction as any, { content: tUser('files.error.noText', interaction) });
+        await replyWithPrivacy(interaction, { content: tUser('files.error.noText', interaction) });
         return;
       }
 
@@ -137,23 +137,23 @@ export class CommandManager {
       );
 
       if (action === 'expand') {
-        await replyWithPrivacy(interaction as any, { content: content ?? '', components: [row] });
+        await replyWithPrivacy(interaction, { content: content ?? '', components: [row] });
         return;
       }
       if (action === 'page') {
         if (interaction.deferred || interaction.replied) {
           await interaction.editReply({ content, components: [row] });
         } else {
-          await replyWithPrivacy(interaction as any, { content: content ?? '', components: [row] });
+          await replyWithPrivacy(interaction, { content: content ?? '', components: [row] });
         }
         return;
       }
 
-      await replyWithPrivacy(interaction as any, { content: tUser('files.error.unknownSubcommand', interaction) });
+      await replyWithPrivacy(interaction, { content: tUser('files.error.unknownSubcommand', interaction) });
     } catch (e) {
       logger.error('search_button_failed', { error: e instanceof Error ? e.message : String(e) });
       try {
-        await replyWithPrivacy(interaction as any, { content: tUser('workspace.common.execError', interaction) });
+        await replyWithPrivacy(interaction, { content: tUser('workspace.common.execError', interaction) });
       } catch {
         // ignore
       }

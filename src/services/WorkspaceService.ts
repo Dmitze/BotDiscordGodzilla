@@ -139,7 +139,7 @@ export class WorkspaceService {
     const cfg = deps.config.drive || {};
     if (Array.isArray(cfg.allowedMime) && cfg.allowedMime.length) {
       base.mimeIncludes = base.mimeIncludes && base.mimeIncludes.length
-        ? base.mimeIncludes.filter(m => cfg.allowedMime!.includes(m))
+        ? base.mimeIncludes.filter(m => cfg.allowedMime.includes(m))
         : cfg.allowedMime;
     }
     if (Array.isArray(cfg.ownerAllowlist) && cfg.ownerAllowlist.length) {

@@ -125,8 +125,8 @@ class Logger {
         return value.length > MAX_STRING_LEN ? value.slice(0, MAX_STRING_LEN) + '…' : value;
       }
       if (typeof value === 'object') {
-        if (seen.has(value as object)) return '[CIRCULAR]';
-        seen.add(value as object);
+        if (seen.has(value)) return '[CIRCULAR]';
+        seen.add(value);
         if (Array.isArray(value)) return value.map(v => redact(key, v));
         const out: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(value as Record<string, unknown>)) {

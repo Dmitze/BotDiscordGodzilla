@@ -1,9 +1,20 @@
-import { Client, Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { type Client, type Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import logger from '@/utils/logger';
 import type { IntentDetector } from './IntentDetector';
 import type { MemoryService } from './MemoryService';
 import type { DriveIndexerService, DriveSearchResult } from '@/services/DriveIndexerService';
 import { tokenizeQuery, buildSnippet, highlightSnippet } from '@/utils/highlight';
+import type { RetrieverOptions, AugmentOptions, GenerateWithContextOptions } from '@/rag/types';
+import type { RagAnswer } from '@/rag/RagPipeline';
+
+interface RagService {
+  answer(
+    query: string,
+    retrieverOpts?: RetrieverOptions,
+    augmentOpts?: AugmentOptions,
+    genOpts?: GenerateWithContextOptions
+  ): Promise<RagAnswer>;
+}
 
 export class ChatRouter {
   constructor(
@@ -161,13 +172,18 @@ export class ChatRouter {
       ts: Date.now(),
     });
     try {
-      const rag = this.getService?.('rag') as any;
+      const rag = this.getService?.('rag') as RagService | undefined;
       if (rag?.answer) {
-        const res = await rag.answer(content, {
-          k: Number(process.env['RETRIEVER_K'] ?? 6),
-          alpha: Number(process.env['RETRIEVER_ALPHA'] ?? 0.5),
-        }, { maskPII: true }, { maxTokens: Number(process.env['AI_MAX_TOKENS'] ?? 512) });
-        const cite = res.chunks?.map((c: any, i: number) => `[${i + 1}] ${c.name}`).join(', ') || '—';
+        const res = await rag.answer(
+          content,
+          {
+            k: Number(process.env['RETRIEVER_K'] ?? 6),
+            alpha: Number(process.env['RETRIEVER_ALPHA'] ?? 0.5),
+          },
+          { maskPII: true },
+          { maxTokens: Number(process.env['AI_MAX_TOKENS'] ?? 512) }
+        );
+        const cite = res.chunks?.map((c, i) => `[${i + 1}] ${c.name}`).join(', ') || '—';
         await msg.reply(`${res.answer}\n\nДжерела: ${cite}`);
         return;
       }

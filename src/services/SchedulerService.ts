@@ -5,7 +5,7 @@
  */
 
 import logger from '../utils/logger';
-import { Client } from 'discord.js';
+import type { Client } from 'discord.js';
 
 interface Bot {
   getService(name: string): any;

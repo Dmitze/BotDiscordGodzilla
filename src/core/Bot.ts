@@ -4,7 +4,8 @@
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
  */
 
-import { Client, GatewayIntentBits, Collection, Events, Interaction } from 'discord.js';
+import type { Interaction } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, Events } from 'discord.js';
 import type { BotConfig, BaseCommand } from '@/types';
 import { ServiceContainer } from './ServiceContainer';
 import { BaseService as BaseServiceClass } from './BaseService';
@@ -251,7 +252,7 @@ export class Bot extends BaseServiceClass {
 
       // Після ініціалізації сервісів інжектуємо AI у IntentDetector
       try {
-        const ai = this.serviceManager.getService('ai') as unknown as AIService | undefined;
+        const ai = this.serviceManager.getService('ai');
         this.intentDetector.setAI(ai);
         this.intentDetector.setOptions({
           aiTimeoutMs: Number(process.env['OLLAMA_TIMEOUT_MS'] || 2000),

@@ -5,7 +5,8 @@
  */
 
 import logger from '@/utils/logger';
-import { Client, Guild, Message, Events } from 'discord.js';
+import type { Client, Guild, Message} from 'discord.js';
+import { Events } from 'discord.js';
 
 interface Bot {
   client: Client;

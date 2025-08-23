@@ -103,7 +103,7 @@ export class SqliteSearchIndex implements SearchIndex {
     const lastIndexedAt = nowMs();
     const textLen = textNorm.length;
 
-    const existing = this.selectDocStmt.get(doc.fileId) as any | undefined;
+    const existing = this.selectDocStmt.get(doc.fileId);
 
     const run = this.db.transaction(() => {
       if (!existing) {
@@ -218,7 +218,7 @@ export class SqliteSearchIndex implements SearchIndex {
       ORDER BY score
       LIMIT ? OFFSET ?`;
 
-    const rows = this.db.prepare(baseSql).all(matchExpr, ...params, limit, offset) as any[];
+    const rows = this.db.prepare(baseSql).all(matchExpr, ...params, limit, offset);
 
     const countSql = `SELECT COUNT(1) as cnt FROM documents_fts f JOIN documents d ON d.fileId=f.fileId
       WHERE documents_fts MATCH ? ${whereSql}`;
@@ -251,7 +251,7 @@ export class SqliteSearchIndex implements SearchIndex {
   }
 
   async getDiff(fileId: string): Promise<{ latestHash: string; previousHash?: string; diffMeta?: Record<string, { old?: unknown; new?: unknown }> }> {
-    const versions = this.selectVersionsStmt.all(fileId) as any[];
+    const versions = this.selectVersionsStmt.all(fileId);
     const latest = versions[0];
     const prev = versions[1];
     const res: { latestHash: string; previousHash?: string; diffMeta?: Record<string, { old?: unknown; new?: unknown }> } = {
@@ -259,8 +259,8 @@ export class SqliteSearchIndex implements SearchIndex {
       previousHash: prev?.contentHash,
     };
     // naive meta diff
-    const latestMeta = parseJson(latest?.meta) as Record<string, unknown> | undefined;
-    const prevMeta = parseJson(prev?.meta) as Record<string, unknown> | undefined;
+    const latestMeta = parseJson(latest?.meta);
+    const prevMeta = parseJson(prev?.meta);
     if (latestMeta && prevMeta) {
       const changed: Record<string, { old?: unknown; new?: unknown }> = {};
       const keys = new Set([...Object.keys(latestMeta), ...Object.keys(prevMeta)]);

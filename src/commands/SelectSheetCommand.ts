@@ -97,7 +97,7 @@ export class SelectSheetCommand extends BaseCommand {
       }
 
       const spreadsheetInput = interaction.options.getString('spreadsheet') || '';
-      let sheetName = interaction.options.getString('sheet') || undefined;
+      const sheetName = interaction.options.getString('sheet') || undefined;
 
       // Визначаємо spreadsheetId
       let spreadsheetId: string | undefined;

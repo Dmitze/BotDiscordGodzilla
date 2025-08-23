@@ -30,7 +30,7 @@ import { Config } from '@/config/Config';
     await (worker as any).initialize(langs);
 
     const buf = readFileSync(filePath);
-    const { data } = (await (worker as any).recognize(buf)) as any;
+    const { data } = (await (worker as any).recognize(buf));
     const text: string = data?.text ?? '';
 
     console.log('--- OCR RESULT START ---');

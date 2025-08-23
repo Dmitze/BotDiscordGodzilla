@@ -4,12 +4,13 @@
  * Версія 4.0.0 - Модульна архітектура
  */
 
+import type {
+  ChatInputCommandInteraction,
+  AutocompleteInteraction,
+  MessageComponentInteraction} from 'discord.js';
 import {
   SlashCommandBuilder,
-  ChatInputCommandInteraction,
-  EmbedBuilder,
-  AutocompleteInteraction,
-  MessageComponentInteraction,
+  EmbedBuilder
 } from 'discord.js';
 
 import type { BotConfig, CommandStats, CommandContext } from '@/types';
@@ -535,7 +536,7 @@ export abstract class BaseCommand {
     if (!interaction.guild || !interaction.member) return false;
 
     const member: any = interaction.member as any;
-    const perms: any = member?.permissions as any;
+    const perms: any = member?.permissions;
     return Boolean(perms && typeof perms.has === 'function' && perms.has(permission as any));
   }
 

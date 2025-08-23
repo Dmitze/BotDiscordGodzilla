@@ -1,5 +1,5 @@
 import type { BotConfig } from '@/types';
-import { CacheService } from './CacheService';
+import type { CacheService } from './CacheService';
 import { createHash } from 'crypto';
 
 export type Row = Record<string, any>;

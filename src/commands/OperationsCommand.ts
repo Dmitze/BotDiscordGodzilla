@@ -3,7 +3,8 @@
  * Спеціалізовані функції для оперативної роботи
  */
 
-import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import type { ChatInputCommandInteraction } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { replyWithPrivacy } from '@/ui/reply';
 import { tUser } from '@/i18n';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
@@ -133,7 +134,7 @@ export class OperationsCommand extends BaseCommand {
 
     try {
       const subcommand = interaction.options.getSubcommand();
-      const services = (interaction as any).client?.serviceContainer;
+      const services = (interaction).client?.serviceContainer;
       const opsService = services?.get?.('operations');
 
       switch (subcommand) {

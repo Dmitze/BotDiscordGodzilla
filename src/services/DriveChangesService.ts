@@ -70,7 +70,7 @@ export class DriveChangesService {
   constructor(config: BotConfig, provider?: IDriveChangesProvider, cache?: CacheService) {
     this.cache = cache ?? new CacheService(config);
     const driveCfg = (config as Partial<BotConfig>).drive as Partial<BotConfig['drive']> | undefined;
-    this.folderId = (driveCfg?.folderId as string | undefined) ?? '';
+    this.folderId = (driveCfg?.folderId) ?? '';
     this.hideWebLink = (driveCfg?.hideWebLink as boolean | undefined) ?? true;
     // Determine disabled mode for tests or when flagged/missing credentials.
     // IMPORTANT: if a custom provider is supplied (e.g., in tests), do NOT disable.
@@ -142,7 +142,7 @@ export class DriveChangesService {
     const time = c.time || file.modifiedTime;
     if (time) evt.time = time;
     if (owners && owners.length) evt.owners = owners;
-    if (!this.hideWebLink && file.webViewLink) evt.webViewLink = file.webViewLink as string;
+    if (!this.hideWebLink && file.webViewLink) evt.webViewLink = file.webViewLink;
     return evt;
   }
 

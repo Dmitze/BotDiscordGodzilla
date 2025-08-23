@@ -72,25 +72,25 @@ export class WorkspaceCommand extends BaseCommand {
     try {
       // Feature flag: workspace can be disabled via config
       if (!this.config.features?.enableUserWorkspace) {
-        await replyWithPrivacy(interaction as any, { content: t('ws.error.disabled') });
+        await replyWithPrivacy(interaction, { content: t('ws.error.disabled') });
         return;
       }
       const sub = interaction.options.getSubcommand();
       switch (sub) {
         case 'add':
-          await this.handleAdd(interaction as any);
+          await this.handleAdd(interaction);
           break;
         case 'list':
-          await this.handleList(interaction as any);
+          await this.handleList(interaction);
           break;
         case 'remove':
-          await this.handleRemove(interaction as any);
+          await this.handleRemove(interaction);
           break;
         case 'run':
-          await this.handleRun(interaction as any);
+          await this.handleRun(interaction);
           break;
         default:
-          await replyWithPrivacy(interaction as any, { content: t('ws.reply.unknownSub') });
+          await replyWithPrivacy(interaction, { content: t('ws.reply.unknownSub') });
       }
     } catch (error) {
       logger.error('Помилка WorkspaceCommand', {
@@ -101,7 +101,7 @@ export class WorkspaceCommand extends BaseCommand {
       if (interaction.deferred) {
         await interaction.editReply({ content: t('ws.error.exec') });
       } else {
-        await replyWithPrivacy(interaction as any, { content: t('ws.error.exec') });
+        await replyWithPrivacy(interaction, { content: t('ws.error.exec') });
       }
     }
   }
@@ -114,11 +114,11 @@ export class WorkspaceCommand extends BaseCommand {
     const query = interaction.options.getString('query');
 
     if (type === 'file' && !fileId) {
-      await replyWithPrivacy(interaction as any, { content: t('ws.error.missingFileId') });
+      await replyWithPrivacy(interaction, { content: t('ws.error.missingFileId') });
       return;
     }
     if (type === 'query' && !query) {
-      await replyWithPrivacy(interaction as any, { content: t('ws.error.missingQuery') });
+      await replyWithPrivacy(interaction, { content: t('ws.error.missingQuery') });
       return;
     }
 
@@ -132,7 +132,7 @@ export class WorkspaceCommand extends BaseCommand {
       payload: { fileId: fileId || undefined, query: query || undefined },
     });
 
-    await replyWithPrivacy(interaction as any, {
+    await replyWithPrivacy(interaction, {
       content: t('ws.reply.addSuccess', { title: item.title, id: item.id }),
     });
   }
@@ -146,14 +146,14 @@ export class WorkspaceCommand extends BaseCommand {
       type ? { type } : undefined
     );
     if (!items.length) {
-      await replyWithPrivacy(interaction as any, { content: t('ws.reply.listEmpty') });
+      await replyWithPrivacy(interaction, { content: t('ws.reply.listEmpty') });
       return;
     }
 
     const lines = items.map(i =>
       t('ws.format.listLine', { type: i.type, title: i.title, id: i.id })
     );
-    await replyWithPrivacy(interaction as any, {
+    await replyWithPrivacy(interaction, {
       content: `${t('ws.reply.listTitle')}\n${lines.join('\n')}`,
     });
   }
@@ -163,7 +163,7 @@ export class WorkspaceCommand extends BaseCommand {
     const id = interaction.options.getString('id', true);
 
     const ok = await UserWorkspaceService.remove(userId, id);
-    await replyWithPrivacy(interaction as any, {
+    await replyWithPrivacy(interaction, {
       content: ok ? t('ws.reply.removed') : t('ws.reply.notFound'),
     });
   }
@@ -174,24 +174,24 @@ export class WorkspaceCommand extends BaseCommand {
 
     const item = await UserWorkspaceService.get(userId, id);
     if (!item) {
-      await replyWithPrivacy(interaction as any, { content: t('ws.reply.notFound') });
+      await replyWithPrivacy(interaction, { content: t('ws.reply.notFound') });
       return;
     }
 
     if (item.type === 'query') {
-      await replyWithPrivacy(interaction as any, {
+      await replyWithPrivacy(interaction, {
         content: t('ws.reply.runQuery', { query: String(item.payload.query) }),
       });
       return;
     }
 
     if (item.type === 'file') {
-      await replyWithPrivacy(interaction as any, {
+      await replyWithPrivacy(interaction, {
         content: t('ws.reply.runFile', { fileId: String(item.payload.fileId) }),
       });
       return;
     }
 
-    await replyWithPrivacy(interaction as any, { content: t('ws.error.unsupportedType') });
+    await replyWithPrivacy(interaction, { content: t('ws.error.unsupportedType') });
   }
 }
