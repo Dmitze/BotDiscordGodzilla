@@ -709,9 +709,9 @@ export class FileManagerCommand extends BaseCommand {
       changesOnly: session.changesOnly,
       allowLink,
       folderId: session.folderId,
-      buildId: ({ sid, page, ts, action }) =>
-        process.env.NODE_ENV === 'test'
-          ? legacyBuild({ sid, page, action })
+      buildId: ({ sid, page, action }) =>
+        process.env['NODE_ENV'] === 'test'
+          ? (action != null ? legacyBuild({ sid, page, action }) : legacyBuild({ sid, page }))
           : signComponentId({ kind: 'filesrch', sid, page, action }),
     });
     return { embed, components: rows };
@@ -741,7 +741,7 @@ export class FileManagerCommand extends BaseCommand {
   // --- Text pagination helpers ---
   private buildTextCustomId(args: { sid: string; page: number; action?: 'close' }): string {
     const { sid, page, action } = args;
-    if (process.env.NODE_ENV === 'test') {
+    if (process.env['NODE_ENV'] === 'test') {
       return `filetxt|sid=${sid}|page=${page}${action ? `|action=${action}` : ''}`;
     }
     return signComponentId({ kind: 'filetxt', sid, page, action });
@@ -1149,13 +1149,12 @@ export class FileManagerCommand extends BaseCommand {
       if (link) sessionObj.link = link;
       FileManagerCommand.textSessions.set(sid, sessionObj);
 
-      const ts = Math.floor(Date.now() / 1000);
       const openBtn = new ButtonBuilder()
-        .setCustomId(this.buildTextCustomId({ sid, page: 1, ts }))
+        .setCustomId(this.buildTextCustomId({ sid, page: 1 }))
         .setLabel('Показати ще')
         .setStyle(ButtonStyle.Primary);
       const closeBtn = new ButtonBuilder()
-        .setCustomId(this.buildTextCustomId({ sid, page: 1, ts, action: 'close' }))
+        .setCustomId(this.buildTextCustomId({ sid, page: 1, action: 'close' }))
         .setLabel(t('files.search.buttons.close'))
         .setStyle(ButtonStyle.Danger);
       const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(openBtn, closeBtn);
