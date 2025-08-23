@@ -725,9 +725,13 @@ export class FileManagerCommand extends BaseCommand {
       return i > 0 ? [kv.slice(0, i), kv.slice(i + 1)] as const : [kv, ''];
     }));
     const sid = map.get('sid');
-    const p = Number(map.get('p') || '1');
-    const a = map.get('a') as any;
-    const t = Number(map.get('t') || '');
+    // Support both legacy long keys and short keys used internally
+    const pRaw = map.get('p') ?? map.get('page') ?? '1';
+    const aRaw = map.get('a') ?? map.get('action') ?? undefined;
+    const tRaw = map.get('t') ?? map.get('ts') ?? '';
+    const p = Number(pRaw);
+    const a = aRaw as any;
+    const t = Number(tRaw);
     if (!sid) return null;
     const res: { sid: string; page: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } = {
       sid,
