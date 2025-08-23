@@ -38,7 +38,13 @@ export class SqliteSearchIndex implements SearchIndex {
   private selectVersionsStmt: Statement;
 
   constructor(opts: SqliteIndexOptions = {}) {
-    const dbPath = resolve(process.cwd(), opts.dbPath || './data/search-index.db');
+    const dbPath = resolve(
+      process.cwd(),
+      opts.dbPath ||
+        process.env['SEARCH_INDEX_PATH'] ||
+        process.env['BOT_INDEX_DB_PATH'] ||
+        './data/search-index.db'
+    );
     const dir = dirname(dbPath);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
