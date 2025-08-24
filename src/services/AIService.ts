@@ -6,6 +6,7 @@
 
 import OpenAI from 'openai';
 import type { BotConfig, HealthStatus, ServiceStats, AIResponse, AIRequestOptions } from '@/types';
+import type { ContextChunk } from '@/rag/types';
 
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
@@ -79,6 +80,68 @@ export class AIService extends BaseServiceClass {
       cacheMisses: 0,
       providerSwitches: 0,
       contextCleanups: 0,
+    };
+  }
+
+  /**
+   * Згенерувати відповідь з явно наданим RAG-контекстом.
+   * Повертає структурований результат із цитуваннями.
+   */
+  public async generateWithContext(args: {
+    prompt: string;
+    contextChunks: ContextChunk[];
+    citations?: boolean;
+    locale?: string;
+    model?: string;
+    maxTokens?: number;
+    temperature?: number;
+  }): Promise<{
+    text: string;
+    citations: { index: number; fileId: string; name: string; url?: string }[];
+    provider: string;
+    model?: string;
+    tokens?: number;
+    duration?: number;
+  }> {
+    const locale = args.locale || 'uk';
+    const system =
+      locale === 'uk'
+        ? 'Ти — помічник, який відповідає стисло, українською, з посиланнями на джерела.'
+        : 'You are a concise assistant that answers with citations to sources.';
+
+    // Формуємо джерела з контексту
+    const sources = args.contextChunks
+      .map((c, i) => `(${i + 1}) ${c.name} [${c.fileId}]\n${c.snippet}`)
+      .join('\n\n');
+
+    const fullPrompt = `${system}\n\nПитання:\n${args.prompt}\n\nКонтекст (релевантні уривки):\n${sources}\n\nВідповідь: наведи коротку відповідь та в кінці перелік джерел у форматі [1], [2], ... з короткими назвами.`;
+
+    const req: AIRequestOptions = { useCache: true };
+    if (typeof args.model === 'string') req.model = args.model;
+    if (typeof args.maxTokens === 'number') req.maxTokens = args.maxTokens;
+    if (typeof args.temperature === 'number') req.temperature = args.temperature;
+
+    const resp = await this.generateResponse(fullPrompt, req);
+    type Citation = { index: number; fileId: string; name: string; url?: string };
+    const citations: Citation[] = args.citations === false
+      ? []
+      : args.contextChunks.map((c, i) => {
+          const base: { index: number; fileId: string; name: string } & Partial<{ url: string }> = {
+            index: i + 1,
+            fileId: c.fileId,
+            name: c.name,
+          };
+          if (c.url) base.url = c.url;
+          return base as Citation;
+        });
+
+    return {
+      text: resp.content,
+      citations,
+      provider: resp.provider,
+      model: resp.model,
+      tokens: resp.tokens,
+      duration: (resp as any).duration,
     };
   }
 
