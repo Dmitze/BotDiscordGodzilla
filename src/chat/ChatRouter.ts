@@ -6,6 +6,7 @@ import type { DriveIndexerService, DriveSearchResult } from '@/services/DriveInd
 import { tokenizeQuery, buildSnippet, highlightSnippet } from '@/utils/highlight';
 import type { RetrieverOptions, AugmentOptions, GenerateWithContextOptions } from '@/rag/types';
 import type { RagAnswer } from '@/rag/RagPipeline';
+import { tUser } from '@/i18n';
 
 interface RagService {
   answer(
@@ -74,7 +75,7 @@ export class ChatRouter {
         error: e instanceof Error ? e.message : String(e),
       });
       try {
-        await msg.reply('❌ Ошибка обработки сообщения. Попробуйте уточнить запрос.');
+        await msg.reply(tUser('chat.errors.generic', msg));
       } catch (replyErr) {
         logger.debug('reply_failed_suppressed', {
           type: 'chat',
@@ -88,18 +89,18 @@ export class ChatRouter {
   private async replySearch(msg: Message, queryRaw: string): Promise<void> {
     const query = (queryRaw || '').trim();
     if (!query) {
-      await msg.reply('Вкажіть запит для пошуку. Приклад: "пошук договор поставки"');
+      await msg.reply(tUser('chat.search.noQuery', msg));
       return;
     }
     const svc = (this.getService?.('driveIndexer') ?? undefined) as DriveIndexerService | undefined;
     if (!svc) {
-      await msg.reply('Пошук наразі недоступний. Сервіс індексації не активний.');
+      await msg.reply(tUser('chat.search.serviceUnavailable', msg));
       return;
     }
     try {
       const results: DriveSearchResult[] = await svc.search(query, 5);
       if (!results.length) {
-        await msg.reply('Нічого не знайдено за вашим запитом. Спробуйте інші ключові слова.');
+        await msg.reply(tUser('chat.search.none', msg));
         return;
       }
       const terms = tokenizeQuery(query);
@@ -130,7 +131,7 @@ export class ChatRouter {
       await msg.reply({ embeds, components: [buttons] });
     } catch (e) {
       logger.error('search_reply_failed', { error: e instanceof Error ? e.message : String(e) });
-      await msg.reply('❌ Сталася помилка під час пошуку. Спробуйте пізніше.');
+      await msg.reply(tUser('chat.search.error', msg));
     }
   }
 
@@ -148,21 +149,57 @@ export class ChatRouter {
   }
 
   private async replyHelp(msg: Message): Promise<void> {
-    await msg.reply(
-      'Я ассистент. Могу: 1) анализировать таблицы Google Sheets; 2) анализировать файлы Google Drive; 3) отвечать на вопросы. Примеры: "проанализируй таблицу "Личный состав"", "сколько записей в "Отчёт_июль"", "что в файле с id ..."'
-    );
+    await msg.reply(tUser('chat.help', msg));
   }
 
   private async replyAnalyzeSheet(msg: Message): Promise<void> {
-    await msg.reply(
-      'Принято: анализ таблицы. Уточните имя листа/таблицы в кавычках или ID. Функция анализа будет активирована на следующем шаге рефакторинга.'
-    );
+    try {
+      type SheetsCtxSvc = {
+        getContext: (key: { userId: string; channelId: string }) => Promise<any>;
+      };
+      type GoogleSvc = {
+        readRange: (
+          spreadsheetId: string,
+          sheetName: string,
+          opts: { headerRow: number }
+        ) => Promise<{ headers?: string[]; rows?: (string | number | null)[][] }>;
+      };
+
+      const sheetsCtx = this.getService?.('sheetsContext') as SheetsCtxSvc | undefined;
+      const google = this.getService?.('google') as GoogleSvc | undefined;
+      if (!sheetsCtx || !google) {
+        await msg.reply(tUser('chat.analyzeSheet.prompt', msg));
+        return;
+      }
+      const key = { userId: msg.author.id, channelId: msg.channelId };
+      const ctx = await sheetsCtx.getContext(key);
+      if (!ctx || !ctx.spreadsheetId || !ctx.sheetName) {
+        await msg.reply(tUser('chat.analyzeSheet.prompt', msg));
+        return;
+      }
+      // Read header + sample rows
+      const data = await google.readRange(ctx.spreadsheetId, ctx.sheetName, { headerRow: 1 });
+      const headers: string[] = data.headers || [];
+      const rows: (string | number | null)[][] = Array.isArray(data.rows) ? data.rows : [];
+      // Detect numeric columns as metrics
+      const metricIdx: number[] = [];
+      for (let i = 0; i < headers.length; i++) {
+        const sample = rows
+          .map(r => r?.[i])
+          .filter((v): v is string | number => v !== null && v !== undefined);
+        const numericCount = sample.filter(v => typeof v === 'number' || (typeof v === 'string' && /^-?\d+(?:[.,]\d+)?$/.test(v))).length;
+        if (sample.length > 0 && numericCount / sample.length >= 0.7) metricIdx.push(i);
+      }
+      const metricNames = metricIdx.map(i => headers[i]).filter(Boolean).join(', ') || '—';
+      await msg.reply(tUser('ai.helpers.metricsDetected', msg, { list: metricNames }));
+    } catch (e) {
+      logger.warn('analyze_sheet_minimal_failed', { error: e instanceof Error ? e.message : String(e) });
+      await msg.reply(tUser('chat.analyzeSheet.prompt', msg));
+    }
   }
 
   private async replyAnalyzeFile(msg: Message): Promise<void> {
-    await msg.reply(
-      'Принято: анализ файла/документа. Уточните ID файла. Функция анализа будет активирована на следующем шаге рефакторинга.'
-    );
+    await msg.reply(tUser('chat.analyzeFile.prompt', msg));
   }
 
   private async replyQna(msg: Message, content: string): Promise<void> {
@@ -187,15 +224,13 @@ export class ChatRouter {
         await msg.reply(`${res.answer}\n\nДжерела: ${cite}`);
         return;
       }
-      await msg.reply('Прийнято. Генератор відповідей ІІ наразі недоступний. Спробуйте /ai');
+      await msg.reply(tUser('chat.qna.unavailable', msg));
     } catch (e) {
-      await msg.reply('❌ Помилка генерації відповіді. Спробуйте ще раз пізніше.');
+      await msg.reply(tUser('chat.qna.error', msg));
     }
   }
 
   private async replyUnknown(msg: Message): Promise<void> {
-    await msg.reply(
-      'Не понял запрос. Примеры: "проанализируй таблицу "Сводка"", "сколько записей в "Отчёт"", "что в файле с id ..."'
-    );
+    await msg.reply(tUser('chat.unknown', msg));
   }
 }
