@@ -191,11 +191,15 @@ class ServiceManager {
       try {
         const aiSvc = this.services.get('ai');
         const emb = this.services.get('embeddings');
+        const cacheSvc = this.services.get('cache') as
+          | { get<T = unknown>(key: string): Promise<T | null>; set<T = unknown>(key: string, value: T, ttlSec?: number): Promise<unknown> }
+          | undefined;
         if (aiSvc) {
           const rag = new RagService(
             searchIndex as any,
             aiSvc as any,
-            (emb as unknown as { embed: (t: string) => Promise<number[]> } | undefined)
+            (emb as unknown as { embed: (t: string) => Promise<number[]> } | undefined),
+            cacheSvc ? { cache: cacheSvc } : undefined
           );
           this.services.set('rag', rag as unknown as NonNullable<ServiceRegistry['rag']>);
           logger.info('🧩 RagService зареєстровано', {
