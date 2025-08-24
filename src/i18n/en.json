@@ -409,6 +409,10 @@
         "clear": "clear"
       }
     },
+    "ui": {
+      "selectPlaceholder": "Select a sheet",
+      "chooseSheet": "Please select a sheet from the list"
+    },
     "reply": {
       "cleared": "✅ Context cleared",
       "noContext": "ℹ️ No saved context",
@@ -421,6 +425,8 @@
       "notFoundByName": "Spreadsheet named '{{name}}' not found in the folder",
       "missingSpreadsheet": "Spreadsheet not specified. Provide 'spreadsheet' option (name or ID).",
       "sheetNotFound": "Sheet '{{sheet}}' not found in the selected spreadsheet",
+      "noSheets": "No available sheets in the spreadsheet",
+      "sheetNotSelected": "Please select a sheet",
       "failed": "❌ Error: {{message}}"
     },
     "log": {
