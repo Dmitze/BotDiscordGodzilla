@@ -46,10 +46,18 @@ module.exports = {
     'node_modules/',
     '*.js',
     '*.d.ts',
+    // Ignore helper sandbox outside src to avoid tsconfig include issues
+    'helpers/**',
     // Variant B: temporarily ignore tests to avoid parser issues and merge-conflict file
     'src/tests/**',
   ],
   overrides: [
+    {
+      files: ['src/scripts/**/*.ts'],
+      rules: {
+        'no-console': 'off',
+      },
+    },
     {
       files: ['src/**/*.ts'],
       rules: {
