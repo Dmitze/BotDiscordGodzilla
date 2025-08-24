@@ -19,6 +19,86 @@ export interface ReadDeps {
   mapGoogleApiErrorToMessage: (e: any) => string | null;
 }
 
+// --- Helpers extracted to reduce complexity ---
+function isAllowedByPolicy(meta: any, driveCfg: any, isMimeAllowed: (mime: string, allowed: string[]) => boolean, isOwnerAllowed: (owners: string[], allowlist: string[]) => boolean): { ok: boolean; reason?: 'mime' | 'owner' } {
+  if (driveCfg?.allowedMime && !isMimeAllowed(meta.mimeType, driveCfg.allowedMime)) {
+    return { ok: false, reason: 'mime' };
+  }
+  if (driveCfg?.ownerAllowlist?.length) {
+    const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
+    if (!isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
+      return { ok: false, reason: 'owner' };
+    }
+  }
+  return { ok: true };
+}
+
+async function tryExportSheetAsXlsx(interaction: ChatInputCommandInteraction, svc: any, fileId: string, meta: any): Promise<boolean> {
+  try {
+    const xlsxBuf = await svc.exportDriveFile(
+      fileId,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    const baseName = String(meta.name || fileId);
+    const fileName = baseName.endsWith('.xlsx') ? baseName : `${baseName}.xlsx`;
+    await interaction.editReply({
+      content: t('files.read.downloadedSheet') || 'Завантажено таблицю як .xlsx',
+      files: [{ attachment: xlsxBuf, name: fileName }],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function buildSourceLink(meta: any, driveCfg: any): string {
+  const linkAllowed = !(driveCfg?.hideWebLink);
+  return linkAllowed ? String(meta.webViewLink || '') : '';
+}
+
+async function replyQuickEmbed(interaction: ChatInputCommandInteraction, title: string, description: string, link?: string): Promise<void> {
+  const embed = new EmbedBuilder().setTitle(title).setDescription(description).setColor(0x22c55e).setTimestamp();
+  if (link) {
+    const linkBtn = new ButtonBuilder().setLabel('Джерело').setStyle(ButtonStyle.Link).setURL(link);
+    const rowLink = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn);
+    await interaction.editReply({ embeds: [embed], components: [rowLink] });
+  } else {
+    await interaction.editReply({ embeds: [embed] });
+  }
+}
+
+function createTextSession(
+  deps: ReadDeps,
+  args: { fileId: string; fileName: string; chunks: string[]; link?: string }
+): { sid: string; rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] } {
+  const sid = deps.generateSessionId('txt');
+  const sessionObj: { fileId: string; fileName: string; chunks: string[]; createdAt: number; link?: string } = {
+    fileId: args.fileId,
+    fileName: args.fileName,
+    chunks: args.chunks,
+    createdAt: Math.floor(Date.now() / 1000),
+  };
+  if (args.link) sessionObj.link = args.link;
+  deps.textSessions.set(sid, sessionObj);
+
+  const openBtn = new ButtonBuilder()
+    .setCustomId(deps.buildTextCustomId({ sid, page: 1 }))
+    .setLabel('Показати ще')
+    .setStyle(ButtonStyle.Primary);
+  const closeBtn = new ButtonBuilder()
+    .setCustomId(deps.buildTextCustomId({ sid, page: 1, action: 'close' }))
+    .setLabel(t('files.search.buttons.close'))
+    .setStyle(ButtonStyle.Danger);
+  const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(openBtn, closeBtn);
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [row];
+  if (args.link) {
+    const linkBtn = new ButtonBuilder().setLabel('Джерело').setStyle(ButtonStyle.Link).setURL(args.link);
+    const rowLink = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn);
+    rows.push(rowLink);
+  }
+  return { sid, rows };
+}
+
 export async function handleReadTextFlow(
   interaction: ChatInputCommandInteraction,
   options: { fileId: string },
@@ -30,13 +110,10 @@ export async function handleReadTextFlow(
     isMimeAllowed,
     isOwnerAllowed,
     isTooLarge,
-    getSubcommandTitle,
     sanitizeTextForChat,
     buildPaginatedChunks,
     summarizeTlDr,
-    generateSessionId,
-    buildTextCustomId,
-    textSessions,
+    getSubcommandTitle,
     mapGoogleApiErrorToMessage,
   } = deps;
 
@@ -54,16 +131,10 @@ export async function handleReadTextFlow(
     }
 
     const driveCfg = config.drive;
-    if (driveCfg?.allowedMime && !isMimeAllowed(meta.mimeType, driveCfg.allowedMime)) {
-      await interaction.editReply({ content: t('files.policy.disallowedMime') });
+    const policy = isAllowedByPolicy(meta, driveCfg, isMimeAllowed, isOwnerAllowed);
+    if (!policy.ok) {
+      await interaction.editReply({ content: policy.reason === 'mime' ? t('files.policy.disallowedMime') : t('files.policy.deniedOwner') });
       return;
-    }
-    if (driveCfg?.ownerAllowlist?.length) {
-      const owners = (meta.owners as any[])?.map((o: any) => o?.emailAddress || o?.displayName).filter(Boolean) || [];
-      if (!isOwnerAllowed(owners, driveCfg.ownerAllowlist)) {
-        await interaction.editReply({ content: t('files.policy.deniedOwner') });
-        return;
-      }
     }
 
     const sizeBytes = Number(meta.size || 0) || 0;
@@ -71,21 +142,8 @@ export async function handleReadTextFlow(
 
     // Якщо це Google Sheets — віддаємо як .xlsx вкладення
     if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
-      try {
-        const xlsxBuf = await svc.exportDriveFile(
-          options.fileId,
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        );
-        const baseName = String(meta.name || options.fileId);
-        const fileName = baseName.endsWith('.xlsx') ? baseName : `${baseName}.xlsx`;
-        await interaction.editReply({
-          content: t('files.read.downloadedSheet') || 'Завантажено таблицю як .xlsx',
-          files: [{ attachment: xlsxBuf, name: fileName }],
-        });
-        return;
-      } catch (e) {
-        // Якщо експорт не вдався — переходимо до текстового фолу-бека нижче
-      }
+      const done = await tryExportSheetAsXlsx(interaction, svc, options.fileId, meta);
+      if (done) return;
     }
 
     const extracted = await (svc).extractTextForChat(options.fileId);
@@ -93,15 +151,14 @@ export async function handleReadTextFlow(
 
     if (!safeText) {
       if (tooLarge) {
-        const linkAllowed = !(driveCfg?.hideWebLink);
-        const link = linkAllowed ? String(meta.webViewLink || '') : '';
+        const link = buildSourceLink(meta, driveCfg);
         const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
         const summary = t('files.summary.largeFile', {
           name: String(meta.name || ''),
           mimeType: String(meta.mimeType || ''),
           size: sizeMb,
         });
-        const linkText = linkAllowed && link ? `\n${t('files.summary.link')}: ${link}` : '';
+        const linkText = link ? `\n${t('files.summary.link')}: ${link}` : '';
         await interaction.editReply({ content: `${summary}${linkText}` });
         return;
       }
@@ -112,52 +169,17 @@ export async function handleReadTextFlow(
     const fileName = String(meta.name || options.fileId);
     const quick = sanitizeTextForChat(safeText, 1800);
     if (quick.length >= safeText.length) {
-      const linkAllowed = !(driveCfg?.hideWebLink);
-      const link = linkAllowed ? String(meta.webViewLink || '') : '';
-      const embed = new EmbedBuilder()
-        .setTitle(`📄 ${getSubcommandTitle('читати')}: ${fileName}`)
-        .setDescription(quick)
-        .setColor(0x22c55e)
-        .setTimestamp();
-      if (link) {
-        const linkBtn = new ButtonBuilder().setLabel('Джерело').setStyle(ButtonStyle.Link).setURL(link);
-        const rowLink = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn);
-        await interaction.editReply({ embeds: [embed], components: [rowLink] });
-      } else {
-        await interaction.editReply({ embeds: [embed] });
-      }
+      const link = buildSourceLink(meta, driveCfg);
+      const title = `📄 ${getSubcommandTitle('читати')}: ${fileName}`;
+      await replyQuickEmbed(interaction, title, quick, link || undefined);
       return;
     }
 
     const tldr = summarizeTlDr(safeText, { budget: 800, minSentLen: 40 });
     const chunks = buildPaginatedChunks(safeText, { maxChunkLen: 1800 });
-    const sid = generateSessionId('txt');
-    const linkAllowed = !(config.drive?.hideWebLink);
-    const link = linkAllowed ? String(meta.webViewLink || '') : '';
-    const sessionObj: { fileId: string; fileName: string; chunks: string[]; createdAt: number; link?: string } = {
-      fileId: options.fileId,
-      fileName,
-      chunks,
-      createdAt: Math.floor(Date.now() / 1000),
-    };
-    if (link) sessionObj.link = link;
-    textSessions.set(sid, sessionObj);
-
-    const openBtn = new ButtonBuilder()
-      .setCustomId(buildTextCustomId({ sid, page: 1 }))
-      .setLabel('Показати ще')
-      .setStyle(ButtonStyle.Primary);
-    const closeBtn = new ButtonBuilder()
-      .setCustomId(buildTextCustomId({ sid, page: 1, action: 'close' }))
-      .setLabel(t('files.search.buttons.close'))
-      .setStyle(ButtonStyle.Danger);
-    const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(openBtn, closeBtn);
-    const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [row];
-    if (link) {
-      const linkBtn = new ButtonBuilder().setLabel('Джерело').setStyle(ButtonStyle.Link).setURL(link);
-      const rowLink = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn);
-      rows.push(rowLink);
-    }
+    const link = buildSourceLink(meta, config.drive);
+    const sessionArgs = link ? { fileId: options.fileId, fileName, chunks, link } : { fileId: options.fileId, fileName, chunks };
+    const { rows } = createTextSession(deps, sessionArgs as { fileId: string; fileName: string; chunks: string[]; link?: string });
 
     const embed = new EmbedBuilder()
       .setTitle(`📄 ${getSubcommandTitle('читати')}: ${fileName}`)
