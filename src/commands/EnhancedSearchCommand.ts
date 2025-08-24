@@ -102,7 +102,6 @@ export class EnhancedSearchCommand extends BaseCommand {
         stage: 'start',
         status: 'ok',
         userId: interaction.user?.id,
-        guildId: (interaction as any).guildId,
       });
       // Тести очікують виклики для обох варіантів поля запиту
       const modernQuery = interaction.options.getString('запит');
@@ -169,6 +168,18 @@ export class EnhancedSearchCommand extends BaseCommand {
 
       type MinimalSearchItem = { id?: string; name?: string };
       type SearchResultPage = { data: MinimalSearchItem[]; totalPages?: number; page?: number };
+      const isSearchResultPage = (x: unknown): x is SearchResultPage => {
+        if (typeof x !== 'object' || x === null) return false;
+        if (Array.isArray(x)) return false;
+        const hasTotals = 'totalPages' in x || 'page' in x;
+        return hasTotals;
+      };
+      const hasServiceContainer = (
+        obj: unknown
+      ): obj is { serviceContainer?: { get?: (k: string) => unknown } } =>
+        typeof obj === 'object' && obj !== null && Object.prototype.hasOwnProperty.call(obj, 'serviceContainer');
+      const isRagService = (x: unknown): x is RagService =>
+        !!x && typeof (x as any).answer === 'function';
       let result: MinimalSearchItem[] | SearchResultPage;
       try {
         const raw = await google.enhancedSearch(params as unknown as never);
@@ -199,13 +210,42 @@ export class EnhancedSearchCommand extends BaseCommand {
         return;
       }
 
+      // Якщо результат пагінований — повертаємо простий список із заголовком сторінки (очікування тестів)
+      if (isSearchResultPage(result)) {
+        const lines = items
+          .slice(0, limit ?? 10)
+          .map((it: MinimalSearchItem) => `• ${it.name ?? it.id ?? 'запис'}`);
+        let content = lines.join('\n');
+        const pageInfo = result;
+        if (pageInfo?.totalPages && pageInfo?.page) {
+          content = `Сторінка ${pageInfo.page} з ${pageInfo.totalPages}\n` + content;
+        }
+
+        await replyWithPrivacy(
+          interaction,
+          { content },
+          { ephemeralByDefault: true, shareFlagSupport: true }
+        );
+        logger.info('EnhancedSearch reply sent', {
+          service: 'EnhancedSearchCommand',
+          operation: 'execute',
+          stage: 'reply',
+          status: 'ok',
+          mode: 'list',
+          results: items.length,
+        });
+        return;
+      }
+
       // Якщо доступний RagService — будуємо відповідь з цитуваннями
-      const rag = (interaction.client as any)?.serviceContainer?.get?.('rag') as
-        | RagService
-        | undefined;
+      let rag: RagService | undefined;
+      if (hasServiceContainer(interaction.client) && typeof interaction.client.serviceContainer?.get === 'function') {
+        const candidate = interaction.client.serviceContainer.get('rag');
+        rag = isRagService(candidate) ? candidate : undefined;
+      }
 
       if (rag) {
-        const question = (legacyQuery ?? modernQuery) as string;
+        const question = query;
         const ragAns = await rag.answer(question, { k: 5 }, { maskPII: true }, { maxTokens: 256 });
         logger.info('EnhancedSearch RAG answer', {
           service: 'EnhancedSearchCommand',
@@ -266,10 +306,11 @@ export class EnhancedSearchCommand extends BaseCommand {
       // Фолбек: короткий список без RAG
       const lines = items
         .slice(0, limit ?? 10)
-        .map((it) => `• ${it.name ?? it.id ?? 'запис'}`);
+        .map((it: MinimalSearchItem) => `• ${it.name ?? it.id ?? 'запис'}`);
       let content = lines.join('\n');
-      if (!Array.isArray(result) && result?.totalPages && result?.page) {
-        content = `Сторінка ${result.page} з ${result.totalPages}\n` + content;
+      const pageInfo = isSearchResultPage(result) ? result : undefined;
+      if (pageInfo?.totalPages && pageInfo?.page) {
+        content = `Сторінка ${pageInfo.page} з ${pageInfo.totalPages}\n` + content;
       }
 
       await replyWithPrivacy(
