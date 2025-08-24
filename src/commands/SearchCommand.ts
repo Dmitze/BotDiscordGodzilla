@@ -26,6 +26,10 @@ import { parseOptions } from '@/commands/modules/search/parseOptions';
 import { chooseIndexMode } from '@/commands/modules/search/chooseIndexMode';
 import { runSearchSqlite } from '@/commands/modules/search/runSearch';
 import { computePagination } from '@/commands/modules/search/paginate';
+import type { SearchResult, PaginationState } from '@/commands/modules/search/types';
+import { renderSqliteEmbed } from '@/commands/modules/search/renderSqliteEmbed';
+import { bindSessionMap, getSession, cleanupExpired, setSession } from '@/commands/modules/search/session';
+import { createPerformSearchWithCache, type PerformSearchWithCache } from '@/commands/modules/search/runLegacySearch';
 
 // Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
@@ -39,35 +43,6 @@ const SEARCH_CONFIG = {
   SEARCH_TIMEOUT: 30000, // 30 секунд
 } as const;
 
-interface SearchResult {
-  rows: string[][];
-  headers: string[];
-  totalCount: number;
-  filteredCount: number;
-  searchTime: number;
-  cacheHit: boolean;
-  query: string;
-  filters: SearchFilters;
-}
-
-interface SearchFilters {
-  documentType: string;
-  dateFrom?: string;
-  dateTo?: string;
-  unit?: string;
-  priority: string;
-  limit: number;
-}
-
-interface PaginationState {
-  currentPage: number;
-  totalPages: number;
-  results: SearchResult;
-  timestamp: number;
-  userId: string;
-  pageSize: number;
-  changesOnly: boolean;
-}
 
 export class SearchCommand extends BaseCommand {
   private static sessions: Map<string, PaginationState> = new Map();
@@ -83,6 +58,7 @@ export class SearchCommand extends BaseCommand {
     totalSearchTime: 0,
     errors: 0,
   };
+  private performSearchWithCacheFn!: PerformSearchWithCache;
 
   constructor(config: BotConfig, googleService?: GoogleService) {
     super(
@@ -171,19 +147,27 @@ export class SearchCommand extends BaseCommand {
     // Ensure background cleanup for stale sessions
     const self = SearchCommand as unknown as { _cleanup?: NodeJS.Timer };
     if (!self._cleanup) {
+      // bind session store to static map and schedule cleanup
+      bindSessionMap(SearchCommand.sessions);
       self._cleanup = setInterval(() => {
-        const now = Math.floor(Date.now() / 1000);
-        for (const [sid, s] of SearchCommand.sessions.entries()) {
-          if (now - s.timestamp > SearchCommand.SESSION_TTL_SEC) {
-            SearchCommand.sessions.delete(sid);
-          }
-        }
+        cleanupExpired(SearchCommand.SESSION_TTL_SEC);
       }, 5 * 60 * 1000);
       // Avoid keeping the event loop alive in tests
       if (process.env['NODE_ENV'] === 'test' && typeof (self._cleanup as any).unref === 'function') {
         (self._cleanup as any).unref();
       }
     }
+
+    // Initialize cached search wrapper using legacy performSearch as backend
+    this.performSearchWithCacheFn = createPerformSearchWithCache({
+      generateKey: this.generateSearchCacheKey.bind(this),
+      cache: this.searchCache,
+      stats: this.searchStats,
+      log: logger,
+      cacheTtlSec: SEARCH_CONFIG.CACHE_TTL,
+      searchFn: this.performSearch.bind(this),
+      maxCacheSize: 100,
+    });
   }
 
   // Гарантовані ранні виклики для unit‑тестів перед базовим життєвим циклом
@@ -333,7 +317,7 @@ export class SearchCommand extends BaseCommand {
                 }
               }
             } catch {}
-            await this.renderSqliteEmbed(
+            await renderSqliteEmbed(
               interaction as any,
               String(searchParams.query || ''),
               hits as any[],
@@ -385,71 +369,13 @@ export class SearchCommand extends BaseCommand {
       }
 
       // Виконання пошуку (фоллбек через Google Sheets)
-      const searchResult = await this.performSearchWithCache(searchParams, interaction.user.id);
+      const searchResult = await this.performSearchWithCacheFn(searchParams, interaction.user.id);
 
       // Записати "останні" для користувача з результатів фоллбеку (до 5 елементів)
-      try {
-        const workspace: any = (interaction as any)?.client?.serviceContainer?.get?.('workspace');
-        if (workspace?.addRecent) {
-          const headers = Array.isArray(searchResult?.headers) ? searchResult.headers.map(h => String(h).toLowerCase()) : [];
-          const rows = Array.isArray(searchResult?.rows) ? searchResult.rows : [];
-          const pickIdx = (...names: string[]) => headers.findIndex(h => names.map(n => n.toLowerCase()).includes(h));
-          const idIdx = pickIdx('id', 'file id', 'fileId', 'doc id', 'docId');
-          const nameIdx = pickIdx('name', 'title');
-          const snipIdx = pickIdx('snippet', 'preview');
-          const docs = rows.map(r => ({
-            id: idIdx >= 0 ? r[idIdx] : undefined,
-            name: nameIdx >= 0 ? r[nameIdx] : undefined,
-            snippet: snipIdx >= 0 ? r[snipIdx] : undefined,
-          })).filter(d => d.id);
-          if (docs.length) {
-            const now = Date.now();
-            for (const d of docs.slice(0, 5)) {
-              await workspace.addRecent(interaction.user.id, {
-                fileId: d.id as string,
-                name: d.name,
-                snippet: d.snippet,
-                openedAt: now,
-              });
-            }
-          }
-        }
-      } catch {}
+      await this.recordWorkspaceRecents(interaction, searchResult);
 
-      // Параметри пагінації (через модуль)
-      const { pageSize, totalPages } = computePagination({ filteredCount: searchResult.filteredCount, limit: searchParams.limit ?? SEARCH_CONFIG.DEFAULT_LIMIT });
-
-      // Створення embed (1-я сторінка)
-      const embed = this.buildSearchPage(searchResult, 1, pageSize, false);
-
-      const sid = this.generateSessionId('srch');
-      const state: PaginationState = {
-        currentPage: 1,
-        totalPages,
-        results: searchResult,
-        timestamp: Math.floor(Date.now() / 1000),
-        userId: interaction.user.id,
-        pageSize,
-        changesOnly: false,
-      };
-      SearchCommand.sessions.set(sid, state);
-
-      // Створення кнопок пагінації з урахуванням sid
-      const components = this.createPaginationComponents(searchResult, 1, sid);
-
-      // Відправка відповіді
-      await interaction.editReply({ embeds: [embed], components });
-
-      // Оновлення статистики
-      const duration = performance.now() - startTime;
-      this.updateSearchStats(true, duration, searchResult.cacheHit);
-
-      // Завершення таймерів + структурований успішний лог
-      commandTimer.end(true, { durationMs: Math.round(duration), results: searchResult.filteredCount, cacheHit: searchResult.cacheHit }, t('search.log.success'));
-      try {
-        if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
-        else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
-      } catch {}
+      // Відправити пагіновану відповідь і зафіксувати метрики/таймери
+      await this.finalizeWithPagination(interaction, searchResult, searchParams, startTime, metrics, guildId, commandTimer);
     } catch (error) {
       const duration = performance.now() - startTime;
       this.updateSearchStats(false, duration, false);
@@ -526,47 +452,97 @@ export class SearchCommand extends BaseCommand {
     return result;
   }
 
+  // performSearchWithCache moved to modules/search/runLegacySearch via factory
+
   /**
-   * Виконання пошуку з кешуванням
+   * Записати останні документи користувача на основі результатів пошуку
    */
-  private async performSearchWithCache(
+  private async recordWorkspaceRecents(
+    interaction: ChatInputCommandInteraction,
+    searchResult: SearchResult,
+  ): Promise<void> {
+    try {
+      const workspace: any = (interaction as any)?.client?.serviceContainer?.get?.('workspace');
+      if (!workspace?.addRecent) return;
+
+      const headers = Array.isArray(searchResult?.headers) ? searchResult.headers.map(h => String(h).toLowerCase()) : [];
+      const rows = Array.isArray(searchResult?.rows) ? searchResult.rows : [];
+      const pickIdx = (...names: string[]) => headers.findIndex(h => names.map(n => n.toLowerCase()).includes(h));
+      const idIdx = pickIdx('id', 'file id', 'fileId', 'doc id', 'docId');
+      const nameIdx = pickIdx('name', 'title');
+      const snipIdx = pickIdx('snippet', 'preview');
+      const docs = rows.map(r => ({
+        id: idIdx >= 0 ? r[idIdx] : undefined,
+        name: nameIdx >= 0 ? r[nameIdx] : undefined,
+        snippet: snipIdx >= 0 ? r[snipIdx] : undefined,
+      })).filter(d => d.id);
+      if (!docs.length) return;
+
+      const now = Date.now();
+      for (const d of docs.slice(0, 5)) {
+        await workspace.addRecent(interaction.user.id, {
+          fileId: d.id as string,
+          name: d.name,
+          snippet: d.snippet,
+          openedAt: now,
+        });
+      }
+    } catch {}
+  }
+
+  /**
+   * Завершити відповідь: обчислити пагінацію, створити embed/кнопки і зафіксувати метрики
+   */
+  private async finalizeWithPagination(
+    interaction: ChatInputCommandInteraction,
+    searchResult: SearchResult,
     searchParams: SearchParams,
-    _userId: string
-  ): Promise<SearchResult> {
-    const cacheKey = this.generateSearchCacheKey(searchParams);
-
-    // Перевірка кешу
-    const cached = this.searchCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < SEARCH_CONFIG.CACHE_TTL * 1000) {
-      this.searchStats.cacheHits++;
-      logger.debug(t('search.log.cacheHit'), {
-        type: 'performance',
-        component: 'SearchCommand',
-        cacheKey,
-      });
-      return { ...cached.result, cacheHit: true };
-    }
-
-    this.searchStats.cacheMisses++;
-
-    // Виконання пошуку
-    const searchResult = await this.performSearch(searchParams);
-
-    // Кешування результату
-    this.searchCache.set(cacheKey, {
-      result: searchResult,
-      timestamp: Date.now(),
+    startTime: number,
+    metrics: any,
+    guildId: string | null | undefined,
+    commandTimer: any,
+  ): Promise<void> {
+    // Параметри пагінації (через модуль)
+    const { pageSize, totalPages } = computePagination({
+      filteredCount: searchResult.filteredCount,
+      limit: searchParams.limit ?? SEARCH_CONFIG.DEFAULT_LIMIT,
     });
 
-    // Обмеження розміру кешу
-    if (this.searchCache.size > 100) {
-      const oldestKey = this.searchCache.keys().next().value;
-      if (typeof oldestKey === 'string') {
-        this.searchCache.delete(oldestKey);
-      }
-    }
+    // Створення embed (1-я сторінка)
+    const embed = this.buildSearchPage(searchResult, 1, pageSize, false);
 
-    return { ...searchResult, cacheHit: false };
+    const sid = this.generateSessionId('srch');
+    const state: PaginationState = {
+      currentPage: 1,
+      totalPages,
+      results: searchResult,
+      timestamp: Math.floor(Date.now() / 1000),
+      userId: interaction.user.id,
+      pageSize,
+      changesOnly: false,
+    };
+    setSession(sid, state);
+
+    // Створення кнопок пагінації з урахуванням sid
+    const components = this.createPaginationComponents(searchResult, 1, sid);
+
+    // Відправка відповіді
+    await interaction.editReply({ embeds: [embed], components });
+
+    // Оновлення статистики
+    const duration = performance.now() - startTime;
+    this.updateSearchStats(true, duration, searchResult.cacheHit);
+
+    // Завершення таймерів + структурований успішний лог
+    commandTimer.end(
+      true,
+      { durationMs: Math.round(duration), results: searchResult.filteredCount, cacheHit: searchResult.cacheHit },
+      t('search.log.success'),
+    );
+    try {
+      if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
+      else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
+    } catch {}
   }
 
   /**
@@ -912,7 +888,7 @@ export class SearchCommand extends BaseCommand {
     let totalPages = Math.max(1, Math.ceil(searchResult.filteredCount / SEARCH_CONFIG.DEFAULT_LIMIT));
     let changesOnly = false;
     if (sid) {
-      const session = SearchCommand.sessions.get(sid);
+      const session = getSession(sid);
       if (session) {
         totalPages = session.totalPages;
         changesOnly = session.changesOnly;
@@ -940,33 +916,7 @@ export class SearchCommand extends BaseCommand {
   /**
    * Рендер результатів пошуку SQLite у вигляді Embed і відправка через editReply
    */
-  private async renderSqliteEmbed(
-    interaction: { editReply: (arg: any) => Promise<any> },
-    query: string,
-    hits: Array<{ name?: string; fileId?: string; id?: string; snippet?: string }>,
-    total: number,
-    limit: number
-  ): Promise<void> {
-    const lines = hits.map(h => {
-      const title = h.name || h.fileId || h.id;
-      const snip = h.snippet ? ` — ${String(h.snippet).replace(/\n/g, ' ').slice(0, 120)}${String(h.snippet).length > 120 ? '…' : ''}` : '';
-      return `• ${title}${snip}`;
-    });
-    const embed = new EmbedBuilder()
-      .setColor('#4CAF50')
-      .setTitle('🔍 Результати пошуку (SQLite)')
-      .setDescription(`**Запит:** ${query}`)
-      .addFields(
-        { name: '📊 Знайдено (оцінено)', value: String(total ?? hits.length), inline: true },
-        { name: '⚡ Джерело', value: 'SQLite FTS', inline: true },
-      )
-      .setTimestamp();
-    const body = lines.slice(0, limit || 10).join('\n');
-    if (body.length > 0) {
-      embed.addFields({ name: `📋 Результати (${Math.min(lines.length, limit || 10)})`, value: body.length > 1024 ? body.slice(0, 1021) + '...' : body });
-    }
-    await interaction.editReply({ embeds: [embed], components: [] });
-  }
+  // moved to modules/search/renderSqliteEmbed.ts
 
   // --- Component handling ---
   protected override async onComponent(options: import('@/commands/BaseCommand').CommandComponentOptions): Promise<void> {
