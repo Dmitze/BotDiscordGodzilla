@@ -60,16 +60,18 @@ export class SqliteSearchIndex implements SearchIndex {
     this.db.exec(schemaSql);
     // Ensure meta table for migrations
     this.db.exec(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`);
+    // Ensure required columns exist for metadata persistence
+    this.ensureDocumentColumns();
 
     // Prepared statements
     this.insertDocStmt = this.db.prepare(
-      `INSERT INTO documents (fileId, name, mimeType, ownerEmail, sizeBytes, modifiedTime, createdTime, contentHash, textLen, lastIndexedAt, tags, meta)
-       VALUES (@fileId, @name, @mimeType, @ownerEmail, @sizeBytes, @modifiedTime, @createdTime, @contentHash, @textLen, @lastIndexedAt, @tags, @meta)`
+      `INSERT INTO documents (fileId, name, mimeType, ownerEmail, sizeBytes, modifiedTime, createdTime, contentHash, textLen, lastIndexedAt, tags, meta, language, labels, path)
+       VALUES (@fileId, @name, @mimeType, @ownerEmail, @sizeBytes, @modifiedTime, @createdTime, @contentHash, @textLen, @lastIndexedAt, @tags, @meta, @language, @labels, @path)`
     );
     this.updateDocStmt = this.db.prepare(
       `UPDATE documents SET name=@name, mimeType=@mimeType, ownerEmail=@ownerEmail, sizeBytes=@sizeBytes,
          modifiedTime=@modifiedTime, createdTime=@createdTime, contentHash=@contentHash, textLen=@textLen,
-         lastIndexedAt=@lastIndexedAt, tags=@tags, meta=@meta WHERE fileId=@fileId`
+         lastIndexedAt=@lastIndexedAt, tags=@tags, meta=@meta, language=@language, labels=@labels, path=@path WHERE fileId=@fileId`
     );
     this.selectDocStmt = this.db.prepare(
       `SELECT * FROM documents WHERE fileId = ?`
@@ -103,6 +105,21 @@ export class SqliteSearchIndex implements SearchIndex {
 
     // Perform FTS tokenizer migration if requested
     this.maybeMigrateFtsTokenizer();
+  }
+
+  private ensureDocumentColumns(): void {
+    const cols = this.db.prepare(`PRAGMA table_info(documents)`).all() as Array<{ name: string }>;
+    const names = new Set(cols.map(c => c.name));
+    const toAdd: string[] = [];
+    if (!names.has('language')) toAdd.push(`ALTER TABLE documents ADD COLUMN language TEXT`);
+    if (!names.has('labels')) toAdd.push(`ALTER TABLE documents ADD COLUMN labels TEXT`);
+    if (!names.has('path')) toAdd.push(`ALTER TABLE documents ADD COLUMN path TEXT`);
+    this.db.transaction(() => {
+      for (const sql of toAdd) this.db.exec(sql);
+      // indexes are idempotent
+      this.db.exec(`CREATE INDEX IF NOT EXISTS idx_documents_language ON documents(language)`);
+      this.db.exec(`CREATE INDEX IF NOT EXISTS idx_documents_path ON documents(path)`);
+    })();
   }
 
   private getDesiredTokenizer(): 'porter' | 'unicode61' {
@@ -163,6 +180,9 @@ export class SqliteSearchIndex implements SearchIndex {
     text: string;
     tags?: string[];
     meta?: unknown;
+    language?: string;
+    labels?: string[];
+    path?: string;
   }): Promise<void> {
     const textNorm = doc.text; // нормализация вище по пайплайну (MVP)
     const contentHash = sha256(textNorm);
@@ -188,6 +208,9 @@ export class SqliteSearchIndex implements SearchIndex {
           lastIndexedAt,
           tags: doc.tags ? JSON.stringify(doc.tags) : null,
           meta: asJson(doc.meta),
+          language: doc.language ?? null,
+          labels: doc.labels ? JSON.stringify(doc.labels) : null,
+          path: doc.path ?? null,
         });
         // FTS insert
         this.deleteFtsByIdStmt.run(doc.fileId);
@@ -218,6 +241,9 @@ export class SqliteSearchIndex implements SearchIndex {
           lastIndexedAt,
           tags: doc.tags ? JSON.stringify(doc.tags) : null,
           meta: asJson(doc.meta),
+          language: doc.language ?? null,
+          labels: doc.labels ? JSON.stringify(doc.labels) : null,
+          path: doc.path ?? null,
         });
         if (hashChanged) {
           // refresh FTS content only if text changed
@@ -277,6 +303,22 @@ export class SqliteSearchIndex implements SearchIndex {
       for (const t of q.filters.tags) {
         where.push(`d.tags LIKE ?`);
         params.push(`%"${t}"%`);
+      }
+    }
+    if (q.filters?.language?.length) {
+      where.push(`d.language IN (${q.filters.language.map(() => '?').join(',')})`);
+      params.push(...q.filters.language);
+    }
+    if (q.filters?.pathPrefix && q.filters.pathPrefix.length) {
+      // normalize to leading slash; store paths like "/a/b"
+      const pref = q.filters.pathPrefix.startsWith('/') ? q.filters.pathPrefix : `/${q.filters.pathPrefix}`;
+      where.push(`d.path LIKE ?`);
+      params.push(`${pref}%`);
+    }
+    if (q.filters?.labels?.length) {
+      for (const l of q.filters.labels) {
+        where.push(`d.labels LIKE ?`);
+        params.push(`%"${l}"%`);
       }
     }
 
