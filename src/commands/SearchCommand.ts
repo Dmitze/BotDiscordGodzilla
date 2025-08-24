@@ -22,14 +22,133 @@ import { buildSearchPaginationRows } from '@/ui/components';
 import type { SearchQuery } from '@/search/SearchIndex';
 import { replyWithPrivacy } from '@/ui/reply';
 import { signComponentId } from '@/security/componentId';
-import { parseOptions } from '@/commands/modules/search/parseOptions';
-import { chooseIndexMode } from '@/commands/modules/search/chooseIndexMode';
-import { runSearchSqlite } from '@/commands/modules/search/runSearch';
-import { computePagination } from '@/commands/modules/search/paginate';
-import type { SearchResult, PaginationState } from '@/commands/modules/search/types';
-import { renderSqliteEmbed } from '@/commands/modules/search/renderSqliteEmbed';
-import { bindSessionMap, getSession, cleanupExpired, setSession } from '@/commands/modules/search/session';
-import { createPerformSearchWithCache, type PerformSearchWithCache } from '@/commands/modules/search/runLegacySearch';
+// Deleted module shims: inline local equivalents for types/helpers
+type SearchResult = {
+  headers?: string[];
+  rows?: unknown[];
+  filteredCount: number;
+  totalCount?: number;
+  cacheHit?: boolean;
+};
+type PaginationState = {
+  currentPage: number;
+  totalPages: number;
+  results: SearchResult;
+  timestamp: number; // epoch seconds
+  userId: string;
+  pageSize: number;
+  changesOnly: boolean;
+};
+type PerformSearchWithCache = (params: SearchParams, userId: string) => Promise<SearchResult>;
+
+// --- Local helper implementations replacing deleted modules ---
+type IndexChoice = {
+  mode: 'sqlite' | 'legacy';
+  services: {
+    searchIndex?: { search: (q: SearchQuery) => Promise<any> };
+    google?: { searchData: (q: string) => Promise<any> };
+    cache?: { get?: (k: string) => Promise<any> | any; set?: (k: string, v: any) => Promise<void> | void };
+  };
+};
+
+function parseOptions(
+  interaction: ChatInputCommandInteraction,
+  extractor: (i: ChatInputCommandInteraction) => Promise<SearchParams>
+): Promise<SearchParams> {
+  return extractor(interaction);
+}
+
+function chooseIndexMode(interaction: any): IndexChoice {
+  const container = interaction?.client?.serviceContainer;
+  const searchIndex = container?.get?.('searchIndex');
+  const google = container?.get?.('google');
+  const cache = container?.get?.('cache');
+  if (searchIndex && typeof searchIndex.search === 'function') {
+    return { mode: 'sqlite', services: { searchIndex, cache } };
+  }
+  return { mode: 'legacy', services: { google, cache } };
+}
+
+async function runSearchSqlite(args: { searchIndex: { search: (q: SearchQuery) => Promise<any> }; params: SearchParams }) {
+  const { searchIndex, params } = args;
+  const q: SearchQuery = {
+    text: String(params.query ?? ''),
+    limit: Math.max(1, Math.min(params.limit ?? 10, 100)),
+    filters: (params as any).filters ?? {},
+  } as any;
+  return searchIndex.search(q);
+}
+
+function computePagination(args: { filteredCount: number; limit: number }) {
+  const pageSize = Math.max(1, Math.min(args.limit || 1, 100));
+  const totalPages = Math.max(1, Math.ceil((args.filteredCount || 0) / pageSize));
+  return { pageSize, totalPages };
+}
+
+// Lightweight session store
+const __searchSessions = new Map<string, { state: PaginationState; createdAt: number }>();
+function bindSessionMap(_map: Map<string, PaginationState>) {
+  // Migrate existing into local store (best-effort)
+  for (const [k, v] of _map.entries()) __searchSessions.set(k, { state: v, createdAt: Date.now() });
+}
+function setSession(id: string, state: PaginationState) {
+  __searchSessions.set(id, { state, createdAt: Date.now() });
+}
+function getSession(id: string): PaginationState | undefined {
+  return __searchSessions.get(id)?.state;
+}
+function cleanupExpired(ttlSec: number) {
+  const now = Date.now();
+  for (const [k, v] of __searchSessions.entries()) {
+    if (now - v.createdAt > ttlSec * 1000) __searchSessions.delete(k);
+  }
+}
+
+// Minimal render function for SQLite hits
+async function renderSqliteEmbed(
+  interaction: ChatInputCommandInteraction,
+  query: string,
+  hits: any[],
+  total: number,
+  limit: number
+) {
+  const embed = new EmbedBuilder()
+    .setTitle(tUser('search.sqlite.title', interaction, { total }))
+    .setDescription(tUser('search.sqlite.desc', interaction, { query }))
+    .setFooter({ text: tUser('search.pagination.footer', interaction, { page: 1, pages: Math.max(1, Math.ceil(total / Math.max(1, limit))) }) });
+  await interaction.editReply({ embeds: [embed] });
+}
+
+// Cached search wrapper
+function createPerformSearchWithCache(cfg: {
+  generateKey: (p: SearchParams) => string;
+  cache: Map<string, { result: SearchResult; timestamp: number }>;
+  stats: { cacheHits: number; cacheMisses: number } & Record<string, unknown>;
+  log: typeof logger;
+  cacheTtlSec: number;
+  searchFn: (p: SearchParams) => Promise<SearchResult>;
+  maxCacheSize: number;
+}): PerformSearchWithCache {
+  const { generateKey, cache, stats, log, cacheTtlSec, searchFn, maxCacheSize } = cfg;
+  return async (params: SearchParams): Promise<SearchResult> => {
+    const key = generateKey(params);
+    const now = Date.now();
+    const cached = cache.get(key);
+    if (cached && now - cached.timestamp < cacheTtlSec * 1000) {
+      stats.cacheHits++;
+      return { ...(cached.result || {}), cacheHit: true } as SearchResult;
+    }
+    stats.cacheMisses++;
+    const result = await searchFn(params);
+    try {
+      if (cache.size > maxCacheSize) cache.clear();
+      cache.set(key, { result, timestamp: now });
+    } catch (e) {
+      log.warn('Cache set failed in SearchCommand', { error: e instanceof Error ? e.message : String(e) });
+    }
+    return { ...result, cacheHit: false } as SearchResult;
+  };
+}
 
 // Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
