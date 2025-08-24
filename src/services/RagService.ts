@@ -1,4 +1,4 @@
-import type { SearchIndex, SearchHit } from '@/search/SearchIndex';
+import type { SearchIndex, SearchHit, SearchQuery } from '@/search/SearchIndex';
 import type { AIService } from './AIService';
 import { RagPipeline, type RagAnswer } from '@/rag/RagPipeline';
 import type { RetrieverOptions, AugmentOptions, GenerateWithContextOptions } from '@/rag/types';
@@ -13,6 +13,10 @@ export class RagService {
   private readonly maxSize: number;
   private readonly defaultTTLms: number;
   private externalCache?: { get<T = unknown>(key: string): Promise<T | null>; set<T = unknown>(key: string, value: T, ttlSec?: number): Promise<unknown> };
+  // Metrics
+  private cacheHits = 0;
+  private cacheMisses = 0;
+  private readonly debug = process.env['RAG_DEBUG'] === '1' || process.env['RAG_DEBUG'] === 'true';
 
   constructor(
     private readonly searchIndex: SearchIndex,
@@ -53,8 +57,9 @@ export class RagService {
     if (this.cache.has(key)) this.cache.delete(key);
     this.cache.set(key, { ...value, __expiresAt: expiresAt });
     if (this.cache.size > this.maxSize) {
-      const firstKey = this.cache.keys().next().value as string | undefined;
-      if (firstKey) this.cache.delete(firstKey);
+      const iter = this.cache.keys().next();
+      const firstKey = iter.done ? undefined : iter.value;
+      if (firstKey !== undefined) this.cache.delete(firstKey);
     }
   }
 
@@ -62,7 +67,11 @@ export class RagService {
     if (this.externalCache) {
       try {
         const external = await this.externalCache.get<RagAnswer>(key);
-        if (external) return external;
+        if (external) {
+          this.cacheHits++;
+          if (this.debug) logger.debug('RagService external cache hit', { key });
+          return external;
+        }
       } catch {
         // ignore and try local
       }
@@ -74,9 +83,19 @@ export class RagService {
       return null;
     }
     this.cache.delete(key);
-    const { __expiresAt: _exp, ...pure } = v;
+    const { __expiresAt: _exp, ...rest } = v;
     this.cache.set(key, v);
-    return pure as RagAnswer;
+    const pure: RagAnswer = {
+      provider: rest.provider,
+      answer: rest.answer,
+      chunks: rest.chunks,
+    };
+    if (typeof rest.model === 'string') pure.model = rest.model;
+    if (typeof rest.tokens === 'number') pure.tokens = rest.tokens;
+    if (Array.isArray(rest.citations)) pure.citations = rest.citations;
+    this.cacheHits++;
+    if (this.debug) logger.debug('RagService local cache hit', { key });
+    return pure;
   }
 
   async answer(
@@ -86,12 +105,12 @@ export class RagService {
     generate: GenerateWithContextOptions = {}
   ): Promise<RagAnswer> {
     // Always retrieve first to compute cache key with fileIds and modifiedTime
-    const baseQuery: any = {
+    const baseQuery: SearchQuery = {
       text: query,
       limit: Math.max(1, retriever.k ?? 5),
       offset: 0,
     };
-    if (retriever.filters) (baseQuery as any).filters = retriever.filters;
+    if (retriever.filters) baseQuery.filters = retriever.filters;
     const retrieved = await this.searchIndex.search(baseQuery);
     const hits: SearchHit[] = retrieved.hits;
     const docIds = hits.map(h => h.fileId);
@@ -119,10 +138,20 @@ export class RagService {
       cache: 'miss',
       size: this.cache.size,
     });
+    this.cacheMisses++;
 
     // Fallback to full pipeline (it will re-run retrieval/augment with embeddings/hybrid if configured)
     const res = await this.pipeline.answer(query, retriever, augment, generate);
     await this.setCache(key, res);
     return res;
+  }
+
+  getMetrics(): { cacheHits: number; cacheMisses: number; size: number; capacity: number } {
+    return {
+      cacheHits: this.cacheHits,
+      cacheMisses: this.cacheMisses,
+      size: this.cache.size,
+      capacity: this.maxSize,
+    };
   }
 }
