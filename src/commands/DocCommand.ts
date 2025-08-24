@@ -13,6 +13,7 @@ import logger from '@/utils/logger';
 import type { DocBlock } from '@/types/docs';
 import { t } from '@/i18n';
 import { replyWithPrivacy } from '@/ui/reply';
+import { signComponentId } from '@/security/componentId';
 
 export class DocCommand extends BaseCommand {
   private readonly google: GoogleService | null;
@@ -345,35 +346,28 @@ function buildBlocksPage(args: {
   const nowSec = Math.floor(Date.now() / 1000);
   const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(buildCustomId({ documentId, page: 1, pageSize, format, ts: nowSec }))
+      .setCustomId(signComponentId({ kind: 'docblk', documentId, page: 1, pageSize, format, ts: nowSec }))
       .setLabel('⏮')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(safePage === 1),
     new ButtonBuilder()
-      .setCustomId(buildCustomId({ documentId, page: Math.max(1, safePage - 1), pageSize, format, ts: nowSec }))
+      .setCustomId(signComponentId({ kind: 'docblk', documentId, page: Math.max(1, safePage - 1), pageSize, format, ts: nowSec }))
       .setLabel('◀')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(safePage === 1),
     new ButtonBuilder()
-      .setCustomId(buildCustomId({ documentId, page: Math.min(totalPages, safePage + 1), pageSize, format, ts: nowSec }))
+      .setCustomId(signComponentId({ kind: 'docblk', documentId, page: Math.min(totalPages, safePage + 1), pageSize, format, ts: nowSec }))
       .setLabel('▶')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(safePage === totalPages),
     new ButtonBuilder()
-      .setCustomId(buildCustomId({ documentId, page: totalPages, pageSize, format, ts: nowSec }))
+      .setCustomId(signComponentId({ kind: 'docblk', documentId, page: totalPages, pageSize, format, ts: nowSec }))
       .setLabel('⏭')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(safePage === totalPages),
   );
 
   return { embed, components: [row] };
-}
-
-function buildCustomId(args: { documentId: string; page: number; pageSize: number; format: FormatMode; ts?: number }): string {
-  const { documentId, page, pageSize, format, ts } = args;
-  const t = ts ?? Math.floor(Date.now() / 1000);
-  // компактный custom_id, укладываемся в лимит Discord (<=100 символов)
-  return `docblk|d=${documentId}|p=${page}|s=${pageSize}|f=${format}|t=${t}`;
 }
 
 function parseCustomId(customId: string):
