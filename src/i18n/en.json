@@ -72,6 +72,15 @@
     },
     "analytics": {
       "noTables": "No tables found for analytics."
+    },
+    "helpers": {
+      "metricsDetected": "Detected metric columns: {{list}}",
+      "trend": {
+        "grow": "An upward trend is observed for '{{name}}'",
+        "drop": "A downward trend is observed for '{{name}}'",
+        "stable": "No significant changes detected for '{{name}}'",
+        "notEnough": "Not enough data to determine the trend"
+      }
     }
   },
   "files": {
@@ -174,6 +183,30 @@
       "process": "❌ File processing error. Please retry or contact the administrator.",
       "noText": "❌ Could not extract text from the file"
     }
+  }
+  ,
+  "chat": {
+    "help": "I'm an assistant. I can: 1) analyze Google Sheets; 2) analyze Google Drive files; 3) answer questions. Examples: \"analyze sheet \"Personnel\"\", \"how many records in \"Report_July\"\", \"what's in file with id ...\"",
+    "errors": {
+      "generic": "❌ Error processing message. Please refine your query."
+    },
+    "search": {
+      "noQuery": "Provide a search query, e.g., \"search supply contract\"",
+      "serviceUnavailable": "Search is currently unavailable. Indexing service is not active.",
+      "none": "No results found for your query. Try different keywords.",
+      "error": "❌ An error occurred during search. Please try again later."
+    },
+    "analyzeSheet": {
+      "prompt": "Accepted: sheet analysis. Specify sheet name in quotes or an ID. The feature will be enabled soon."
+    },
+    "analyzeFile": {
+      "prompt": "Accepted: file/document analysis. Please specify file ID. The feature will be enabled soon."
+    },
+    "qna": {
+      "unavailable": "Accepted. AI answer generator is currently unavailable. Try /ai",
+      "error": "❌ Error generating answer. Please try again later."
+    },
+    "unknown": "I didn't understand the request. Examples: \"analyze sheet \"Summary\"\", \"how many records in \"Report\"\", \"what's in file with id ...\""
   }
   ,
   "operations": {
