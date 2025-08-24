@@ -278,6 +278,7 @@ export class GoogleService extends BaseServiceClass {
   // =====================
   // Sheets helper APIs (MVP, fast-path in tests)
   // =====================
+  
 
   /** Находит лист по имени (регистронезависимо, учитывая локаль/варианты пробелов) */
   public async findSheetByName(fileId: string, name: string): Promise<{ title: string; index: number } | null> {
