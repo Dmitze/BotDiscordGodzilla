@@ -547,7 +547,9 @@ export abstract class BaseCommand {
     // Деякі тести викликають цей метод без interaction, тому робимо його безпечним
     const anyOpts: any = options as any;
     const interactionUserId = anyOpts?.interaction?.user?.id ?? 'anon';
-    const payload = anyOpts?.options ?? anyOpts ?? {};
+    // ВАЖЛИВО: не серіалізуємо весь об'єкт options, бо він містить interaction з моками та
+    // потенційними циклічними посиланнями. Використовуємо лише чисті опції команди.
+    const payload = anyOpts?.options ?? {};
     const optionsJson = JSON.stringify(payload);
 
     // Легасі формат для SearchCommand: "search:base64:<base64(json)>"
