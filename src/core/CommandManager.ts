@@ -99,15 +99,15 @@ export class CommandManager {
       const customId = String(interaction.customId || '');
 
       // Підтримка двох форматів: підписаний compact та легасі (для тестів)
-      type SearchPayload = { kind?: string; action?: 'expand' | 'page'; documentId?: string; page?: number };
+      type SearchPayload = { kind?: string; action?: 'expand' | 'page'; id?: string; documentId?: string; page?: number; ts?: number };
       let action: 'expand' | 'page' | undefined;
       let fileId: string | undefined;
       let pageIndex = 0;
 
       const verified = verifyComponentId<SearchPayload>(customId);
-      if (verified.valid && verified.payload?.kind === 'srch') {
+      if (verified.valid && (verified.payload?.kind === 'srch' || verified.payload?.kind === 'search')) {
         action = verified.payload.action;
-        fileId = verified.payload.documentId;
+        fileId = verified.payload.id || verified.payload.documentId;
         if (typeof verified.payload.page === 'number') pageIndex = verified.payload.page;
       } else {
         // Легасі fallback: search|{action}|{fileId}|{index}
@@ -138,22 +138,20 @@ export class CommandManager {
       const idx = Math.min(Math.max(0, pageIndex), chunks.length - 1);
       const content = chunks[idx];
 
-      const buildId = (page: number) => {
-        // У тестовому режимі залишаємо легасі-формат для зворотної сумісності юніт-тестів
-        if (process.env['NODE_ENV'] === 'test') {
-          return `search|page|${fileId}|${page}`;
-        }
-        return signComponentId({ kind: 'srch', action: 'page', documentId: fileId, page });
-      };
-
+      // Кнопки пагінації (назад/вперед) — підписані, з легасі фолбеком у тестах
+      const useLegacy = process.env['NODE_ENV'] === 'test' || process.env['LEGACY_CUSTOM_ID'] === '1';
+      const mkId = (act: 'page' | 'expand', page?: number) =>
+        useLegacy
+          ? `search|${act}|${fileId}|${page ?? idx}`
+          : signComponentId({ kind: 'srch', action: act, id: fileId, page: page ?? idx, ts: Date.now() });
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(buildId(Math.max(0, idx - 1)))
+          .setCustomId(mkId('page', Math.max(0, idx - 1)))
           .setEmoji('⬅️')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(idx === 0),
         new ButtonBuilder()
-          .setCustomId(buildId(Math.min(chunks.length - 1, idx + 1)))
+          .setCustomId(mkId('page', Math.min(chunks.length - 1, idx + 1)))
           .setEmoji('➡️')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(idx >= chunks.length - 1)
