@@ -423,7 +423,11 @@ export class ErrorHandler {
         });
       }
     } catch (logError) {
-      console.error('❌ Помилка логування помилки:', logError);
+      logger.error('❌ Помилка логування помилки:', {
+        type: 'system',
+        event: 'error_log_failed',
+        error: logError,
+      });
     }
   }
 
@@ -464,7 +468,11 @@ export class ErrorHandler {
       const uptime = process.uptime();
       this.errorStats.averageErrorRate = uptime > 0 ? this.errorStats.totalErrors / uptime : 0;
     } catch (statsError) {
-      console.error('❌ Помилка оновлення статистики помилок:', statsError);
+      logger.error('❌ Помилка оновлення статистики помилок:', {
+        type: 'system',
+        event: 'error_stats_update_failed',
+        error: statsError,
+      });
     }
   }
 
@@ -490,15 +498,26 @@ export class ErrorHandler {
    * Створення fallback обробника помилок
    */
   private createFallbackErrorHandler(): void {
-    console.error('🔧 Створення fallback обробника помилок...');
+    logger.warn('🔧 Створення fallback обробника помилок...', {
+      type: 'system',
+      event: 'create_fallback_error_handler',
+    });
 
     process.on('uncaughtException', error => {
-      console.error('💥 Критична помилка (fallback):', error);
+      logger.error('💥 Критична помилка (fallback):', {
+        type: 'system',
+        event: 'critical_error_fallback',
+        error,
+      });
       process.exit(1);
     });
 
     process.on('unhandledRejection', reason => {
-      console.error('💥 Необроблений rejection (fallback):', reason);
+      logger.error('💥 Необроблений rejection (fallback):', {
+        type: 'system',
+        event: 'unhandled_rejection_fallback',
+        reason,
+      });
     });
   }
 
