@@ -59,6 +59,13 @@ module.exports = {
       },
     },
     {
+      files: ['src/utils/**/*.ts'],
+      rules: {
+        // Utilities often intentionally use console for CLI/log piping
+        'no-console': 'off',
+      },
+    },
+    {
       files: ['src/**/*.ts'],
       rules: {
         // Global temporary relaxations for Variant B across src
