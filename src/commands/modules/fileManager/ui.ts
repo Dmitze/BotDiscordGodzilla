@@ -34,12 +34,12 @@ export async function buildSearchPage(
 
   // Підтримка легасі-методу з тестів: listDriveFilesInFolder(folderId, query)
   let listRes: DriveListResult;
-  const anySvc = svc as any;
+  const anySvc = svc;
   if (typeof anySvc.listDriveFilesInFolder === 'function') {
     const files: DriveFile[] = await anySvc.listDriveFilesInFolder(session.folderId, session.query);
-    listRes = { files, changes: { addedIds: [], removedIds: [], modified: [] } } as DriveListResult;
+    listRes = { files, changes: { addedIds: [], removedIds: [], modified: [] } };
   } else {
-    listRes = await (svc as any).listDriveFiles({
+    listRes = await anySvc.listDriveFiles({
       folderId: session.folderId,
       query: session.query,
       pageSize: 100,
@@ -47,7 +47,7 @@ export async function buildSearchPage(
       ownerAllowlist: config.drive?.ownerAllowlist ?? [],
       highlightChanges: true,
       sessionKey: `${interaction.channelId}:${session.baseline}`,
-    }) as DriveListResult;
+    });
   }
 
   const files: DriveFile[] = listRes.files || [];
