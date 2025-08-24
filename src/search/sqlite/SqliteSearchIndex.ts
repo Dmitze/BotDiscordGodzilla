@@ -36,6 +36,9 @@ export class SqliteSearchIndex implements SearchIndex {
   private deleteFtsByIdStmt: Statement;
   private insertVersionStmt: Statement;
   private selectVersionsStmt: Statement;
+  private insertSegmentStmt: Statement;
+  private selectAllDocsStmt: Statement;
+  private selectSegmentByHashStmt: Statement;
 
   constructor(opts: SqliteIndexOptions = {}) {
     const dbPath = resolve(
@@ -55,6 +58,8 @@ export class SqliteSearchIndex implements SearchIndex {
     const schemaPath = resolve(__dirname, './schema.sql');
     const schemaSql = readFileSync(schemaPath, 'utf8');
     this.db.exec(schemaSql);
+    // Ensure meta table for migrations
+    this.db.exec(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`);
 
     // Prepared statements
     this.insertDocStmt = this.db.prepare(
@@ -84,6 +89,67 @@ export class SqliteSearchIndex implements SearchIndex {
     this.selectVersionsStmt = this.db.prepare(
       `SELECT * FROM document_versions WHERE fileId = ? ORDER BY version DESC LIMIT 2`
     );
+
+    // segment cache helpers
+    this.insertSegmentStmt = this.db.prepare(
+      `INSERT OR REPLACE INTO segment_cache (contentHash, text, normText, updatedAt) VALUES (?, ?, ?, ?)`
+    );
+    this.selectAllDocsStmt = this.db.prepare(
+      `SELECT fileId, name, contentHash FROM documents`
+    );
+    this.selectSegmentByHashStmt = this.db.prepare(
+      `SELECT normText FROM segment_cache WHERE contentHash = ?`
+    );
+
+    // Perform FTS tokenizer migration if requested
+    this.maybeMigrateFtsTokenizer();
+  }
+
+  private getDesiredTokenizer(): 'porter' | 'unicode61' {
+    const envTok = (process.env['SEARCH_FTS_TOKENIZER'] || '').toLowerCase();
+    return envTok === 'unicode61' ? 'unicode61' : 'porter';
+  }
+
+  private maybeMigrateFtsTokenizer(): void {
+    const desired = this.getDesiredTokenizer();
+    const row = this.db.prepare(`SELECT value FROM meta WHERE key = 'fts_tokenizer'`).get() as { value?: string } | undefined;
+    const current = (row?.value || '').toLowerCase();
+    if (!current) {
+      // first-run: record current tokenizer based on schema (porter by default) or desired if different
+      const initial = desired;
+      this.db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('fts_tokenizer', ?)`).run(initial);
+      if (initial !== 'porter') {
+        // Recreate FTS with desired tokenizer on first run if not porter
+        this.rebuildFts(desired);
+      }
+      return;
+    }
+    if (current !== desired) {
+      this.rebuildFts(desired);
+      this.db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('fts_tokenizer', ?)`).run(desired);
+    }
+  }
+
+  private rebuildFts(tokenizer: 'porter' | 'unicode61') {
+    const createSql = `CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
+      fileId UNINDEXED,
+      name,
+      content,
+      tokenize='${tokenizer}'
+    )`;
+    const recreate = this.db.transaction(() => {
+      this.db.exec(`DROP TABLE IF EXISTS documents_fts`);
+      this.db.exec(createSql);
+      const docs = this.selectAllDocsStmt.all() as { fileId: string; name: string; contentHash: string }[];
+      for (const d of docs) {
+        const seg = this.selectSegmentByHashStmt.get(d.contentHash) as { normText?: string } | undefined;
+        const text = seg?.normText ?? '';
+        if (text && text.length) {
+          this.insertFtsStmt.run(d.fileId, d.name, text);
+        }
+      }
+    });
+    recreate();
   }
 
   async upsert(doc: {
@@ -98,7 +164,7 @@ export class SqliteSearchIndex implements SearchIndex {
     tags?: string[];
     meta?: unknown;
   }): Promise<void> {
-    const textNorm = doc.text; // предполагаем, что текст уже нормализован выше
+    const textNorm = doc.text; // нормализация вище по пайплайну (MVP)
     const contentHash = sha256(textNorm);
     const lastIndexedAt = nowMs();
     const textLen = textNorm.length;
@@ -106,6 +172,8 @@ export class SqliteSearchIndex implements SearchIndex {
     const existing = this.selectDocStmt.get(doc.fileId);
 
     const run = this.db.transaction(() => {
+      // persist segment cache for potential FTS rebuilds
+      this.insertSegmentStmt.run(contentHash, doc.text, textNorm, lastIndexedAt);
       if (!existing) {
         this.insertDocStmt.run({
           fileId: doc.fileId,
@@ -155,6 +223,8 @@ export class SqliteSearchIndex implements SearchIndex {
           // refresh FTS content only if text changed
           this.deleteFtsByIdStmt.run(doc.fileId);
           this.insertFtsStmt.run(doc.fileId, doc.name, textNorm);
+          // update segment cache timestamp and norm
+          this.insertSegmentStmt.run(contentHash, doc.text, textNorm, lastIndexedAt);
           // new version = prev.version + 1
           const latest = this.db.prepare(`SELECT MAX(version) as v FROM document_versions WHERE fileId = ?`).get(doc.fileId) as { v?: number };
           const nextV = (latest?.v ?? 0) + 1;
@@ -186,6 +256,10 @@ export class SqliteSearchIndex implements SearchIndex {
     const where: string[] = [];
     const params: any[] = [];
 
+    if (q.filters?.fileId?.length) {
+      where.push(`d.fileId IN (${q.filters.fileId.map(() => '?').join(',')})`);
+      params.push(...q.filters.fileId);
+    }
     if (q.filters?.mime?.length) {
       where.push(`d.mimeType IN (${q.filters.mime.map(() => '?').join(',')})`);
       params.push(...q.filters.mime);
