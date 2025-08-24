@@ -99,7 +99,11 @@ export class ErrorHandler {
       this._isInitialized = true;
       logger.info('✅ ErrorHandler успішно ініціалізовано');
     } catch (error) {
-      console.error('❌ Помилка ініціалізації ErrorHandler:', error);
+      logger.error('❌ Помилка ініціалізації ErrorHandler:', {
+        type: 'system',
+        event: 'error_handler_init_failed',
+        error,
+      });
       this.createFallbackErrorHandler();
     }
   }
@@ -249,7 +253,11 @@ export class ErrorHandler {
 
       return errorDetails;
     } catch (handlerError) {
-      console.error('❌ Помилка в ErrorHandler:', handlerError);
+      logger.error('❌ Помилка в ErrorHandler:', {
+        type: 'system',
+        event: 'error_handler_runtime_error',
+        error: handlerError,
+      });
       return this.createFallbackErrorDetails(error);
     }
   }
