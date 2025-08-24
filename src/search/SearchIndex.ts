@@ -1,4 +1,5 @@
 export interface SearchFilters {
+  fileId?: string[];
   mime?: string[];
   owner?: string[];
   modifiedFrom?: number; // epoch ms
