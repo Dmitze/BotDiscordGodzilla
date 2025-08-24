@@ -8,23 +8,24 @@
  */
 
 import { main } from './src/index';
+import logger from './src/utils/logger';
 
 /**
  * Головна функція запуску
  */
 async function startApplication(): Promise<void> {
   try {
-    console.log('🚀 Запуск Discord AI Assistant Bot v3.0.0...');
-    console.log('📅 Дата запуску:', new Date().toISOString());
-    console.log('🌍 Середовище:', process.env.NODE_ENV || 'development');
-    console.log('');
+    logger.info('🚀 Запуск Discord AI Assistant Bot v3.0.0...');
+    logger.info(`📅 Дата запуску: ${new Date().toISOString()}`);
+    logger.info(`🌍 Середовище: ${process.env.NODE_ENV || 'development'}`);
+    logger.info('');
 
     // Запуск головного модуля
     await main();
 
-    console.log('✅ Додаток успішно запущено');
+    logger.info('✅ Додаток успішно запущено');
   } catch (error) {
-    console.error('❌ Критична помилка при запуску додатку:', error);
+    logger.error('❌ Критична помилка при запуску додатку', { error });
     process.exit(1);
   }
 }
@@ -37,4 +38,4 @@ if (require.main === module) {
 // Експорт для зовнішнього використання
 export {
   startApplication,
-}; 
+};
