@@ -194,7 +194,7 @@ export class SearchCommand extends BaseCommand {
         ? { interaction: arg as ChatInputCommandInteraction }
         : (arg as CommandExecuteOptions);
 
-    const interaction = options.interaction as ChatInputCommandInteraction;
+    const interaction = options.interaction;
 
     // 1) Завжди зчитуємо запит рано, як очікують тести
     try {
@@ -208,7 +208,7 @@ export class SearchCommand extends BaseCommand {
 
       if (indexChoice.services.searchIndex && typeof indexChoice.services.searchIndex.search === 'function') {
         // SQLite ранній виклик
-        const text = interaction?.options?.getString?.('запит', true) as string;
+        const text = interaction?.options?.getString?.('запит', true);
         const limit = interaction?.options?.getInteger?.('ліміт') ?? 10;
         const q: SearchQuery = { text, limit, sample: undefined, filters: {} as any } as any;
         try { await indexChoice.services.searchIndex.search(q); } catch {}
@@ -221,7 +221,7 @@ export class SearchCommand extends BaseCommand {
         }
       } else if (indexChoice.services.google && typeof indexChoice.services.google.searchData === 'function') {
         // Легасі Google ранній виклик, без завершення потоку
-        const text = interaction?.options?.getString?.('запит', true) as string;
+        const text = interaction?.options?.getString?.('запит', true);
         try { await indexChoice.services.google.searchData(String(text ?? '')); } catch {}
       }
     } catch {}
@@ -265,7 +265,7 @@ export class SearchCommand extends BaseCommand {
       try {
         // SQLite fast-path: call search early to satisfy tests, but do not short-circuit reply
         if (indexChoice.mode === 'sqlite' && indexChoice.services.searchIndex) {
-          const text = interaction.options.getString('запит', true) as string;
+          const text = interaction.options.getString('запит', true);
           const limit = interaction.options.getInteger('ліміт') ?? 10;
           const q: SearchQuery = { text, limit, sample: undefined, filters: {} as any } as any;
           try {
@@ -276,7 +276,7 @@ export class SearchCommand extends BaseCommand {
 
         // Legacy fast-path
         if (indexChoice.mode === 'legacy' && indexChoice.services.google && typeof indexChoice.services.google.searchData === 'function') {
-          const text = interaction.options.getString('запит', true) as string;
+          const text = interaction.options.getString('запит', true);
           const cache = indexChoice.services.cache;
           const cacheKey = `search:${String(text ?? '')}`;
           let rows: unknown = null;
@@ -322,12 +322,12 @@ export class SearchCommand extends BaseCommand {
               if (workspace?.addRecent) {
                 const now = Date.now();
                 for (const h of hits.slice(0, 5)) {
-                  const fileId = (h as any)?.fileId || (h as any)?.id;
+                  const fileId = h?.fileId || h?.id;
                   if (!fileId) continue;
                   await workspace.addRecent(interaction.user.id, {
                     fileId,
-                    name: (h as any)?.name,
-                    snippet: (h as any)?.snippet,
+                    name: h?.name,
+                    snippet: h?.snippet,
                     openedAt: now,
                   });
                 }
