@@ -377,10 +377,8 @@ export class DataUtils {
     return array.reduce(
       (groups, item) => {
         const key = keyFn(item);
-        if (!groups[key]) {
-          groups[key] = [];
-        }
-        groups[key].push(item);
+        const bucket = groups[key] ?? (groups[key] = []);
+        bucket.push(item);
         return groups;
       },
       {} as Record<string, T[]>
