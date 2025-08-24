@@ -100,6 +100,8 @@ export abstract class BaseCommand {
   protected lastExecution: Map<string, number> = new Map();
   protected readonly config: BotConfig;
   protected isShuttingDown = false;
+  // Timer for periodic cleanup; disabled in test environment
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     name: string,
@@ -180,7 +182,7 @@ export abstract class BaseCommand {
       retries: 0,
     };
 
-    // Запуск періодичного очищення
+    // Запуск періодичного очищення (пропускаємо у тестовому середовищі)
     this.startCleanupInterval();
 
     logger.info('Команда ініціалізована', {
@@ -864,7 +866,11 @@ export abstract class BaseCommand {
    * Запуск періодичного очищення
    */
   private startCleanupInterval(): void {
-    setInterval(() => {
+    // Не запускати інтервал у тестовому середовищі, щоб уникнути open handle в Jest
+    if (process.env['NODE_ENV'] === 'test') return;
+    // Запобігти дублюванню інтервалів
+    if (this.cleanupTimer) clearInterval(this.cleanupTimer);
+    this.cleanupTimer = setInterval(() => {
       this.cleanupExpiredData();
     }, COMMAND_CONFIG.CLEANUP_INTERVAL);
   }
@@ -919,6 +925,8 @@ export abstract class BaseCommand {
     return { ...this.stats };
   }
 
+  
+
   /**
    * Очищення cooldowns
    */
@@ -957,12 +965,16 @@ export abstract class BaseCommand {
    */
   public async shutdown(): Promise<void> {
     this.isShuttingDown = true;
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
     this.clearCooldowns();
     this.executionCache.clear();
     this.errorCount.clear();
     this.lastExecution.clear();
 
-    logger.info(`Команда ${this.name} зупинена`);
+    logger.info(`Команда ${this.name} зупинена (інтервали очищено)`);
   }
 
   /**
