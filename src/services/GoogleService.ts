@@ -278,40 +278,16 @@ export class GoogleService extends BaseServiceClass {
   // =====================
   // Sheets helper APIs (MVP, fast-path in tests)
   // =====================
-  /**
-   * Возвращает список листов таблицы. В тестовом режиме — детерминированный список.
-   */
-  public async listSheets(fileId: string): Promise<Array<{ title: string; index: number; grid?: { rows: number; cols: number } }>> {
-    const cacheKey = `gs:sheets:list:${fileId}`;
-    try {
-      const cached = await this.cacheService.get<Array<{ title: string; index: number; grid?: { rows: number; cols: number } }>>(cacheKey);
-      if (cached) return cached;
-    } catch {/* noop */}
-
-    // Test/perf fast-path (без внешних вызовов)
-    if (process.env['NODE_ENV'] === 'test' || process.env['GOOGLE_FAST'] === '1') {
-      const demo = [
-        { title: 'Лист1', index: 0, grid: { rows: 100, cols: 10 } },
-        { title: 'Рота 1', index: 1, grid: { rows: 200, cols: 15 } },
-      ];
-      await this.cacheService.set(cacheKey, demo, 60);
-      return demo;
-    }
-
-    // Prod stub: без интеграции возвращаем пустой массив (расширим позже реальными вызовами)
-    const empty: Array<{ title: string; index: number; grid?: { rows: number; cols: number } }> = [];
-    try { await this.cacheService.set(cacheKey, empty, 30); } catch {}
-    return empty;
-  }
 
   /** Находит лист по имени (регистронезависимо, учитывая локаль/варианты пробелов) */
   public async findSheetByName(fileId: string, name: string): Promise<{ title: string; index: number } | null> {
     const target = (name || '').trim().toLowerCase();
-    const sheets = await this.listSheets(fileId);
-    for (const s of sheets) {
-      const t = s.title.trim().toLowerCase();
+    const titles = await this.listSheets(fileId); // existing API returns string[]
+    for (let i = 0; i < titles.length; i++) {
+      const title = String(titles[i] ?? '');
+      const t = title.trim().toLowerCase();
       if (t === target || t.includes(target) || target.includes(t)) {
-        return { title: s.title, index: s.index };
+        return { title, index: i };
       }
     }
     return null;
