@@ -199,6 +199,28 @@ config({ path: '.env.test' });
 
 // Мок для process.env
 process.env['NODE_ENV'] = 'test';
+// Відключити фонові таймери/метрики; AI fast-path-и виставляються точково у перформанс/лоад тестах
+process.env['DISABLE_CRON'] = process.env['DISABLE_CRON'] ?? 'true';
+process.env['DISABLE_AI_TIMERS'] = process.env['DISABLE_AI_TIMERS'] ?? 'true';
+process.env['DISABLE_AI_HEALTHCHECK'] = process.env['DISABLE_AI_HEALTHCHECK'] ?? 'true';
+process.env['METRICS_ENABLE'] = process.env['METRICS_ENABLE'] ?? '0';
+process.env['EMBEDDINGS_ENABLE'] = process.env['EMBEDDINGS_ENABLE'] ?? '0';
+
+// ТЕСТОВИЙ ШИМ: автоматично викликати .unref() для таймерів Node, щоб уникнути open handle leaks у Jest
+// Має бути якнайраніше після конфігурації env
+{
+  const _setTimeout = global.setTimeout.bind(global);
+  const _setInterval = global.setInterval.bind(global);
+  const _setImmediate = global.setImmediate.bind(global);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tryUnref = (t: any) => { try { if (t && typeof t.unref === 'function') t.unref(); } catch { /* ignore */ } return t; };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (global as any).setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => tryUnref(_setTimeout(handler as any, timeout as any, ...args as any))) as typeof setTimeout;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (global as any).setInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => tryUnref(_setInterval(handler as any, timeout as any, ...args as any))) as typeof setInterval;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (global as any).setImmediate = ((handler: (...args: unknown[]) => void, ...args: unknown[]) => tryUnref(_setImmediate(handler as any, ...args as any))) as typeof setImmediate;
+}
 
 // Придушення консольних логів під час тестів (можна ввімкнути через TEST_VERBOSE_LOGS=true)
 const VERBOSE = process.env['TEST_VERBOSE_LOGS'] === 'true';
