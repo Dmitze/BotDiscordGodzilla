@@ -183,10 +183,10 @@ export class Bot extends BaseServiceClass {
   /**
    * Отримання сервісу за назвою (проксі метод для сумісності з ServiceManager)
    */
-  public getService(name: string): unknown {
+  public getService(name: import('@/core/ServiceRegistry').ServiceKey | string): unknown {
     // Спочатку пробуємо через ServiceManager, якщо вже ініціалізований
     if (this.serviceManager && typeof this.serviceManager.getService === 'function') {
-      return this.serviceManager.getService(name);
+      return this.serviceManager.getService(name as import('@/core/ServiceRegistry').ServiceKey);
     }
     // В іншому випадку – напряму з контейнера сервісів
     try {
