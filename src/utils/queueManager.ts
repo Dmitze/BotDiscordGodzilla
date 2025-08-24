@@ -11,6 +11,7 @@
  */
 
 import { EventEmitter } from 'events';
+import logger from './logger';
 
 interface JobData {
   id: string;
@@ -140,7 +141,12 @@ class QueueManager extends EventEmitter {
     this.stats.pending++;
 
     this.emit('jobAdded', { jobId, priority });
-    console.log(`📋 Додано завдання ${jobId} в чергу ${priority}`);
+    logger.info(`📋 Додано завдання ${jobId} в чергу ${priority}`, {
+      type: 'queue',
+      action: 'job_added',
+      priority,
+      jobId,
+    });
 
     return jobId;
   }
@@ -179,7 +185,12 @@ class QueueManager extends EventEmitter {
     this.stats.pending--;
     this.activeJobs[priority]++;
 
-    console.log(`⚡ Початок обробки завдання ${jobData.id} (${priority})`);
+    logger.debug(`⚡ Початок обробки завдання ${jobData.id} (${priority})`, {
+      type: 'queue',
+      action: 'job_start',
+      priority,
+      jobId: jobData.id,
+    });
 
     try {
       const startTime = Date.now();
@@ -195,8 +206,13 @@ class QueueManager extends EventEmitter {
         result,
         processingTime,
       });
-
-      console.log(`✅ Завдання ${jobData.id} завершено за ${processingTime}мс`);
+      logger.info(`✅ Завдання ${jobData.id} завершено за ${processingTime}мс`, {
+        type: 'queue',
+        action: 'job_completed',
+        priority,
+        jobId: jobData.id,
+        duration: `${processingTime}ms`,
+      });
     } catch (error: any) {
       this.stats.failed++;
 
@@ -205,8 +221,9 @@ class QueueManager extends EventEmitter {
         this.queues[priority].unshift(jobData);
         this.stats.pending++;
 
-        console.log(
-          `🔄 Повторна спроба завдання ${jobData.id} (${jobData.retries}/${jobData.maxRetries})`
+        logger.warn(
+          `🔄 Повторна спроба завдання ${jobData.id} (${jobData.retries}/${jobData.maxRetries})`,
+          { type: 'queue', action: 'job_retry', priority, jobId: jobData.id, retries: jobData.retries }
         );
       } else {
         this.emit('jobFailed', {
@@ -215,8 +232,10 @@ class QueueManager extends EventEmitter {
           error: error.message,
           retries: jobData.retries,
         });
-
-        console.log(`❌ Завдання ${jobData.id} не вдалося виконати після ${jobData.retries} спроб`);
+        logger.error(
+          `❌ Завдання ${jobData.id} не вдалося виконати після ${jobData.retries} спроб`,
+          { type: 'queue', action: 'job_failed', priority, jobId: jobData.id, error: error?.message }
+        );
       }
     } finally {
       this.activeJobs[priority]--;
@@ -385,7 +404,9 @@ class QueueManager extends EventEmitter {
         moved.priority = newPriority;
         this.queues[newPriority].push(moved);
 
-        console.log(`🔄 Змінено пріоритет завдання ${jobId} з ${priority} на ${newPriority}`);
+        logger.info(`🔄 Змінено пріоритет завдання ${jobId} з ${priority} на ${newPriority}`,
+          { type: 'queue', action: 'priority_changed', jobId, from: priority, to: newPriority }
+        );
         return true;
       }
     }
@@ -418,7 +439,9 @@ class QueueManager extends EventEmitter {
         this.queues[priority].splice(jobIndex, 1);
         this.stats.pending--;
 
-        console.log(`🗑️ Видалено завдання ${jobId} з черги ${priority}`);
+        logger.info(`🗑️ Видалено завдання ${jobId} з черги ${priority}`,
+          { type: 'queue', action: 'job_removed', jobId, priority }
+        );
         return true;
       }
     }
@@ -431,7 +454,9 @@ class QueueManager extends EventEmitter {
    */
   setMaxConcurrent(priority: 'high' | 'normal' | 'low', max: number): void {
     this.maxConcurrent[priority] = max;
-    console.log(`⚙️ Встановлено максимум ${max} одночасних завдань для черги ${priority}`);
+    logger.info(`⚙️ Встановлено максимум ${max} одночасних завдань для черги ${priority}`,
+      { type: 'queue', action: 'set_max_concurrent', priority, max }
+    );
   }
 
   /**
@@ -439,7 +464,7 @@ class QueueManager extends EventEmitter {
    */
   pauseQueue(priority: 'high' | 'normal' | 'low'): void {
     this.processing[priority] = false;
-    console.log(`⏸️ Пауза обробки черги ${priority}`);
+    logger.info(`⏸️ Пауза обробки черги ${priority}`, { type: 'queue', action: 'pause', priority });
   }
 
   /**
@@ -447,7 +472,7 @@ class QueueManager extends EventEmitter {
    */
   resumeQueue(priority: 'high' | 'normal' | 'low'): void {
     this.processing[priority] = true;
-    console.log(`▶️ Відновлено обробку черги ${priority}`);
+    logger.info(`▶️ Відновлено обробку черги ${priority}`, { type: 'queue', action: 'resume', priority });
   }
 
   /**
@@ -510,8 +535,7 @@ class QueueManager extends EventEmitter {
       pending: 0,
       averageProcessingTime: 0,
     };
-
-    console.log('🔄 Статистика черг скинута');
+    logger.info('🔄 Статистика черг скинута', { type: 'queue', action: 'reset_stats' });
   }
 }
 
