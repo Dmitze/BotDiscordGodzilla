@@ -1,6 +1,6 @@
 // no specific types needed here to avoid builder type narrowing issues
 import { BaseCommand } from './BaseCommand';
-import { t } from '@/i18n';
+import { t, tUser } from '@/i18n';
 import type { SlashCommandBuilder, SlashCommandStringOption } from 'discord.js';
 import { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
@@ -8,6 +8,7 @@ import type { GoogleService } from '@/services/GoogleService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
 import logger from '@/utils/logger';
 import { signComponentId, verifyComponentId } from '@/security/componentId';
+import { replyWithPrivacy } from '@/ui/reply';
 
 export class SelectSheetCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
@@ -65,9 +66,11 @@ export class SelectSheetCommand extends BaseCommand {
           channelId: interaction.channelId,
         };
         if (interaction.guildId) key.guildId = interaction.guildId;
-        const removed = await this.sheetsContext?.clearContext(key as any);
-        await interaction.editReply(
-          removed ? t('sheets.reply.cleared') : t('sheets.reply.noContext')
+        const removed = await this.sheetsContext?.clearContext(key as { userId: string; channelId: string; guildId?: string });
+        await replyWithPrivacy(
+          interaction,
+          removed ? tUser('sheets.reply.cleared', interaction) : tUser('sheets.reply.noContext', interaction),
+          { ephemeral: true }
         );
         return;
       }
@@ -78,24 +81,26 @@ export class SelectSheetCommand extends BaseCommand {
           channelId: interaction.channelId,
         };
         if (interaction.guildId) key.guildId = interaction.guildId;
-        const ctx = await this.sheetsContext?.getContext(key as any);
+        const ctx = await this.sheetsContext?.getContext(key as { userId: string; channelId: string; guildId?: string });
         if (!ctx) {
-          await interaction.editReply(t('sheets.reply.noContext'));
+          await replyWithPrivacy(interaction, tUser('sheets.reply.noContext', interaction), { ephemeral: true });
           return;
         }
-        await interaction.editReply(
-          t('sheets.reply.current', { spreadsheetId: ctx.spreadsheetId, sheetName: ctx.sheetName || '—' })
+        await replyWithPrivacy(
+          interaction,
+          tUser('sheets.reply.current', interaction, { spreadsheetId: ctx.spreadsheetId, sheetName: ctx.sheetName || '—' }),
+          { ephemeral: true }
         );
         return;
       }
 
       if (!this.googleService) {
-        throw new Error(t('sheets.error.serviceUnavailable'));
+        throw new Error(tUser('sheets.error.serviceUnavailable', interaction));
       }
 
       const folderId = this.config?.google?.driveFolderId;
       if (!folderId) {
-        throw new Error(t('sheets.error.missingFolderId'));
+        throw new Error(tUser('sheets.error.missingFolderId', interaction));
       }
 
       const spreadsheetInput = interaction.options.getString('spreadsheet') || '';
@@ -116,7 +121,7 @@ export class SelectSheetCommand extends BaseCommand {
             3
           );
           if (matches.length === 0)
-            throw new Error(t('sheets.error.notFoundByName', { name: spreadsheetInput }));
+            throw new Error(tUser('sheets.error.notFoundByName', interaction, { name: spreadsheetInput }));
           if (matches.length > 1) {
             logger.warn(t('sheets.log.multiMatchWarn'), {
               component: 'SelectSheetCommand',
@@ -129,14 +134,14 @@ export class SelectSheetCommand extends BaseCommand {
       }
 
       if (!spreadsheetId) {
-        throw new Error(t('sheets.error.missingSpreadsheet'));
+        throw new Error(tUser('sheets.error.missingSpreadsheet', interaction));
       }
 
       // Якщо sheetName не вказано — показуємо інтерактивне меню вибору листа
       if (!sheetName) {
         const sheets = await this.googleService.listSheets(spreadsheetId);
         if (!sheets || sheets.length === 0) {
-          throw new Error(t('sheets.error.noSheets'));
+          throw new Error(tUser('sheets.error.noSheets', interaction));
         }
 
         const options = sheets.slice(0, 25).map((name) =>
@@ -156,10 +161,11 @@ export class SelectSheetCommand extends BaseCommand {
           .addOptions(options);
 
         const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
-        await interaction.editReply({
-          content: t('sheets.ui.chooseSheet'),
-          components: [row],
-        });
+        await replyWithPrivacy(
+          interaction,
+          { content: tUser('sheets.ui.chooseSheet', interaction), components: [row] },
+          { ephemeral: true }
+        );
         return;
       }
 
@@ -168,24 +174,26 @@ export class SelectSheetCommand extends BaseCommand {
         const sheets = await this.googleService.listSheets(spreadsheetId);
         const exists = sheets.some((s) => s.toLowerCase() === sheetName!.toLowerCase());
         if (!exists) {
-          throw new Error(t('sheets.error.sheetNotFound', { sheet: sheetName }));
+          throw new Error(tUser('sheets.error.sheetNotFound', interaction, { sheet: sheetName }));
         }
       }
 
       // Зберігаємо контекст одразу
       {
-        const key: { userId: string; channelId: string } & Partial<{ guildId: string }> = {
+        const key: { userId: string; channelId: string; guildId?: string } = {
           userId: interaction.user.id,
           channelId: interaction.channelId,
         };
         if (interaction.guildId) key.guildId = interaction.guildId;
-        await this.sheetsContext?.setContext(key as any, {
+        await this.sheetsContext?.setContext(key as { userId: string; channelId: string; guildId?: string }, {
           spreadsheetId,
           sheetName,
         });
 
-        await interaction.editReply(
-          t('sheets.reply.set', { spreadsheetId, sheetName: sheetName || '—' })
+        await replyWithPrivacy(
+          interaction,
+          tUser('sheets.reply.set', interaction, { spreadsheetId, sheetName: sheetName || '—' }),
+          { ephemeral: true }
         );
       }
     } catch (error) {
@@ -195,7 +203,7 @@ export class SelectSheetCommand extends BaseCommand {
         event: 'command_failed',
         errorMessage: message,
       });
-      await interaction.editReply(t('sheets.error.failed', { message }));
+      await replyWithPrivacy(interaction, tUser('sheets.error.failed', interaction, { message }), { ephemeral: true });
     }
   }
 
