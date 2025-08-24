@@ -689,19 +689,19 @@ export class FileManagerCommand extends BaseCommand {
 
       const isSignedDrive = !!payload && payload.kind === 'drive';
       const driveParsed = isSignedDrive
-        ? ({ action: (payload as any).action as DriveAction, id: (payload as any).id as string })
+        ? ({ action: (payload as any).action, id: String((payload as any).id ?? '') })
         : parseLegacyDrive(customId);
       if (driveParsed) {
         await handleDriveActionExt(interaction as any, driveParsed.action, driveParsed.id, {
           config: this.config,
           getGoogleService: this.getGoogleService.bind(this),
-          isMimeAllowed: this.isMimeAllowed.bind(this) as any,
-          isOwnerAllowed: this.isOwnerAllowed?.bind?.(this) as any,
-          isTooLarge: this.isTooLarge.bind(this) as any,
+          isMimeAllowed: this.isMimeAllowed.bind(this),
+          isOwnerAllowed: this.isOwnerAllowed?.bind?.(this),
+          isTooLarge: this.isTooLarge.bind(this),
           getAnalysisTypeName: (x: any) => this.getAnalysisTypeName(x),
-          resolve: <T>(_interaction: any, name: string): T | undefined => {
-            const anyClient = _interaction.client as any;
-            return anyClient?.serviceContainer?.get?.(name) as T | undefined;
+          resolve: (_interaction: any, name: string): any => {
+            const anyClient = _interaction.client;
+            return anyClient?.serviceContainer?.get?.(name);
           },
         });
         return;
@@ -709,7 +709,7 @@ export class FileManagerCommand extends BaseCommand {
 
       // Text reading pagination handler (signed preferred)
       const isSignedText = !!payload && payload.kind === 'filetxt';
-      const txtParsed = isSignedText ? (payload as any) : this.parseTextCustomId(customId);
+      const txtParsed = isSignedText ? payload : this.parseTextCustomId(customId);
       if (txtParsed) {
         await handleTextActionExt(interaction as any, txtParsed as any, {
           sessions: FileManagerCommand.textSessions as any,
@@ -720,7 +720,7 @@ export class FileManagerCommand extends BaseCommand {
 
       // Search pagination handler (signed preferred)
       const isSignedSearch = !!payload && payload.kind === 'filesrch';
-      const parsed = isSignedSearch ? (payload as any) : this.parseCustomId(customId);
+      const parsed = isSignedSearch ? payload : this.parseCustomId(customId);
       if (parsed) {
         await handleSearchActionExt(interaction as any, parsed as any, {
           sessions: FileManagerCommand.sessions as any,
