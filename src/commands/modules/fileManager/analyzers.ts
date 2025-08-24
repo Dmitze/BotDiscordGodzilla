@@ -43,12 +43,12 @@ export async function handleAnalyze(
     }
   }
 
-  const sizeBytes = Number((meta as any).size || 0) || 0;
+  const sizeBytes = Number(meta.size || 0) || 0;
   const tooLarge = isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
 
   if (tooLarge && !mime.startsWith('application/vnd.google-apps')) {
     const linkAllowed = !(driveCfg?.hideWebLink);
-    const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+    const link = linkAllowed ? String(meta.webViewLink || '') : '';
     const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
     const summary = t('files.summary.largeFile', {
       name: String(meta.name || ''),
@@ -97,11 +97,11 @@ export async function handleAnalyze(
       analysis = `${analysis}\n\nЗведення (локальне): ${contextText.slice(0, 800)}`;
     }
   } else {
-    analysis = `${analysis}\n\нЗведення (локальне): ${contextText.slice(0, 800)}`;
+    analysis = `${analysis}\n\nЗведення (локальне): ${contextText.slice(0, 800)}`;
   }
 
   const allowLink = !(driveCfg?.hideWebLink);
-  const viewLink = allowLink ? String((meta as any).webViewLink || '') : '';
+  const viewLink = allowLink ? String(meta.webViewLink || '') : '';
   const linkNote = allowLink && viewLink ? `\n${t('files.summary.link') || 'Посилання'}: ${viewLink}` : '';
 
   return { success: true, message: `🤖 **AI-аналіз файлу**\n\n${analysis}${linkNote}` };
