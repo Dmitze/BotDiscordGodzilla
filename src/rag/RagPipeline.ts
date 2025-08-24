@@ -55,7 +55,40 @@ export class RagPipeline {
     if (typeof genOpts.model === 'string') (args as any).model = genOpts.model;
     if (typeof genOpts.maxTokens === 'number') (args as any).maxTokens = genOpts.maxTokens;
     if (typeof genOpts.temperature === 'number') (args as any).temperature = genOpts.temperature;
-    const resp = await this.ai.generateWithContext(args);
+
+    // Fallback: unit tests may provide AI mock without generateWithContext
+    const aiAny = this.ai as unknown as {
+      generateWithContext?: (a: typeof args) => Promise<{ text: string; citations: any[]; provider: string; model?: string; tokens?: number }>;
+      generateResponse?: (prompt: string, opts?: any) => Promise<{ content: string; provider: string; model?: string; tokens?: number }>;
+    };
+    let resp: { text: string; citations: any[]; provider: string; model?: string; tokens?: number };
+    if (typeof aiAny.generateWithContext === 'function') {
+      resp = await aiAny.generateWithContext(args);
+    } else if (typeof aiAny.generateResponse === 'function') {
+      // Build prompt similarly to AIService.generateWithContext
+      const system = 'Ти — помічник, який відповідає стисло, українською, з посиланнями на джерела.';
+      const sources = chunks
+        .map((c, i) => `(${i + 1}) ${c.name} [${c.fileId}]\n${c.snippet}`)
+        .join('\n\n');
+      const fullPrompt = `${system}\n\nПитання:\n${query}\n\nКонтекст (релевантні уривки):\n${sources}\n\nВідповідь: наведи коротку відповідь та в кінці перелік джерел у форматі [1], [2], ... з короткими назвами.`;
+      const aiResp = await aiAny.generateResponse(fullPrompt, {
+        useCache: true,
+        model: (args as any).model,
+        maxTokens: (args as any).maxTokens,
+        temperature: (args as any).temperature,
+      });
+      const cites = chunks.map((c, i) => ({ index: i + 1, fileId: c.fileId, name: c.name, url: (c as any).url }));
+      const base: { text: string; citations: any[]; provider: string; model?: string; tokens?: number } = {
+        text: aiResp.content,
+        citations: cites,
+        provider: aiResp.provider,
+      };
+      if (typeof aiResp.model === 'string') (base as any).model = aiResp.model;
+      if (typeof aiResp.tokens === 'number') (base as any).tokens = aiResp.tokens;
+      resp = base;
+    } else {
+      throw new Error('AI service does not implement generateWithContext or generateResponse');
+    }
     logger.info('RAG generation complete', {
       service: 'RagPipeline',
       operation: 'answer',
