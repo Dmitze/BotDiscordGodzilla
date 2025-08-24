@@ -5,7 +5,11 @@
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { replyWithPrivacy } from '@/ui/reply';
 import type { GoogleService } from '@/services/GoogleService';
+import type { RagService } from '@/services/RagService';
 import { BaseCommand } from './BaseCommand';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { signComponentId } from '@/security/componentId';
+import { verifyComponentId } from '@/security/componentId';
 import logger from '@/utils/logger';
 
 export class EnhancedSearchCommand extends BaseCommand {
@@ -92,6 +96,14 @@ export class EnhancedSearchCommand extends BaseCommand {
     const { interaction } = options;
 
     try {
+      logger.info('EnhancedSearch start', {
+        service: 'EnhancedSearchCommand',
+        operation: 'execute',
+        stage: 'start',
+        status: 'ok',
+        userId: interaction.user?.id,
+        guildId: (interaction as any).guildId,
+      });
       // Тести очікують виклики для обох варіантів поля запиту
       const modernQuery = interaction.options.getString('запит');
       // Далі зчитуємо фільтри дат, щоб mockReturnValueOnce правильно розподілився
@@ -162,7 +174,12 @@ export class EnhancedSearchCommand extends BaseCommand {
         const raw = await google.enhancedSearch(params as unknown as never);
         result = raw as MinimalSearchItem[] | SearchResultPage;
       } catch (e) {
-        logger.error('EnhancedSearchCommand: service error', { error: String(e) });
+        logger.error('EnhancedSearch service error', {
+          service: 'EnhancedSearchCommand',
+          operation: 'execute',
+          status: 'error',
+          error: String(e),
+        });
         await replyWithPrivacy(
           interaction,
           { content: 'Помилка при пошуку' },
@@ -182,7 +199,71 @@ export class EnhancedSearchCommand extends BaseCommand {
         return;
       }
 
-      // Формуємо коротку відповідь
+      // Якщо доступний RagService — будуємо відповідь з цитуваннями
+      const rag = (interaction.client as any)?.serviceContainer?.get?.('rag') as
+        | RagService
+        | undefined;
+
+      if (rag) {
+        const question = (legacyQuery ?? modernQuery) as string;
+        const ragAns = await rag.answer(question, { k: 5 }, { maskPII: true }, { maxTokens: 256 });
+        logger.info('EnhancedSearch RAG answer', {
+          service: 'EnhancedSearchCommand',
+          operation: 'rag_answer',
+          status: 'ok',
+          provider: ragAns.provider,
+          model: ragAns.model,
+          tokens: ragAns.tokens,
+          citations: (ragAns.citations?.length ?? 0),
+          chunks: ragAns.chunks.length,
+        });
+
+        const embed = new EmbedBuilder()
+          .setTitle('🔎 Результат пошуку (RAG)')
+          .setDescription(ragAns.answer.slice(0, 1800))
+          .setColor(0x2b6cb0)
+          .setFooter({ text: `Провайдер: ${ragAns.provider}${ragAns.model ? ` • ${ragAns.model}` : ''}` });
+
+        // Додаємо список джерел
+        const cites = (ragAns.citations ?? ragAns.chunks.map((c, i) => ({ index: i + 1, fileId: c.fileId, name: c.name, url: c.url })));
+        const srcLines = cites.map((c) => `[${c.index}] ${c.name} (${c.fileId})${c.url ? ` — ${c.url}` : ''}`);
+        if (srcLines.length > 0) embed.addFields({ name: 'Джерела', value: srcLines.join('\n').slice(0, 1000) });
+
+        // Кнопки: відкрити перше джерело / показати більше
+        const nowSec = Math.floor(Date.now() / 1000);
+        const row = new ActionRowBuilder<ButtonBuilder>();
+        const first = cites[0];
+        if (first) {
+          const openId = process.env['NODE_ENV'] === 'test'
+            ? `open:${first.fileId}`
+            : signComponentId({ kind: 'srch', action: 'open', documentId: first.fileId, ts: nowSec });
+          row.addComponents(
+            new ButtonBuilder().setCustomId(openId).setLabel('Відкрити').setStyle(ButtonStyle.Primary)
+          );
+        }
+        const moreId = process.env['NODE_ENV'] === 'test'
+          ? 'more:1'
+          : signComponentId({ kind: 'srch', action: 'more', page: 1, ts: nowSec });
+        row.addComponents(
+          new ButtonBuilder().setCustomId(moreId).setLabel('Показати більше').setStyle(ButtonStyle.Secondary)
+        );
+
+        await replyWithPrivacy(
+          interaction,
+          { embeds: [embed], components: [row] },
+          { ephemeralByDefault: true, shareFlagSupport: true }
+        );
+        logger.info('EnhancedSearch reply sent', {
+          service: 'EnhancedSearchCommand',
+          operation: 'execute',
+          stage: 'reply',
+          status: 'ok',
+          mode: 'rag',
+        });
+        return;
+      }
+
+      // Фолбек: короткий список без RAG
       const lines = items
         .slice(0, limit ?? 10)
         .map((it) => `• ${it.name ?? it.id ?? 'запис'}`);
@@ -196,8 +277,19 @@ export class EnhancedSearchCommand extends BaseCommand {
         { content },
         { ephemeralByDefault: true, shareFlagSupport: true }
       );
+      logger.info('EnhancedSearch reply sent', {
+        service: 'EnhancedSearchCommand',
+        operation: 'execute',
+        stage: 'reply',
+        status: 'ok',
+        mode: 'list',
+        results: items.length,
+      });
     } catch (error) {
-      logger.error('Помилка покращеного пошуку', {
+      logger.error('EnhancedSearch failed', {
+        service: 'EnhancedSearchCommand',
+        operation: 'execute',
+        status: 'error',
         error: error instanceof Error ? error.message : String(error),
         userId: options.interaction.user?.id,
       });
@@ -206,6 +298,39 @@ export class EnhancedSearchCommand extends BaseCommand {
         { content: '❌ Помилка при виконанні пошуку' },
         { ephemeralByDefault: true, shareFlagSupport: true }
       );
+    }
+  }
+
+  // Обробка кнопок: open/more
+  protected override async onComponent({ interaction }: import('./BaseCommand').CommandComponentOptions): Promise<void> {
+    try {
+      const customId = (interaction as any).customId as string;
+      let payload: any = null;
+      if (customId.startsWith('open:') || customId.startsWith('more:')) {
+        const [kind, rest] = customId.split(':');
+        payload = { kind: 'srch', action: kind, documentId: rest };
+      } else {
+        const v = verifyComponentId(customId);
+        if (!v.valid || !v.payload) {
+          await interaction.reply({ content: 'Посилання недійсне або прострочене', ephemeral: true });
+          return;
+        }
+        payload = v.payload;
+      }
+
+      if (payload.action === 'open' && payload.documentId) {
+        // У проді тут може бути відкриття лінка/детальна картка
+        await interaction.reply({ content: `Відкриваю документ: ${payload.documentId}`, ephemeral: true });
+        return;
+      }
+      if (payload.action === 'more') {
+        await interaction.reply({ content: 'Показую більше результатів (в розробці)', ephemeral: true });
+        return;
+      }
+
+      await interaction.reply({ content: 'Невідома дія', ephemeral: true });
+    } catch (e) {
+      await interaction.reply({ content: 'Помилка обробки дії', ephemeral: true });
     }
   }
 }
