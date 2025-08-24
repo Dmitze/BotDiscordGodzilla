@@ -347,7 +347,7 @@ export class GoogleService extends BaseServiceClass {
       const rows: (string | number | null)[][] = [
         ['Рота 1', '85%', '120', '2024-01-01'],
         ['Рота 2', '92,5%', '98', '2024-01-02'],
-      ].map(r => r.map(c => this.parseCellValue(c)) as (string | number | null)[]);
+      ].map(r => r.map(c => this.parseCellValue(c)));
       const out = { headers, rows };
       await this.cacheService.set(cacheKey, out, 60);
       return out;
