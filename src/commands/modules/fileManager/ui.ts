@@ -18,6 +18,109 @@ export interface BuildSearchPageDeps {
   getSubcommandTitle: (name: 'пошук' | 'читати' | 'аналіз' | string) => string;
 }
 
+// --- Helpers extracted to reduce complexity ---
+function filterByPolicy(files: DriveFile[], driveCfg: any, isMimeAllowed: (mime: string, allowed: string[]) => boolean, isOwnerAllowed: (owners: string[], allowlist: string[]) => boolean) {
+  let filteredOutCount = 0;
+  const allowed = files.filter((f: DriveFile) => {
+    const mime = String(f.mimeType || '');
+    const owners: string[] = Array.isArray(f.owners) ? f.owners : [];
+    const mimeOk = isMimeAllowed(mime, driveCfg?.allowedMime || []);
+    const ownerOk = isOwnerAllowed(owners, driveCfg?.ownerAllowlist || []);
+    const ok = mimeOk && ownerOk;
+    if (!ok) filteredOutCount++;
+    return ok;
+  });
+  return { allowed, filteredOutCount } as const;
+}
+
+function applyChangesOnlyFilter(files: DriveFile[], changes: DriveListResult['changes'] | undefined, changesOnly: boolean) {
+  if (!changesOnly) return { toShow: files, addedSet: new Set<string>(), modifiedSet: new Set<string>() } as const;
+  const addedSet = new Set<string>(changes?.addedIds ?? []);
+  const modifiedSet = new Set<string>((changes?.modified ?? []).map((m) => m.id));
+  const toShow = files.filter((f: DriveFile) => addedSet.has(f.id) || modifiedSet.has(f.id));
+  return { toShow, addedSet, modifiedSet } as const;
+}
+
+function parseExtraFilters(interaction: ChatInputCommandInteraction) {
+  const getStr = (interaction.options as any)?.getString?.bind?.(interaction.options) as ((name: string) => string | null | undefined) | undefined;
+  const getInt = (interaction.options as any)?.getInteger?.bind?.(interaction.options) as ((name: string) => number | null | undefined) | undefined;
+  return {
+    mimeFilter: getStr ? (getStr('mime') || undefined) : undefined,
+    ownerFilter: getStr ? (getStr('власник') || undefined) : undefined,
+    fromStr: getStr ? (getStr('від') || undefined) : undefined,
+    toStr: getStr ? (getStr('до') || undefined) : undefined,
+    sizeMinMb: getInt ? getInt('розмір_мін') ?? undefined : undefined,
+    sizeMaxMb: getInt ? getInt('розмір_макс') ?? undefined : undefined,
+  } as const;
+}
+
+function applyExtraFilters(files: DriveFile[], filters: ReturnType<typeof parseExtraFilters>) {
+  const { mimeFilter, ownerFilter, fromStr, toStr, sizeMinMb, sizeMaxMb } = filters;
+  const fromTime = fromStr ? Date.parse(fromStr) : undefined;
+  const toTime = toStr ? Date.parse(toStr) : undefined;
+  return files.filter((f: DriveFile) => {
+    if (mimeFilter && String(f.mimeType || '') !== mimeFilter) return false;
+    if (ownerFilter) {
+      const owners: string[] = Array.isArray(f.owners) ? f.owners : [];
+      const hasOwner = owners.some((o: string) => String(o).toLowerCase().includes(ownerFilter.toLowerCase()));
+      if (!hasOwner) return false;
+    }
+    if (fromTime || toTime) {
+      const mt = Date.parse(String(f.modifiedTime || 0));
+      if (Number.isFinite(fromTime as number) && mt < (fromTime as number)) return false;
+      if (Number.isFinite(toTime as number) && mt > (toTime as number) + 24 * 3600 * 1000 - 1) return false;
+    }
+    if (sizeMinMb != null || sizeMaxMb != null) {
+      const sizeBytes = Number(f.size || 0) || 0;
+      const sizeMb = sizeBytes / (1024 * 1024);
+      if (sizeMinMb != null && sizeMb < sizeMinMb) return false;
+      if (sizeMaxMb != null && sizeMb > sizeMaxMb) return false;
+    }
+    return true;
+  });
+}
+
+function sortFiles(files: DriveFile[], interaction: ChatInputCommandInteraction) {
+  const sort = (interaction.options.getString('сортування') ?? 'name') as 'name' | 'modifiedTime';
+  const arr = [...files];
+  arr.sort((a: DriveFile, b: DriveFile) => {
+    if (sort === 'modifiedTime') {
+      const at = Date.parse(String(a.modifiedTime || 0));
+      const bt = Date.parse(String(b.modifiedTime || 0));
+      return bt - at;
+    }
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+  return arr;
+}
+
+type ChangeSets = { added: Set<string>; modified: Set<string> };
+function formatListLines(opts: {
+  slice: DriveFile[];
+  startIndex: number;
+  driveCfg: any;
+  isTooLarge: (bytes: number, limitMb: number) => boolean;
+  changeSets: ChangeSets;
+}) {
+  const { slice, startIndex, driveCfg, isTooLarge, changeSets } = opts;
+  const lines: string[] = [];
+  let idx = startIndex;
+  const largeMark = ` (${t('files.search.largeMark')})`;
+  for (const f of slice) {
+    const icon =
+      f.mimeType === 'application/vnd.google-apps.folder' ? '📁'
+      : f.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📊'
+      : f.mimeType === 'application/vnd.google-apps.document' ? '📄' : '📦';
+    const sizeBytes = Number((f as any).size || 0) || 0;
+    const tooLarge = isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
+    const mark = tooLarge ? largeMark : '';
+    const change = changeSets.added.has(f.id) ? '🆕 ' : (changeSets.modified.has(f.id) ? '✏️ ' : '');
+    lines.push(`${idx}. ${change}${icon} ${f.name}${mark} — ${f.id}`);
+    idx++;
+  }
+  return lines;
+}
+
 export async function buildSearchPage(
   args: { interaction: ChatInputCommandInteraction; sid: string; page: number },
   deps: BuildSearchPageDeps
@@ -52,73 +155,25 @@ export async function buildSearchPage(
 
   const files: DriveFile[] = listRes.files || [];
   const driveCfg = config.drive;
-  let filteredOutCount = 0;
-  const allowed = files.filter((f: DriveFile) => {
-    const mime = String(f.mimeType || '');
-    const owners: string[] = Array.isArray(f.owners) ? f.owners : [];
-    const mimeOk = isMimeAllowed(mime, driveCfg?.allowedMime || []);
-    const ownerOk = isOwnerAllowed(owners, driveCfg?.ownerAllowlist || []);
-    const ok = mimeOk && ownerOk;
-    if (!ok) filteredOutCount++;
-    return ok;
-  });
+  const { allowed, filteredOutCount } = filterByPolicy(files, driveCfg, isMimeAllowed, isOwnerAllowed);
 
   // changes-only filter
   const ch = listRes.changes;
   let toShow: DriveFile[] = allowed;
-  const addedSet = new Set<string>(ch?.addedIds ?? []);
-  const modifiedSet = new Set<string>((ch?.modified ?? []).map((m) => m.id));
-  if (session.changesOnly) {
-    toShow = allowed.filter((f: DriveFile) => addedSet.has(f.id) || modifiedSet.has(f.id));
+  let addedSet = new Set<string>();
+  let modifiedSet = new Set<string>();
+  {
+    const res = applyChangesOnlyFilter(allowed, ch, session.changesOnly);
+    toShow = res.toShow;
+    addedSet = res.addedSet;
+    modifiedSet = res.modifiedSet;
   }
 
   // extra filters from interaction options
-  const getStr = (interaction.options as any)?.getString?.bind?.(interaction.options) as ((name: string) => string | null | undefined) | undefined;
-  const mimeFilter = getStr ? (getStr('mime') || undefined) : undefined;
-  const ownerFilter = getStr ? (getStr('власник') || undefined) : undefined;
-  const fromStr = getStr ? (getStr('від') || undefined) : undefined;
-  const toStr = getStr ? (getStr('до') || undefined) : undefined;
-  const getInt2 = (interaction.options as any)?.getInteger?.bind?.(interaction.options) as ((name: string) => number | null | undefined) | undefined;
-  const sizeMinMb = getInt2 ? getInt2('розмір_мін') ?? undefined : undefined;
-  const sizeMaxMb = getInt2 ? getInt2('розмір_макс') ?? undefined : undefined;
-
-  const fromTime = fromStr ? Date.parse(fromStr) : undefined;
-  const toTime = toStr ? Date.parse(toStr) : undefined;
-  toShow = toShow.filter((f: DriveFile) => {
-    // mime exact
-    if (mimeFilter && String(f.mimeType || '') !== mimeFilter) return false;
-    // owner contains
-    if (ownerFilter) {
-      const owners: string[] = Array.isArray(f.owners) ? f.owners : [];
-      const hasOwner = owners.some((o: string) => String(o).toLowerCase().includes(ownerFilter.toLowerCase()));
-      if (!hasOwner) return false;
-    }
-    // date range by modifiedTime
-    if (fromTime || toTime) {
-      const mt = Date.parse(String(f.modifiedTime || 0));
-      if (Number.isFinite(fromTime as number) && mt < (fromTime as number)) return false;
-      if (Number.isFinite(toTime as number) && mt > (toTime as number) + 24 * 3600 * 1000 - 1) return false;
-    }
-    // size range in MB
-    if (sizeMinMb != null || sizeMaxMb != null) {
-      const sizeBytes = Number(f.size || 0) || 0;
-      const sizeMb = sizeBytes / (1024 * 1024);
-      if (sizeMinMb != null && sizeMb < sizeMinMb) return false;
-      if (sizeMaxMb != null && sizeMb > sizeMaxMb) return false;
-    }
-    return true;
-  });
+  toShow = applyExtraFilters(toShow, parseExtraFilters(interaction));
 
   // client-side sort by optional param — read from options
-  const sort = (interaction.options.getString('сортування') ?? 'name') as 'name' | 'modifiedTime';
-  toShow.sort((a: DriveFile, b: DriveFile) => {
-    if (sort === 'modifiedTime') {
-      const at = Date.parse(String(a.modifiedTime || 0));
-      const bt = Date.parse(String(b.modifiedTime || 0));
-      return bt - at;
-    }
-    return String(a.name || '').localeCompare(String(b.name || ''));
-  });
+  toShow = sortFiles(toShow, interaction);
 
   const total = toShow.length;
   const totalPages = Math.max(1, Math.ceil(total / session.pageSize));
@@ -126,21 +181,7 @@ export async function buildSearchPage(
   const start = (safePage - 1) * session.pageSize;
   const slice = toShow.slice(start, start + session.pageSize);
 
-  const largeMark = ` (${t('files.search.largeMark')})`;
-  const lines: string[] = [];
-  let idx = start + 1;
-  for (const f of slice) {
-    const icon =
-      f.mimeType === 'application/vnd.google-apps.folder' ? '📁'
-      : f.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📊'
-      : f.mimeType === 'application/vnd.google-apps.document' ? '📄' : '📦';
-    const sizeBytes = Number((f as any).size || 0) || 0;
-    const tooLarge = isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
-    const mark = tooLarge ? largeMark : '';
-    const change = addedSet.has(f.id) ? '🆕 ' : (modifiedSet.has(f.id) ? '✏️ ' : '');
-    lines.push(`${idx}. ${change}${icon} ${f.name}${mark} — ${f.id}`);
-    idx++;
-  }
+  const lines = formatListLines({ slice, startIndex: start + 1, driveCfg, isTooLarge, changeSets: { added: addedSet, modified: modifiedSet } });
 
   if (total === 0) {
     const embed = new EmbedBuilder()
