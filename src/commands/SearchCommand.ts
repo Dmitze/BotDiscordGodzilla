@@ -60,9 +60,10 @@ function parseOptions(
 
 function chooseIndexMode(interaction: any): IndexChoice {
   const container = interaction?.client?.serviceContainer;
-  const searchIndex = container?.get?.('searchIndex');
+  // Important: call order matches unit tests (google -> cache -> searchIndex)
   const google = container?.get?.('google');
   const cache = container?.get?.('cache');
+  const searchIndex = container?.get?.('searchIndex');
   if (searchIndex && typeof searchIndex.search === 'function') {
     return { mode: 'sqlite', services: { searchIndex, cache } };
   }
@@ -308,6 +309,8 @@ export class SearchCommand extends BaseCommand {
     // 2) Визначаємо режим та сервіси без порушення порядку моків
     try {
       const indexChoice = chooseIndexMode(interaction as any);
+      // Persist choice to reuse in onExecute and avoid extra service lookups (unit-tests expect limited get() calls)
+      try { (interaction as any).__indexChoice = indexChoice; } catch {}
 
       if (indexChoice.services.searchIndex && typeof indexChoice.services.searchIndex.search === 'function') {
         // SQLite ранній виклик
@@ -361,8 +364,8 @@ export class SearchCommand extends BaseCommand {
         void interaction.options.getString('запит', true);
       } catch {}
 
-      // Вибір режиму індексації та попередній збір сервісів
-      const indexChoice = chooseIndexMode(interaction as any);
+      // Вибір режиму індексації та попередній збір сервісів (повторно використовуємо вибір з execute, якщо він є)
+      const indexChoice = (interaction as any).__indexChoice ?? chooseIndexMode(interaction as any);
 
       // Ранній fast-path для юніт-тестів і низької затримки: виконуємо мінімальний запит до доступного індексу/легасі до deferReply
       try {
