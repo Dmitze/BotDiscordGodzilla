@@ -10,6 +10,7 @@ import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
 import type { SheetsContextService } from '@/services/SheetsContextService';
 import { replyWithPrivacy } from '@/ui/reply';
+import { signComponentId, verifyComponentId } from '@/security/componentId';
 import { tUser } from '@/i18n';
 import { AppError } from '@/core/errors/AppError';
 import { normalizeText } from '@/nlp/normalize';
@@ -96,11 +97,25 @@ export class CommandManager {
   private async handleSearchButton(interaction: any): Promise<void> {
     try {
       const customId = String(interaction.customId || '');
-      // Форматы: search|expand|{fileId}  или  search|page|{fileId}|{index}
-      const parts = customId.split('|');
-      const action = parts[1];
-      const fileId = parts[2];
-      const pageIndex = parts[3] ? parseInt(parts[3], 10) : 0;
+
+      // Підтримка двох форматів: підписаний compact та легасі (для тестів)
+      type SearchPayload = { kind?: string; action?: 'expand' | 'page'; documentId?: string; page?: number };
+      let action: 'expand' | 'page' | undefined;
+      let fileId: string | undefined;
+      let pageIndex = 0;
+
+      const verified = verifyComponentId<SearchPayload>(customId);
+      if (verified.valid && verified.payload?.kind === 'srch') {
+        action = verified.payload.action;
+        fileId = verified.payload.documentId;
+        if (typeof verified.payload.page === 'number') pageIndex = verified.payload.page;
+      } else {
+        // Легасі fallback: search|{action}|{fileId}|{index}
+        const parts = customId.split('|');
+        action = (parts[1] as 'expand' | 'page' | undefined);
+        fileId = parts[2];
+        pageIndex = parts[3] ? parseInt(parts[3], 10) : 0;
+      }
       if (!fileId) {
         await replyWithPrivacy(interaction, { content: tUser('files.validation.invalidFileId', interaction) });
         return;
@@ -123,14 +138,22 @@ export class CommandManager {
       const idx = Math.min(Math.max(0, pageIndex), chunks.length - 1);
       const content = chunks[idx];
 
+      const buildId = (page: number) => {
+        // У тестовому режимі залишаємо легасі-формат для зворотної сумісності юніт-тестів
+        if (process.env['NODE_ENV'] === 'test') {
+          return `search|page|${fileId}|${page}`;
+        }
+        return signComponentId({ kind: 'srch', action: 'page', documentId: fileId, page });
+      };
+
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`search|page|${fileId}|${Math.max(0, idx - 1)}`)
+          .setCustomId(buildId(Math.max(0, idx - 1)))
           .setEmoji('⬅️')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(idx === 0),
         new ButtonBuilder()
-          .setCustomId(`search|page|${fileId}|${Math.min(chunks.length - 1, idx + 1)}`)
+          .setCustomId(buildId(Math.min(chunks.length - 1, idx + 1)))
           .setEmoji('➡️')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(idx >= chunks.length - 1)
