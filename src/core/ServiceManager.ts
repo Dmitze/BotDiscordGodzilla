@@ -5,6 +5,7 @@
  */
 
 import logger from '@/utils/logger';
+import type { ServiceKey, ServiceRegistry } from '@/core/ServiceRegistry';
 
 import { AIService } from '../services/AIService';
 import { GoogleService } from '../services/GoogleService';
@@ -29,14 +30,7 @@ interface Bot {
   client?: any;
 }
 
-interface Service {
-  initialize?: () => Promise<void>;
-  start?: () => Promise<void>;
-  shutdown?: () => Promise<void>;
-  isActive?: () => boolean;
-  getStats?: () => any;
-  [key: string]: any;
-}
+// Legacy dynamic service shape kept implicitly via `any` where needed
 
 interface ServiceStatus {
   isActive: boolean;
@@ -53,7 +47,7 @@ interface ServiceManagerStats {
 
 class ServiceManager {
   private bot: Bot;
-  private services: Map<string, Service>;
+  private services: Map<ServiceKey, NonNullable<ServiceRegistry[ServiceKey]>>;
   //
 
   constructor(bot: Bot) {
@@ -138,14 +132,14 @@ class ServiceManager {
       'driveIndexer',
       new DriveIndexerService({
         config: this.bot.config,
-        getService: (name: string) => this.getService(name),
+        getService: (name: string) => this.getService(name as ServiceKey),
       } as any)
     );
 
     // Workspace (персональний простір користувача) на SQLite
     try {
       const workspace = new WorkspaceDbService(this.bot.config);
-      this.services.set('workspace', workspace as unknown as Service);
+      this.services.set('workspace', workspace as unknown as NonNullable<ServiceRegistry['workspace']>);
       logger.info('🗂️ WorkspaceDbService зареєстровано', {
         type: 'service_manager',
         event: 'workspace_registered',
@@ -167,7 +161,7 @@ class ServiceManager {
         process.env['BOT_INDEX_DB_PATH'] ||
         './data/search-index.db';
       const searchIndex: SearchIndex = new SqliteSearchIndex({ dbPath });
-      this.services.set('searchIndex', searchIndex as unknown as Service);
+      this.services.set('searchIndex', searchIndex as unknown as ServiceRegistry['searchIndex']);
       logger.info('🗂️ SqliteSearchIndex зареєстровано', {
         type: 'service_manager',
         event: 'search_index_registered',
@@ -178,7 +172,7 @@ class ServiceManager {
       // Embeddings Service (optional, can fallback to mock)
       try {
         const embeddings = new EmbeddingsService(this.bot.config);
-        this.services.set('embeddings', embeddings as unknown as Service);
+        this.services.set('embeddings', embeddings as unknown as NonNullable<ServiceRegistry['embeddings']>);
         logger.info('🧮 EmbeddingsService зареєстровано', {
           type: 'service_manager',
           event: 'embeddings_registered',
@@ -203,7 +197,7 @@ class ServiceManager {
             aiSvc as any,
             (emb as unknown as { embed: (t: string) => Promise<number[]> } | undefined)
           );
-          this.services.set('rag', rag as unknown as Service);
+          this.services.set('rag', rag as unknown as NonNullable<ServiceRegistry['rag']>);
           logger.info('🧩 RagService зареєстровано', {
             type: 'service_manager',
             event: 'rag_registered',
@@ -233,8 +227,8 @@ class ServiceManager {
     try {
       const google = this.services.get('google');
       const metrics = this.services.get('metrics');
-      if (google && metrics && typeof google['setMetricsService'] === 'function') {
-        google['setMetricsService'](metrics);
+      (google as any)?.setMetricsService?.(metrics);
+      if (google && metrics) {
         logger.debug('🔗 Підключено MetricsService до GoogleService');
       }
     } catch (e) {
@@ -248,8 +242,8 @@ class ServiceManager {
   private async initializeServices(): Promise<void> {
     const initPromises = Array.from(this.services.entries()).map(async ([name, service]) => {
       try {
-        if (service.initialize) {
-          await service.initialize();
+        if ((service as any)?.initialize) {
+          await (service as any).initialize();
           logger.debug('✅ Сервіс ініціалізовано', {
             type: 'service_manager',
             event: 'service_initialized',
@@ -277,12 +271,21 @@ class ServiceManager {
   }
 
   /** Повертає сервіс за назвою */
-  public getService<T = any>(name: string): T | undefined {
-    return this.services.get(name) as unknown as T | undefined;
+  public getService<K extends ServiceKey>(name: K): ServiceRegistry[K] | undefined {
+    return this.services.get(name) as ServiceRegistry[K] | undefined;
+  }
+
+  /** Повертає сервіс або кидає помилку, якщо його немає */
+  public getRequiredService<K extends ServiceKey>(name: K): ServiceRegistry[K] {
+    const svc = this.getService(name);
+    if (!svc) {
+      throw new Error(`Service '${name}' is not available`);
+    }
+    return svc;
   }
 
   /** Список зареєстрованих сервісів */
-  public getServiceNames(): string[] {
+  public getServiceNames(): ServiceKey[] {
     return Array.from(this.services.keys());
   }
 
@@ -291,8 +294,8 @@ class ServiceManager {
    */
   async startMetrics(): Promise<void> {
     const metricsService = this.services.get('metrics');
-    if (metricsService && metricsService.start) {
-      await metricsService.start();
+    if ((metricsService as any)?.start) {
+      await (metricsService as any).start();
       logger.info('📊 Метрики запущено', {
         type: 'service_manager',
         event: 'metrics_started',
@@ -306,8 +309,8 @@ class ServiceManager {
    */
   async startCache(): Promise<void> {
     const cacheService = this.services.get('cache');
-    if (cacheService && cacheService.start) {
-      await cacheService.start();
+    if ((cacheService as any)?.start) {
+      await (cacheService as any).start();
       logger.info('💾 Кеш запущено', {
         type: 'service_manager',
         event: 'cache_started',
@@ -321,8 +324,8 @@ class ServiceManager {
    */
   async startScheduler(): Promise<void> {
     const schedulerService = this.services.get('scheduler');
-    if (schedulerService && schedulerService.start) {
-      await schedulerService.start();
+    if ((schedulerService as any)?.start) {
+      await (schedulerService as any).start();
       logger.info('⏰ Планувальник запущено', {
         type: 'service_manager',
         event: 'scheduler_started',
@@ -341,14 +344,14 @@ class ServiceManager {
   /**
    * Перевірка наявності сервісу
    */
-  hasService(name: string): boolean {
+  hasService(name: ServiceKey): boolean {
     return this.services.has(name);
   }
 
   /**
    * Отримання всіх сервісів
    */
-  getAllServices(): Service[] {
+  getAllServices(): Array<NonNullable<ServiceRegistry[ServiceKey]>> {
     return Array.from(this.services.values());
   }
 
@@ -367,9 +370,10 @@ class ServiceManager {
     ...args: any[]
   ): Promise<PromiseSettledResult<any>[]> {
     const promises = Array.from(this.services.values()).map(async service => {
-      if (service[methodName] && typeof service[methodName] === 'function') {
+      const fn = (service as any)[methodName];
+      if (typeof fn === 'function') {
         try {
-          return await service[methodName](...args);
+          return await fn.apply(service, args);
         } catch (error) {
           logger.error('Помилка виконання методу на сервісі', {
             type: 'service_manager',
@@ -397,9 +401,9 @@ class ServiceManager {
 
     for (const [name, service] of this.services.entries()) {
       status[name] = {
-        isActive: service.isActive ? service.isActive() : true,
-        hasMethod: (method: string) => service[method] && typeof service[method] === 'function',
-        stats: service.getStats ? service.getStats() : null,
+        isActive: (service as any)?.isActive ? (service as any).isActive() : true,
+        hasMethod: (method: string) => typeof (service as any)[method] === 'function',
+        stats: (service as any)?.getStats ? (service as any).getStats() : null,
       };
     }
 
@@ -442,7 +446,7 @@ class ServiceManager {
     return {
       total: this.services.size,
       active: Array.from(this.services.values()).filter(service =>
-        service.isActive ? service.isActive() : true
+        (service as any)?.isActive ? (service as any).isActive() : true
       ).length,
       services: this.getServiceNames(),
       status: this.getServicesStatus(),
