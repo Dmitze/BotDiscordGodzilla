@@ -30,6 +30,7 @@
     "test:coverage": "jest --coverage",
     "test:indexer": "jest src/services/__tests__/DriveIndexerService.*.spec.ts --runInBand",
     "test:unit": "jest --testPathPattern=src/tests/unit",
+    "test:unit:openhandles": "jest --testPathPattern=src/tests/unit --detectOpenHandles",
     "test:integration": "jest --testPathPattern=src/tests/integration",
     "test:e2e": "jest --testPathPattern=src/tests/e2e",
     "test:performance": "jest --testPathPattern=src/tests/performance",
