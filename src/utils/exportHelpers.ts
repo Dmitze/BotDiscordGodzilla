@@ -2,6 +2,7 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import DataFormatters from './formatters';
+import logger from './logger';
 
 // Локальні дефолти для експорту (уникаємо залежності від глобальної Config)
 const DEFAULT_INCLUDE_METADATA = true;
@@ -320,11 +321,11 @@ class ExportHelpers {
 
         if (now - stats.mtime.getTime() > maxAge) {
           fs.unlinkSync(filePath);
-          console.log(`🗑️ Видалено старий файл: ${file}`);
+          logger.info(`🗑️ Видалено старий файл: ${file}`, { type: 'export', action: 'cleanup_file', file });
         }
       }
     } catch (error) {
-      console.error('Помилка очищення файлів:', error);
+      logger.error('Помилка очищення файлів', { type: 'export', action: 'cleanup_error', error });
     }
   }
 
@@ -333,7 +334,9 @@ class ExportHelpers {
    */
   private recordExportMetrics(format: string, fileSize: number): void {
     // Тут можна додати запис в метрики Prometheus
-    console.log(`📊 Експорт: ${format}, розмір: ${DataFormatters.formatFileSize(fileSize)}`);
+    logger.info(`📊 Експорт: ${format}, розмір: ${DataFormatters.formatFileSize(fileSize)}`,
+      { type: 'export', action: 'metrics', format, fileSize }
+    );
   }
 
   /**
@@ -362,7 +365,7 @@ class ExportHelpers {
         totalSizeFormatted: DataFormatters.formatFileSize(stats.totalSize),
       };
     } catch (error) {
-      console.error('Помилка отримання статистики експорту:', error);
+      logger.error('Помилка отримання статистики експорту', { type: 'export', action: 'stats_error', error });
       return { totalFiles: 0, totalSize: 0, formats: {} };
     }
   }
