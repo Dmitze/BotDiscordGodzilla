@@ -159,9 +159,9 @@ export default class StatisticsCommand extends BaseCommand {
 
   protected override async onComponent(options: CommandComponentOptions): Promise<void> {
     const { interaction } = options;
-    const payload = (options as any)?.context?.componentPayload as any | undefined;
+    const payload = (options as any)?.context?.componentPayload;
     try {
-      const action = payload?.action as string | undefined;
+      const action: string | undefined = typeof payload?.action === 'string' ? payload.action : undefined;
       if (!action) {
         await interaction.reply({ content: t('security.component.invalidId') || 'Недійсний ідентифікатор', ephemeral: true });
         return;
