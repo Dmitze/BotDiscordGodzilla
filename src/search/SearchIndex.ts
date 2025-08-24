@@ -7,6 +7,9 @@ export interface SearchFilters {
   sizeFrom?: number;
   sizeTo?: number;
   tags?: string[];
+  language?: string[];   // exact match
+  pathPrefix?: string;    // path starts with
+  labels?: string[];      // contains all labels (MVP JSON LIKE)
 }
 
 export interface SearchQuery {
@@ -42,6 +45,9 @@ export interface SearchIndex {
     text: string;            // normalized text
     tags?: string[];
     meta?: unknown;
+    language?: string;
+    labels?: string[];
+    path?: string;
   }): Promise<void>;
 
   search(q: SearchQuery): Promise<{ hits: SearchHit[]; total: number }>;
