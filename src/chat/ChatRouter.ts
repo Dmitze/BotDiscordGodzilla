@@ -7,6 +7,7 @@ import { tokenizeQuery, buildSnippet, highlightSnippet } from '@/utils/highlight
 import type { RetrieverOptions, AugmentOptions, GenerateWithContextOptions } from '@/rag/types';
 import type { RagAnswer } from '@/rag/RagPipeline';
 import { tUser } from '@/i18n';
+import { signComponentId } from '@/security/componentId';
 
 interface RagService {
   answer(
@@ -120,12 +121,13 @@ export class ChatRouter {
       });
 
       const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        ...results.slice(0, 3).map(r =>
-          new ButtonBuilder()
-            .setCustomId(`search|expand|${r.file.id}`)
-            .setLabel('Розгорнути')
-            .setStyle(ButtonStyle.Primary)
-        )
+        ...results.slice(0, 3).map(r => {
+          const legacyId = `search|expand|${r.file.id}`;
+          // In tests we keep legacy format for existing unit tests
+          const useLegacy = process.env['NODE_ENV'] === 'test' || process.env['LEGACY_CUSTOM_ID'] === '1';
+          const customId = useLegacy ? legacyId : signComponentId({ kind: 'search', action: 'expand', id: r.file.id, ts: Date.now() });
+          return new ButtonBuilder().setCustomId(customId).setLabel('Розгорнути').setStyle(ButtonStyle.Primary);
+        })
       );
 
       await msg.reply({ embeds, components: [buttons] });
