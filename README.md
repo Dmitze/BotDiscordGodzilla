@@ -26,74 +26,26 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 ## 📚 **ДОКУМЕНТАЦІЯ**
 
-### **🎓 Гайди та інструкції**
-- **[📖 Швидкий старт](docs/guides/QUICK_START.md)** - як запустити бота за 5 хвилин
-- **[⚙️ Налаштування](docs/guides/SETUP.md)** - детальне налаштування системи
-- **[🚀 Запуск](docs/guides/LAUNCH_INSTRUCTIONS.md)** - інструкції запуску
-- **[📖 Гід користувача](docs/guides/USAGE_GUIDE.md)** - повний посібник користувача
-- **[❓ FAQ](docs/guides/FAQ_SUPPORT.md)** - часті питання та підтримка
-- **[🎓 Інтерактивне навчання](docs/guides/INTERACTIVE_LEARNING_GUIDE.md)** - інтерактивний гід
-- **[🎥 Відео туторіали](docs/guides/VIDEO_TUTORIAL_GUIDE.md)** - відео інструкції
-- **[🔧 Налаштування Cursor](docs/guides/CURSOR_SETUP_GUIDE.md)** - налаштування розробки
-- **[📝 Кастомні інструкції](docs/guides/CURSOR_CUSTOM_INSTRUCTIONS.md)** - для розробників
-- **[📊 Статистика](docs/guides/STATISTICS_COMMAND_GUIDE.md)** - робота зі статистикою
-- **[🧪 Тестування](docs/guides/TESTING_GUIDE.md)** - гід по тестуванню
-- **[🔄 Оновлення](docs/guides/UPGRADE_GUIDE.md)** - як оновити бота
-- **[📘 TypeScript](docs/guides/TYPESCRIPT_MIGRATION_GUIDE.md)** - міграція на TypeScript
+- **[🔗 Індекс документації](docs/INDEX.md)** — огляд і швидкі переходи
+- **[🏗️ Архітектура](docs/ARCHITECTURE.md)** — карта системи, технології, потоки
+- **[🛡️ Безпека](docs/security/SECURITY_GUIDE.md)** — політика і технічні захисти
+- **[🧩 API та команди](docs/API_OVERVIEW.md)** — огляд публічних інтерфейсів
+- **[🧭 Гайд розробника](docs/DEVELOPER_GUIDE.md)** — як працювати з кодом
 
-### **🧭 Індекс документації**
-- **[🔗 Повний індекс документації](docs/INDEX.md)** — швидкі переходи до всіх розділів і README папок
-
-### **🔌 API та технічна документація**
-- **[📋 API документація](docs/api/API_DOCUMENTATION.md)** - повна API документація
-- **[📝 Довідник команд](docs/api/COMMANDS_REFERENCE.md)** - всі команди бота
-
-### **🏗️ Архітектура та розробка**
-- **[🏗️ Архітектура системи](docs/architecture/ARCHITECTURE.md)** - технічна архітектура
-- **[🎯 Нова архітектура команд](docs/architecture/NEW_COMMANDS_ARCHITECTURE.md)** - архітектура команд
-- **[🗺️ План розвитку](docs/architecture/ROADMAP.md)** - майбутні оновлення
-
-### **📊 Звіти та аналізи**
-- **[📋 Фінальний звіт](docs/documentation/FINAL_REPORT.md)** - підсумок розробки
-- **[✅ Фінальний чекліст](docs/documentation/FINAL_CHECKLIST.md)** - контрольний список
-- **[🔄 Звіт рефакторингу](docs/documentation/REFACTORING_REPORT.md)** - деталі рефакторингу
-- **[📈 Звіт оптимізації](docs/documentation/OPTIMIZATION_REPORT.md)** - оптимізація продуктивності
-- **[🧪 Звіт тестування](docs/documentation/TESTING_REPORT.md)** - результати тестування
-- **[🚀 Звіт розгортання](docs/documentation/DEPLOYMENT_REPORT.md)** - процес розгортання
-- **[📊 Комплексний звіт](docs/documentation/COMPREHENSIVE_REFACTORING_REPORT.md)** - повний аналіз
-- **[📋 Звіт команд](docs/documentation/COMMANDS_REFACTORING_REPORT.md)** - рефакторинг команд
-- **[📈 Звіт покриття](docs/documentation/COMPLETE_COVERAGE_REPORT.md)** - тестове покриття
-- **[🔄 Звіт міграції](docs/documentation/FINAL_TYPESCRIPT_MIGRATION_REPORT.md)** - міграція на TypeScript
-- **[📊 Звіт тестування](docs/documentation/FINAL_TESTING_REPORT.md)** - фінальне тестування
-- **[📈 Розширення покриття](docs/documentation/COVERAGE_EXPANSION_REPORT.md)** - покращення тестів
-- **[📋 Аналіз структури](docs/documentation/PROJECT_STRUCTURE_ANALYSIS.md)** - аналіз проекту
-- **[✅ Чекліст тестування](docs/documentation/TESTING_CHECKLIST.md)** - контрольний список тестів
-- **[🔄 План рефакторингу](docs/documentation/PHASE3_REFACTORING_PLAN.md)** - план робіт
-- **[📊 Звіт міграції сервісів](docs/documentation/PHASE3_SERVICES_MIGRATION_REPORT.md)** - міграція сервісів
-- **[📋 Звіт міграції команд](docs/documentation/PHASE3_COMMANDS_MIGRATION_REPORT.md)** - міграція команд
-- **[📈 Звіт прогресу](docs/documentation/PHASE3_PROGRESS_REPORT.md)** - прогрес робіт
-- **[✅ Звіт завершення](docs/documentation/PHASE2_COMPLETION_REPORT.md)** - завершення етапу
-- **[📈 Звіт оптимізації](docs/documentation/PHASE2_OPTIMIZATION_REPORT.md)** - оптимізація
-
-### **🔒 Безпека**
-- **[🛡️ Гід безпеки](docs/security/SECURITY_GUIDE.md)** - безпека та конфіденційність
-
-### **📝 Історія змін**
-- **[📋 Changelog](docs/changelog/CHANGELOG.md)** - історія оновлень
+> Примітка: детальні README з підпапок коду переїхали в `docs/...` з тією самою структурою (див. нижче «README по папках коду»).
 
 ### **📂 README по папках коду**
-- **[src/core](src/core/README.md)** — ядро системи
-- **[src/services](src/services/README.md)** — бізнес-логіка та інтеграції
-- **[src/commands](src/commands/README.md)** — команди бота
-- **[src/commands/modules](src/commands/modules/README.md)** — метрики та валідація команд
-- **[src/utils](src/utils/README.md)** — утиліти та інфраструктура
-- **[src/config](src/config/README.md)** — конфігурація та ENV валідація
-- **[src/scripts](src/scripts/README.md)** — керування Slash-командами
-- **[src/types](src/types/README.md)** — спільні типи
-- **[data](data/README.md)** — дані та артефакти
-- **[data/logs](data/logs/README.md)** — лог-файли
-- **[data/metrics](data/metrics/README.md)** — Prometheus метрики
-- **[data/tmp](data/tmp/README.md)** — тимчасові файли
+- **[docs/src/core/README.md](docs/src/core/README.md)** — ядро системи
+- **[docs/src/services/README.md](docs/src/services/README.md)** — бізнес-логіка та інтеграції
+- **[docs/src/commands/README.md](docs/src/commands/README.md)** — команди бота
+- **[docs/src/commands/modules/README.md](docs/src/commands/modules/README.md)** — метрики та валідація команд
+- **[docs/src/utils/README.md](docs/src/utils/README.md)** — утиліти та інфраструктура
+- **[docs/src/config/README.md](docs/src/config/README.md)** — конфігурація та ENV валідація
+- **[docs/src/scripts/README.md](docs/src/scripts/README.md)** — керування Slash-командами
+- **[docs/src/types/README.md](docs/src/types/README.md)** — спільні типи
+- **[docs/data/README.md](docs/data/README.md)** — дані та артефакти
+- **[docs/data/metrics/README.md](docs/data/metrics/README.md)** — Prometheus метрики
+- **[docs/data/tmp/README.md](docs/data/tmp/README.md)** — тимчасові файли
 
 ---
 
