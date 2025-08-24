@@ -18,12 +18,27 @@ Discord message components (buttons/selects) can be interacted with outside the 
 
 - Sign: `signComponentId(payload)` -> returns a string customId
 - Verify: `verifyComponentId(customId)` -> returns `{ valid, reason?: 'expired'|'invalid', payload? }`
-- TTL: configured via `securityConfig.components.ttlSec`
+- TTL: configured via `securityConfig.components.ttlMs`
 
 ### Conventions
 
 - Payloads include `kind` to route handling, e.g. `kind: 'srch'`, `kind: 'filetxt'`, `kind: 'docblk'`
+- Compact format prefix `c.` is used to keep IDs short; fields are shortened (e.g., `kind -> k`, `page -> p`).
 - Signed IDs are backward compatible: handlers fall back to legacy parsers if no valid signature is present
+
+#### Drive buttons (`kind: 'drive'`)
+
+UI‑картки файлів (`src/ui/FileCardBuilder.ts`) створюють підписані `customId` для дій Google Drive:
+
+- Дії: `action ∈ {'open'|'download'|'summary'|'question'}`
+- Формат payload: `{ kind: 'drive', action, id: <driveFileId> }`
+- Обробка: у `FileManagerCommand.onComponent()` спочатку читається `options.context.componentPayload` (після валідації HMAC/TTL в `BaseCommand`), далі виконується дія:
+  - `open` → відповідає посиланням `https://drive.google.com/file/d/<id>/view`
+  - `download` → відповідає посиланням `https://drive.google.com/uc?export=download&id=<id>`
+  - `summary` → викликає пайплайн аналізу (модуль `analyzers.ts`) з `analysisType: 'summary'`
+  - `question` → інтеграція з RAG/AI: якщо доступний `RagService`, використовується `rag.answer(...)`, інакше — `AIService.generateResponse(...)`
+
+Тестовий режим (NODE_ENV=test): для стабільності юніт‑тестів `FileCardBuilder` зберігає fallback‑формат без підпису — рядок `drive:<action>:<base64({id})>`. Обробник має легасі‑парсер, який активується лише якщо підписаний payload відсутній.
 
 ### Base Handling
 
@@ -36,6 +51,28 @@ Discord message components (buttons/selects) can be interacted with outside the 
 3. On success, injects `context.componentPayload` to downstream handlers
 
 Command overrides should prefer `options.context.componentPayload` when available and only parse legacy `customId` when not.
+
+## Environment Variables
+
+Configure component signing and security using the following env vars (see `env.example`):
+
+```dotenv
+# HMAC key (>=16 chars) and TTL for signed component IDs (milliseconds)
+COMPONENT_HMAC_KEY=change_me_please_min16chars
+COMPONENT_TTL_MS=900000
+
+# File and PII policies
+SECURITY_MIME_ALLOWLIST=application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain
+SECURITY_MAX_BYTES=26214400
+SECURITY_PII_MASTER=true
+SECURITY_PII_EMAIL=true
+SECURITY_PII_PHONE=true
+```
+
+Notes:
+
+- Keep TTL short (e.g., 5–15 minutes) to minimize replay windows.
+- Rotate `COMPONENT_HMAC_KEY` periodically. Consider a short grace period for key rotation if needed.
 
 ## PII Masking (`src/utils/pii.ts`)
 
