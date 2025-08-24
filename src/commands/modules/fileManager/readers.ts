@@ -66,7 +66,7 @@ export async function handleReadTextFlow(
       }
     }
 
-    const sizeBytes = Number((meta as any).size || 0) || 0;
+    const sizeBytes = Number(meta.size || 0) || 0;
     const tooLarge = isTooLarge(sizeBytes, (driveCfg?.fileMaxSizeMb ?? 0));
 
     // Якщо це Google Sheets — віддаємо як .xlsx вкладення
@@ -94,7 +94,7 @@ export async function handleReadTextFlow(
     if (!safeText) {
       if (tooLarge) {
         const linkAllowed = !(driveCfg?.hideWebLink);
-        const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+        const link = linkAllowed ? String(meta.webViewLink || '') : '';
         const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
         const summary = t('files.summary.largeFile', {
           name: String(meta.name || ''),
@@ -113,7 +113,7 @@ export async function handleReadTextFlow(
     const quick = sanitizeTextForChat(safeText, 1800);
     if (quick.length >= safeText.length) {
       const linkAllowed = !(driveCfg?.hideWebLink);
-      const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+      const link = linkAllowed ? String(meta.webViewLink || '') : '';
       const embed = new EmbedBuilder()
         .setTitle(`📄 ${getSubcommandTitle('читати')}: ${fileName}`)
         .setDescription(quick)
@@ -133,7 +133,7 @@ export async function handleReadTextFlow(
     const chunks = buildPaginatedChunks(safeText, { maxChunkLen: 1800 });
     const sid = generateSessionId('txt');
     const linkAllowed = !(config.drive?.hideWebLink);
-    const link = linkAllowed ? String((meta as any).webViewLink || '') : '';
+    const link = linkAllowed ? String(meta.webViewLink || '') : '';
     const sessionObj: { fileId: string; fileName: string; chunks: string[]; createdAt: number; link?: string } = {
       fileId: options.fileId,
       fileName,
