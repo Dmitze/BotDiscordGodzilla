@@ -316,7 +316,9 @@ export class DriveIndexerService extends BaseServiceClass {
             // Upsert в FTS як окремий "документ"
             const lang = detectLanguage(text);
             const owner = Array.isArray(file.owners) && file.owners.length ? file.owners[0] : undefined;
-            await this.searchIndex!.upsert({
+            const path = `/${[...breadcrumbs, file.name, tab].join('/')}`;
+            const labels = Array.isArray((file as any).labels) ? ((file as any).labels as string[]) : undefined;
+            await this.searchIndex.upsert({
               fileId: `${file.id}:${encodeURIComponent(tab)}`,
               name: `${file.name} — ${tab}`,
               mimeType: file.mimeType,
@@ -324,6 +326,9 @@ export class DriveIndexerService extends BaseServiceClass {
               ...(typeof file.size === 'number' ? { sizeBytes: file.size } : {}),
               ...(file.modifiedTime ? { modifiedTime: Date.parse(file.modifiedTime) } : {}),
               text,
+              language: lang,
+              path,
+              ...(labels ? { labels } : {}),
               meta: {
                 sheet: file.id,
                 tab,
@@ -360,6 +365,8 @@ export class DriveIndexerService extends BaseServiceClass {
           const modifiedMs = file.modifiedTime ? Date.parse(file.modifiedTime) : undefined;
           const lang = detectLanguage(text);
           const breadcrumbs = await this.safeGetBreadcrumbs(file.id);
+          const path = `/${[...breadcrumbs, file.name].join('/')}`;
+          const labels = Array.isArray((file as any).labels) ? ((file as any).labels as string[]) : undefined;
           const payload: {
             fileId: string;
             name: string;
@@ -371,11 +378,17 @@ export class DriveIndexerService extends BaseServiceClass {
             tags?: string[];
             meta?: unknown;
             ownerEmail?: string;
+            language?: string;
+            labels?: string[];
+            path?: string;
           } = {
             fileId: file.id,
             name: file.name,
             mimeType: file.mimeType,
             text,
+            language: lang,
+            path,
+            ...(labels ? { labels } : {}),
             meta: {
               webViewLink: file.webViewLink,
               parents: file.parents,
@@ -395,11 +408,12 @@ export class DriveIndexerService extends BaseServiceClass {
           if (typeof file.size === 'number') payload.sizeBytes = file.size;
           if (Number.isFinite(modifiedMs as number)) payload.modifiedTime = modifiedMs as number;
           await this.searchIndex.upsert(payload);
-          this.metrics?.incCounter?.('drive_index_file_indexed', { mime: file.mimeType });
         }
       } catch (e) {
         logger.warn('⚠️ Помилка індексації у FTS', { id: file.id, error: e instanceof Error ? e.message : String(e) });
       }
+      // Always count per-file indexing regardless of FTS availability
+      this.metrics?.incCounter?.('drive_index_file_indexed', { mime: file.mimeType });
     };
 
     const retry = await RetryManager.execute(worker, {
