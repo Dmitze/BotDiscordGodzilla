@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+title: "Discord AI Assistant Bot - Godzilla"
+authors:
+  - family-names: "Shivachov"
+    given-names: "Dmitry"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+version: "3.0.0"
+repository-code: "https://github.com/Dmitze/BotDiscordGodzilla"
+license: "SEE LICENSE IN LICENSE.md"
+message: "Якщо ви використовуєте цей репозиторій у дослідженнях, процитуйте його за допомогою цього файлу."
