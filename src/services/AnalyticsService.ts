@@ -73,8 +73,8 @@ export class AnalyticsService {
     const map: Record<string, Row[]> = {};
     for (const r of rows) {
       const k = keys.map(k => String(r[k] ?? '')).join('|');
-      if (!map[k]) map[k] = [];
-      map[k].push(r);
+      const bucket = map[k] ?? (map[k] = []);
+      bucket.push(r);
     }
     return map;
   }
