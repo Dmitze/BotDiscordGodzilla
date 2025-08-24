@@ -26,6 +26,7 @@ import { signComponentId } from '@/security/componentId';
 import { buildSearchPage as buildSearchPageUI } from '@/commands/modules/fileManager/ui';
 import { handleAnalyze as analyzeModule } from '@/commands/modules/fileManager/analyzers';
 import { handleReadTextFlow as readTextFlowModule } from '@/commands/modules/fileManager/readers';
+import { handleDriveAction as handleDriveActionExt, handleTextAction as handleTextActionExt, handleSearchAction as handleSearchActionExt } from '@/commands/modules/fileManager/handlers';
 
 interface FileSearchOptions {
   query: string;
@@ -691,176 +692,40 @@ export class FileManagerCommand extends BaseCommand {
         ? ({ action: (payload as any).action as DriveAction, id: (payload as any).id as string })
         : parseLegacyDrive(customId);
       if (driveParsed) {
-        const { action, id } = driveParsed;
-        if (!id) return;
-        // Build safe links without extra API calls
-        const viewLink = `https://drive.google.com/file/d/${id}/view`;
-        const dlLink = `https://drive.google.com/uc?export=download&id=${id}`;
-        switch (action) {
-          case 'open': {
-            const content = `🔗 Відкрити файл: ${viewLink}`;
-            if (!interaction.deferred && !interaction.replied) {
-              await interaction.reply({ content, ephemeral: true });
-            } else {
-              await interaction.followUp({ content, ephemeral: true });
-            }
-            return;
-          }
-          case 'download': {
-            const content = `📥 Завантажити файл: ${dlLink}`;
-            if (!interaction.deferred && !interaction.replied) {
-              await interaction.reply({ content, ephemeral: true });
-            } else {
-              await interaction.followUp({ content, ephemeral: true });
-            }
-            return;
-          }
-          case 'summary': {
-            if (!interaction.deferred && !interaction.replied) {
-              await interaction.deferReply({ ephemeral: true });
-            }
-            try {
-              const result = await analyzeModule(interaction as any, { fileId: id, analysisType: 'summary' } as any, {
-                config: this.config,
-                getGoogleService: this.getGoogleService.bind(this),
-                isMimeAllowed: this.isMimeAllowed.bind(this),
-                isOwnerAllowed: this.isOwnerAllowed.bind(this),
-                isTooLarge: this.isTooLarge.bind(this),
-                getAnalysisTypeName: (x: any) => this.getAnalysisTypeName(x),
-                resolve: <T>(_interaction: any, name: string): T | undefined => {
-                  const anyClient = _interaction.client as any;
-                  return anyClient?.serviceContainer?.get?.(name) as T | undefined;
-                },
-              });
-              const msg = result?.message || t('files.error.process');
-              if (interaction.deferred || interaction.replied) {
-                await interaction.editReply({ content: msg });
-              } else {
-                await interaction.reply({ content: msg, ephemeral: true });
-              }
-            } catch (e) {
-              const msg = t('files.error.process');
-              if (interaction.deferred || interaction.replied) {
-                await interaction.editReply({ content: msg });
-              } else {
-                await interaction.reply({ content: msg, ephemeral: true });
-              }
-            }
-            return;
-          }
-          case 'question': {
-            if (!interaction.deferred && !interaction.replied) {
-              await interaction.deferReply({ ephemeral: true });
-            }
-            try {
-              const googleSvc = this.getGoogleService(interaction as any);
-              let contextText = '';
-              if (googleSvc) {
-                try {
-                  const meta = await (googleSvc as any).getDriveFileMetadata(id);
-                  if (meta?.mimeType === 'application/vnd.google-apps.document') {
-                    const buf = await (googleSvc as any).exportDriveFile(id, 'text/plain');
-                    contextText = String(buf?.toString?.('utf8') || '').slice(0, 4000);
-                  } else if (meta?.mimeType === 'application/vnd.google-apps.spreadsheet') {
-                    const buf = await (googleSvc as any).exportDriveFile(id, 'text/csv');
-                    contextText = String(buf?.toString?.('utf8') || '').slice(0, 4000);
-                  }
-                } catch {}
-              }
-
-              // Try RAG first if available
-              const rag = (interaction.client as any)?.serviceContainer?.get?.('rag');
-              if (rag && typeof rag.answer === 'function') {
-                const q = 'Коротко відповідай на основні питання, які може мати користувач щодо цього файлу.';
-                const ans = await rag.answer(`${q}\nID: ${id}${contextText ? `\nКонтекст (обрізано):\n${contextText}` : ''}`, {}, { maxTokens: 512 }, { maxTokens: 512 });
-                const text = (ans && (ans.text || ans.content || ans.answer)) || t('files.error.process');
-                await interaction.editReply({ content: `💬 ${text}` });
-                return;
-              }
-
-              // Fallback to AIService directly
-              const ai = (interaction.client as any)?.serviceContainer?.get?.('ai');
-              if (ai && typeof ai.generateResponse === 'function') {
-                const prompt = `Відповідай на ключові питання по файлу (ID: ${id}). Використай наданий контекст, якщо він є.\n\n${contextText}`;
-                const res = await ai.generateResponse(prompt, { maxTokens: 512, useCache: false });
-                const text = (res && (res.content || res.text)) || t('files.error.process');
-                await interaction.editReply({ content: `💬 ${text}` });
-                return;
-              }
-
-              await interaction.editReply({ content: t('files.error.serviceUnavailable') });
-            } catch {
-              await interaction.editReply({ content: t('files.error.process') });
-            }
-            return;
-          }
-        }
+        await handleDriveActionExt(interaction as any, driveParsed.action, driveParsed.id, {
+          config: this.config,
+          getGoogleService: this.getGoogleService.bind(this),
+          isMimeAllowed: this.isMimeAllowed.bind(this) as any,
+          isOwnerAllowed: this.isOwnerAllowed?.bind?.(this) as any,
+          isTooLarge: this.isTooLarge.bind(this) as any,
+          getAnalysisTypeName: (x: any) => this.getAnalysisTypeName(x),
+          resolve: <T>(_interaction: any, name: string): T | undefined => {
+            const anyClient = _interaction.client as any;
+            return anyClient?.serviceContainer?.get?.(name) as T | undefined;
+          },
+        });
+        return;
       }
 
       // Text reading pagination handler (signed preferred)
       const isSignedText = !!payload && payload.kind === 'filetxt';
       const txtParsed = isSignedText ? (payload as any) : this.parseTextCustomId(customId);
       if (txtParsed) {
-        const { sid, page, action } = txtParsed as { sid: string; page: number; action?: 'close' };
-        const session = FileManagerCommand.textSessions.get(sid);
-        if (!session) {
-          await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
-          return;
-        }
-        if (action === 'close') {
-          FileManagerCommand.textSessions.delete(sid);
-          if (interaction.deferred || interaction.replied) {
-            await interaction.editReply({ components: [] });
-          } else {
-            await interaction.update({ components: [] });
-          }
-          return;
-        }
-
-        const args: { sid: string; page: number; fileName: string; chunks: string[]; link?: string } = { sid, page, fileName: session.fileName, chunks: session.chunks };
-        if (session.link) args.link = session.link;
-        const { embed, components } = this.buildTextPage(args);
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({ embeds: [embed], components });
-        } else {
-          await interaction.update({ embeds: [embed], components });
-        }
+        await handleTextActionExt(interaction as any, txtParsed as any, {
+          sessions: FileManagerCommand.textSessions as any,
+          buildTextPage: (args) => this.buildTextPage(args),
+        });
         return;
       }
 
       // Search pagination handler (signed preferred)
       const isSignedSearch = !!payload && payload.kind === 'filesrch';
       const parsed = isSignedSearch ? (payload as any) : this.parseCustomId(customId);
-      if (!parsed) return;
-      const { sid, page, action } = parsed as { sid: string; page: number; action?: 'toggle' | 'reset' | 'close' };
-
-      const session = FileManagerCommand.sessions.get(sid);
-      if (!session) {
-        await interaction.reply({ content: t('doc.sessionExpired'), ephemeral: true });
-        return;
-      }
-
-      if (action === 'close') {
-        FileManagerCommand.sessions.delete(sid);
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({ components: [] });
-        } else {
-          await interaction.update({ components: [] });
-        }
-        return;
-      }
-
-      if (action === 'toggle') {
-        session.changesOnly = !session.changesOnly;
-      } else if (action === 'reset') {
-        session.baseline = Math.floor(Date.now() / 1000);
-      }
-
-      const { embed, components } = await this.buildSearchPage({ interaction: interaction as any, sid, page });
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed], components });
-      } else {
-        await interaction.update({ embeds: [embed], components });
+      if (parsed) {
+        await handleSearchActionExt(interaction as any, parsed as any, {
+          sessions: FileManagerCommand.sessions as any,
+          buildSearchPage: async (args) => this.buildSearchPage(args),
+        });
       }
     } catch (error) {
       logger.error('FileManager component error', { error: String(error) });
@@ -873,6 +738,8 @@ export class FileManagerCommand extends BaseCommand {
       } catch {}
     }
   }
+
+  // Handlers moved to modules/fileManager/handlers.ts
 
   /**
    * Обробка аналізу файлу
