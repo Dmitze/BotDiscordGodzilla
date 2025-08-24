@@ -10,6 +10,8 @@
 - **RagPipeline** (`src/rag/RagPipeline.ts`): збирає промпт українською з джерелами та викликає `AIService`.
 - **RagService** (`src/services/RagService.ts`): сервіс-обгортка для використання у командах і чаті.
 
+> Security: усі кнопки/селекти у UI використовують підписані `customId` (HMAC + TTL) для захисту від підміни та повторного відтворення. Деталі у `docs/guides/SECURITY.md`.
+
 ## Інтеграція
 
 - **/ai** (`src/commands/aiAssistant.ts`): спершу намагається `RagService`, інакше — звичайний `AIService`.
