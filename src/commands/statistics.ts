@@ -4,20 +4,18 @@
  * TypeScript версія 3.0.0
  */
 
-import type {
-  EmbedBuilder} from 'discord.js';
-import {
-  SlashCommandBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} from 'discord.js';
+import type { EmbedBuilder, ChatInputCommandInteraction, MessageActionRowComponentBuilder, SlashCommandBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
 import type { GoogleService } from '@/services/GoogleService';
 import { sanitizeInput, validateCommandOptions } from '@/utils/security';
 import logger from '@/utils/logger';
 import { UIHelper } from '@/utils/uiHelpers';
 import { DataFormatters } from '@/utils/formatters';
+import { BaseCommand } from '@/commands/BaseCommand';
+import type { BotConfig, CommandExecuteOptions, CommandComponentOptions } from '@/types';
+import { signComponentId } from '@/security/componentId';
+import { t } from '@/i18n';
 
 interface StatisticsConfig {
   sheets: string[];
@@ -45,137 +43,144 @@ interface StatisticsResult {
   processingTime: number;
 }
 
-class StatisticsCommand {
-  public readonly name = 'statistics';
-  public readonly description = 'Отримання статистики з Google Sheets з підтримкою складних формул';
-  public readonly usage = '/statistics <операція> <аркуші> [опції]';
-
-  private readonly googleService: GoogleService | undefined;
-
-  constructor(googleService?: GoogleService) {
-    this.googleService = googleService;
+export default class StatisticsCommand extends BaseCommand {
+  constructor(config: BotConfig) {
+    super(
+      'statistics',
+      'Отримання статистики з Google Sheets з підтримкою складних формул',
+      config,
+      { category: 'analytics', usage: '/statistics <операція> <аркуші> [опції]' },
+      (builder: SlashCommandBuilder) => {
+        builder
+          .addStringOption(option =>
+            option
+              .setName('operation')
+              .setDescription('Тип операції для статистики')
+              .setRequired(true)
+              .addChoices(
+                { name: 'Сума', value: 'sum' },
+                { name: 'Середнє', value: 'average' },
+                { name: 'Кількість', value: 'count' },
+                { name: 'Максимум', value: 'max' },
+                { name: 'Мінімум', value: 'min' },
+                { name: 'Парні стовпці', value: 'even_columns' },
+                { name: 'Непарні стовпці', value: 'odd_columns' },
+                { name: 'Складена формула', value: 'complex_formula' }
+              )
+          )
+          .addStringOption(option =>
+            option.setName('sheets').setDescription('Аркуші для аналізу (через кому)').setRequired(true)
+          )
+          .addStringOption(option =>
+            option
+              .setName('range')
+              .setDescription('Діапазон даних (наприклад: H6:AB6)')
+              .setRequired(false)
+          )
+          .addStringOption(option =>
+            option
+              .setName('column_type')
+              .setDescription('Тип стовпців для аналізу')
+              .setRequired(false)
+              .addChoices(
+                { name: 'Всі', value: 'all' },
+                { name: 'Парні', value: 'even' },
+                { name: 'Непарні', value: 'odd' }
+              )
+          )
+          .addStringOption(option =>
+            option.setName('group_by').setDescription('Групування за стовпцем').setRequired(false)
+          )
+          .addStringOption(option =>
+            option.setName('filters').setDescription('Фільтри у форматі JSON').setRequired(false)
+          )
+          .addStringOption(option =>
+            option
+              .setName('custom_formula')
+              .setDescription('Власна формула для аналізу')
+              .setRequired(false)
+          );
+        return builder;
+      }
+    );
   }
 
-  /**
-   * Створення команди
-   */
-  public getCommandData(): SlashCommandBuilder {
-    return new SlashCommandBuilder()
-      .setName(this.name)
-      .setDescription(this.description)
-      .addStringOption(option =>
-        option
-          .setName('operation')
-          .setDescription('Тип операції для статистики')
-          .setRequired(true)
-          .addChoices(
-            { name: 'Сума', value: 'sum' },
-            { name: 'Середнє', value: 'average' },
-            { name: 'Кількість', value: 'count' },
-            { name: 'Максимум', value: 'max' },
-            { name: 'Мінімум', value: 'min' },
-            { name: 'Парні стовпці', value: 'even_columns' },
-            { name: 'Непарні стовпці', value: 'odd_columns' },
-            { name: 'Складена формула', value: 'complex_formula' }
-          )
-      )
-      .addStringOption(option =>
-        option.setName('sheets').setDescription('Аркуші для аналізу (через кому)').setRequired(true)
-      )
-      .addStringOption(option =>
-        option
-          .setName('range')
-          .setDescription('Діапазон даних (наприклад: H6:AB6)')
-          .setRequired(false)
-      )
-      .addStringOption(option =>
-        option
-          .setName('column_type')
-          .setDescription('Тип стовпців для аналізу')
-          .setRequired(false)
-          .addChoices(
-            { name: 'Всі', value: 'all' },
-            { name: 'Парні', value: 'even' },
-            { name: 'Непарні', value: 'odd' }
-          )
-      )
-      .addStringOption(option =>
-        option.setName('group_by').setDescription('Групування за стовпцем').setRequired(false)
-      )
-      .addStringOption(option =>
-        option.setName('filters').setDescription('Фільтри у форматі JSON').setRequired(false)
-      )
-      .addStringOption(option =>
-        option
-          .setName('custom_formula')
-          .setDescription('Власна формула для аналізу')
-          .setRequired(false)
-      ) as unknown as SlashCommandBuilder;
-  }
-
-  /**
-   * Виконання команди
-   */
-  public async execute(interaction: any): Promise<void> {
+  protected override async onExecute(options: CommandExecuteOptions): Promise<void> {
+    const interaction = options.interaction as ChatInputCommandInteraction;
     const startTime = performance.now();
-
     try {
-      logger.info('Початок виконання команди statistics', {
+      const startMeta: Record<string, unknown> = {
         user: interaction.user.tag,
         userId: interaction.user.id,
-        guildId: interaction.guildId,
-      });
+      };
+      if (interaction.guildId) startMeta['guildId'] = interaction.guildId;
+      logger.info('Початок виконання команди statistics', startMeta);
 
-      // Валідація опцій
-      const options = this.extractOptions(interaction);
-      const validation = validateCommandOptions(options, this.getValidationSchema());
-
+      const cfg = this.extractOptions(interaction);
+      const validation = validateCommandOptions(cfg, this.getValidationSchema());
       if (!validation.isValid) {
-        await interaction.reply({
-          content: `❌ Помилка валідації: ${validation.errors.join(', ')}`,
-          ephemeral: true,
-        });
+        await interaction.reply({ content: `❌ Помилка валідації: ${validation.errors.join(', ')}`, ephemeral: true });
         return;
       }
 
-      // Дефірування відповіді
-      await interaction.deferReply();
+      await interaction.deferReply({ ephemeral: true });
 
-      // Отримання статистики
-      const result = await this.getStatistics(options);
-
-      // Створення відповіді
-      const embed = this.createStatisticsEmbed(result, options);
-      const buttons = this.createActionButtons(result, options);
+      const google = this.getGoogleService(interaction);
+      const result = await this.getStatistics(cfg, google ?? undefined);
+      const embed = this.createStatisticsEmbed(result, cfg);
+      const buttons = this.createActionButtons(result, cfg);
 
       const duration = performance.now() - startTime;
       logger.info(`Команда statistics виконана за ${duration.toFixed(2)}ms`, {
         user: interaction.user.tag,
-        operation: options.operation,
-        sheets: options.sheets.length,
+        operation: cfg.operation,
+        sheets: cfg.sheets.length,
         result: result.total,
       });
 
       const edit: any = { embeds: [embed] };
-      if (buttons) {
-        edit.components = [buttons];
-      }
+      if (buttons) edit.components = [buttons];
       await interaction.editReply(edit);
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error(`Помилка команди statistics після ${duration.toFixed(2)}ms:`, {
-        type: 'command',
-        component: 'StatisticsCommand',
-        event: 'execute_failed',
+      const errMeta: Record<string, unknown> = {
+        type: 'command', component: 'StatisticsCommand', event: 'execute_failed',
         userId: interaction?.user?.id,
-        guildId: interaction?.guildId,
         durationMs: Number(duration.toFixed(2)),
         errorName: error instanceof Error ? error.name : undefined,
         errorMessage: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
-      });
-
+      };
+      if (interaction?.guildId) errMeta['guildId'] = interaction.guildId;
+      logger.error(`Помилка команди statistics після ${duration.toFixed(2)}ms:`, errMeta);
       await this.handleError(interaction, error);
+    }
+  }
+
+  protected override async onComponent(options: CommandComponentOptions): Promise<void> {
+    const { interaction } = options;
+    const payload = (options as any)?.context?.componentPayload as any | undefined;
+    try {
+      const action = payload?.action as string | undefined;
+      if (!action) {
+        await interaction.reply({ content: t('security.component.invalidId') || 'Недійсний ідентифікатор', ephemeral: true });
+        return;
+      }
+      switch (action) {
+        case 'export':
+          await interaction.reply({ content: '📊 Експорт запущено', ephemeral: true });
+          break;
+        case 'analyze':
+          await interaction.reply({ content: '🔍 Детальний аналіз запущено', ephemeral: true });
+          break;
+        case 'refresh':
+          await interaction.reply({ content: '🔄 Оновлення…', ephemeral: true });
+          break;
+        default:
+          await interaction.reply({ content: 'Невідома дія', ephemeral: true });
+      }
+    } catch (error) {
+      await this.handleComponentError(interaction, error);
     }
   }
 
@@ -254,7 +259,12 @@ class StatisticsCommand {
   /**
    * Отримання статистики
    */
-  private async getStatistics(config: StatisticsConfig): Promise<StatisticsResult> {
+  private async getStatistics(config: StatisticsConfig): Promise<StatisticsResult>;
+  private async getStatistics(config: StatisticsConfig, google?: GoogleService): Promise<StatisticsResult>;
+  private async getStatistics(
+    config: StatisticsConfig,
+    google?: GoogleService
+  ): Promise<StatisticsResult> {
     const startTime = performance.now();
 
     try {
@@ -267,7 +277,7 @@ class StatisticsCommand {
       switch (config.operation) {
         case 'even_columns':
         case 'odd_columns':
-          total = await this.calculateColumnStatistics(config, config.operation === 'even_columns');
+          total = await this.calculateColumnStatistics(config, config.operation === 'even_columns', google);
           break;
 
         case 'complex_formula':
@@ -275,7 +285,7 @@ class StatisticsCommand {
           break;
 
         default:
-          total = await this.calculateBasicStatistics(config);
+          total = await this.calculateBasicStatistics(config, google);
           break;
       }
 
@@ -316,14 +326,15 @@ class StatisticsCommand {
    */
   private async calculateColumnStatistics(
     config: StatisticsConfig,
-    isEven: boolean
+    isEven: boolean,
+    google?: GoogleService
   ): Promise<number> {
     let total = 0;
 
     for (const sheetName of config.sheets) {
       try {
-        if (!this.googleService) throw new Error('GoogleService не ініціалізовано');
-        const data = await this.googleService.getSheetData(sheetName, config.range);
+        if (!google) throw new Error('GoogleService не ініціалізовано');
+        const data = await google.getSheetData(sheetName, config.range);
 
         if (!data || !data.values || data.values.length === 0) {
           logger.warn(`Немає даних в аркуші ${sheetName}`);
@@ -391,14 +402,19 @@ class StatisticsCommand {
   /**
    * Розрахунок базової статистики
    */
-  private async calculateBasicStatistics(config: StatisticsConfig): Promise<number> {
+  private async calculateBasicStatistics(config: StatisticsConfig): Promise<number>;
+  private async calculateBasicStatistics(config: StatisticsConfig, google?: GoogleService): Promise<number>;
+  private async calculateBasicStatistics(
+    config: StatisticsConfig,
+    google?: GoogleService
+  ): Promise<number> {
     let total = 0;
     let count = 0;
 
     for (const sheetName of config.sheets) {
       try {
-        if (!this.googleService) throw new Error('GoogleService не ініціалізовано');
-        const data = await this.googleService.getSheetData(sheetName, config.range);
+        if (!google) throw new Error('GoogleService не ініціалізовано');
+        const data = await google.getSheetData(sheetName, config.range);
 
         if (!data || !data.values) continue;
 
@@ -527,41 +543,42 @@ class StatisticsCommand {
    */
   private createActionButtons(
     _result: StatisticsResult,
-    _config: StatisticsConfig
-  ): ActionRowBuilder<ButtonBuilder> | null {
-    const row = new ActionRowBuilder<ButtonBuilder>();
-
-    // Кнопка експорту
+    config: StatisticsConfig
+  ): ActionRowBuilder<MessageActionRowComponentBuilder> | null {
+    const row = new ActionRowBuilder<MessageActionRowComponentBuilder>();
+    const base = { kind: 'stats', op: config.operation, ts: Math.floor(Date.now() / 1000) } as any;
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`export_stats_${Date.now()}`)
+        .setCustomId(signComponentId({ ...base, action: 'export' }))
         .setLabel('📊 Експорт')
         .setStyle(ButtonStyle.Primary)
     );
-
-    // Кнопка детального аналізу
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`analyze_stats_${Date.now()}`)
+        .setCustomId(signComponentId({ ...base, action: 'analyze' }))
         .setLabel('🔍 Аналіз')
         .setStyle(ButtonStyle.Secondary)
     );
-
-    // Кнопка оновлення
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`refresh_stats_${Date.now()}`)
+        .setCustomId(signComponentId({ ...base, action: 'refresh' }))
         .setLabel('🔄 Оновити')
         .setStyle(ButtonStyle.Success)
     );
-
     return row;
+  }
+
+  private getGoogleService(interaction: ChatInputCommandInteraction): GoogleService | undefined {
+    try {
+      const svc = (interaction.client as any)?.serviceContainer?.get?.('google') as GoogleService | undefined;
+      return svc;
+    } catch { return undefined; }
   }
 
   /**
    * Обробка помилок
    */
-  private async handleError(interaction: any, error: unknown): Promise<void> {
+  protected override async handleError(interaction: ChatInputCommandInteraction, error: unknown): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
 
     try {
@@ -590,20 +607,4 @@ class StatisticsCommand {
       });
     }
   }
-
-  /**
-   * Отримання назви команди
-   */
-  public getName(): string {
-    return this.name;
-  }
-
-  /**
-   * Отримання опису команди
-   */
-  public getDescription(): string {
-    return this.description;
-  }
 }
-
-export default StatisticsCommand;
