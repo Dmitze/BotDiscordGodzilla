@@ -27,7 +27,7 @@ function extractJson(text: string): any | null {
   try { return JSON.parse(raw); } catch { return null; }
 }
 
-
+// Інтерфейси
 interface DataSummary {
   totalRows: number;
   sampleRows: number;
@@ -45,6 +45,105 @@ interface AIAnalysisResult {
   analysis: string;
   confidence: number;
   suggestions: string[];
+}
+
+// === ВИЗНАЧЕННЯ ТИПІВ ДАНИХ / МЕТРИК ===
+function isPercentString(v: unknown): boolean {
+  if (typeof v === 'number') return false;
+  const s = String(v ?? '').trim();
+  return /^[-+]?\d[\d\s.,]*%$/.test(s);
+}
+
+function toNumberMaybe(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const s = String(v).trim();
+  if (!s) return null;
+  // percentage -> 0..1
+  if (isPercentString(s)) {
+    const num = s.replace(/%/g, '').replace(/\s/g, '').replace(/,(?=\d{1,2}$)/, '.');
+    const n = Number(num);
+    return Number.isFinite(n) ? n / 100 : null;
+  }
+  // localized number
+  if (/^[-+]?\d[\d\s.,]*$/.test(s)) {
+    const norm = s.replace(/\s/g, '').replace(/,(?=\d{1,2}$)/, '.');
+    const n = Number(norm);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function isNumericColumn(data: any[][], colIndex: number, sample: number = 30): boolean {
+  const limit = Math.min(sample, data.length);
+  let numeric = 0, total = 0;
+  for (let i = 0; i < limit; i++) {
+    const val = data[i]?.[colIndex];
+    const num = toNumberMaybe(val);
+    if (num !== null) numeric++;
+    total++;
+  }
+  return total > 0 && numeric / total >= 0.6; // 60%+ числових значень
+}
+
+function detectMetricColumns(data: any[][], headers: string[]): { name: string; index: number; kind: 'number' | 'percent' }[] {
+  const res: { name: string; index: number; kind: 'number' | 'percent' }[] = [];
+  for (let i = 0; i < headers.length; i++) {
+    if (!isNumericColumn(data, i)) continue;
+    // estimate percent vs number
+    let percHits = 0, checked = 0;
+    for (let r = 0; r < Math.min(30, data.length); r++) {
+      const v = data[r]?.[i];
+      if (v != null) {
+        checked++;
+        if (isPercentString(v)) percHits++;
+      }
+    }
+    const kind: 'number' | 'percent' = checked > 0 && percHits / checked > 0.3 ? 'percent' : 'number';
+    res.push({ name: headers[i], index: i, kind });
+  }
+  return res;
+}
+
+// === АГРЕГАТИ ПО КОЛОНКАХ ===
+function aggregateColumn(data: any[][], colIndex: number): { count: number; sum: number; min: number | null; max: number | null; avg: number | null } {
+  let count = 0;
+  let sum = 0;
+  let min: number | null = null;
+  let max: number | null = null;
+  for (const row of data) {
+    const num = toNumberMaybe(row?.[colIndex]);
+    if (num === null) continue;
+    count++;
+    sum += num;
+    min = min === null ? num : Math.min(min, num);
+    max = max === null ? num : Math.max(max, num);
+  }
+  const avg = count > 0 ? sum / count : null;
+  return { count, sum, min, max, avg };
+}
+
+function sumColumn(data: any[][], colIndex: number): number { return aggregateColumn(data, colIndex).sum; }
+function avgColumn(data: any[][], colIndex: number): number | null { return aggregateColumn(data, colIndex).avg; }
+function minColumn(data: any[][], colIndex: number): number | null { return aggregateColumn(data, colIndex).min; }
+function maxColumn(data: any[][], colIndex: number): number | null { return aggregateColumn(data, colIndex).max; }
+
+// === КОРОТКІ ПОЯСНЕННЯ ===
+function explainColumns(headers: string[], metrics: { name: string; index: number; kind: 'number' | 'percent' }[]): string {
+  if (metrics.length === 0) return 'Не знайдено метричних колонок';
+  const parts = metrics.map(m => `${m.name} (${m.kind === 'percent' ? '%': 'число'})`);
+  return `Виявлено метричні колонки: ${parts.join(', ')}`;
+}
+
+function explainTrends(data: any[][], headers: string[], metricIdx: number): string {
+  // Проста евристика: порівняти середнє першої та другої половини
+  if (data.length < 4) return 'Даних недостатньо для виявлення тренду';
+  const mid = Math.floor(data.length / 2);
+  const avg1 = avgColumn(data.slice(0, mid), metricIdx) ?? 0;
+  const avg2 = avgColumn(data.slice(mid), metricIdx) ?? 0;
+  if (avg2 > avg1 * 1.05) return `Спостерігається зростання показника '${headers[metricIdx]}'`;
+  if (avg2 < avg1 * 0.95) return `Спостерігається зниження показника '${headers[metricIdx]}'`;
+  return `Суттєвих змін у '${headers[metricIdx]}' не виявлено`;
 }
 
 // === AI-АНАЛІЗ ДАНИХ ===
@@ -332,4 +431,14 @@ export {
   generateSmartReport,
   performSmartSearch,
   getColumnIndex,
-}; 
+  // metrics & aggregates
+  isNumericColumn,
+  detectMetricColumns,
+  aggregateColumn,
+  sumColumn,
+  avgColumn,
+  minColumn,
+  maxColumn,
+  explainColumns,
+  explainTrends,
+};
