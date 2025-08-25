@@ -11,6 +11,16 @@
 
 ## 🚀 **ШВИДКИЙ СТАРТ**
 
+### 🧰 Технологічний стек (2025)
+
+- **Runtime/Language:** Node.js 18+, TypeScript 5.3+
+- **Discord:** discord.js v14, Slash-команди, компоненти з підписом (`signComponentId` HMAC+TTL)
+- **Пошук/Індекс:** SQLite FTS, гібридний пошук (FTS + cosine)
+- **RAG:** `EmbeddingsService`, `RagService`, гібридний retriever
+- **AI:** локально через Ollama (за замовчуванням) або зовнішні провайдери (опційно)
+- **Логи/Метрики:** централізований логер, Prometheus-метрики
+- **i18n:** локаль за замовчуванням — `uk`
+
 ### **📋 Що це за бот?**
 Discord AI Assistant Bot (Godzilla) - це інноваційний бот, розроблений для автоматизації роботи з документами, аналізу даних та підтримки операційної діяльності. Спеціально адаптований для потреб ЗСУ та критично важливих організацій.
 
@@ -31,6 +41,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 - **[🛡️ Безпека](docs/security/SECURITY_GUIDE.md)** — політика і технічні захисти
 - **[🧩 API та команди](docs/API_OVERVIEW.md)** — огляд публічних інтерфейсів
 - **[🧭 Гайд розробника](docs/DEVELOPER_GUIDE.md)** — як працювати з кодом
+- **[🧠 RAG та пошук](docs/guides/rag.md)** — гібридний пошук, embeddings, ENV
 
 > Примітка: детальні README з підпапок коду переїхали в `docs/...` з тією самою структурою (див. нижче «README по папках коду»).
 
@@ -84,7 +95,8 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 ## 🏗️ **АРХІТЕКТУРА**
 
 ### **📁 Структура проекту**
-```
+
+```text
 src/
 ├── commands/          # Команди бота
 ├── services/          # Бізнес-логіка
@@ -113,6 +125,7 @@ src/
 ## 🚀 **ЗАПУСК**
 
 ### **⚡ Швидкий запуск**
+
 ```bash
 # Клонування репозиторію
 git clone https://github.com/Dmitze/BotDiscordGodzilla.git
@@ -130,6 +143,7 @@ npm run dev
 ```
 
 ### **🐳 Docker запуск**
+
 ```bash
 # Збірка образу
 docker build -t godzilla-bot .
@@ -143,6 +157,7 @@ docker run -d --name godzilla-bot godzilla-bot
 ## 🔧 **НАЛАШТУВАННЯ**
 
 ### **📋 Обов'язкові змінні середовища**
+
 ```env
 # Discord
 DISCORD_TOKEN=your_discord_token
@@ -154,6 +169,22 @@ GOOGLE_API_KEY=your_google_api_key
 GOOGLE_APP_SCRIPT_URL=your_app_script_url
 
 # AI
+# Провайдер AI: ollama (локальна LLM)
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3
+
+# Пошук/RAG (уривки, індекси, ембеддінги)
+SEARCH_INDEX_PATH=.data/search/index.sqlite
+SEARCH_FTS_TOKENIZER=unicode61
+RETRIEVER_K=8
+RETRIEVER_ALPHA=0.7
+EMBEDDINGS_ENABLE=true
+EMBEDDINGS_PROVIDER=local
+EMBEDDINGS_MODEL=nomic-embed-text
+RAG_MAX_CONTEXT_TOKENS=3000
+AI_MAX_TOKENS=1024
+
+# OpenAI (опційно)
 OPENAI_API_KEY=your_openai_api_key
 ```
 
@@ -190,6 +221,13 @@ OPENAI_API_KEY=your_openai_api_key
 4. **Логування** - детальне логування всіх операцій
 5. **Моніторинг** - постійний контроль системи
 
+### 🤖 Локальний AI (Ollama) та конфіденційність
+
+- За замовчуванням обробка AI виконується локально через `Ollama` — дані не покидають хост.
+- Зовнішні провайдери (OpenAI/Anthropic) вмикаються лише за явної конфігурації.
+- Усі UI-компоненти підписуються `signComponentId` (HMAC+TTL) для захисту від підробки/повторів.
+- Деталі: `docs/security/SECURITY_GUIDE.md` та `docs/guides/rag.md`.
+
 ### **🛡️ Захист даних**
 - **GDPR** сумісність
 - **Військові дані** - максимальний захист
@@ -201,11 +239,12 @@ OPENAI_API_KEY=your_openai_api_key
 ## 🤝 **ПІДТРИМКА**
 
 ### **📞 Контакти**
+ 
 - **Discord:** dmitry_shivachov3756
-- **Telegram:** https://t.me/Dmitry_Shiva
-- **Email:** dmitze_shivachov@outlook.com
-- **GitHub:** https://github.com/Dmitze
-- **Проект:** https://github.com/Dmitze/BotDiscordGodzilla
+- **Telegram:** [@Dmitry_Shiva](https://t.me/Dmitry_Shiva)
+- **Email:** [dmitze_shivachov@outlook.com](mailto:dmitze_shivachov@outlook.com)
+- **GitHub:** [github.com/Dmitze](https://github.com/Dmitze)
+- **Проект:** [github.com/Dmitze/BotDiscordGodzilla](https://github.com/Dmitze/BotDiscordGodzilla)
 
 ### **🛠️ Рівні підтримки**
 1. **Базовий** - документація та FAQ
