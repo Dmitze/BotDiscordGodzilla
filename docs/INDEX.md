@@ -30,7 +30,7 @@
 - [FAQ](guides/FAQ_SUPPORT.md)
 
 ### 🏗️ Архітектура
-- [Загальний огляд](architecture/ARCHITECTURE.md)
+- [�����������](ARCHITECTURE.md)
 - [Команди](architecture/NEW_COMMANDS_ARCHITECTURE.md)
 - [План розвитку](architecture/ROADMAP.md)
 
