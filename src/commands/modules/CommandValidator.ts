@@ -159,9 +159,9 @@ export class CommandValidator {
 
         // Перевірка дозволених значень
         {
-          const allowedMap = (rules?.allowedValues ?? null) as Record<string, unknown[]> | null;
-          const allowed = allowedMap ? allowedMap[name] : undefined;
-          if (Array.isArray(allowed) && !allowed.includes(value as unknown)) {
+          const allowedMap = rules?.allowedValues ?? null;
+          const allowed = allowedMap && typeof name === 'string' ? allowedMap[name] : undefined;
+          if (Array.isArray(allowed) && !allowed.includes(value)) {
             errors.push(`Недозволене значення для поля '${name}': ${String(value)}`);
           }
         }
