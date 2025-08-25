@@ -12,10 +12,18 @@ flowchart LR
   BotCore[Core] --> Commands
   BotCore --> Services
   Services --> GoogleAPI
-  Services --> AI(LLM API)
+  Services --> AI
   Services --> Cache[(Cache)]
   Commands --> Search[SearchCommand]
   Commands --> Docs[DocCommand]
+
+  subgraph AI
+    Ollama[Ollama (локально)]
+    ExtAPI[(Зовнішній провайдер\nOpenAI/Anthropic):::opt]
+  end
+  classDef opt fill:#f6f8fa,stroke:#aaa,stroke-dasharray: 3 3;
+  Services --> Ollama
+  Services -. optional .-> ExtAPI
 ```
 
 ## Системна діаграма (взаємодії)
@@ -85,3 +93,10 @@ flowchart TB
 - `signComponentId` з HMAC + TTL для всіх компонентів UI; у тестовому режимі — legacy-сумісність.
 - Централізований логер; `no-console` окрім `src/scripts/`.
 - Локаль за замовчуванням: `uk` (українська).
+
+## Локальний AI (Ollama)
+
+- За замовчуванням AI працює локально через `Ollama` (`AI_PROVIDER=ollama`).
+- Секретні/конфіденційні дані не покидають хост.
+- Підтримуються моделі сімейств LLaMA, Mistral та інші, завантажені локально.
+- Зовнішні провайдери (OpenAI тощо) увімкнені лише за явною конфігурацією (`AI_PROVIDER=openai`).
