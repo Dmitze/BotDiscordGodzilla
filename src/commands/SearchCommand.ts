@@ -421,7 +421,7 @@ export class SearchCommand extends BaseCommand {
       if (indexChoice.mode === 'sqlite' && indexChoice.services.searchIndex) {
         try {
           const res = await runSearchSqlite({ searchIndex: indexChoice.services.searchIndex, params: searchParams });
-          const hits = Array.isArray((res as any)?.hits) ? (res as any).hits : [];
+          const hits = Array.isArray(res?.hits) ? res.hits : [];
           if (hits.length) {
             try {
               const workspace: any = (interaction as any)?.client?.serviceContainer?.get?.('workspace');
@@ -443,7 +443,7 @@ export class SearchCommand extends BaseCommand {
               interaction as any,
               String(searchParams.query || ''),
               hits as any[],
-              (res as any)?.total ?? hits.length,
+              res?.total ?? hits.length,
               Math.max(1, Math.min(SEARCH_CONFIG.MAX_RESULTS, searchParams.limit || SEARCH_CONFIG.DEFAULT_LIMIT))
             );
             const duration = performance.now() - startTime;
