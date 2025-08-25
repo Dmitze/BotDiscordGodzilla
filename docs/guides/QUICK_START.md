@@ -1,59 +1,120 @@
-# 🚀 Швидкий старт Discord Bot з AI
+# 🚀 Швидкий старт з Godzilla Bot
 
-## ⚡ Швидка настройка за 5 кроків
+## ⚡ Швидке налаштування за 5 кроків
 
-### 1. Клонування та встановлення
+### 1. Встановлення залежностей
+
 ```bash
 git clone https://github.com/Dmitze/BotDiscordGodzilla.git
 cd BotDiscordGodzilla
 npm install
 ```
 
-### 2. Створення файлу .env
-Створіть файл `.env` в корені проекту:
-```env
-BOT_TOKEN=your_discord_bot_token
-SHEET_ID=your_google_sheet_id
-GOOGLE_API_KEY=your_google_api_key
-APP_SCRIPT_URL=your_google_apps_script_url
-OPENAI_API_KEY=your_openai_api_key
+### 2. Налаштування змінних середовища
+
+Створіть файл `.env` в корені проекту, використовуючи приклад:
+
+```bash
+cp .env.example .env
 ```
 
-### 3. Отримання API ключів (5 хвилин)
+Відредагуйте `.env` файл, додавши обов'язкові налаштування:
 
-#### Discord Bot Token:
-1. [Discord Developer Portal](https://discord.com/developers/applications) → New Application
-2. Bot → Add Bot → Copy Token
+```env
+# Основні налаштування
+NODE_ENV=development
+LOG_LEVEL=info
 
-#### Google API Key:
-1. [Google Cloud Console](https://console.cloud.google.com/) → New Project
-2. APIs & Services → Library → Google Sheets API → Enable
-3. Credentials → Create Credentials → API Key
+# Discord
+DISCORD_TOKEN=your_discord_bot_token_here
+DISCORD_CLIENT_ID=your_discord_client_id
 
-#### OpenAI API Key:
-1. [OpenAI Platform](https://platform.openai.com/) → API Keys
-2. Create new secret key
+# Безпека
+HMAC_SECRET=generate_secure_random_string_here
+COMPONENT_TTL=300000  # 5 хвилин
 
-### 4. Налаштування Google Sheets
-1. Створіть Google Sheet з даними
-2. Скопіюйте ID з URL: `https://docs.google.com/spreadsheets/d/YOUR_ID_HERE/edit`
-3. Надайте доступ для API ключа
+# База даних
+DB_PATH=./data/godzilla.db
+
+# AI (виберіть провайдера: ollama або openai)
+AI_PROVIDER=ollama
+AI_MODEL=llama3
+```
+
+### 3. Налаштування Discord Bot
+
+1. Перейдіть на [Discord Developer Portal](https://discord.com/developers/applications)
+2. Створіть новий додаток та бота
+3. Увімкніть необхідні Intents:
+   - Message Content
+   - Server Members
+   - Presence
+   - Message Content
+4. Додайте бота на сервер через OAuth2 URL Generator з дозволами:
+   - `bot`
+   - `applications.commands`
+   - Дозволи: `Send Messages`, `Embed Links`, `Read Message History`
+
+### 4. Налаштування локального AI (Ollama)
+
+1. Встановіть [Ollama](https://ollama.ai/)
+2. Завантажте модель:
+   ```bash
+   ollama pull llama3
+   ```
+3. Запустіть сервер Ollama:
+   ```bash
+   ollama serve
+   ```
 
 ### 5. Запуск бота
+
 ```bash
-node index.js
+# Розробка з автоматичним перезавантаженням
+npm run dev
+
+# Або звичайний запуск
+npm start
 ```
 
-## 🧪 Тестування
+## 🧩 Основні можливості
 
-### Перевірка AI-функціоналу:
-```bash
-node test-ai.js
-```
+### Пошук та аналіз
+- `/search [запит]` - пошук серед індексованих документів
+- `/analyze [текст]` - аналіз тексту за допомогою AI
 
-### Основні команди для тестування:
-- `/help` - список всіх команд
-- `/ai-аналіз` - AI-аналіз даних
+### Робота з документами
+- `/index [url]` - індексувати документ за посиланням
+- `/list` - перегляд індексованих документів
+
+### Налаштування
+- `/settings` - керування налаштуваннями бота
+- `/help` - довідка за командами
+
+## 🧪 Тестування роботи
+
+Переконайтеся, що бот працює коректно:
+
+1. Відправте `/help` у чат Discord
+2. Перевірте наявність команд автодоповнення
+3. Протестуйте базові команди:
+   ```bash
+   /search тестовий пошук
+   /analyze Це тестовий аналіз тексту
+   ```
+
+## 🔍 Наступні кроки
+
+- Додайте більше документів для індексації
+- Налаштуйте канали для роботи з ботом
+- Вивчіть розширені можливості у повній документації
+
+## ❓ Допомога
+
+Якщо виникли питання:
+1. Перевірте логи у консолі
+2. Перегляньте розділ "Поширені проблеми" у документації
+3. Створіть Issue у репозиторії
 - `/ai-пошук запит:покажи товари дешевше 1000` - природномовний пошук
 
 ## 📋 Мінімальні вимоги
