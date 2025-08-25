@@ -1,7 +1,12 @@
-const fs = require('fs');
-const path = require('path');
-const { JSDOM } = require('jsdom');
-const { NodeHtmlMarkdown } = require('node-html-markdown');
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import fs from 'fs';
+import path from 'path';
+import { JSDOM } from 'jsdom';
+import { NodeHtmlMarkdown } from 'node-html-markdown';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Configuration
 const DOCS_DIR = __dirname;
