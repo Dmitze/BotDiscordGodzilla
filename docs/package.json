@@ -1,0 +1,14 @@
+{
+  "name": "godzilla-bot-docs",
+  "version": "1.0.0",
+  "description": "Documentation for Godzilla Bot",
+  "scripts": {
+    "build:search": "node _generate_search_index.js",
+    "dev": "python -m http.server 8000"
+  },
+  "dependencies": {
+    "jsdom": "^22.1.0",
+    "node-html-markdown": "^1.3.1"
+  },
+  "type": "module"
+}
