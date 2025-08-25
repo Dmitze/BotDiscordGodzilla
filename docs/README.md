@@ -1,7 +1,7 @@
 # 🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**
 
 **Потужний Discord бот з AI функціоналом для Збройних Сил України**
-**Оновлено: 28.07.2025**
+**Оновлено: 25.08.2025**
 
 Ця папка містить всю документацію проекту, організовану за категоріями.
 
@@ -31,7 +31,7 @@
 - `NEW_COMMANDS_ARCHITECTURE.md` - Архітектура нових команд
 - `ROADMAP.md` - План розвитку
 
-### **📊 reports/** - Звіти та аналізи
+### **📊 documentation/** - Звіти та аналізи
 
 - `REFACTORING_REPORT.md` - Звіт про рефакторинг
 - `REFACTORING_COMPLETION_REPORT.md` - Звіт про завершення рефакторингу
@@ -98,6 +98,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 - **[🚀 Запуск](guides/LAUNCH_INSTRUCTIONS.md)** - інструкції запуску
 - **[📖 Гід користувача](guides/USAGE_GUIDE.md)** - повний посібник користувача
 - **[❓ FAQ](guides/FAQ_SUPPORT.md)** - часті питання та підтримка
+- **[🧠 RAG та пошук](guides/rag.md)** - гібридний пошук, embeddings, ENV
 - **[🎓 Інтерактивне навчання](guides/INTERACTIVE_LEARNING_GUIDE.md)** - інтерактивний гід
 - **[🎥 Відео туторіали](guides/VIDEO_TUTORIAL_GUIDE.md)** - відео інструкції
 - **[🔧 Налаштування Cursor](guides/CURSOR_SETUP_GUIDE.md)** - налаштування розробки
@@ -145,6 +146,13 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 - **[🛡️ Гід безпеки](security/SECURITY_GUIDE.md)** - безпека та конфіденційність
 
+### 🤖 Локальний AI (Ollama) та конфіденційність
+
+- За замовчуванням AI працює локально через `Ollama` (`AI_PROVIDER=ollama`).
+- Дані (запити, контекст RAG, результати) не покидають хост.
+- Зовнішні провайдери (OpenAI/Anthropic) вмикаються лише за явної конфігурації.
+- Деталі: `security/SECURITY_GUIDE.md`, `architecture/ARCHITECTURE.md`, `guides/rag.md`.
+
 ### **📝 Історія змін**
 
 - **[📋 Changelog](changelog/CHANGELOG.md)** - історія оновлень
@@ -191,7 +199,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 ### **📁 Структура проекту**
 
-```
+```text
 src/
 ├── commands/          # Команди бота
 ├── services/          # Бізнес-логіка
@@ -279,8 +287,8 @@ GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\
 GOOGLE_PROJECT_ID=your_gcp_project_id
 
 # AI
-# Провайдер: openai | ollama
-AI_PROVIDER=openai
+# Провайдер AI: ollama (за замовчуванням) або openai
+AI_PROVIDER=ollama
 
 # OpenAI
 OPENAI_API_KEY=sk-...
