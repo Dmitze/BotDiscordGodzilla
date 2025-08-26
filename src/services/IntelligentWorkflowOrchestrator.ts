@@ -57,7 +57,6 @@ interface WorkflowStep {
 export class IntelligentWorkflowOrchestrator {
   private rules = new Map<string, WorkflowRule>();
   private executions = new Map<string, WorkflowExecution>();
-  private documentAnalyzer: AdvancedDocumentAnalyzer;
 
   constructor(
     private aiService: AIService,
