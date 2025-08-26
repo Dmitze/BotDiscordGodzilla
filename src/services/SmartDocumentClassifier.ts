@@ -5,7 +5,6 @@
 
 import type { AIService } from './AIService';
 import type { GoogleService } from './GoogleService';
-import { AIPromptTemplateService, type PromptContext } from './AIPromptTemplateService';
 import logger from '@/utils/logger';
 
 export interface DocumentTag {
@@ -69,7 +68,7 @@ export class SmartDocumentClassifier {
       }
 
       // Отримання метаданих файлу
-      const fileMetadata = await this.googleService.getFileInfo(fileId);
+      const fileMetadata = await this.googleService.getDriveFileMetadata(fileId);
 
       // Класифікація документа
       const classification = await this.performClassification(content, fileMetadata);
@@ -310,14 +309,15 @@ ${content.substring(0, 3000)}
    */
   private async extractDocumentContent(fileId: string): Promise<string> {
     try {
-      const fileInfo = await this.googleService.getFileInfo(fileId);
+      const fileInfo = await this.googleService.getDriveFileMetadata(fileId);
       
       if (fileInfo.mimeType?.includes('document')) {
-        return await this.googleService.exportDocument(fileId, 'text/plain');
+        const result = await this.googleService.extractTextForChat(fileId);
+        return result.text;
       } else if (fileInfo.mimeType?.includes('spreadsheet')) {
         // Для таблиць витягуємо структуровані дані
-        const sheets = await this.googleService.getSpreadsheetData(fileId);
-        return this.formatSpreadsheetsContent(sheets);
+        const sheetData = await this.googleService.getSheetData(fileId, 'Sheet1');
+        return this.formatSpreadsheetsContent(sheetData);
       } else if (fileInfo.mimeType?.includes('pdf')) {
         // TODO: Інтеграція з PDF парсером
         return 'PDF документ (обробка буде додана)';
@@ -337,19 +337,18 @@ ${content.substring(0, 3000)}
   /**
    * Форматування контенту таблиць
    */
-  private formatSpreadsheetsContent(sheets: any): string {
+  private formatSpreadsheetsContent(sheetData: any): string {
     try {
-      let content = '';
-      for (const sheet of sheets) {
-        content += `Аркуш: ${sheet.title}\n`;
-        if (sheet.data && sheet.data.length > 0) {
-          // Перші кілька рядків для аналізу
-          content += sheet.data.slice(0, 10)
-            .map((row: any[]) => row.join(' | '))
-            .join('\n');
-          content += '\n\n';
-        }
+      if (!sheetData || !sheetData.values) {
+        return 'Порожня таблиця';
       }
+      
+      let content = 'Дані таблиці:\n';
+      // Перші кілька рядків для аналізу
+      content += sheetData.values.slice(0, 10)
+        .map((row: any[]) => row.join(' | '))
+        .join('\n');
+      
       return content;
     } catch (error) {
       return 'Помилка обробки табличних даних';
@@ -361,23 +360,8 @@ ${content.substring(0, 3000)}
    */
   async applyTagsToFile(fileId: string, classification: DocumentClassification): Promise<void> {
     try {
-      // Створюємо описи на основі класифікації
-      const tags = classification.tags.map(tag => 
-        tag.keywords.join(', ')
-      ).join('; ');
-
-      const description = `
-Категорія: ${classification.primaryCategory}
-Теги: ${tags}
-Секретність: ${classification.sensitivity}
-Класифіковано: ${new Date().toISOString()}
-Впевненість: ${Math.round(classification.confidence * 100)}%
-`.trim();
-
-      // Оновлюємо опис файлу
-      await this.googleService.updateFileMetadata(fileId, {
-        description
-      });
+      // TODO: Реалізація оновлення опису файлу
+      // await this.googleService.updateFileMetadata(fileId, { description });
 
       logger.info('Теги застосовано до файлу', {
         component: 'SmartDocumentClassifier',
