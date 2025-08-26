@@ -7,7 +7,6 @@ import {
   SlashCommandBuilder,
   SlashCommandStringOption,
   SlashCommandBooleanOption,
-  ChatInputCommandInteraction,
   EmbedBuilder,
   AttachmentBuilder
 } from 'discord.js';
@@ -16,7 +15,7 @@ import type { BotConfig, CommandExecuteOptions } from '@/types';
 import type { AdvancedDocumentAnalyzer } from '@/services/AdvancedDocumentAnalyzer';
 import type { IntelligentWorkflowOrchestrator } from '@/services/IntelligentWorkflowOrchestrator';
 import type { GoogleService } from '@/services/GoogleService';
-import { t } from '@/i18n';
+
 import logger from '@/utils/logger';
 
 export class AdvancedAnalysisCommand extends BaseCommand {
@@ -94,7 +93,7 @@ export class AdvancedAnalysisCommand extends BaseCommand {
 
       // Перевірка доступу до файлу
       try {
-        await this.googleService.getFileInfo(fileId);
+        await this.googleService.getDriveFileMetadata(fileId);
       } catch (error) {
         await interaction.editReply({
           content: '❌ Файл не знайдено або немає доступу'
