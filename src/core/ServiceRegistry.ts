@@ -14,6 +14,12 @@ import type { SearchIndex } from '@/search/SearchIndex';
 import type { AdvancedDocumentAnalyzer } from '@/services/AdvancedDocumentAnalyzer';
 import type { IntelligentWorkflowOrchestrator } from '@/services/IntelligentWorkflowOrchestrator';
 import type { SmartSearchEngine } from '@/services/SmartSearchEngine';
+import type { WorkflowAutomationEngine } from '@/services/WorkflowAutomationEngine';
+import type { EnhancedDocumentService } from '@/services/EnhancedDocumentService';
+import type { ContextMemoryService } from '@/services/ContextMemoryService';
+import type { ResponseCacheService } from '@/services/ResponseCacheService';
+import type { KnowledgeBaseService } from '@/services/KnowledgeBaseService';
+import type { EnhancedRagService } from '@/services/EnhancedRagService';
 
 // Union of all service keys managed by ServiceManager
 export type ServiceKey =
@@ -31,7 +37,13 @@ export type ServiceKey =
   | 'rag'
   | 'documentAnalyzer'
   | 'workflowOrchestrator'
-  | 'smartSearch';
+  | 'smartSearch'
+  | 'workflowEngine'
+  | 'enhancedDocumentService'
+  | 'contextMemory'
+  | 'responseCache'
+  | 'knowledgeBase'
+  | 'enhancedRag';
 
 // Registry types mapping keys to concrete instances
 export interface ServiceRegistry {
@@ -50,6 +62,12 @@ export interface ServiceRegistry {
   documentAnalyzer?: AdvancedDocumentAnalyzer; // optional if AI or Google missing
   workflowOrchestrator?: IntelligentWorkflowOrchestrator; // optional if dependencies missing
   smartSearch?: SmartSearchEngine; // optional if dependencies missing
+  workflowEngine?: WorkflowAutomationEngine; // optional if dependencies missing
+  enhancedDocumentService?: EnhancedDocumentService; // optional if dependencies missing
+  contextMemory?: ContextMemoryService; // optional service for user context
+  responseCache?: ResponseCacheService; // optional caching service
+  knowledgeBase?: KnowledgeBaseService; // optional if dependencies missing
+  enhancedRag?: EnhancedRagService; // enhanced RAG with auto-indexing
 }
 
 // Helper for DI resolve generics
