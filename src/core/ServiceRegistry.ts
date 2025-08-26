@@ -11,6 +11,9 @@ import type { WorkspaceDbService } from '@/services/WorkspaceDbService';
 import type { RagService } from '@/services/RagService';
 import type { EmbeddingsService } from '@/services/EmbeddingsService';
 import type { SearchIndex } from '@/search/SearchIndex';
+import type { AdvancedDocumentAnalyzer } from '@/services/AdvancedDocumentAnalyzer';
+import type { IntelligentWorkflowOrchestrator } from '@/services/IntelligentWorkflowOrchestrator';
+import type { SmartSearchEngine } from '@/services/SmartSearchEngine';
 
 // Union of all service keys managed by ServiceManager
 export type ServiceKey =
@@ -25,7 +28,10 @@ export type ServiceKey =
   | 'workspace'
   | 'searchIndex'
   | 'embeddings'
-  | 'rag';
+  | 'rag'
+  | 'documentAnalyzer'
+  | 'workflowOrchestrator'
+  | 'smartSearch';
 
 // Registry types mapping keys to concrete instances
 export interface ServiceRegistry {
@@ -41,6 +47,9 @@ export interface ServiceRegistry {
   searchIndex: SearchIndex;
   embeddings?: EmbeddingsService; // optional
   rag?: RagService; // optional if AI missing
+  documentAnalyzer?: AdvancedDocumentAnalyzer; // optional if AI or Google missing
+  workflowOrchestrator?: IntelligentWorkflowOrchestrator; // optional if dependencies missing
+  smartSearch?: SmartSearchEngine; // optional if dependencies missing
 }
 
 // Helper for DI resolve generics
