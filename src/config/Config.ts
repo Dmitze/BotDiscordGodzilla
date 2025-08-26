@@ -266,7 +266,7 @@ export class Config {
         driveFolderId: this.getRequiredEnv('GOOGLE_DRIVE_FOLDER_ID'),
         apiKey: this.getRequiredEnv('GOOGLE_API_KEY'),
         applicationCredentials: this.getRequiredEnv('GOOGLE_APPLICATION_CREDENTIALS'),
-        appScriptUrl: this.getRequiredEnv('GOOGLE_APP_SCRIPT_URL'),
+        appScriptUrl: this.getEnv('GOOGLE_APP_SCRIPT_URL', ''),
         sheetName: this.getEnv('GOOGLE_SHEET_NAME', 'Sheet1'),
         // OCR settings with safe offline defaults
         ocrProvider: (this.getEnv('OCR_PROVIDER', 'off') as 'vision' | 'tesseract' | 'off'),
@@ -621,7 +621,10 @@ export class Config {
     // Валідація Google
     if (!config.google.spreadsheetId) errors.push('GOOGLE_SPREADSHEET_ID is required');
     if (!config.google.apiKey) errors.push('GOOGLE_API_KEY is required');
-    if (!config.google.appScriptUrl) errors.push('GOOGLE_APP_SCRIPT_URL is required');
+    // GOOGLE_APP_SCRIPT_URL зроблено необов'язковим
+    if (config.google.appScriptUrl === undefined) {
+      logger.warn('GOOGLE_APP_SCRIPT_URL is not set - some Google Apps Script functionality will be disabled');
+    }
 
     // Валідація AI
     if (config.ai.provider === 'openai' && !config.ai.openai.apiKey) {

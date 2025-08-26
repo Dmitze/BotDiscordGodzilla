@@ -291,17 +291,21 @@ class Application {
       const requiredFields = [
         'discord.token',
         'discord.clientId',
-        'discord.guildId',
         'google.apiKey',
-        'google.appScriptUrl',
         'ai.openai.apiKey',
       ];
 
+      // Перевірка обов'язкових полів
       for (const field of requiredFields) {
         const value = this.getNestedValue(this.config, field);
         if (!value) {
           throw new Error(`Відсутнє обов'язкове поле конфігурації: ${field}`);
         }
+      }
+
+      // Перевірка guildId лише якщо увімкнено слэш-команди
+      if (this.config.discord.enableSlash && !this.config.discord.guildId) {
+        throw new Error("DISCORD_GUILD_ID is required when ENABLE_SLASH=true");
       }
 
       logger.info('✅ Конфігурація валідна', {});

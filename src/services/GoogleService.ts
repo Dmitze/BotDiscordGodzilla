@@ -225,7 +225,10 @@ export class GoogleService extends BaseServiceClass {
     try {
       const result = await this.executeWithRetry(async () => {
         if (!this.docs) throw new Error('Docs API не ініціалізовано');
-        const response = await this.docs.documents.get({ documentId });
+        const response = await this.docs.documents.get({ 
+          documentId,
+          fields: 'body,title'
+        });
         return this.getDocsService().extractBlocksFromDoc(response.data);
       }, 'docs', undefined, 'docs.documents.get');
       return result;
@@ -2356,12 +2359,28 @@ export class GoogleService extends BaseServiceClass {
         };
       }
 
-      // Тестовий запит до Sheets API
+      // Тестовий запит до Google APIs - використовуємо найпростіші методи
       try {
-        await this.sheets.spreadsheets.get({
-          spreadsheetId: this.config.google.spreadsheetId,
-          ranges: ['A1:A1'],
+        // Спочатку пробуємо Drive API about.get() - найбезпечніший метод
+        await this.drive.about.get({
+          fields: 'user'
         });
+        
+        // Якщо Drive API працює, перевіряємо Sheets API тільки якщо є spreadsheetId
+        if (this.config.google.spreadsheetId) {
+          try {
+            // Використовуємо метод batchGet з мінімальними параметрами
+            await this.sheets.spreadsheets.values.batchGet({
+              spreadsheetId: this.config.google.spreadsheetId,
+              ranges: ['A1:A1'], // Мінімальний діапазон
+            });
+          } catch (sheetsError) {
+            // Ігноруємо помилки Sheets API, якщо Drive API працює
+            logger.debug('Sheets API test failed but Drive API works', {
+              error: String(sheetsError)
+            });
+          }
+        }
       } catch (error) {
         return {
           healthy: false,

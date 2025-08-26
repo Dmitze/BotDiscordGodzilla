@@ -6,7 +6,7 @@
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import { BaseCommand } from './BaseCommand';
 import logger from '@/utils/logger';
-import { replyWithPrivacy } from '@/ui/reply';
+
 import type { GoogleService } from '@/services/GoogleService';
 import type {
   SlashCommandBuilder,
@@ -36,6 +36,20 @@ interface AIQueryResult {
   };
 }
 
+interface UserContext {
+  query: string;
+  response: string;
+  timestamp: number;
+  fileIds?: string[];
+  action?: string;
+}
+
+interface UserSession {
+  userId: string;
+  contexts: UserContext[];
+  lastActivity: number;
+}
+
 type AICommandOptions = {
   query: string | null;
   context: string | null;
@@ -63,6 +77,11 @@ interface ValidationSchema {
 
 export class AIAssistantCommand extends BaseCommand {
   private readonly googleService: GoogleService | undefined;
+  
+  // Статичне сховище контексту для всіх користувачів
+  private static userSessions = new Map<string, UserSession>();
+  private static readonly MAX_CONTEXTS = 20;
+  private static readonly SESSION_TIMEOUT = 2 * 60 * 60 * 1000; // 2 години
 
   constructor(config: BotConfig, googleService?: GoogleService) {
     super('ai', t('ai.command.description'), config, {
@@ -89,20 +108,148 @@ export class AIAssistantCommand extends BaseCommand {
   }
 
   /**
+   * Отримання контексту користувача
+   */
+  private static getUserSession(userId: string): UserSession {
+    const now = Date.now();
+    let session = AIAssistantCommand.userSessions.get(userId);
+    
+    if (!session || (now - session.lastActivity) > AIAssistantCommand.SESSION_TIMEOUT) {
+      const isNewSession = !session;
+      session = {
+        userId,
+        contexts: [],
+        lastActivity: now
+      };
+      AIAssistantCommand.userSessions.set(userId, session);
+      
+      if (isNewSession) {
+        logger.debug('Нова сесія створена', { userId });
+      } else {
+        logger.debug('Сесія оновлена (минула час очікування)', { userId });
+      }
+    } else {
+      session.lastActivity = now;
+    }
+    
+    return session;
+  }
+
+  /**
+   * Додавання нового контексту
+   */
+  private static addContext(userId: string, query: string, response: string, action?: string, fileIds?: string[]): void {
+    const session = AIAssistantCommand.getUserSession(userId);
+    
+    const context: UserContext = {
+      query,
+      response,
+      timestamp: Date.now(),
+      ...(action && { action }),
+      ...(fileIds && { fileIds })
+    };
+    
+    session.contexts.push(context);
+    
+    // Обмежуємо кількість контекстів
+    if (session.contexts.length > AIAssistantCommand.MAX_CONTEXTS) {
+      session.contexts = session.contexts.slice(-AIAssistantCommand.MAX_CONTEXTS);
+    }
+    
+    logger.debug('Контекст додано', {
+      userId,
+      contextCount: session.contexts.length,
+      queryPreview: query.substring(0, 50)
+    });
+  }
+
+  /**
+   * Отримання контексту для промпта
+   */
+  private static getContextForPrompt(userId: string, currentQuery: string): string {
+    const session = AIAssistantCommand.getUserSession(userId);
+    
+    if (session.contexts.length === 0) {
+      logger.debug('Немає контексту для користувача', { userId });
+      return '';
+    }
+    
+    // Останні 3 контексти для промпта
+    const recentContexts = session.contexts.slice(-3);
+    
+    let contextText = '\n\n📎 КОНТЕКСТ ПОПЕРЕДНІХ ЗАПИТІВ:\n';
+    
+    recentContexts.forEach((ctx, index) => {
+      const timeAgo = Math.round((Date.now() - ctx.timestamp) / 1000 / 60); // хвилин
+      contextText += `${index + 1}. [Запит ${timeAgo}хв тому]: "${ctx.query.substring(0, 80)}...\"\n`;
+      contextText += `   [Відповідь]: "${ctx.response.substring(0, 100)}...\"\n`;
+      if (ctx.fileIds && ctx.fileIds.length > 0) {
+        contextText += `   [Файли]: ${ctx.fileIds.join(', ')}\n`;
+      }
+      contextText += '\n';
+    });
+    
+    // Перевіряємо, чи поточний запит посилається на контекст
+    const contextReferences = [
+      /а як щодо/i, /у тому ж файлі/i, /далі/i, /а тепер/i,
+      /там само/i, /тією ж таблицю/i, /раніше казав/i
+    ];
+    
+    const hasContextReference = contextReferences.some(pattern => pattern.test(currentQuery));
+    
+    if (hasContextReference) {
+      contextText += 'ℹ️ Користувач посилається на попередні дані. Використовуй контекст!\n';
+      logger.debug('Виявлено посилання на контекст', { userId, query: currentQuery.substring(0, 50) });
+    }
+    
+    logger.debug('Контекст підготовлено для промпта', {
+      userId,
+      contextCount: recentContexts.length,
+      hasContextReference,
+      contextLength: contextText.length
+    });
+    
+    return contextText;
+  }
+
+  /**
+   * Очищення старих сесій
+   */
+  private static cleanupOldSessions(): void {
+    const now = Date.now();
+    const toDelete: string[] = [];
+    
+    for (const [userId, session] of AIAssistantCommand.userSessions.entries()) {
+      if ((now - session.lastActivity) > AIAssistantCommand.SESSION_TIMEOUT) {
+        toDelete.push(userId);
+      }
+    }
+    
+    toDelete.forEach(userId => AIAssistantCommand.userSessions.delete(userId));
+    
+    if (toDelete.length > 0) {
+      logger.debug(`Очищено ${toDelete.length} старих сесій`);
+    }
+  }
+
+  /**
    * Виконання команди
    */
   protected async onExecute(options: CommandExecuteOptions): Promise<void> {
     const { interaction } = options;
 
     try {
-      // Перевірка прав доступу
-      const hasAccess = await this.checkPermission(interaction);
-      if (!hasAccess) {
-        return;
+      // Перевіряємо стан інтеракції перед defer
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ ephemeral: true });
       }
 
-      // Миттєво відправляємо defer, щоб уникнути таймауту Discord ("Приложение не отвечает")
-      await interaction.deferReply({ ephemeral: true });
+      // Перевірка прав доступу (після defer)
+      const hasAccess = await this.checkPermission(interaction);
+      if (!hasAccess) {
+        // checkPermission already handled the response
+        return;
+      }
 
       // Валідація параметрів
       const commandOptions: AICommandOptions = {
@@ -112,9 +259,16 @@ export class AIAssistantCommand extends BaseCommand {
 
       const validation = this.validateCommandOptions(commandOptions);
       if (!validation.isValid) {
-        await interaction.editReply({
-          content: t('ai.validation.failed', { errors: validation.errors.join('\n') }),
-        });
+        if (interaction.deferred) {
+          await interaction.editReply({
+            content: t('ai.validation.failed', { errors: validation.errors.join('\n') }),
+          });
+        } else if (!interaction.replied) {
+          await interaction.reply({
+            content: t('ai.validation.failed', { errors: validation.errors.join('\n') }),
+            ephemeral: true
+          });
+        }
         return;
       }
 
@@ -133,14 +287,19 @@ export class AIAssistantCommand extends BaseCommand {
       const result = await this.processAIQuery(
         interaction.user.id,
         commandOptions.query || '',
-        commandOptions.context ?? undefined
+        commandOptions.context ?? undefined,
+        interaction
       );
 
       // Формування відповіді
       const response = this.buildResponse(result, commandOptions);
 
       // Відправка відповіді
-      await interaction.editReply({ content: response });
+      if (interaction.deferred) {
+        await interaction.editReply({ content: response });
+      } else if (!interaction.replied) {
+        await interaction.reply({ content: response, ephemeral: true });
+      }
 
       // Логування успішного виконання
       logger.info('AI command executed successfully', {
@@ -169,10 +328,26 @@ export class AIAssistantCommand extends BaseCommand {
 
       const errorMessage = t('ai.error.process');
 
-      if (interaction.deferred) {
-        await interaction.editReply({ content: errorMessage });
-      } else {
-        await replyWithPrivacy(interaction, { content: errorMessage }, { ephemeralByDefault: true, shareFlagSupport: true });
+      // Перевіряємо, чи інтеракція ще дійсна
+      if (error instanceof Error && 
+          (error.message.includes('Unknown interaction') || 
+           error.message.includes('Interaction has already been acknowledged'))) {
+        // Інтеракція прострочена або вже оброблена
+        logger.warn('ℹ️ Інтеракція прострочена або вже оброблена, пропускаємо відповідь');
+        return;
+      }
+
+      try {
+        if (interaction.deferred) {
+          await interaction.editReply({ content: errorMessage });
+        } else if (!interaction.replied) {
+          await interaction.reply({ content: errorMessage, ephemeral: true });
+        }
+      } catch (replyError) {
+        // Помилка при відповіді - логуємо і продовжуємо
+        logger.warn('ℹ️ Не вдалося відповісти на інтеракцію', {
+          error: replyError instanceof Error ? replyError.message : String(replyError)
+        });
       }
     }
   }
@@ -230,11 +405,11 @@ export class AIAssistantCommand extends BaseCommand {
           command: interaction.commandName,
         });
 
-        await replyWithPrivacy(
-          interaction as any,
-          { content: t('ai.error.accessDenied', { reason: result.reason || '' }) },
-          { ephemeralByDefault: true, shareFlagSupport: true }
-        );
+        if (interaction.deferred) {
+          await interaction.editReply({ content: t('ai.error.accessDenied', { reason: result.reason || '' }) });
+        } else if (!interaction.replied) {
+          await interaction.reply({ content: t('ai.error.accessDenied', { reason: result.reason || '' }), ephemeral: true });
+        }
         return false;
       }
 
@@ -261,11 +436,11 @@ export class AIAssistantCommand extends BaseCommand {
         severity: 'high',
       });
       // За замовчуванням не пускати у разі помилки
-      await replyWithPrivacy(
-        interaction as any,
-        { content: t('ai.error.permissionCheck') },
-        { ephemeralByDefault: true, shareFlagSupport: true }
-      );
+      if (interaction.deferred) {
+        await interaction.editReply({ content: t('ai.error.permissionCheck') });
+      } else if (!interaction.replied) {
+        await interaction.reply({ content: t('ai.error.permissionCheck'), ephemeral: true });
+      }
       return false;
     }
   }
@@ -331,15 +506,38 @@ export class AIAssistantCommand extends BaseCommand {
    * Обробка AI запиту: визначення наміру та виконання дій
    */
   private async processAIQuery(
-    _userId: string,
+    userId: string,
     query: string,
-    _context?: string
+    _context?: string,
+    interaction?: ChatInputCommandInteraction
   ): Promise<AIQueryResult> {
+    // Очищуємо старі сесії перед обробкою
+    AIAssistantCommand.cleanupOldSessions();
+    
+    // Отримуємо контекст користувача
+    const contextText = AIAssistantCommand.getContextForPrompt(userId, query);
+    
     const handlers = this.getQueryHandlers(query);
     const normalized = this.normalizeQuery(query);
     const handled = await this.runHandlers(handlers, normalized);
-    if (handled) return handled;
-    return this.buildDefaultAIQueryResult(query);
+    
+    let result: AIQueryResult;
+    if (handled) {
+      result = handled;
+    } else {
+      result = await this.buildDefaultAIQueryResult(query, interaction, contextText);
+    }
+    
+    // Зберігаємо контекст після обробки
+    AIAssistantCommand.addContext(
+      userId,
+      query,
+      result.response,
+      result.action,
+      result.actionData?.type === 'files' ? (result.actionData as any).fileIds : undefined
+    );
+    
+    return result;
   }
 
   /**
@@ -379,9 +577,83 @@ export class AIAssistantCommand extends BaseCommand {
   /**
    * Базова відповідь за замовчуванням, якщо намір не розпізнано
    */
-  private buildDefaultAIQueryResult(query: string): AIQueryResult {
-    const response = `Це тимчасова відповідь AI на запит: "${query}"`;
-    return { response, confidence: 0.8, action: 'search', actionData: { type: 'search', format: 'text' } };
+  private async buildDefaultAIQueryResult(query: string, interaction?: ChatInputCommandInteraction, contextText?: string): Promise<AIQueryResult> {
+    try {
+      // Спробуємо використати AI-сервіс, якщо він є
+      const aiService = (interaction?.client as any)?.serviceContainer?.get?.('ai');
+      if (aiService && typeof aiService.processNaturalLanguageQuery === 'function') {
+        const userId = interaction?.user?.id || 'unknown';
+        const aiResponse = await aiService.processNaturalLanguageQuery(userId, query, {
+          source: 'discord_command',
+          timestamp: Date.now(),
+        });
+
+        return {
+          response: aiResponse.content,
+          confidence: 0.9,
+          action: 'ai_response',
+          actionData: { type: 'ai_response', format: 'text' },
+        };
+      }
+
+      // Якщо AI-сервіс недоступний — використовуємо Ollama напряму
+      logger.info('Using Ollama fallback for AI query', { query: query.substring(0, 100) });
+
+      const ollamaResponse = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama3.2', // ← зміни на свою модель, якщо потрібно
+          prompt: `📚 Ти — офіційний AI-асистент "GodzillaBot" для військових, держслужбовців та адміністративних працівників України. Ти маєш високий рівень професійної ерудиції, відмінно володієш українською мовою та дотримуєшся офіційно-ділового стилю.
+
+🎯 ГОЛОВНІ ПРИНЦИПИ РОБОТИ:
+
+1. 🔄 **ПІДТРИМКА ДІАЛОГУ**: Запам'ятовуй контекст, посилайся на попередні відповіді.
+2. 💾 **КЕШУВАННЯ**: Посилайся на відомі дані з попередніх запитів.
+3. 📁 **RAG З GOOGLE ДИСКУ**: Перевіряй наявність документів, посилайся на них з ID і назвою.
+4. 🇺🇦 **МОВА**: Лише чиста українська, офіційно-діловий стиль.
+5. 🧠 **ПРОФЕСІЙНІСТЬ**: Точність, структура, конкретні посилання.
+
+📌 **ФОРМАТ ВІДПОВІДІ:**
+- Відповідь (коротка, чітка)
+- Джерело (якщо є)
+- Практичні рекомендації
+
+🔥 ТИ — ЕКСПЕРТ, НЕ ПОМИЛЯЄШСЯ У ТЕРМІНАХ, ДОТРИМУЄШСЯ УКРАЇНСЬКОЇ МОВИ.${contextText || ''}
+
+🔥 ЗАПИТАННЯ: ${query}
+
+💬 ВІДПОВІДЬ УКРАЇНСЬКОЮ:`,  
+          stream: false,
+        }),
+      });
+
+      if (!ollamaResponse.ok) {
+        throw new Error(`Ollama error: ${await ollamaResponse.text()}`);
+      }
+
+      const data = await ollamaResponse.json() as { response?: string; };
+
+      return {
+        response: data.response || 'Отримано відповідь, але вона порожня.',
+        confidence: 0.85,
+        action: 'ollama_fallback',
+        actionData: { type: 'ai_response', format: 'text' },
+      };
+    } catch (error) {
+      logger.warn('Failed to get response from Ollama or AI service', {
+        error: error instanceof Error ? error.message : String(error),
+        query: query.substring(0, 50),
+      });
+
+      // Остаточний fallback
+      return {
+        response: `❌ Не вдалося отримати відповідь від AI. Ваш запит: "${query}"`,
+        confidence: 0.5,
+        action: 'error_fallback',
+        actionData: { type: 'text', format: 'text' },
+      };
+    }
   }
 
   private async tryOcrImage(query: string, q: string): Promise<AIQueryResult | null> {
