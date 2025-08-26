@@ -37,6 +37,8 @@ import { LangCommand } from '@/commands/LangCommand';
 import { AnalyzeCommand } from '@/commands/AnalyzeCommand';
 import { FavoritesCommand } from '@/commands/FavoritesCommand';
 import { SavedSearchCommand } from '@/commands/SavedSearchCommand';
+import { AdvancedAnalysisCommand } from '@/commands/AdvancedAnalysisCommand';
+import { SmartSearchCommand } from '@/commands/SmartSearchCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -289,6 +291,11 @@ export class CommandManager {
         | SheetsContextService
         | undefined;
 
+      // Отримуємо розширені сервіси
+      const documentAnalyzer = (this.bot?.getService?.('documentAnalyzer') ?? undefined) as any;
+      const workflowOrchestrator = (this.bot?.getService?.('workflowOrchestrator') ?? undefined) as any;
+      const smartSearch = (this.bot?.getService?.('smartSearch') ?? undefined) as any;
+
       // Створюємо екземпляри всіх команд
       const commandInstances = [
         new SearchCommand(this.config, googleService),
@@ -308,6 +315,9 @@ export class CommandManager {
         new SavedSearchCommand(this.config),
         new LangCommand(this.config),
         new AnalyzeCommand(this.config),
+        // Нові розширені команди
+        new AdvancedAnalysisCommand(this.config, documentAnalyzer, workflowOrchestrator, googleService),
+        new SmartSearchCommand(this.config, smartSearch),
       ];
 
       // Реєструємо команди
@@ -378,6 +388,12 @@ export class CommandManager {
 
     if (name.includes('пошук') || name.includes('search')) {
       return 'Пошук';
+    }
+    if (name.includes('smart-search')) {
+      return 'Розумний Пошук';
+    }
+    if (name.includes('advanced-analysis')) {
+      return 'Розширений Аналіз';
     }
     if (name.includes('продуктивність') || name.includes('performance')) {
       return 'Моніторинг';
