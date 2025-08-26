@@ -17,7 +17,7 @@ import {
 import { BaseCommand } from './BaseCommand';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import type { SmartSearchEngine } from '@/services/SmartSearchEngine';
-import { t } from '@/i18n';
+
 import logger from '@/utils/logger';
 
 export class SmartSearchCommand extends BaseCommand {
