@@ -24,14 +24,6 @@ interface DocumentInsight {
   confidence: number;
 }
 
-interface DocumentContext {
-  fileId: string;
-  name: string;
-  content: string;
-  metadata: any;
-  lastAnalyzed?: Date;
-  insights?: DocumentInsight;
-}
 
 export class EnhancedDocumentService {
   constructor(
@@ -136,10 +128,11 @@ ${content.substring(0, 4000)}
     
     try {
       // Отримуємо файл через GoogleService
-      const fileInfo = await this.googleService.getFileInfo(fileId);
+      const fileInfo = await this.googleService.getDriveFileMetadata(fileId);
       
       if (fileInfo.mimeType?.includes('document')) {
-        return await this.googleService.exportDocument(fileId, 'text/plain');
+        const result = await this.googleService.extractTextForChat(fileId);
+        return result.text;
       } else if (fileInfo.mimeType?.includes('pdf')) {
         return await this.extractPdfText(fileId);
       } else if (fileInfo.mimeType?.includes('spreadsheet')) {
@@ -204,7 +197,7 @@ ${content.substring(0, 4000)}
   /**
    * Витяг тексту з PDF (заглушка для майбутньої реалізації)
    */
-  private async extractPdfText(fileId: string): Promise<string> {
+  private async extractPdfText(_fileId: string): Promise<string> {
     // TODO: Інтеграція з PDF парсером
     return 'PDF обробка буде реалізована';
   }
@@ -212,7 +205,7 @@ ${content.substring(0, 4000)}
   /**
    * Витяг тексту зі spreadsheet
    */
-  private async extractSpreadsheetText(fileId: string): Promise<string> {
+  private async extractSpreadsheetText(_fileId: string): Promise<string> {
     // TODO: Інтеграція з Google Sheets API
     return 'Spreadsheet обробка буде реалізована';
   }
@@ -220,7 +213,7 @@ ${content.substring(0, 4000)}
   /**
    * Пошук схожих документів на основі аналізу
    */
-  async findRelatedDocuments(insights: DocumentInsight): Promise<string[]> {
+  async findRelatedDocuments(_insights: DocumentInsight): Promise<string[]> {
     // TODO: Реалізація пошуку схожих документів
     // Використання векторного пошуку або keywords matching
     return [];
