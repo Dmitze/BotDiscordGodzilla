@@ -25,6 +25,12 @@ import { EmbeddingsService } from '@/services/EmbeddingsService';
 import { AdvancedDocumentAnalyzer } from '@/services/AdvancedDocumentAnalyzer';
 import { IntelligentWorkflowOrchestrator } from '@/services/IntelligentWorkflowOrchestrator';
 import { SmartSearchEngine } from '@/services/SmartSearchEngine';
+import { WorkflowAutomationEngine } from '@/services/WorkflowAutomationEngine';
+import { EnhancedDocumentService } from '@/services/EnhancedDocumentService';
+import { ContextMemoryService } from '@/services/ContextMemoryService';
+import { ResponseCacheService } from '@/services/ResponseCacheService';
+import { KnowledgeBaseService } from '@/services/KnowledgeBaseService';
+import { EnhancedRagService } from '@/services/EnhancedRagService';
 
 interface Bot {
   config: BotConfig;
@@ -298,6 +304,161 @@ class ServiceManager {
       logger.error('❌ Не вдалося створити SmartSearchEngine', {
         type: 'service_manager',
         event: 'smart_search_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Enhanced Document Service (depends on AI + Google services)
+    try {
+      const aiSvc = this.services.get('ai');
+      const googleSvc = this.services.get('google');
+      if (aiSvc && googleSvc) {
+        const enhancedDocumentService = new EnhancedDocumentService(googleSvc as any, aiSvc as any);
+        this.services.set('enhancedDocumentService', enhancedDocumentService as unknown as NonNullable<ServiceRegistry['enhancedDocumentService']>);
+        logger.info('📋 EnhancedDocumentService зареєстровано', {
+          type: 'service_manager',
+          event: 'enhanced_document_service_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('EnhancedDocumentService не зареєстровано: AI або Google service недоступний');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити EnhancedDocumentService', {
+        type: 'service_manager',
+        event: 'enhanced_document_service_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Workflow Automation Engine (depends on AI + Google + EnhancedDocument services)
+    try {
+      const aiSvc = this.services.get('ai');
+      const googleSvc = this.services.get('google');
+      const enhancedDocumentService = this.services.get('enhancedDocumentService');
+      if (aiSvc && googleSvc && enhancedDocumentService) {
+        const workflowEngine = new WorkflowAutomationEngine(aiSvc as any, googleSvc as any, enhancedDocumentService as any);
+        this.services.set('workflowEngine', workflowEngine as unknown as NonNullable<ServiceRegistry['workflowEngine']>);
+        logger.info('⚙️ WorkflowAutomationEngine зареєстровано', {
+          type: 'service_manager',
+          event: 'workflow_engine_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('WorkflowAutomationEngine не зареєстровано: AI, Google або EnhancedDocument service недоступний');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити WorkflowAutomationEngine', {
+        type: 'service_manager',
+        event: 'workflow_engine_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Context Memory Service (standalone service)
+    try {
+      const contextMemory = new ContextMemoryService();
+      this.services.set('contextMemory', contextMemory as unknown as NonNullable<ServiceRegistry['contextMemory']>);
+      logger.info('🧠 ContextMemoryService зареєстровано', {
+        type: 'service_manager',
+        event: 'context_memory_registered',
+        component: 'ServiceManager',
+      });
+    } catch (er) {
+      logger.error('❌ Не вдалося створити ContextMemoryService', {
+        type: 'service_manager',
+        event: 'context_memory_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Response Cache Service (standalone service)
+    try {
+      const responseCache = new ResponseCacheService(30, 1000); // 30 min TTL, 1000 max entries
+      this.services.set('responseCache', responseCache as unknown as NonNullable<ServiceRegistry['responseCache']>);
+      logger.info('💾 ResponseCacheService зареєстровано', {
+        type: 'service_manager',
+        event: 'response_cache_registered',
+        component: 'ServiceManager',
+      });
+    } catch (er) {
+      logger.error('❌ Не вдалося створити ResponseCacheService', {
+        type: 'service_manager',
+        event: 'response_cache_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Knowledge Base Service (depends on Google + AI + RAG + ResponseCache services)
+    try {
+      const googleSvc = this.services.get('google');
+      const aiSvc = this.services.get('ai');
+      const ragSvc = this.services.get('rag');
+      const responseCacheSvc = this.services.get('responseCache');
+      if (googleSvc && aiSvc && ragSvc && responseCacheSvc) {
+        const knowledgeBase = new KnowledgeBaseService(
+          googleSvc as any,
+          aiSvc as any,
+          ragSvc as any,
+          responseCacheSvc as any
+        );
+        this.services.set('knowledgeBase', knowledgeBase as unknown as NonNullable<ServiceRegistry['knowledgeBase']>);
+        logger.info('📚 KnowledgeBaseService зареєстровано', {
+          type: 'service_manager',
+          event: 'knowledge_base_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('KnowledgeBaseService не зареєстровано: Google, AI, RAG або ResponseCache service недоступний');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити KnowledgeBaseService', {
+        type: 'service_manager',
+        event: 'knowledge_base_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Enhanced RAG Service (replaces standard RAG with auto-indexing)
+    try {
+      const searchIndexSvc = this.services.get('searchIndex');
+      const aiSvc = this.services.get('ai');
+      const googleSvc = this.services.get('google');
+      const driveIndexerSvc = this.services.get('driveIndexer');
+      const responseCacheSvc = this.services.get('responseCache');
+      const schedulerSvc = this.services.get('scheduler');
+      const embSvc = this.services.get('embeddings');
+      
+      if (searchIndexSvc && aiSvc && googleSvc && driveIndexerSvc && responseCacheSvc && schedulerSvc) {
+        const enhancedRag = new EnhancedRagService(
+          searchIndexSvc as any,
+          aiSvc as any,
+          googleSvc as any,
+          driveIndexerSvc as any,
+          responseCacheSvc as any,
+          schedulerSvc as any,
+          embSvc as unknown as { embed: (t: string) => Promise<number[]> } | undefined,
+          { enabled: true, interval: '0 */2 * * *' } // Every 2 hours auto-indexing
+        );
+        this.services.set('enhancedRag', enhancedRag as unknown as NonNullable<ServiceRegistry['enhancedRag']>);
+        logger.info('🚀 EnhancedRagService зареєстровано', {
+          type: 'service_manager',
+          event: 'enhanced_rag_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('EnhancedRagService не зареєстровано: недостатньо залежностей');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити EnhancedRagService', {
+        type: 'service_manager',
+        event: 'enhanced_rag_register_failed',
         component: 'ServiceManager',
         errorMessage: er instanceof Error ? er.message : String(er),
       });
