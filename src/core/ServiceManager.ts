@@ -230,6 +230,79 @@ class ServiceManager {
       });
     }
 
+    // Advanced Document Analyzer (depends on AI + Google services)
+    try {
+      const aiSvc = this.services.get('ai');
+      const googleSvc = this.services.get('google');
+      if (aiSvc && googleSvc) {
+        const documentAnalyzer = new AdvancedDocumentAnalyzer(aiSvc as any, googleSvc as any);
+        this.services.set('documentAnalyzer', documentAnalyzer as unknown as NonNullable<ServiceRegistry['documentAnalyzer']>);
+        logger.info('🧠 AdvancedDocumentAnalyzer зареєстровано', {
+          type: 'service_manager',
+          event: 'document_analyzer_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('AdvancedDocumentAnalyzer не зареєстровано: AI або Google service недоступний');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити AdvancedDocumentAnalyzer', {
+        type: 'service_manager',
+        event: 'document_analyzer_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Intelligent Workflow Orchestrator (depends on AI + DocumentAnalyzer)
+    try {
+      const aiSvc = this.services.get('ai');
+      const documentAnalyzer = this.services.get('documentAnalyzer');
+      if (aiSvc && documentAnalyzer) {
+        const workflowOrchestrator = new IntelligentWorkflowOrchestrator(aiSvc as any, documentAnalyzer as any);
+        this.services.set('workflowOrchestrator', workflowOrchestrator as unknown as NonNullable<ServiceRegistry['workflowOrchestrator']>);
+        logger.info('🔄 IntelligentWorkflowOrchestrator зареєстровано', {
+          type: 'service_manager',
+          event: 'workflow_orchestrator_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('IntelligentWorkflowOrchestrator не зареєстровано: AI або DocumentAnalyzer service недоступний');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити IntelligentWorkflowOrchestrator', {
+        type: 'service_manager',
+        event: 'workflow_orchestrator_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Smart Search Engine (depends on AI + Google + RAG services)
+    try {
+      const aiSvc = this.services.get('ai');
+      const googleSvc = this.services.get('google');
+      const ragSvc = this.services.get('rag');
+      if (aiSvc && googleSvc && ragSvc) {
+        const smartSearch = new SmartSearchEngine(aiSvc as any, googleSvc as any, ragSvc as any);
+        this.services.set('smartSearch', smartSearch as unknown as NonNullable<ServiceRegistry['smartSearch']>);
+        logger.info('🔍 SmartSearchEngine зареєстровано', {
+          type: 'service_manager',
+          event: 'smart_search_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('SmartSearchEngine не зареєстровано: AI, Google або RAG service недоступний');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити SmartSearchEngine', {
+        type: 'service_manager',
+        event: 'smart_search_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
     // Зв'язуємо MetricsService з GoogleService (якщо обидва доступні)
     try {
       const google = this.services.get('google');
