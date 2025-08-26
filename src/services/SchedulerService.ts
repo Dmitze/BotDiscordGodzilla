@@ -351,6 +351,68 @@ class SchedulerService {
         }
       );
 
+      // Calculate next run with node-cron API compatibility
+      let nextRun: Date | null = null;
+      try {
+        // Перевіряємо, які методи доступні в об'єкті job
+        const jobObject = job as any;
+        
+        if (typeof jobObject.nextDates === 'function') {
+          try {
+            const dates = jobObject.nextDates(1);
+            const firstDate = Array.isArray(dates) ? dates[0] : dates;
+            // Обробка різних типів об'єктів дати
+            if (firstDate && typeof firstDate.toJSDate === 'function') {
+              nextRun = firstDate.toJSDate();
+            } else if (firstDate && typeof firstDate.toDate === 'function') {
+              nextRun = firstDate.toDate();
+            } else if (firstDate instanceof Date) {
+              nextRun = firstDate;
+            } else {
+              nextRun = new Date(firstDate);
+            }
+          } catch (nextDatesError) {
+            logger.debug('nextDates method failed, trying nextDate', {
+              error: String(nextDatesError)
+            });
+            throw nextDatesError;
+          }
+        } else if (typeof jobObject.nextDate === 'function') {
+          // Фолбек для старих версій node-cron
+          try {
+            const dt = jobObject.nextDate();
+            if (dt instanceof Date) {
+              nextRun = dt;
+            } else if (dt && typeof dt.toJSDate === 'function') {
+              nextRun = dt.toJSDate();
+            } else if (dt && typeof dt.toDate === 'function') {
+              nextRun = dt.toDate();
+            } else {
+              nextRun = new Date(dt);
+            }
+          } catch (nextDateError) {
+            logger.debug('nextDate method failed, using fallback', {
+              error: String(nextDateError)
+            });
+            throw nextDateError;
+          }
+        } else {
+          // Якщо ні один метод не доступний - використовуємо простий розрахунок
+          nextRun = this.calculateNextRun(schedule);
+        }
+      } catch (e) {
+        logger.warn('scheduler_next_run_unavailable', { 
+          error: e instanceof Error ? e.message : String(e),
+          methodsAvailable: {
+            nextDates: typeof (job as any).nextDates,
+            nextDate: typeof (job as any).nextDate
+          },
+          schedule
+        });
+        // Фолбек до розрахунку на основі cron виразу
+        nextRun = this.calculateNextRun(schedule);
+      }
+
       this.jobs.set(name, {
         job,
         schedule,
@@ -358,7 +420,7 @@ class SchedulerService {
         options,
         createdAt: new Date(),
         lastRun: null,
-        nextRun: job.nextDate().toDate(),
+        nextRun: nextRun || new Date(),
         executions: 0,
         errors: 0,
       });
@@ -401,8 +463,68 @@ class SchedulerService {
 
       logger.debug(`✅ Завдання "${name}" виконано за ${duration}ms`);
 
-      // Оновлення наступного запуску
-      jobInfo.nextRun = jobInfo.job.nextDate().toDate();
+      // Оновлення наступного запуску з node-cron API
+      try {
+        // Перевіряємо, чи існує метод nextDates
+        const jobObject = jobInfo.job as any;
+        
+        if (typeof jobObject.nextDates === 'function') {
+          try {
+            const dates = jobObject.nextDates(1);
+            const firstDate = Array.isArray(dates) ? dates[0] : dates;
+            // Обробка різних типів об'єктів дати
+            if (firstDate && typeof firstDate.toJSDate === 'function') {
+              jobInfo.nextRun = firstDate.toJSDate();
+            } else if (firstDate && typeof firstDate.toDate === 'function') {
+              jobInfo.nextRun = firstDate.toDate();
+            } else if (firstDate instanceof Date) {
+              jobInfo.nextRun = firstDate;
+            } else {
+              jobInfo.nextRun = new Date(firstDate);
+            }
+          } catch (nextDatesError) {
+            logger.debug('nextDates method failed in executeJob, trying nextDate', {
+              error: String(nextDatesError)
+            });
+            throw nextDatesError;
+          }
+        } else if (typeof jobObject.nextDate === 'function') {
+          // Фолбек для старих версій node-cron
+          try {
+            const dt = jobObject.nextDate();
+            if (dt instanceof Date) {
+              jobInfo.nextRun = dt;
+            } else if (dt && typeof dt.toJSDate === 'function') {
+              jobInfo.nextRun = dt.toJSDate();
+            } else if (dt && typeof dt.toDate === 'function') {
+              jobInfo.nextRun = dt.toDate();
+            } else {
+              jobInfo.nextRun = new Date(dt);
+            }
+          } catch (nextDateError) {
+            logger.debug('nextDate method failed in executeJob, using fallback', {
+              error: String(nextDateError)
+            });
+            throw nextDateError;
+          }
+        } else {
+          // Якщо ні один метод не доступний, встановлюємо поточну дату + 5 хвилин
+          jobInfo.nextRun = this.calculateNextRun(jobInfo.schedule);
+        }
+      } catch (e) {
+        logger.warn('scheduler_next_run_update_failed', { 
+          job: name, 
+          error: e instanceof Error ? e.message : String(e),
+          methodsAvailable: {
+            nextDates: typeof (jobInfo.job as any).nextDates,
+            nextDate: typeof (jobInfo.job as any).nextDate
+          }
+        });
+        // Зберігаємо поточне значення nextRun як fallback або розраховуємо нове
+        if (!jobInfo.nextRun || jobInfo.nextRun <= new Date()) {
+          jobInfo.nextRun = this.calculateNextRun(jobInfo.schedule);
+        }
+      }
     } catch (error) {
       jobInfo.errors++;
       this.stats.jobsFailed++;
@@ -477,6 +599,49 @@ class SchedulerService {
       logger.error(
         `Помилка очищення кешу: ${error instanceof Error ? error.message : String(error)}`
       );
+    }
+  }
+
+  /**
+   * Розрахунок наступного часу запуску на основі cron виразу
+   */
+  private calculateNextRun(schedule: string): Date {
+    try {
+      // Проста логіка для розрахунку наступного часу запуску
+      const parts = schedule.trim().split(/\s+/);
+      if (parts.length !== 5 && parts.length !== 6) {
+        // Некоректний cron вираз, повертаємо поточну дату + 1 хвилина
+        return new Date(Date.now() + 60000);
+      }
+
+      const now = new Date();
+      const nextRun = new Date(now);
+
+      // Обробка простих випадків
+      if (schedule.startsWith('*/')) {
+        // Кожні N хвилин/годин/днів
+        const intervalStr = schedule.substring(2).split(' ')[0];
+        if (intervalStr) {
+          const interval = parseInt(intervalStr, 10);
+          if (!isNaN(interval)) {
+            if (schedule.includes('* * * *')) {
+              // Кожні N хвилин
+              nextRun.setMinutes(now.getMinutes() + interval);
+            } else if (schedule.includes('* * *')) {
+              // Кожні N годин
+              nextRun.setHours(now.getHours() + interval);
+            }
+            return nextRun;
+          }
+        }
+      }
+
+      // Для інших випадків - повертаємо наступну хвилину
+      nextRun.setMinutes(now.getMinutes() + 1);
+      return nextRun;
+    } catch (error) {
+      // При помилці повертаємо поточну дату + 5 хвилин
+      return new Date(Date.now() + 5 * 60 * 1000);
     }
   }
 

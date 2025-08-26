@@ -22,6 +22,9 @@ import type { BotConfig } from '@/types';
 import { WorkspaceDbService } from '@/services/WorkspaceDbService';
 import { RagService } from '@/services/RagService';
 import { EmbeddingsService } from '@/services/EmbeddingsService';
+import { AdvancedDocumentAnalyzer } from '@/services/AdvancedDocumentAnalyzer';
+import { IntelligentWorkflowOrchestrator } from '@/services/IntelligentWorkflowOrchestrator';
+import { SmartSearchEngine } from '@/services/SmartSearchEngine';
 
 interface Bot {
   config: BotConfig;

@@ -23,12 +23,17 @@ import type { SearchQuery } from '@/search/SearchIndex';
 import { replyWithPrivacy } from '@/ui/reply';
 import { signComponentId } from '@/security/componentId';
 // Deleted module shims: inline local equivalents for types/helpers
-type SearchResult = {
+interface SearchResult {
   headers?: string[];
-  rows?: unknown[];
+  rows?: unknown[][];
   filteredCount: number;
   totalCount?: number;
   cacheHit?: boolean;
+  query?: string;
+  searchTime?: number;
+  filters?: {
+    documentType?: string;
+  };
 };
 type PaginationState = {
   currentPage: number;
@@ -106,18 +111,30 @@ function cleanupExpired(ttlSec: number) {
 }
 
 // Minimal render function for SQLite hits
-async function renderSqliteEmbed(
+function renderSqliteEmbed(
   interaction: ChatInputCommandInteraction,
-  query: string,
-  hits: any[],
-  total: number,
-  limit: number
+  query: string | undefined,
+  _hits: unknown[] | undefined, // Prefix with _ to indicate unused parameter
+  total: number | undefined,
+  limit: number | undefined
 ) {
-  const embed = new EmbedBuilder()
-    .setTitle(tUser('search.sqlite.title', interaction, { total }))
-    .setDescription(tUser('search.sqlite.desc', interaction, { query }))
-    .setFooter({ text: tUser('search.pagination.footer', interaction, { page: 1, pages: Math.max(1, Math.ceil(total / Math.max(1, limit))) }) });
-  await interaction.editReply({ embeds: [embed] });
+  const safeTotal = total ?? 0;
+  const safeLimit = Math.max(1, limit ?? 10);
+  const totalPages = Math.max(1, Math.ceil(safeTotal / safeLimit));
+  
+  return {
+    embeds: [
+      new EmbedBuilder()
+        .setTitle(tUser('search.sqlite.title', interaction, { total: safeTotal }))
+        .setDescription(tUser('search.sqlite.desc', interaction, { query: query ?? '' }))
+        .setFooter({ 
+          text: tUser('search.pagination.footer', interaction, { 
+            page: 1, 
+            pages: totalPages 
+          }) 
+        })
+    ]
+  };
 }
 
 // Cached search wrapper
@@ -170,13 +187,22 @@ export class SearchCommand extends BaseCommand {
   private paginationStates = new Map<string, PaginationState>();
   private searchCache = new Map<string, { result: SearchResult; timestamp: number }>();
   private readonly googleService: GoogleService | undefined;
-  private searchStats = {
+  private searchStats: {
+    totalSearches: number;
+    cacheHits: number;
+    cacheMisses: number;
+    averageSearchTime: number;
+    totalSearchTime: number;
+    errors: number;
+    successfulSearches: number;
+  } = {
     totalSearches: 0,
     cacheHits: 0,
     cacheMisses: 0,
     averageSearchTime: 0,
     totalSearchTime: 0,
     errors: 0,
+    successfulSearches: 0
   };
   private performSearchWithCacheFn!: PerformSearchWithCache;
 
@@ -939,63 +965,6 @@ export class SearchCommand extends BaseCommand {
   }
 
   /**
-   * Форматування результатів з оптимізацією
-   */
-  private formatResults(rows: string[][], headers: string[]): string[] {
-    try {
-      return rows.map((row, index) => {
-        const formattedRow = row.map((cell, cellIndex) => {
-          const header = headers[cellIndex] || `Колонка ${cellIndex + 1}`;
-          const cellValue = cell || 'Н/Д';
-          return `${header}: ${cellValue}`;
-        });
-
-        return `**${index + 1}.** ${formattedRow.slice(0, 3).join(' | ')}`;
-      });
-    } catch (error) {
-      logger.error('Помилка форматування результатів', { component: 'SearchCommand', error });
-      return ['Помилка форматування результатів'];
-    }
-  }
-
-  /**
-   * Створення embed для результатів пошуку
-   */
-  private createSearchEmbed(searchResult: SearchResult, formattedResults: string[]): EmbedBuilder {
-    const embed = new EmbedBuilder()
-      .setColor('#4CAF50')
-      .setTitle('🔍 Результати пошуку')
-      .setDescription(`**Запит:** ${searchResult.query}`)
-      .addFields(
-        {
-          name: '📊 Статистика',
-          value: `Знайдено: **${searchResult.totalCount}**\nПісля фільтрації: **${searchResult.filteredCount}**`,
-          inline: true,
-        },
-        {
-          name: '📄 Тип документа',
-          value: this.getDocumentTypeName(searchResult.filters.documentType),
-          inline: true,
-        },
-        {
-          name: '⚡ Швидкість',
-          value: `${searchResult.searchTime.toFixed(2)}ms${searchResult.cacheHit ? ' (кеш)' : ''}`,
-          inline: true,
-        }
-      )
-      .setTimestamp();
-
-    // Додавання результатів
-    if (formattedResults.length > 0) {
-      const resultsText = formattedResults.slice(0, 10).join('\n');
-      embed.addFields({
-        name: `📋 Результати (${formattedResults.length})`,
-        value: resultsText.length > 1024 ? resultsText.substring(0, 1021) + '...' : resultsText,
-      });
-    } else {
-      embed.addFields({ name: '📋 Результати', value: 'Нічого не знайдено' });
-    }
-
     return embed;
   }
 
@@ -1144,17 +1113,34 @@ export class SearchCommand extends BaseCommand {
 
   // Build single page embed considering page/pageSize and flags
   private buildSearchPage(result: SearchResult, page: number, pageSize: number, _changesOnly: boolean): EmbedBuilder {
+    const { rows = [], filteredCount = 0, totalCount, cacheHit } = result;
     const start = (page - 1) * pageSize;
-    const end = Math.min(result.filteredCount, start + pageSize);
-    const rows = result.rows.slice(start, end);
-    // Optionally filter rows when changesOnly is on; placeholder: keep as-is
-    const formatted = this.formatResults(rows, result.headers);
-    const embed = this.createSearchEmbed({ ...result, rows, filteredCount: result.filteredCount }, formatted);
-    // Append page x/y to footer
-    const totalPages = Math.max(1, Math.ceil(result.filteredCount / pageSize));
-    // Set page indicator in footer
-    const pageText = `${page}/${totalPages}`;
-    embed.setFooter({ text: pageText });
+    const end = start + pageSize;
+    const paginatedRows = (rows as unknown[][]).slice(start, end);
+
+    const embed = new EmbedBuilder()
+      .setTitle('🔍 Результати пошуку')
+      .setColor('#4CAF50')
+      .setFooter({
+        text: `Сторінка ${page} з ${Math.ceil(filteredCount / pageSize)} | Знайдено: ${filteredCount} з ${totalCount ?? '?'}`,
+      });
+
+    if (cacheHit) {
+      embed.setDescription('⚡ Результати з кешу');
+    }
+
+    if (paginatedRows.length > 0) {
+      const formattedRows = paginatedRows.map((row, index) => {
+        return `${start + index + 1}. ${row.join(' | ')}`;
+      });
+      embed.addFields({
+        name: 'Результати',
+        value: formattedRows.join('\n') || 'Немає даних',
+      });
+    } else {
+      embed.setDescription('Нічого не знайдено');
+    }
+
     return embed;
   }
 
@@ -1172,34 +1158,20 @@ export class SearchCommand extends BaseCommand {
 
   // Приватний cacheKey базового класу не перевизначаємо
 
-  /**
-   * Отримання назви типу документа
-   */
-  private getDocumentTypeName(type: string): string {
-    const typeNames: Record<string, string> = {
-      all: 'Всі документи',
-      orders: 'Накази',
-      reports: 'Доповіді',
-      statistics: 'Звіти',
-      plans: 'Плани',
-      instructions: 'Інструкції',
-      protocols: 'Протоколи',
-      cards: 'Картки',
-      journals: 'Журнали',
-    };
-
-    return typeNames[type] || type;
-  }
 
   /**
    * Оновлення статистики пошуку
    */
-  private updateSearchStats(success: boolean, duration: number, _cacheHit: boolean): void {
+  private updateSearchStats(success: boolean, duration: number, cacheHit: boolean = false): void {
     this.searchStats.totalSearches++;
     this.searchStats.totalSearchTime += duration;
-    this.searchStats.averageSearchTime =
-      this.searchStats.totalSearchTime / this.searchStats.totalSearches;
-
+    this.searchStats.averageSearchTime = this.searchStats.totalSearchTime / this.searchStats.totalSearches;
+    this.searchStats.successfulSearches += success ? 1 : 0;
+    if (cacheHit) {
+      this.searchStats.cacheHits++;
+    } else {
+      this.searchStats.cacheMisses++;
+    }
     if (!success) {
       this.searchStats.errors++;
     }
@@ -1246,20 +1218,22 @@ export class SearchCommand extends BaseCommand {
    */
   public getSearchStats(): {
     totalSearches: number;
+    successfulSearches: number;
+    totalSearchTime: number;
+    averageSearchTime: number;
     cacheHits: number;
     cacheMisses: number;
-    averageSearchTime: number;
-    totalSearchTime: number;
     errors: number;
     cacheSize: number;
     paginationStates: number;
   } {
     return {
       totalSearches: this.searchStats.totalSearches,
+      successfulSearches: this.searchStats.successfulSearches,
+      totalSearchTime: this.searchStats.totalSearchTime,
+      averageSearchTime: this.searchStats.averageSearchTime,
       cacheHits: this.searchStats.cacheHits,
       cacheMisses: this.searchStats.cacheMisses,
-      averageSearchTime: this.searchStats.averageSearchTime,
-      totalSearchTime: this.searchStats.totalSearchTime,
       errors: this.searchStats.errors,
       cacheSize: this.searchCache.size,
       paginationStates: this.paginationStates.size,

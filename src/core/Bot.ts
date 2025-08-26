@@ -438,7 +438,7 @@ export class Bot extends BaseServiceClass {
       const isConnected = process.env['NODE_ENV'] === 'test' ? true : this.client.isReady();
       const servicesHealth = await this.serviceContainer.getHealthStatus();
 
-      const allServicesHealthy = Object.values(servicesHealth).every(health => health.healthy);
+      const allServicesHealthy = Object.values(servicesHealth).every(health => health && health.healthy);
       const healthy = isConnected && allServicesHealthy;
 
       return {
