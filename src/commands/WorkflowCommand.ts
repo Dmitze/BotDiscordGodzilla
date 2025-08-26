@@ -16,13 +16,13 @@ import {
 import { BaseCommand } from './BaseCommand';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import type { WorkflowAutomationEngine } from '@/services/WorkflowAutomationEngine';
-import { t } from '@/i18n';
+
 import logger from '@/utils/logger';
 
 export class WorkflowCommand extends BaseCommand {
-  private workflowEngine?: WorkflowAutomationEngine;
+  private workflowEngine: WorkflowAutomationEngine;
 
-  constructor(config: BotConfig, workflowEngine?: WorkflowAutomationEngine) {
+  constructor(config: BotConfig, workflowEngine: WorkflowAutomationEngine) {
     super('workflow', 'Управління автоматизованими робочими процесами', config, {
       i18n: { nameKey: 'commands.workflow.name', descriptionKey: 'commands.workflow.description' }
     }, (builder: SlashCommandBuilder): SlashCommandBuilder => {
@@ -177,11 +177,11 @@ export class WorkflowCommand extends BaseCommand {
     }
 
     if (fileId) {
-      parameters.fileId = fileId;
+      parameters['fileId'] = fileId;
     }
 
-    parameters.triggeredBy = interaction.user.id;
-    parameters.channelId = interaction.channelId;
+    parameters['triggeredBy'] = interaction.user.id;
+    parameters['channelId'] = interaction.channelId;
 
     try {
       const instanceId = await this.workflowEngine!.startWorkflow(
