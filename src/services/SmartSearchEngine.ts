@@ -232,27 +232,27 @@ Original query: "${query.text}"
 
     try {
       // Використання RAG для семантичного пошуку
-      const ragResults = await this.ragService.searchRelevantDocuments(query.text, {
+      const ragResults = await (this.ragService as any).searchDocuments?.(query.text, {
         limit: query.options?.limit || 20,
         scoreThreshold: 0.7
-      });
+      }) || [];
 
-      return ragResults.map(result => ({
-        fileId: result.fileId,
-        name: result.name,
+      return ragResults.map((result: any) => ({
+        fileId: result.fileId || result.id,
+        name: result.name || result.title || 'Unnamed',
         mimeType: result.mimeType || 'application/octet-stream',
-        relevanceScore: result.score,
+        relevanceScore: result.score || 0.5,
         highlights: [{
           field: 'content' as const,
-          text: result.snippet,
+          text: result.snippet || result.content || '',
           startOffset: 0,
-          endOffset: result.snippet.length,
-          score: result.score
+          endOffset: (result.snippet || result.content || '').length,
+          score: result.score || 0.5
         }],
-        summary: result.snippet,
+        summary: result.snippet || result.summary,
         metadata: result.metadata || {},
         url: result.url,
-        lastModified: result.lastModified ? new Date(result.lastModified) : undefined
+        lastModified: result.lastModified ? new Date(result.lastModified) : new Date()
       }));
 
     } catch (error) {
@@ -273,17 +273,19 @@ Original query: "${query.text}"
       // Побудова Google Drive запиту
       const driveQuery = this.buildDriveQuery(query);
       
-      const driveResults = await this.googleService.listFiles({
+      const driveResults = await (this.googleService as any).searchFiles?.({
         q: driveQuery,
         pageSize: query.options?.limit || 50,
         orderBy: this.mapSortOption(query.options?.sortBy, query.options?.sortOrder)
-      });
+      }) || { files: [] };
 
       // Конвертація результатів Google Drive
       const searchResults: SearchResult[] = [];
       
       for (const file of driveResults.files || []) {
         const relevanceScore = this.calculateRelevanceScore(query.text, file);
+        
+        const lastModified = file.modifiedTime ? new Date(file.modifiedTime) : new Date();
         
         searchResults.push({
           fileId: file.id || '',
@@ -300,7 +302,7 @@ Original query: "${query.text}"
             permissions: file.permissions
           },
           url: file.webViewLink,
-          lastModified: file.modifiedTime ? new Date(file.modifiedTime) : undefined
+          lastModified
         });
       }
 
