@@ -4,7 +4,7 @@
  */
 
 import type { AIService } from './AIService';
-import type { GoogleService } from './GoogleService';
+
 import { AdvancedDocumentAnalyzer } from './AdvancedDocumentAnalyzer';
 import logger from '@/utils/logger';
 
@@ -61,9 +61,8 @@ export class IntelligentWorkflowOrchestrator {
 
   constructor(
     private aiService: AIService,
-    private googleService: GoogleService
+    private documentAnalyzer: AdvancedDocumentAnalyzer
   ) {
-    this.documentAnalyzer = new AdvancedDocumentAnalyzer(aiService, googleService);
     this.initializeDefaultRules();
   }
 
@@ -79,7 +78,7 @@ export class IntelligentWorkflowOrchestrator {
       
       context.documentType = analysis.documentType;
       context.urgency = analysis.urgencyLevel;
-      context.metadata.analysis = analysis;
+      context.metadata['analysis'] = analysis;
 
       // Знаходження відповідних правил
       const applicableRules = await this.findApplicableRules(context);
@@ -153,6 +152,8 @@ export class IntelligentWorkflowOrchestrator {
     try {
       for (let i = execution.currentStep; i < execution.steps.length; i++) {
         const step = execution.steps[i];
+        if (!step) continue;
+        
         execution.currentStep = i;
 
         try {
@@ -230,13 +231,13 @@ export class IntelligentWorkflowOrchestrator {
    * 📊 Виконання аналізу
    */
   private async executeAnalyzeAction(action: WorkflowAction, context: ProcessingContext): Promise<any> {
-    const analysisType = action.config.type || 'full';
+    const analysisType = action.config['type'] || 'full';
     
     return await this.documentAnalyzer.analyzeDocument(context.fileId, {
       includeEntities: analysisType === 'full' || analysisType === 'entities',
       includeCompliance: analysisType === 'full' || analysisType === 'compliance',
       includeRiskAssessment: analysisType === 'full' || analysisType === 'risk',
-      language: action.config.language || 'uk'
+      language: action.config['language'] || 'uk'
     });
   }
 
@@ -248,7 +249,7 @@ export class IntelligentWorkflowOrchestrator {
     logger.info('Відправлення сповіщення', {
       component: 'IntelligentWorkflowOrchestrator',
       channelId: context.channelId,
-      message: action.config.message
+      message: action.config['message']
     });
 
     return { notified: true, timestamp: new Date() };
@@ -258,8 +259,8 @@ export class IntelligentWorkflowOrchestrator {
    * 🔄 Виконання маршрутизації
    */
   private async executeRouteAction(action: WorkflowAction, context: ProcessingContext): Promise<any> {
-    const targetChannel = action.config.targetChannel;
-    const targetUser = action.config.targetUser;
+    const targetChannel = action.config['targetChannel'];
+    const targetUser = action.config['targetUser'];
     
     logger.info('Маршрутизація документа', {
       component: 'IntelligentWorkflowOrchestrator',
@@ -274,22 +275,22 @@ export class IntelligentWorkflowOrchestrator {
   /**
    * ✅ Виконання затвердження
    */
-  private async executeApproveAction(action: WorkflowAction, context: ProcessingContext): Promise<any> {
+  private async executeApproveAction(action: WorkflowAction, _context: ProcessingContext): Promise<any> {
     // Логіка автоматичного або ручного затвердження
-    return { approved: false, pending: true, requiredRole: action.config.requiredRole };
+    return { approved: false, pending: true, requiredRole: action.config['requiredRole'] };
   }
 
   /**
    * ⬆️ Виконання ескалації
    */
   private async executeEscalateAction(action: WorkflowAction, context: ProcessingContext): Promise<any> {
-    const escalationLevel = action.config.level || 'manager';
+    const escalationLevel = action.config['level'] || 'manager';
     
     logger.warn('Ескалація документа', {
       component: 'IntelligentWorkflowOrchestrator',
       fileId: context.fileId,
       level: escalationLevel,
-      reason: action.config.reason
+      reason: action.config['reason']
     });
 
     return { escalated: true, level: escalationLevel };
@@ -299,8 +300,8 @@ export class IntelligentWorkflowOrchestrator {
    * 🔧 Виконання кастомної дії
    */
   private async executeCustomAction(action: WorkflowAction, context: ProcessingContext): Promise<any> {
-    if (action.config.aiPrompt) {
-      const prompt = this.replaceVariables(action.config.aiPrompt, context);
+    if (action.config['aiPrompt']) {
+      const prompt = this.replaceVariables(action.config['aiPrompt'], context);
       
       const response = await this.aiService.generateResponse(prompt, {
         temperature: 0.3,
@@ -327,7 +328,7 @@ export class IntelligentWorkflowOrchestrator {
 Контекст документа:
 - Тип: ${context.documentType}
 - Терміновість: ${context.urgency}
-- Назва файлу: ${context.metadata.name || 'Невідома'}
+- Назва файлу: ${context.metadata['name'] || 'Невідома'}
 
 Поверни лише "true" або "false":
 `;
