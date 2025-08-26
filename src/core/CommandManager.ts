@@ -39,6 +39,7 @@ import { FavoritesCommand } from '@/commands/FavoritesCommand';
 import { SavedSearchCommand } from '@/commands/SavedSearchCommand';
 import { AdvancedAnalysisCommand } from '@/commands/AdvancedAnalysisCommand';
 import { SmartSearchCommand } from '@/commands/SmartSearchCommand';
+import { WorkflowCommand } from '@/commands/WorkflowCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -295,6 +296,7 @@ export class CommandManager {
       const documentAnalyzer = (this.bot?.getService?.('documentAnalyzer') ?? undefined) as any;
       const workflowOrchestrator = (this.bot?.getService?.('workflowOrchestrator') ?? undefined) as any;
       const smartSearch = (this.bot?.getService?.('smartSearch') ?? undefined) as any;
+      const workflowEngine = (this.bot?.getService?.('workflowEngine') ?? undefined) as any;
 
       // Створюємо екземпляри всіх команд
       const commandInstances = [
@@ -318,6 +320,7 @@ export class CommandManager {
         // Нові розширені команди
         new AdvancedAnalysisCommand(this.config, documentAnalyzer, workflowOrchestrator, googleService),
         new SmartSearchCommand(this.config, smartSearch),
+        ...(workflowEngine ? [new WorkflowCommand(this.config, workflowEngine)] : []),
       ];
 
       // Реєструємо команди
