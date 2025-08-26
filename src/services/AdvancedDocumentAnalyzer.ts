@@ -5,7 +5,7 @@
 
 import type { AIService } from './AIService';
 import type { GoogleService } from './GoogleService';
-import { AIPromptTemplateService, type PromptContext } from './AIPromptTemplateService';
+
 import logger from '@/utils/logger';
 
 interface DocumentEntity {
@@ -71,7 +71,7 @@ interface DocumentPattern {
 
 export class AdvancedDocumentAnalyzer {
   private patterns = new Map<string, DocumentPattern>();
-  private entityCache = new Map<string, DocumentEntity[]>();
+  // private entityCache = new Map<string, DocumentEntity[]>();
   private insightCache = new Map<string, { insight: DocumentInsight; timestamp: number }>();
   private readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24 години
 
@@ -114,7 +114,7 @@ export class AdvancedDocumentAnalyzer {
       // Витяг контенту та метаданих
       const [content, metadata] = await Promise.all([
         this.extractDocumentContent(fileId),
-        this.googleService.getFileInfo(fileId)
+        this.googleService.getDriveFileMetadata(fileId)
       ]);
 
       // Паралельний аналіз різних аспектів
@@ -342,12 +342,8 @@ ${content.substring(0, 3000)}
   /**
    * 🔗 Пошук зв'язків між документами
    */
-  private async findRelationships(content: string, language: 'uk' | 'en'): Promise<DocumentRelationship[]> {
+  private async findRelationships(_content: string, _language: 'uk' | 'en'): Promise<DocumentRelationship[]> {
     // Спрощена імплементація для прикладу
-    const relationshipPrompt = language === 'uk' ? 
-      `Знайди посилання на інші документи у тексті: ${content.substring(0, 2000)}` :
-      `Find references to other documents in text: ${content.substring(0, 2000)}`;
-
     // TODO: Повна реалізація пошуку зв'язків
     return [];
   }
@@ -404,7 +400,7 @@ ${content.substring(0, 3000)}
   /**
    * 😊 Аналіз тону та настрою документа
    */
-  private async analyzeSentiment(content: string, language: 'uk' | 'en'): Promise<any> {
+  private async analyzeSentiment(_content: string, _language: 'uk' | 'en'): Promise<any> {
     // Спрощена імплементація
     return {
       overall: 'neutral' as const,
@@ -532,7 +528,6 @@ ${content.substring(0, 2000)}
     this.patterns.set('military_order', {
       name: 'Військовий наказ',
       description: 'Розпізнавання військових наказів',
-      regex: /наказ.*№.*від/i,
       confidence: 0.8,
       category: 'structure'
     });
@@ -540,7 +535,6 @@ ${content.substring(0, 2000)}
     this.patterns.set('administrative_doc', {
       name: 'Адміністративний документ',
       description: 'Розпізнавання адмін документів',
-      regex: /(постанова|розпорядження|лист).*№/i,
       confidence: 0.7,
       category: 'structure'
     });
