@@ -28,3 +28,4 @@ export * from './DocumentAnalyticsService';
 export * from './DocumentMentionHandler';
 export * from './AutomatedDocumentProcessor';
 export * from './DocumentExportImportService';
+export * from './DocumentAnalysisService';
