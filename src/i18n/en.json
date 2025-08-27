@@ -47,6 +47,9 @@
     },
     "mobile": {
       "name": "mobile"
+    },
+    "document-audit": {
+      "name": "document-audit"
     }
   },
   "ai": {
