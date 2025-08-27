@@ -1,94 +1,129 @@
-import { BaseCommand } from '@/core/BaseCommand';
-import type { CommandInteraction } from '@/types';
+import { BaseCommand, type CommandExecuteOptions } from '@/commands/BaseCommand';
+import type { BotConfig } from '@/types';
+import type { ChatInputCommandInteraction } from 'discord.js';
 import { DocumentAccessAuditService } from '@/services/DocumentAccessAuditService';
 import logger from '@/utils/logger';
-import i18n from '@/i18n';
+import { t } from '@/i18n';
+import { replyWithPrivacy } from '@/ui/reply';
 
 export class DocumentAuditCommand extends BaseCommand {
   private auditService: DocumentAccessAuditService | null = null;
 
-  constructor() {
-    super('document-audit', 'Audit document access and view security reports');
-    
-    // Add subcommands
-    this.addSubcommand('view', 'View recent document access logs')
-      .addStringOption(option => 
-        option.setName('user')
-          .setDescription('Filter by user ID')
-          .setRequired(false)
-      )
-      .addStringOption(option => 
-        option.setName('file')
-          .setDescription('Filter by file ID')
-          .setRequired(false)
-      )
-      .addStringOption(option => 
-        option.setName('type')
-          .setDescription('Filter by access type')
-          .setRequired(false)
-          .addChoices(
-            { name: 'View', value: 'view' },
-            { name: 'Edit', value: 'edit' },
-            { name: 'Download', value: 'download' },
-            { name: 'Share', value: 'share' },
-            { name: 'Delete', value: 'delete' }
+  constructor(config: BotConfig) {
+    super(
+      'document-audit',
+      t('document-audit.command.description'),
+      config,
+      { 
+        category: 'security', 
+        i18n: { 
+          nameKey: 'commands.document-audit.name', 
+          descriptionKey: 'document-audit.command.description' 
+        } 
+      },
+      builder => {
+        builder
+          .addSubcommand(sub =>
+            sub
+              .setName('view')
+              .setDescription(t('document-audit.sub.view.description'))
+              .addStringOption(option =>
+                option
+                  .setName('user')
+                  .setDescription(t('document-audit.opt.user.description'))
+                  .setRequired(false)
+              )
+              .addStringOption(option =>
+                option
+                  .setName('file')
+                  .setDescription(t('document-audit.opt.file.description'))
+                  .setRequired(false)
+              )
+              .addStringOption(option =>
+                option
+                  .setName('type')
+                  .setDescription(t('document-audit.opt.type.description'))
+                  .setRequired(false)
+                  .addChoices(
+                    { name: t('document-audit.choices.type.view'), value: 'view' },
+                    { name: t('document-audit.choices.type.edit'), value: 'edit' },
+                    { name: t('document-audit.choices.type.download'), value: 'download' },
+                    { name: t('document-audit.choices.type.share'), value: 'share' },
+                    { name: t('document-audit.choices.type.delete'), value: 'delete' }
+                  )
+              )
+              .addIntegerOption(option =>
+                option
+                  .setName('limit')
+                  .setDescription(t('document-audit.opt.limit.description'))
+                  .setRequired(false)
+                  .setMinValue(1)
+                  .setMaxValue(100)
+              )
           )
-      )
-      .addIntegerOption(option => 
-        option.setName('limit')
-          .setDescription('Number of logs to show (max 100)')
-          .setRequired(false)
-          .setMinValue(1)
-          .setMaxValue(100)
-      );
-
-    this.addSubcommand('stats', 'View document access statistics')
-      .addStringOption(option => 
-        option.setName('user')
-          .setDescription('Filter by user ID')
-          .setRequired(false)
-      )
-      .addStringOption(option => 
-        option.setName('file')
-          .setDescription('Filter by file ID')
-          .setRequired(false)
-      )
-      .addStringOption(option => 
-        option.setName('type')
-          .setDescription('Filter by access type')
-          .setRequired(false)
-          .addChoices(
-            { name: 'View', value: 'view' },
-            { name: 'Edit', value: 'edit' },
-            { name: 'Download', value: 'download' },
-            { name: 'Share', value: 'share' },
-            { name: 'Delete', value: 'delete' }
+          .addSubcommand(sub =>
+            sub
+              .setName('stats')
+              .setDescription(t('document-audit.sub.stats.description'))
+              .addStringOption(option =>
+                option
+                  .setName('user')
+                  .setDescription(t('document-audit.opt.user.description'))
+                  .setRequired(false)
+              )
+              .addStringOption(option =>
+                option
+                  .setName('file')
+                  .setDescription(t('document-audit.opt.file.description'))
+                  .setRequired(false)
+              )
+              .addStringOption(option =>
+                option
+                  .setName('type')
+                  .setDescription(t('document-audit.opt.type.description'))
+                  .setRequired(false)
+                  .addChoices(
+                    { name: t('document-audit.choices.type.view'), value: 'view' },
+                    { name: t('document-audit.choices.type.edit'), value: 'edit' },
+                    { name: t('document-audit.choices.type.download'), value: 'download' },
+                    { name: t('document-audit.choices.type.share'), value: 'share' },
+                    { name: t('document-audit.choices.type.delete'), value: 'delete' }
+                  )
+              )
           )
-      );
-
-    this.addSubcommand('export', 'Export document access logs')
-      .addStringOption(option => 
-        option.setName('user')
-          .setDescription('Filter by user ID')
-          .setRequired(false)
-      )
-      .addStringOption(option => 
-        option.setName('file')
-          .setDescription('Filter by file ID')
-          .setRequired(false)
-      )
-      .addStringOption(option => 
-        option.setName('type')
-          .setDescription('Filter by access type')
-          .setRequired(false)
-          .addChoices(
-            { name: 'View', value: 'view' },
-            { name: 'Edit', value: 'edit' },
-            { name: 'Download', value: 'download' },
-            { name: 'Share', value: 'share' },
-            { name: 'Delete', value: 'delete' }
-          )
-      );
+          .addSubcommand(sub =>
+            sub
+              .setName('export')
+              .setDescription(t('document-audit.sub.export.description'))
+              .addStringOption(option =>
+                option
+                  .setName('user')
+                  .setDescription(t('document-audit.opt.user.description'))
+                  .setRequired(false)
+              )
+              .addStringOption(option =>
+                option
+                  .setName('file')
+                  .setDescription(t('document-audit.opt.file.description'))
+                  .setRequired(false)
+              )
+              .addStringOption(option =>
+                option
+                  .setName('type')
+                  .setDescription(t('document-audit.opt.type.description'))
+                  .setRequired(false)
+                  .addChoices(
+                    { name: t('document-audit.choices.type.view'), value: 'view' },
+                    { name: t('document-audit.choices.type.edit'), value: 'edit' },
+                    { name: t('document-audit.choices.type.download'), value: 'download' },
+                    { name: t('document-audit.choices.type.share'), value: 'share' },
+                    { name: t('document-audit.choices.type.delete'), value: 'delete' }
+                  )
+              )
+          );
+        return builder;
+      }
+    );
   }
 
   /**
@@ -101,10 +136,12 @@ export class DocumentAuditCommand extends BaseCommand {
   /**
    * Execute the command
    */
-  async execute(interaction: CommandInteraction): Promise<void> {
+  protected async onExecute(options: CommandExecuteOptions): Promise<void> {
+    const { interaction } = options;
+    
     try {
       if (!this.auditService) {
-        await interaction.reply({
+        await replyWithPrivacy(interaction, {
           content: '❌ Audit service not initialized',
           ephemeral: true
         });
@@ -124,7 +161,7 @@ export class DocumentAuditCommand extends BaseCommand {
           await this.handleExportLogs(interaction);
           break;
         default:
-          await interaction.reply({
+          await replyWithPrivacy(interaction, {
             content: '❌ Unknown subcommand',
             ephemeral: true
           });
@@ -135,7 +172,7 @@ export class DocumentAuditCommand extends BaseCommand {
         error: error instanceof Error ? error.message : String(error)
       });
       
-      await interaction.reply({
+      await replyWithPrivacy(interaction, {
         content: '❌ An error occurred while processing your request',
         ephemeral: true
       });
@@ -145,8 +182,8 @@ export class DocumentAuditCommand extends BaseCommand {
   /**
    * Handle viewing access logs
    */
-  private async handleViewLogs(interaction: CommandInteraction): Promise<void> {
-    await interaction.deferReply();
+  private async handleViewLogs(interaction: ChatInputCommandInteraction): Promise<void> {
+    await replyWithPrivacy(interaction, { content: '⏳ Processing...' });
 
     try {
       const userId = interaction.options.getString('user') || undefined;
@@ -162,8 +199,8 @@ export class DocumentAuditCommand extends BaseCommand {
       });
 
       if (logs.length === 0) {
-        await interaction.editReply({
-          content: '🔍 No document access logs found matching your criteria'
+        await replyWithPrivacy(interaction, {
+          content: t('document-audit.view.noLogs')
         });
         return;
       }
@@ -171,7 +208,7 @@ export class DocumentAuditCommand extends BaseCommand {
       // Format logs for display
       const logEntries = logs.map(log => {
         const timestamp = log.timestamp.toLocaleString();
-        const status = log.success ? '✅' : '❌';
+        const status = log.success ? t('document-audit.view.success') : t('document-audit.view.failure');
         const size = log.fileSize ? `${(log.fileSize / 1024).toFixed(1)}KB` : 'N/A';
         
         return `**${log.fileName}** (${log.fileId.substring(0, 8)}...)
@@ -180,11 +217,11 @@ ${status} ${log.accessType} by ${log.userName} (${log.userId.substring(0, 8)}...
 💾 ${size} | 📄 ${log.fileType || 'N/A'}`;
       });
 
-      const response = `## 📋 Document Access Logs (${logs.length} entries)
+      const response = `## 📋 ${t('document-audit.view.title')} (${logs.length} entries)
 
 ${logEntries.join('\n\n')}`;
 
-      await interaction.editReply({
+      await replyWithPrivacy(interaction, {
         content: response
       });
     } catch (error) {
@@ -193,8 +230,8 @@ ${logEntries.join('\n\n')}`;
         error: error instanceof Error ? error.message : String(error)
       });
       
-      await interaction.editReply({
-        content: '❌ Failed to retrieve document access logs'
+      await replyWithPrivacy(interaction, {
+        content: t('document-audit.export.failure')
       });
     }
   }
@@ -202,8 +239,8 @@ ${logEntries.join('\n\n')}`;
   /**
    * Handle viewing access statistics
    */
-  private async handleViewStats(interaction: CommandInteraction): Promise<void> {
-    await interaction.deferReply();
+  private async handleViewStats(interaction: ChatInputCommandInteraction): Promise<void> {
+    await replyWithPrivacy(interaction, { content: '⏳ Processing...' });
 
     try {
       const userId = interaction.options.getString('user') || undefined;
@@ -227,20 +264,20 @@ ${logEntries.join('\n\n')}`;
         .map(([hour, count]) => `${hour}:00 - ${count}`)
         .join('\n');
 
-      const response = `## 📊 Document Access Statistics
+      const response = `## 📊 ${t('document-audit.stats.title')}
 
-**Total Accesses:** ${stats.totalAccesses}
-**Successful:** ${stats.successfulAccesses}
-**Failed:** ${stats.failedAccesses}
-**Unique Users:** ${stats.uniqueUsers}
+**${t('document-audit.stats.totalAccesses')}:** ${stats.totalAccesses}
+**${t('document-audit.stats.successful')}:** ${stats.successfulAccesses}
+**${t('document-audit.stats.failed')}:** ${stats.failedAccesses}
+**${t('document-audit.stats.uniqueUsers')}:** ${stats.uniqueUsers}
 
-### Access by Type:
-${accessByType || 'No data'}
+### ${t('document-audit.stats.byType')}:
+${accessByType || t('document-audit.stats.noData')}
 
-### Access by Time (Hour):
-${accessByTime || 'No data'}`;
+### ${t('document-audit.stats.byTime')}:
+${accessByTime || t('document-audit.stats.noData')}`;
 
-      await interaction.editReply({
+      await replyWithPrivacy(interaction, {
         content: response
       });
     } catch (error) {
@@ -249,8 +286,8 @@ ${accessByTime || 'No data'}`;
         error: error instanceof Error ? error.message : String(error)
       });
       
-      await interaction.editReply({
-        content: '❌ Failed to retrieve document access statistics'
+      await replyWithPrivacy(interaction, {
+        content: t('document-audit.export.failure')
       });
     }
   }
@@ -258,8 +295,8 @@ ${accessByTime || 'No data'}`;
   /**
    * Handle exporting access logs
    */
-  private async handleExportLogs(interaction: CommandInteraction): Promise<void> {
-    await interaction.deferReply();
+  private async handleExportLogs(interaction: ChatInputCommandInteraction): Promise<void> {
+    await replyWithPrivacy(interaction, { content: '⏳ Processing...' });
 
     try {
       const userId = interaction.options.getString('user') || undefined;
@@ -274,8 +311,8 @@ ${accessByTime || 'No data'}`;
 
       // In a real implementation, this would create and send a file
       // For now, we'll just show a confirmation message
-      await interaction.editReply({
-        content: `✅ Document access logs exported successfully!
+      await replyWithPrivacy(interaction, {
+        content: `${t('document-audit.export.success')}
 📋 ${exportedData.length} characters of data prepared for export.`
       });
     } catch (error) {
@@ -284,8 +321,8 @@ ${accessByTime || 'No data'}`;
         error: error instanceof Error ? error.message : String(error)
       });
       
-      await interaction.editReply({
-        content: '❌ Failed to export document access logs'
+      await replyWithPrivacy(interaction, {
+        content: t('document-audit.export.failure')
       });
     }
   }
