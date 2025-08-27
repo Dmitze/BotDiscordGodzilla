@@ -31,6 +31,7 @@ import { ContextMemoryService } from '@/services/ContextMemoryService';
 import { ResponseCacheService } from '@/services/ResponseCacheService';
 import { KnowledgeBaseService } from '@/services/KnowledgeBaseService';
 import { EnhancedRagService } from '@/services/EnhancedRagService';
+import { DocumentAnalysisService } from '@/services/DocumentAnalysisService';
 
 interface Bot {
   config: BotConfig;
@@ -260,6 +261,30 @@ class ServiceManager {
       });
     }
 
+    // Document Analysis Service (depends on AI + Google services)
+    try {
+      const aiSvc = this.services.get('ai');
+      const googleSvc = this.services.get('google');
+      if (aiSvc && googleSvc) {
+        const documentAnalysisService = new DocumentAnalysisService(this.bot.config);
+        this.services.set('documentAnalysis', documentAnalysisService as unknown as NonNullable<ServiceRegistry['documentAnalysis']>);
+        logger.info('📊 DocumentAnalysisService зареєстровано', {
+          type: 'service_manager',
+          event: 'document_analysis_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('DocumentAnalysisService не зареєстровано: AI або Google service недоступний');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити DocumentAnalysisService', {
+        type: 'service_manager',
+        event: 'document_analysis_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
     // Intelligent Workflow Orchestrator (depends on AI + DocumentAnalyzer)
     try {
       const aiSvc = this.services.get('ai');
@@ -399,12 +424,13 @@ class ServiceManager {
       const googleSvc = this.services.get('google');
       const aiSvc = this.services.get('ai');
       const ragSvc = this.services.get('rag');
-      const responseCacheSvc = this.services.get('responseCache');
-      if (googleSvc && aiSvc && ragSvc && responseCacheSvc) {
+      const responseCache = this.services.get('responseCache');
+      if (googleSvc && aiSvc && ragSvc && responseCache) {
         const knowledgeBase = new KnowledgeBaseService(
+          googleSvc as any,
           aiSvc as any,
           ragSvc as any,
-          responseCacheSvc as any
+          responseCache as any
         );
         this.services.set('knowledgeBase', knowledgeBase as unknown as NonNullable<ServiceRegistry['knowledgeBase']>);
         logger.info('📚 KnowledgeBaseService зареєстровано', {
@@ -424,35 +450,27 @@ class ServiceManager {
       });
     }
 
-    // Enhanced RAG Service (replaces standard RAG with auto-indexing)
+    // Enhanced RAG Service (depends on AI + Google + RAG + Embeddings services)
     try {
-      const searchIndexSvc = this.services.get('searchIndex');
       const aiSvc = this.services.get('ai');
       const googleSvc = this.services.get('google');
-      const driveIndexerSvc = this.services.get('driveIndexer');
-      const responseCacheSvc = this.services.get('responseCache');
-      const schedulerSvc = this.services.get('scheduler');
-      const embSvc = this.services.get('embeddings');
-      
-      if (searchIndexSvc && aiSvc && googleSvc && driveIndexerSvc && responseCacheSvc && schedulerSvc) {
+      const ragSvc = this.services.get('rag');
+      const embeddingsSvc = this.services.get('embeddings');
+      if (aiSvc && googleSvc && ragSvc && embeddingsSvc) {
         const enhancedRag = new EnhancedRagService(
-          searchIndexSvc as any,
           aiSvc as any,
           googleSvc as any,
-          driveIndexerSvc as any,
-          responseCacheSvc as any,
-          schedulerSvc as any,
-          embSvc as unknown as { embed: (t: string) => Promise<number[]> } | undefined,
-          { enabled: true, interval: '0 */2 * * *' } // Every 2 hours auto-indexing
+          ragSvc as any,
+          embeddingsSvc as any
         );
         this.services.set('enhancedRag', enhancedRag as unknown as NonNullable<ServiceRegistry['enhancedRag']>);
-        logger.info('🚀 EnhancedRagService зареєстровано', {
+        logger.info('🔮 EnhancedRagService зареєстровано', {
           type: 'service_manager',
           event: 'enhanced_rag_registered',
           component: 'ServiceManager',
         });
       } else {
-        logger.warn('EnhancedRagService не зареєстровано: недостатньо залежностей');
+        logger.warn('EnhancedRagService не зареєстровано: AI, Google, RAG або Embeddings service недоступний');
       }
     } catch (er) {
       logger.error('❌ Не вдалося створити EnhancedRagService', {
@@ -462,35 +480,97 @@ class ServiceManager {
         errorMessage: er instanceof Error ? er.message : String(er),
       });
     }
-
-    // Зв'язуємо MetricsService з GoogleService (якщо обидва доступні)
-    try {
-      const google = this.services.get('google');
-      const metrics = this.services.get('metrics');
-      (google as any)?.setMetricsService?.(metrics);
-      if (google && metrics) {
-        logger.debug('🔗 Підключено MetricsService до GoogleService');
-      }
-    } catch (e) {
-      logger.warn('Не вдалося підключити MetricsService до GoogleService', { error: (e as Error).message });
-    }
   }
 
   /**
    * Ініціалізація сервісів
    */
   private async initializeServices(): Promise<void> {
+    // Ініціалізація сервісів, які потребують інші сервіси
     const initPromises = Array.from(this.services.entries()).map(async ([name, service]) => {
       try {
-        if ((service as any)?.initialize) {
-          await (service as any).initialize();
-          logger.debug('✅ Сервіс ініціалізовано', {
-            type: 'service_manager',
-            event: 'service_initialized',
-            component: 'ServiceManager',
-            service: name,
-          });
+        // Ініціалізація сервісів залежностей
+        if (name === 'driveIndexer') {
+          const googleService = this.services.get('google');
+          const cacheService = this.services.get('cache');
+          const searchIndex = this.services.get('searchIndex');
+          const metricsService = this.services.get('metrics');
+          
+          if (googleService && (service as any).initializeServices) {
+            (service as any).initializeServices(googleService, cacheService, searchIndex, metricsService);
+          }
+        } else if (name === 'sheetsContext') {
+          const googleService = this.services.get('google');
+          if (googleService && (service as any).initializeServices) {
+            (service as any).initializeServices(googleService);
+          }
+        } else if (name === 'documentAnalyzer') {
+          const aiService = this.services.get('ai');
+          const googleService = this.services.get('google');
+          if (aiService && googleService && (service as any).initializeServices) {
+            (service as any).initializeServices(aiService, googleService);
+          }
+        } else if (name === 'documentAnalysis') {
+          const aiService = this.services.get('ai');
+          const googleService = this.services.get('google');
+          if (aiService && googleService && (service as any).initializeServices) {
+            (service as any).initializeServices(aiService, googleService);
+          }
+        } else if (name === 'workflowOrchestrator') {
+          const aiService = this.services.get('ai');
+          const documentAnalyzer = this.services.get('documentAnalyzer');
+          if (aiService && documentAnalyzer && (service as any).initializeServices) {
+            (service as any).initializeServices(aiService, documentAnalyzer);
+          }
+        } else if (name === 'smartSearch') {
+          const aiService = this.services.get('ai');
+          const googleService = this.services.get('google');
+          const ragService = this.services.get('rag');
+          if (aiService && googleService && ragService && (service as any).initializeServices) {
+            (service as any).initializeServices(aiService, googleService, ragService);
+          }
+        } else if (name === 'enhancedDocumentService') {
+          const aiService = this.services.get('ai');
+          const googleService = this.services.get('google');
+          if (aiService && googleService && (service as any).initializeServices) {
+            (service as any).initializeServices(aiService, googleService);
+          }
+        } else if (name === 'workflowEngine') {
+          const aiService = this.services.get('ai');
+          const googleService = this.services.get('google');
+          const enhancedDocumentService = this.services.get('enhancedDocumentService');
+          if (aiService && googleService && enhancedDocumentService && (service as any).initializeServices) {
+            (service as any).initializeServices(aiService, googleService, enhancedDocumentService);
+          }
+        } else if (name === 'knowledgeBase') {
+          const aiService = this.services.get('ai');
+          const googleService = this.services.get('google');
+          const ragService = this.services.get('rag');
+          const responseCache = this.services.get('responseCache');
+          if (aiService && googleService && ragService && responseCache && (service as any).initializeServices) {
+            (service as any).initializeServices(aiService, googleService, ragService, responseCache);
+          }
+        } else if (name === 'enhancedRag') {
+          const aiService = this.services.get('ai');
+          const googleService = this.services.get('google');
+          const ragService = this.services.get('rag');
+          const embeddingsService = this.services.get('embeddings');
+          if (aiService && googleService && ragService && embeddingsService && (service as any).initializeServices) {
+            (service as any).initializeServices(aiService, googleService, ragService, embeddingsService);
+          }
         }
+
+        // Загальна ініціалізація сервісу
+        if ((service as any).initialize) {
+          await (service as any).initialize();
+        }
+
+        logger.debug('🔧 Сервіс ініціалізовано', {
+          type: 'service_manager',
+          event: 'service_initialized',
+          component: 'ServiceManager',
+          service: name,
+        });
       } catch (error) {
         logger.error('❌ Помилка ініціалізації сервісу', {
           type: 'service_manager',
