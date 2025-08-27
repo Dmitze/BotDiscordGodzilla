@@ -15,6 +15,11 @@ interface PaginationOptions {
   fields?: string[];
   footer?: string;
   timestamp?: Date;
+  // New options for performance optimization
+  enableCursorPagination?: boolean;
+  cursorField?: string;
+  virtualPagination?: boolean;
+  maxItems?: number;
 }
 
 interface PaginationStats {
@@ -24,6 +29,14 @@ interface PaginationStats {
   itemsPerPage: number;
   hasNext: boolean;
   hasPrevious: boolean;
+}
+
+// New interface for cursor-based pagination
+interface CursorPaginationOptions extends PaginationOptions {
+  cursorField: string;
+  currentCursor?: any;
+  nextCursor?: any;
+  prevCursor?: any;
 }
 
 class Pagination {
@@ -39,9 +52,19 @@ class Pagination {
   private timestamp: Date;
   private totalItems: number;
   private totalPages: number;
+  // New properties for optimization
+  private enableCursorPagination: boolean;
+  private cursorField: string | null;
+  private virtualPagination: boolean;
+  private maxItems: number;
 
   constructor(data: any[], options: PaginationOptions = {}) {
-    this.data = Array.isArray(data) ? data : [];
+    // Limit data size for performance
+    const limitedData = options.maxItems && data.length > options.maxItems 
+      ? data.slice(0, options.maxItems) 
+      : data;
+      
+    this.data = Array.isArray(limitedData) ? limitedData : [];
     this.currentPage = 0;
     this.itemsPerPage = options.itemsPerPage || 10;
     this.maxPages = options.maxPages || 50;
@@ -51,6 +74,10 @@ class Pagination {
     this.fields = options.fields || [];
     this.footer = options.footer || '';
     this.timestamp = options.timestamp || new Date();
+    this.enableCursorPagination = options.enableCursorPagination || false;
+    this.cursorField = options.cursorField || null;
+    this.virtualPagination = options.virtualPagination || false;
+    this.maxItems = options.maxItems || Infinity;
 
     this.totalItems = this.data.length;
     this.totalPages = Math.min(Math.ceil(this.totalItems / this.itemsPerPage), this.maxPages);
@@ -128,6 +155,13 @@ class Pagination {
    * Отримання даних поточної сторінки
    */
   getCurrentPageData(): any[] {
+    // For virtual pagination, we don't slice the data but return indices
+    if (this.virtualPagination) {
+      const startIndex = this.currentPage * this.itemsPerPage;
+      const endIndex = Math.min(startIndex + this.itemsPerPage, this.totalItems);
+      return { startIndex, endIndex, data: this.data.slice(startIndex, endIndex) };
+    }
+    
     const startIndex = this.currentPage * this.itemsPerPage;
     const endIndex = Math.min(startIndex + this.itemsPerPage, this.totalItems);
     return this.data.slice(startIndex, endIndex);
@@ -148,8 +182,10 @@ class Pagination {
 
     // Додавання полів
     const pageData = this.getCurrentPageData();
-    if (pageData.length > 0) {
-      pageData.forEach((item, index) => {
+    const actualData = this.virtualPagination ? pageData.data : pageData;
+    
+    if (actualData.length > 0) {
+      actualData.forEach((item, index) => {
         const fieldName = this.formatFieldName(item, index);
         const fieldValue = this.formatFieldValue(item, index);
 
@@ -184,41 +220,62 @@ class Pagination {
   createNavigationButtons(): ActionRowBuilder<ButtonBuilder> {
     const row = new ActionRowBuilder<ButtonBuilder>();
 
-    // Кнопка "Перша сторінка"
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId('pagination_first')
-        .setLabel('⏮️')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(this.currentPage === 0)
-    );
+    // For cursor-based pagination, we would use different button IDs
+    if (this.enableCursorPagination && this.cursorField) {
+      // Кнопка "Попередня сторінка"
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`pagination_prev_cursor_${this.currentPage}`)
+          .setLabel('◀️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(!this.hasPreviousPage())
+      );
 
-    // Кнопка "Попередня сторінка"
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId('pagination_prev')
-        .setLabel('◀️')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(!this.hasPreviousPage())
-    );
+      // Кнопка "Наступна сторінка"
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`pagination_next_cursor_${this.currentPage}`)
+          .setLabel('▶️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(!this.hasNextPage())
+      );
+    } else {
+      // Кнопка "Перша сторінка"
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId('pagination_first')
+          .setLabel('⏮️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(this.currentPage === 0)
+      );
 
-    // Кнопка "Наступна сторінка"
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId('pagination_next')
-        .setLabel('▶️')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(!this.hasNextPage())
-    );
+      // Кнопка "Попередня сторінка"
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId('pagination_prev')
+          .setLabel('◀️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(!this.hasPreviousPage())
+      );
 
-    // Кнопка "Остання сторінка"
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId('pagination_last')
-        .setLabel('⏭️')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(this.currentPage === this.totalPages - 1)
-    );
+      // Кнопка "Наступна сторінка"
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId('pagination_next')
+          .setLabel('▶️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(!this.hasNextPage())
+      );
+
+      // Кнопка "Остання сторінка"
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId('pagination_last')
+          .setLabel('⏭️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(this.currentPage === this.totalPages - 1)
+      );
+    }
 
     return row;
   }
@@ -227,6 +284,15 @@ class Pagination {
    * Обробка взаємодії з кнопками
    */
   handleButtonInteraction(customId: string): boolean {
+    // Handle cursor-based pagination
+    if (this.enableCursorPagination && this.cursorField) {
+      if (customId.startsWith('pagination_next_cursor_')) {
+        return this.nextPage();
+      } else if (customId.startsWith('pagination_prev_cursor_')) {
+        return this.previousPage();
+      }
+    }
+    
     switch (customId) {
       case 'pagination_first':
         return this.goToPage(0);
@@ -310,8 +376,15 @@ class Pagination {
       parts.push(this.footer);
     }
 
-    parts.push(`Сторінка ${this.currentPage + 1} з ${this.totalPages}`);
-    parts.push(`Всього елементів: ${this.totalItems}`);
+    // For large datasets, show a more efficient pagination indicator
+    if (this.totalItems > 1000) {
+      const startItem = this.currentPage * this.itemsPerPage + 1;
+      const endItem = Math.min(startItem + this.itemsPerPage - 1, this.totalItems);
+      parts.push(`Елементи ${startItem}-${endItem} з ${this.totalItems}`);
+    } else {
+      parts.push(`Сторінка ${this.currentPage + 1} з ${this.totalPages}`);
+      parts.push(`Всього елементів: ${this.totalItems}`);
+    }
 
     return parts.join(' • ');
   }
@@ -406,6 +479,38 @@ class Pagination {
     });
 
     return new Pagination(filteredData, options);
+  }
+  
+  /**
+   * Створення пагінації з курсорною навігацією для великих наборів даних
+   */
+  static createWithCursorPagination(
+    data: any[],
+    cursorField: string,
+    options: PaginationOptions = {}
+  ): Pagination {
+    const cursorOptions: PaginationOptions = {
+      ...options,
+      enableCursorPagination: true,
+      cursorField: cursorField
+    };
+    
+    return new Pagination(data, cursorOptions);
+  }
+  
+  /**
+   * Створення віртуальної пагінації для дуже великих наборів даних
+   */
+  static createVirtualPagination(
+    data: any[],
+    options: PaginationOptions = {}
+  ): Pagination {
+    const virtualOptions: PaginationOptions = {
+      ...options,
+      virtualPagination: true
+    };
+    
+    return new Pagination(data, virtualOptions);
   }
 }
 
