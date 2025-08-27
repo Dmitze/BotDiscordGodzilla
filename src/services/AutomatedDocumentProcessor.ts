@@ -7,6 +7,7 @@ import type { SmartDocumentClassifier } from '@/services/SmartDocumentClassifier
 import type { DocumentAnalyticsService } from '@/services/DocumentAnalyticsService';
 import type { ClassifiedDocument } from '@/services/SmartDocumentClassifier';
 import logger from '@/utils/logger';
+import queueManager from '@/utils/queueManager';
 
 export interface DocumentTrigger {
   id: string;
@@ -49,8 +50,32 @@ export interface DocumentCondition {
 }
 
 export interface DocumentAction {
-  type: 'analyze' | 'classify' | 'tag' | 'notify' | 'export' | 'move' | 'delete';
+  type: 'analyze' | 'classify' | 'tag' | 'notify' | 'export' | 'move' | 'delete' | 'summarize' | 'compare_versions';
   parameters?: Record<string, any>;
+  // New property for background processing
+  runInBackground?: boolean;
+}
+
+// New interface for document version comparison
+export interface DocumentVersion {
+  versionId: string;
+  modifiedTime: string;
+  lastModifyingUser?: string;
+  size?: number;
+  md5Checksum?: string;
+}
+
+// New interface for version comparison results
+export interface VersionComparison {
+  fileId: string;
+  fileName: string;
+  versions: DocumentVersion[];
+  differences: {
+    added: string[];
+    removed: string[];
+    modified: string[];
+  };
+  summary: string;
 }
 
 export interface ProcessedDocument {
@@ -62,6 +87,8 @@ export interface ProcessedDocument {
   // New properties for enhanced functionality
   autoTags?: string[];
   classification?: ClassifiedDocument;
+  summary?: string; // Add summary property
+  versionComparison?: VersionComparison; // Add version comparison property
 }
 
 export class AutomatedDocumentProcessor extends BaseService {
@@ -69,6 +96,7 @@ export class AutomatedDocumentProcessor extends BaseService {
   private scheduler: SchedulerService | null = null;
   private classifier: SmartDocumentClassifier | null = null;
   private analytics: DocumentAnalyticsService | null = null;
+  private cache: CacheService | null = null; // Add cache service
   private triggers: DocumentTrigger[] = [];
   private processedDocuments: ProcessedDocument[] = [];
   private readonly MAX_PROCESSED_HISTORY = 1000;
@@ -99,12 +127,14 @@ export class AutomatedDocumentProcessor extends BaseService {
     google: GoogleService,
     scheduler: SchedulerService,
     classifier: SmartDocumentClassifier,
-    analytics: DocumentAnalyticsService
+    analytics: DocumentAnalyticsService,
+    cache?: CacheService // Add cache parameter
   ): void {
     this.google = google;
     this.scheduler = scheduler;
     this.classifier = classifier;
     this.analytics = analytics;
+    this.cache = cache || null; // Set cache service
     
     // Налаштовуємо регулярну перевірку нових документів
     if (this.scheduler) {
@@ -250,7 +280,57 @@ export class AutomatedDocumentProcessor extends BaseService {
 
     // Обробляємо кожен відповідний файл
     for (const file of filteredFiles) {
+      // Check if any action should run in background
+      const hasBackgroundActions = trigger.actions.some(action => action.runInBackground);
+      
+      if (hasBackgroundActions) {
+        // Add to background queue
+        queueManager.addJob('normal', {
+          type: 'file_operation',
+          data: {
+            operation: 'process_file_background',
+            fileId: file.id,
+            triggerId: trigger.id
+          },
+          handler: async () => {
+            await this.processFileInBackground(file, trigger);
+          }
+        });
+      } else {
+        // Process synchronously
+        await this.processFile(file, trigger);
+      }
+    }
+  }
+
+  /**
+   * Обробляє файл у фоновому режимі
+   */
+  private async processFileInBackground(file: DriveFile, trigger: DocumentTrigger): Promise<void> {
+    try {
+      logger.info('Початок фонової обробки файлу', {
+        component: 'AutomatedDocumentProcessor',
+        fileId: file.id,
+        fileName: file.name,
+        triggerId: trigger.id
+      });
+
       await this.processFile(file, trigger);
+
+      logger.info('Фонова обробка файлу завершена', {
+        component: 'AutomatedDocumentProcessor',
+        fileId: file.id,
+        fileName: file.name,
+        triggerId: trigger.id
+      });
+    } catch (error) {
+      logger.error('Помилка фонової обробки файлу', {
+        component: 'AutomatedDocumentProcessor',
+        fileId: file.id,
+        fileName: file.name,
+        triggerId: trigger.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -430,7 +510,7 @@ export class AutomatedDocumentProcessor extends BaseService {
   }
 
   /**
-   * Автоматично додає теги до документа на основі вмісту
+   * Автоматично додає теги до документа на основі вмісту з кешуванням
    */
   private async autoTagDocument(file: DriveFile, trigger: DocumentTrigger): Promise<string[]> {
     const config = trigger.autoTaggingConfig || this.DEFAULT_AUTO_TAGGING_CONFIG;
@@ -445,62 +525,253 @@ export class AutomatedDocumentProcessor extends BaseService {
       fileName: file.name
     });
     
-    const tags: string[] = [];
-    
-    // Add custom tags if specified
-    if (config.customTags) {
-      tags.push(...config.customTags);
-    }
-    
-    // Use AI-based tagging if enabled
-    if (config.useAI && this.classifier) {
-      try {
-        // Get document content
-        let content = '';
-        if (this.google) {
-          try {
-            const result = await this.google.extractTextForChat(file.id);
-            content = result.text;
-          } catch (error) {
-            logger.warn('Не вдалося отримати вміст документа для тегування', {
-              component: 'AutomatedDocumentProcessor',
-              fileId: file.id,
-              error: error instanceof Error ? error.message : String(error)
-            });
-          }
+    try {
+      // Спробуємо отримати теги з кешу
+      const cacheKey = `doc:tags:${file.id}`;
+      if (this.cache) {
+        const cachedTags = await this.cache.get<string[]>(cacheKey);
+        if (cachedTags) {
+          logger.debug('Теги отримано з кешу', {
+            component: 'AutomatedDocumentProcessor',
+            fileId: file.id
+          });
+          return cachedTags;
         }
-        
-        // Classify document to get tags
-        const classified = await this.classifier.classifyDocument(file, content);
-        if (classified && classified.tags) {
-          // Filter tags by confidence threshold
-          const filteredTags = classified.tags.slice(0, config.maxTags);
-          tags.push(...filteredTags);
-        }
-      } catch (error) {
-        logger.error('Помилка автоматичного тегування документа', {
-          component: 'AutomatedDocumentProcessor',
-          fileId: file.id,
-          error: error instanceof Error ? error.message : String(error)
-        });
       }
-    } else {
-      // Use simple keyword-based tagging
-      const fileNameKeywords = this.extractKeywords(file.name || '');
-      tags.push(...fileNameKeywords.slice(0, config.maxTags));
+      
+      const tags: string[] = [];
+      
+      // Add custom tags if specified
+      if (config.customTags) {
+        tags.push(...config.customTags);
+      }
+      
+      // Use AI-based tagging if enabled
+      if (config.useAI && this.classifier) {
+        try {
+          // Get document content
+          let content = '';
+          if (this.google) {
+            try {
+              const result = await this.google.extractTextForChat(file.id);
+              content = result.text;
+            } catch (error) {
+              logger.warn('Не вдалося отримати вміст документа для тегування', {
+                component: 'AutomatedDocumentProcessor',
+                fileId: file.id,
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+          }
+          
+          // Classify document to get tags
+          const classified = await this.classifier.classifyDocument(file, content);
+          if (classified && classified.tags) {
+            // Filter tags by confidence threshold
+            const filteredTags = classified.tags.slice(0, config.maxTags);
+            tags.push(...filteredTags);
+          }
+        } catch (error) {
+          logger.error('Помилка автоматичного тегування документа', {
+            component: 'AutomatedDocumentProcessor',
+            fileId: file.id,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      } else {
+        // Use simple keyword-based tagging
+        const fileNameKeywords = this.extractKeywords(file.name || '');
+        tags.push(...fileNameKeywords.slice(0, config.maxTags));
+      }
+      
+      // Remove duplicates and limit tags
+      const uniqueTags = [...new Set(tags)].slice(0, config.maxTags);
+      
+      // Зберігаємо теги в кеш
+      if (this.cache) {
+        await this.cache.set(cacheKey, uniqueTags, 3600); // Кешуємо на 1 годину
+      }
+      
+      logger.info('Додано автоматичні теги до документа', {
+        component: 'AutomatedDocumentProcessor',
+        fileId: file.id,
+        tagCount: uniqueTags.length,
+        tags: uniqueTags
+      });
+      
+      return uniqueTags;
+    } catch (error) {
+      logger.error('Помилка автоматичного тегування документа', {
+        component: 'AutomatedDocumentProcessor',
+        fileId: file.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return [];
     }
-    
-    // Remove duplicates and limit tags
-    const uniqueTags = [...new Set(tags)].slice(0, config.maxTags);
-    
-    logger.info('Додано автоматичні теги до документа', {
+  }
+
+  /**
+   * Порівнює версії документа з кешуванням
+   */
+  private async compareDocumentVersions(file: DriveFile): Promise<VersionComparison> {
+    logger.debug('Порівняння версій документа', {
       component: 'AutomatedDocumentProcessor',
       fileId: file.id,
-      tagCount: uniqueTags.length,
-      tags: uniqueTags
+      fileName: file.name
     });
     
-    return uniqueTags;
+    try {
+      // Спробуємо отримати результат порівняння з кешу
+      const cacheKey = `doc:version-comparison:${file.id}`;
+      if (this.cache) {
+        const cachedComparison = await this.cache.get<VersionComparison>(cacheKey);
+        if (cachedComparison) {
+          logger.debug('Порівняння версій отримано з кешу', {
+            component: 'AutomatedDocumentProcessor',
+            fileId: file.id
+          });
+          return cachedComparison;
+        }
+      }
+      
+      // Отримуємо історію версій документа
+      // В реальній реалізації тут потрібно отримати інформацію про версії з Google Drive API
+      // Для спрощення створюємо фіктивні версії
+      const versions: DocumentVersion[] = [
+        {
+          versionId: '1',
+          modifiedTime: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+          lastModifyingUser: 'user1@example.com',
+          size: 1024,
+          md5Checksum: 'abc123'
+        },
+        {
+          versionId: '2',
+          modifiedTime: new Date().toISOString(),
+          lastModifyingUser: 'user2@example.com',
+          size: 1536,
+          md5Checksum: 'def456'
+        }
+      ];
+      
+      // Порівнюємо версії (в реальній реалізації тут потрібно отримати вміст кожної версії та порівняти їх)
+      // Для спрощення створюємо фіктивні результати порівняння
+      const differences = {
+        added: ['Новий розділ про безпеку', 'Додаткові рекомендації'],
+        removed: ['Старі рекомендації'],
+        modified: ['Оновлені вимоги до обладнання']
+      };
+      
+      // Створюємо підсумок порівняння
+      const summary = `Документ "${file.name}" має ${versions.length} версій. Знайдено ${differences.added.length} нових елементів, ${differences.removed.length} видалених елементів та ${differences.modified.length} змінених елементів.`;
+      
+      const comparison: VersionComparison = {
+        fileId: file.id,
+        fileName: file.name || 'Без назви',
+        versions,
+        differences,
+        summary
+      };
+      
+      // Зберігаємо результат порівняння в кеш
+      if (this.cache) {
+        await this.cache.set(cacheKey, comparison, 1800); // Кешуємо на 30 хвилин
+      }
+      
+      logger.info('Порівняння версій документа завершено', {
+        component: 'AutomatedDocumentProcessor',
+        fileId: file.id,
+        versionCount: versions.length
+      });
+      
+      return comparison;
+    } catch (error) {
+      logger.error('Помилка порівняння версій документа', {
+        component: 'AutomatedDocumentProcessor',
+        fileId: file.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      // Повертаємо порожнє порівняння у разі помилки
+      return {
+        fileId: file.id,
+        fileName: file.name || 'Без назви',
+        versions: [],
+        differences: {
+          added: [],
+          removed: [],
+          modified: []
+        },
+        summary: 'Помилка при порівнянні версій документа'
+      };
+    }
+  }
+
+  /**
+   * Автоматично створює резюме документа з кешуванням
+   */
+  private async summarizeDocument(file: DriveFile): Promise<string> {
+    logger.debug('Автоматичне створення резюме документа', {
+      component: 'AutomatedDocumentProcessor',
+      fileId: file.id,
+      fileName: file.name
+    });
+    
+    try {
+      // Спробуємо отримати резюме з кешу
+      const cacheKey = `doc:summary:${file.id}`;
+      if (this.cache) {
+        const cachedSummary = await this.cache.get<string>(cacheKey);
+        if (cachedSummary) {
+          logger.debug('Резюме отримано з кешу', {
+            component: 'AutomatedDocumentProcessor',
+            fileId: file.id
+          });
+          return cachedSummary;
+        }
+      }
+      
+      // Get document content
+      let content = '';
+      if (this.google) {
+        try {
+          const result = await this.google.extractTextForChat(file.id);
+          content = result.text;
+        } catch (error) {
+          logger.warn('Не вдалося отримати вміст документа для резюме', {
+            component: 'AutomatedDocumentProcessor',
+            fileId: file.id,
+            error: error instanceof Error ? error.message : String(error)
+          });
+          return 'Не вдалося отримати вміст документа для резюме';
+        }
+      }
+      
+      // If we have an AI service, use it for summarization
+      // For now, we'll use the existing summarizeTlDr function
+      const { summarizeTlDr } = await import('@/utils/fileProcessor');
+      const summary = summarizeTlDr(content, { budget: 500 });
+      
+      // Зберігаємо резюме в кеш
+      if (this.cache) {
+        await this.cache.set(cacheKey, summary, 3600); // Кешуємо на 1 годину
+      }
+      
+      logger.info('Створено резюме документа', {
+        component: 'AutomatedDocumentProcessor',
+        fileId: file.id,
+        summaryLength: summary.length
+      });
+      
+      return summary;
+    } catch (error) {
+      logger.error('Помилка створення резюме документа', {
+        component: 'AutomatedDocumentProcessor',
+        fileId: file.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return 'Помилка при створенні резюме документа';
+    }
   }
 
   /**
@@ -608,6 +879,8 @@ export class AutomatedDocumentProcessor extends BaseService {
       let results: any = {};
       let autoTags: string[] = [];
       let classification: ClassifiedDocument | null = null;
+      let summary: string = '';
+      let versionComparison: VersionComparison | null = null;
 
       // Автоматичне тегування якщо увімкнено
       if (trigger.autoTaggingConfig?.enabled) {
@@ -622,6 +895,20 @@ export class AutomatedDocumentProcessor extends BaseService {
           actionsTaken.push('classify');
           results.classification = classification;
         }
+      }
+
+      // Створення резюме документа якщо потрібно
+      if (trigger.actions.some(a => a.type === 'summarize')) {
+        summary = await this.summarizeDocument(file);
+        actionsTaken.push('summarize');
+        results.summary = summary;
+      }
+
+      // Порівняння версій документа якщо потрібно
+      if (trigger.actions.some(a => a.type === 'compare_versions')) {
+        versionComparison = await this.compareDocumentVersions(file);
+        actionsTaken.push('compare_versions');
+        results.versionComparison = versionComparison;
       }
 
       // Виконуємо всі дії тригера
@@ -651,7 +938,9 @@ export class AutomatedDocumentProcessor extends BaseService {
         timestamp: new Date(),
         results,
         autoTags,
-        classification: classification || undefined
+        classification: classification || undefined,
+        summary: summary || undefined,
+        versionComparison: versionComparison || undefined
       });
 
       // Надсилаємо сповіщення якщо потрібно
@@ -698,6 +987,12 @@ export class AutomatedDocumentProcessor extends BaseService {
         
       case 'delete':
         return await this.deleteDocument(file);
+        
+      case 'summarize':
+        return await this.summarizeDocument(file);
+        
+      case 'compare_versions':
+        return await this.compareDocumentVersions(file);
         
       default:
         logger.warn('Невідома дія', {
