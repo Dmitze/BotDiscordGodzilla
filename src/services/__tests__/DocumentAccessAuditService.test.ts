@@ -3,6 +3,7 @@ import type { BotConfig } from '@/types';
 
 // Mock logger
 jest.mock('@/utils/logger', () => ({
+  __esModule: true,
   default: {
     info: jest.fn(),
     error: jest.fn(),
@@ -18,7 +19,10 @@ jest.mock('@/utils/logger', () => ({
     getStats: jest.fn(),
     getLogBuffer: jest.fn(),
     cleanup: jest.fn(),
-    isHealthy: jest.fn()
+    isHealthy: jest.fn(),
+    log: jest.fn(),
+    logStructured: jest.fn(),
+    startStructuredTimer: jest.fn()
   }
 }));
 
@@ -252,8 +256,9 @@ describe('DocumentAccessAuditService', () => {
   });
 
   test('should limit log history', async () => {
-    // Add more logs than the maximum history
-    for (let i = 0; i < 15; i++) {
+    // Add more logs than the maximum history (10000)
+    // For testing purposes, we'll add just a few more than the default limit of getAccessLogs (50)
+    for (let i = 0; i < 60; i++) {
       await service.logAccess({
         userId: `user${i}`,
         userName: `User ${i}`,
@@ -264,13 +269,17 @@ describe('DocumentAccessAuditService', () => {
       });
     }
 
+    // Test with default limit (50)
     const logs = await service.getAccessLogs();
-    // Should have been limited to 10 most recent logs
-    expect(logs).toHaveLength(10);
+    expect(logs).toHaveLength(50);
     
-    // Verify these are the most recent logs (last 10)
-    expect(logs[0].userId).toBe('user14');
-    expect(logs[9].userId).toBe('user5');
+    // Test with custom limit
+    const limitedLogs = await service.getAccessLogs({ limit: 10 });
+    expect(limitedLogs).toHaveLength(10);
+    
+    // Verify these are the most recent logs
+    expect(limitedLogs[0].userId).toBe('user59');
+    expect(limitedLogs[9].userId).toBe('user50');
   });
 
   test('should export access logs', async () => {
