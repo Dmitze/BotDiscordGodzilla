@@ -160,3 +160,20 @@ export function expectFunctionCalled(fn: jest.Mock, times: number = 1) {
 export function expectFunctionCalledWith(fn: jest.Mock, ...args: any[]) {
   expect(fn).toHaveBeenCalledWith(...args);
 }
+
+/**
+ * Создание мок файла Google Drive
+ */
+export function createMockDriveFile(id: string, name: string, mimeType: string = 'application/vnd.google-apps.document'): any {
+  return {
+    id,
+    name,
+    mimeType,
+    size: 1024,
+    modifiedTime: new Date().toISOString(),
+    owners: ['test-owner'],
+    parents: ['test-parent-folder'],
+    webViewLink: `https://drive.google.com/file/d/${id}/view`,
+    iconLink: 'https://drive.google.com/favicon.ico',
+  };
+}
