@@ -5,6 +5,27 @@ import type { DriveFile } from '@/types/drive';
 import type { SchedulerService } from '@/services/SchedulerService';
 import logger from '@/utils/logger';
 
+// Define the interface for the Drive Changes Provider
+interface IDriveChangesProvider {
+  getStartPageToken(): Promise<string>;
+  listChanges(pageToken: string): Promise<{
+    changes: Array<{
+      removed?: boolean;
+      fileId?: string;
+      file?: DriveFile;
+      time?: string;
+    }>;
+    nextPageToken?: string;
+    newStartPageToken?: string;
+  }>;
+}
+
+// Define the cache interface
+interface ICache {
+  get<T>(key: string): Promise<T | undefined>;
+  set(key: string, val: any, ttlSec?: number): Promise<void>;
+}
+
 export interface ChangeNotification {
   fileId: string;
   fileName: string;
@@ -12,6 +33,16 @@ export interface ChangeNotification {
   timestamp: Date;
   userId?: string;
   details?: any;
+}
+
+export interface DriveChangeEvent {
+  fileId: string;
+  type: 'created' | 'modified' | 'removed';
+  fileName: string;
+  mimeType?: string;
+  webViewLink?: string;
+  modifiedTime?: string;
+  owners?: Array<{ emailAddress: string }>;
 }
 
 export interface WatchedFolder {
@@ -47,6 +78,8 @@ export class DriveChangesService extends BaseService {
   private scheduler: SchedulerService | null = null;
   private watchedFolders: WatchedFolder[] = [];
   private changeHistory: Map<string, ChangeNotification[]> = new Map();
+  private provider: IDriveChangesProvider | null = null;
+  private cache: ICache | null = null;
   // New properties for enhanced functionality
   private versionHistory: Map<string, FileVersion[]> = new Map();
   private accessHistory: Map<string, FileAccessInfo[]> = new Map();
@@ -54,8 +87,10 @@ export class DriveChangesService extends BaseService {
   private readonly VERSION_HISTORY_LIMIT = 50;
   private readonly ACCESS_HISTORY_LIMIT = 100;
 
-  constructor(config: BotConfig) {
+  constructor(config: BotConfig, provider?: IDriveChangesProvider, cache?: ICache) {
     super('DriveChangesService', config);
+    this.provider = provider || null;
+    this.cache = cache || null;
   }
 
   /**
@@ -102,6 +137,139 @@ export class DriveChangesService extends BaseService {
         }
       });
     }
+  }
+
+  /**
+   * Ініціалізує сервіс для відстеження змін через Google Drive API
+   */
+  async initialize(): Promise<void> {
+    if (!this.provider || !this.cache) {
+      logger.warn('DriveChangesService: provider or cache not available for initialization', {
+        component: 'DriveChangesService'
+      });
+      return;
+    }
+
+    try {
+      // Check if we have a stored token
+      const storedToken = await this.cache.get<string>('drive:changes:startPageToken');
+      
+      if (!storedToken) {
+        // Get start page token from provider
+        const startToken = await this.provider.getStartPageToken();
+        await this.cache.set('drive:changes:startPageToken', startToken);
+        logger.info('DriveChangesService: initialized with start page token', {
+          component: 'DriveChangesService',
+          startToken
+        });
+      } else {
+        logger.info('DriveChangesService: using existing start page token', {
+          component: 'DriveChangesService',
+          storedToken
+        });
+      }
+    } catch (error) {
+      logger.error('DriveChangesService: error during initialization', {
+        component: 'DriveChangesService',
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Опитує Google Drive API для отримання змін
+   */
+  async pollOnce(): Promise<{ events: DriveChangeEvent[]; newToken: string }> {
+    if (!this.provider || !this.cache) {
+      throw new Error('DriveChangesService not properly initialized with provider and cache');
+    }
+
+    // Get current token from cache
+    const currentToken = await this.cache.get<string>('drive:changes:startPageToken');
+    
+    if (!currentToken) {
+      throw new Error('No start page token found in cache');
+    }
+
+    // Process all pages of changes
+    let pageToken = currentToken;
+    let allChanges: Array<{
+      removed?: boolean;
+      fileId?: string;
+      file?: DriveFile;
+      time?: string;
+    }> = [];
+    let finalNewStartPageToken: string | undefined = undefined;
+
+    do {
+      // Get changes from provider
+      const { changes, nextPageToken, newStartPageToken } = await this.provider.listChanges(pageToken);
+      
+      // Add changes to our collection
+      allChanges = allChanges.concat(changes);
+      
+      // Keep the newStartPageToken from this page
+      if (newStartPageToken) {
+        finalNewStartPageToken = newStartPageToken;
+      }
+      
+      // Move to next page if available
+      pageToken = nextPageToken || '';
+    } while (pageToken);
+
+    // Filter and map changes to events
+    const events: DriveChangeEvent[] = allChanges
+      .filter(change => {
+        // Filter out changes not in our watched folder
+        if (change.removed && change.fileId) {
+          return true; // Removed files don't have file info, but we still want to report them
+        }
+        if (change.file && change.file.parents) {
+          const folderId = this.config.drive?.folderId;
+          return folderId ? change.file.parents.includes(folderId) : true;
+        }
+        return false;
+      })
+      .map(change => {
+        if (change.removed && change.fileId) {
+          return {
+            fileId: change.fileId,
+            type: 'removed' as const,
+            fileName: `file-${change.fileId}`,
+            modifiedTime: change.time
+          };
+        }
+        
+        if (change.file) {
+          const isCreated = change.file.createdTime === change.file.modifiedTime;
+          return {
+            fileId: change.file.id,
+            type: isCreated ? 'created' : 'modified',
+            fileName: change.file.name || 'Unnamed file',
+            mimeType: change.file.mimeType,
+            webViewLink: this.config.drive?.hideWebLink ? undefined : change.file.webViewLink,
+            modifiedTime: change.file.modifiedTime,
+            owners: change.file.owners
+          };
+        }
+        
+        // Fallback
+        return {
+          fileId: change.fileId || 'unknown',
+          type: 'modified' as const,
+          fileName: 'Unknown file'
+        };
+      });
+
+    // Update token in cache if we have a new one
+    let finalToken = currentToken;
+    if (finalNewStartPageToken) {
+      await this.cache.set('drive:changes:startPageToken', finalNewStartPageToken);
+      finalToken = finalNewStartPageToken;
+    }
+
+    return { events, newToken: finalToken };
   }
 
   /**
