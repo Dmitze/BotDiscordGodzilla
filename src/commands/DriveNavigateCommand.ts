@@ -24,13 +24,17 @@ interface NavigationState {
   query?: string;
   pageToken?: string;
   pageSize: number;
-  sortBy: 'name' | 'modifiedTime' | 'size';
+  sortBy: 'name' | 'modifiedTime' | 'size' | 'relevance';
   sortDir: 'asc' | 'desc';
   mimeFilter?: string;
   dateFrom?: string;
   dateTo?: string;
   sizeMin?: number;
   sizeMax?: number;
+  // New properties for enhanced functionality
+  searchType: 'folder' | 'fulltext';
+  showHidden?: boolean;
+  fileTypeCategories?: string[];
 }
 
 export class DriveNavigateCommand extends BaseCommand {
@@ -44,12 +48,13 @@ export class DriveNavigateCommand extends BaseCommand {
       config,
       {
         category: 'documents',
-        usage: '/drive-navigate [folder] [query]',
+        usage: '/drive-navigate [folder] [query] [search-type]',
         examples: [
           '/drive-navigate',
           '/drive-navigate folder:1A2B3C4D5E6F7G8H9I0J',
           '/drive-navigate query:report',
-          '/drive-navigate folder:1A2B3C4D5E6F7G8H9I0J query:financial'
+          '/drive-navigate folder:1A2B3C4D5E6F7G8H9I0J query:financial',
+          '/drive-navigate query:budget search-type:fulltext'
         ]
       },
       (builder: SlashCommandBuilder) => {
@@ -86,7 +91,8 @@ export class DriveNavigateCommand extends BaseCommand {
                 { name: 'Дата зміни (новіші)', value: 'modifiedTime_desc' },
                 { name: 'Дата зміни (старіші)', value: 'modifiedTime_asc' },
                 { name: 'Розмір (зростання)', value: 'size_asc' },
-                { name: 'Розмір (спадання)', value: 'size_desc' }
+                { name: 'Розмір (спадання)', value: 'size_desc' },
+                { name: 'Релевантність', value: 'relevance' }
               )
           )
           .addIntegerOption((option: SlashCommandIntegerOption) =>
@@ -124,6 +130,37 @@ export class DriveNavigateCommand extends BaseCommand {
               .setDescription('Максимальний розмір файлу (в байтах)')
               .setRequired(false)
               .setMinValue(0)
+          )
+          .addStringOption((option: SlashCommandStringOption) =>
+            option
+              .setName('search-type')
+              .setDescription('Тип пошуку: folder (в поточній папці) або fulltext (по всіх документах)')
+              .setRequired(false)
+              .addChoices(
+                { name: 'В поточній папці', value: 'folder' },
+                { name: 'По всіх документах', value: 'fulltext' }
+              )
+          )
+          .addBooleanOption((option: SlashCommandStringOption) =>
+            option
+              .setName('show-hidden')
+              .setDescription('Показувати приховані файли')
+              .setRequired(false)
+          )
+          .addStringOption((option: SlashCommandStringOption) =>
+            option
+              .setName('file-category')
+              .setDescription('Категорія файлів')
+              .setRequired(false)
+              .addChoices(
+                { name: 'Документи', value: 'documents' },
+                { name: 'Таблиці', value: 'spreadsheets' },
+                { name: 'Презентації', value: 'presentations' },
+                { name: 'Зображення', value: 'images' },
+                { name: 'Відео', value: 'videos' },
+                { name: 'Аудіо', value: 'audio' },
+                { name: 'Архіви', value: 'archives' }
+              )
           );
         return builder;
       }
@@ -152,12 +189,18 @@ export class DriveNavigateCommand extends BaseCommand {
       const dateTo = interaction.options.getString('date_to') || undefined;
       const sizeMin = interaction.options.getInteger('size_min') || undefined;
       const sizeMax = interaction.options.getInteger('size_max') || undefined;
+      const searchType = interaction.options.getString('search-type') as 'folder' | 'fulltext' || 'folder';
+      const showHidden = interaction.options.getBoolean('show-hidden') || false;
+      const fileCategory = interaction.options.getString('file-category') || undefined;
 
       // Parse sort option
-      let sortBy: 'name' | 'modifiedTime' | 'size' = 'name';
+      let sortBy: 'name' | 'modifiedTime' | 'size' | 'relevance' = 'name';
       let sortDir: 'asc' | 'desc' = 'asc';
       
-      if (sortOption.includes('_')) {
+      if (sortOption === 'relevance') {
+        sortBy = 'relevance';
+        sortDir = 'desc';
+      } else if (sortOption.includes('_')) {
         const [field, direction] = sortOption.split('_');
         sortBy = field as 'name' | 'modifiedTime' | 'size';
         sortDir = direction as 'asc' | 'desc';
@@ -175,7 +218,10 @@ export class DriveNavigateCommand extends BaseCommand {
         dateFrom,
         dateTo,
         sizeMin: sizeMin !== undefined ? sizeMin : undefined,
-        sizeMax: sizeMax !== undefined ? sizeMax : undefined
+        sizeMax: sizeMax !== undefined ? sizeMax : undefined,
+        searchType,
+        showHidden,
+        fileTypeCategories: fileCategory ? [fileCategory] : undefined
       };
 
       // Store session
@@ -209,17 +255,32 @@ export class DriveNavigateCommand extends BaseCommand {
       // Build query for Google Drive API
       const queryParts: string[] = [];
       
-      // Add folder constraint
-      queryParts.push(`'${state.folderId}' in parents`);
+      // Add folder constraint for folder search
+      if (state.searchType === 'folder') {
+        queryParts.push(`'${state.folderId}' in parents`);
+      }
       
       // Add search query if provided
       if (state.query) {
-        queryParts.push(`name contains '${state.query}'`);
+        if (state.searchType === 'fulltext') {
+          // For fulltext search, we use the query parameter in the API call
+          // queryParts.push(`fullText contains '${state.query}'`);
+        } else {
+          queryParts.push(`name contains '${state.query}'`);
+        }
       }
       
       // Add MIME filter if provided
       if (state.mimeFilter) {
         queryParts.push(`mimeType = '${state.mimeFilter}'`);
+      }
+      
+      // Add file type categories filter
+      if (state.fileTypeCategories && state.fileTypeCategories.length > 0) {
+        const categoryFilters = this.getFileTypeCategoryFilters(state.fileTypeCategories);
+        if (categoryFilters.length > 0) {
+          queryParts.push(`(${categoryFilters.join(' or ')})`);
+        }
       }
       
       // Add date filters if provided
@@ -240,6 +301,20 @@ export class DriveNavigateCommand extends BaseCommand {
         }
       }
       
+      // Add size filters if provided
+      if (state.sizeMin !== undefined) {
+        queryParts.push(`size >= ${state.sizeMin}`);
+      }
+      
+      if (state.sizeMax !== undefined) {
+        queryParts.push(`size <= ${state.sizeMax}`);
+      }
+      
+      // Hide hidden files unless explicitly requested
+      if (!state.showHidden) {
+        queryParts.push(`name not contains '.' or name contains '.doc' or name contains '.pdf' or name contains '.xls' or name contains '.ppt'`);
+      }
+      
       // Build final query
       const finalQuery = queryParts.length > 0 ? queryParts.join(' and ') : undefined;
 
@@ -258,6 +333,12 @@ export class DriveNavigateCommand extends BaseCommand {
         sizeMax: state.sizeMax
       };
 
+      // For fulltext search, we need to modify the query approach
+      if (state.searchType === 'fulltext' && state.query) {
+        driveQuery.query = state.query;
+        driveQuery.useFullTextSearch = true;
+      }
+
       // Fetch files
       const result: DriveListResult = await this.google.listDriveFiles(driveQuery);
 
@@ -267,7 +348,7 @@ export class DriveNavigateCommand extends BaseCommand {
         .setDescription(this.buildPathBreadcrumb(state.path))
         .setColor(0x4285f4)
         .addFields({
-          name: `📁 Вміст папки (${result.files.length} елементів)`,
+          name: `📁 ${state.searchType === 'fulltext' ? 'Результати пошуку' : 'Вміст папки'} (${result.files.length} елементів)`,
           value: result.files.length > 0 
             ? this.formatFileList(result.files, state.folderId) 
             : 'Папка порожня'
@@ -275,14 +356,17 @@ export class DriveNavigateCommand extends BaseCommand {
 
       // Add query info if filtering is active
       if (state.query || state.mimeFilter || state.dateFrom || state.dateTo || 
-          state.sizeMin !== undefined || state.sizeMax !== undefined) {
+          state.sizeMin !== undefined || state.sizeMax !== undefined ||
+          state.fileTypeCategories) {
         const filters = [];
         if (state.query) filters.push(`🔍 Пошук: "${state.query}"`);
         if (state.mimeFilter) filters.push(`📎 Тип: ${this.getMimeTypeLabel(state.mimeFilter)}`);
+        if (state.fileTypeCategories) filters.push(`📂 Категорія: ${state.fileTypeCategories.join(', ')}`);
         if (state.dateFrom) filters.push(`📅 Від: ${state.dateFrom}`);
         if (state.dateTo) filters.push(`📅 До: ${state.dateTo}`);
         if (state.sizeMin !== undefined) filters.push(`📊 Мін. розмір: ${this.formatFileSize(state.sizeMin)}`);
         if (state.sizeMax !== undefined) filters.push(`📊 Макс. розмір: ${this.formatFileSize(state.sizeMax)}`);
+        if (state.showHidden) filters.push(`👻 Приховані файли: показано`);
         
         embed.addFields({
           name: '📊 Фільтри',
@@ -293,7 +377,8 @@ export class DriveNavigateCommand extends BaseCommand {
       // Add sorting info
       embed.addFields({
         name: '📊 Сортування',
-        value: this.getSortLabel(state.sortBy, state.sortDir)
+        value: this.getSortLabel(state.sortBy, state.sortDir) + 
+               (state.searchType === 'fulltext' ? ' (за релевантністю)' : '')
       });
 
       // Create action components
@@ -466,7 +551,13 @@ export class DriveNavigateCommand extends BaseCommand {
       .setLabel('🔄 Оновити')
       .setStyle(ButtonStyle.Primary);
     
-    buttonRow.addComponents(refreshButton);
+    // Search button for real-time search
+    const searchButton = new ButtonBuilder()
+      .setCustomId(signComponentId(`drive-nav-search-${sessionId}`))
+      .setLabel('🔍 Пошук')
+      .setStyle(ButtonStyle.Primary);
+    
+    buttonRow.addComponents(refreshButton, searchButton);
     
     // Add parent folder button if not at root
     if (state.parentId) {
@@ -493,5 +584,63 @@ export class DriveNavigateCommand extends BaseCommand {
     }
     
     return components;
+  }
+
+  // New method to get file type category filters
+  private getFileTypeCategoryFilters(categories: string[]): string[] {
+    const filters: string[] = [];
+    
+    for (const category of categories) {
+      switch (category) {
+        case 'documents':
+          filters.push(
+            "mimeType = 'application/vnd.google-apps.document'",
+            "mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'",
+            "mimeType = 'application/msword'",
+            "mimeType = 'application/pdf'",
+            "mimeType = 'text/plain'"
+          );
+          break;
+        case 'spreadsheets':
+          filters.push(
+            "mimeType = 'application/vnd.google-apps.spreadsheet'",
+            "mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+            "mimeType = 'application/vnd.ms-excel'"
+          );
+          break;
+        case 'presentations':
+          filters.push(
+            "mimeType = 'application/vnd.google-apps.presentation'",
+            "mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'",
+            "mimeType = 'application/vnd.ms-powerpoint'"
+          );
+          break;
+        case 'images':
+          filters.push(
+            "mimeType contains 'image/'"
+          );
+          break;
+        case 'videos':
+          filters.push(
+            "mimeType contains 'video/'"
+          );
+          break;
+        case 'audio':
+          filters.push(
+            "mimeType contains 'audio/'"
+          );
+          break;
+        case 'archives':
+          filters.push(
+            "mimeType = 'application/zip'",
+            "mimeType = 'application/x-rar-compressed'",
+            "mimeType = 'application/x-7z-compressed'",
+            "mimeType = 'application/gzip'"
+          );
+          break;
+      }
+    }
+    
+    return filters;
   }
 }
