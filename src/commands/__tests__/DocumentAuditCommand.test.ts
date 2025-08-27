@@ -16,12 +16,26 @@ const createMockInteraction = (subcommand: string, options: Record<string, any> 
 
 // Mock logger
 jest.mock('@/utils/logger', () => ({
+  __esModule: true,
   default: {
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
     debug: jest.fn(),
-    security: jest.fn()
+    security: jest.fn(),
+    command: jest.fn(),
+    commandError: jest.fn(),
+    apiRequest: jest.fn(),
+    apiError: jest.fn(),
+    performance: jest.fn(),
+    system: jest.fn(),
+    getStats: jest.fn(),
+    getLogBuffer: jest.fn(),
+    cleanup: jest.fn(),
+    isHealthy: jest.fn(),
+    log: jest.fn(),
+    logStructured: jest.fn(),
+    startStructuredTimer: jest.fn()
   }
 }));
 
@@ -95,7 +109,7 @@ describe('DocumentAuditCommand', () => {
   };
 
   beforeEach(() => {
-    command = new DocumentAuditCommand();
+    command = new DocumentAuditCommand(mockConfig);
     auditService = new DocumentAccessAuditService(mockConfig);
     command.initializeServices(auditService);
   });
@@ -177,10 +191,10 @@ describe('DocumentAuditCommand', () => {
   });
 
   test('should handle error when audit service is not initialized', async () => {
-    const commandWithoutService = new DocumentAuditCommand();
+    const commandWithoutService = new DocumentAuditCommand(mockConfig);
     const interaction = createMockInteraction('view');
     
-    await commandWithoutService.execute(interaction as any);
+    await commandWithoutService.onExecute({ interaction: interaction as any });
     
     expect(interaction.reply).toHaveBeenCalled();
     const replyCall = (interaction.reply as jest.Mock).mock.calls[0][0];
