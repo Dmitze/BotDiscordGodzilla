@@ -1,4 +1,4 @@
-import { BaseServiceClass } from '@/core/BaseService';
+import { BaseService } from '@/core/BaseService';
 import type { BotConfig } from '@/types';
 import type { DriveFile } from '@/types/drive';
 import type { AIService } from '@/services/AIService';
@@ -18,7 +18,24 @@ export interface TranslationResult {
   confidence: number;
 }
 
-export class MultilingualDocumentProcessor extends BaseServiceClass {
+// New interface for cross-language search
+export interface CrossLanguageSearchResult {
+  fileId: string;
+  fileName: string;
+  snippet: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  relevanceScore: number;
+}
+
+// New interface for interface localization
+export interface LocalizationConfig {
+  userLanguage: string;
+  preferredLanguages: string[];
+  autoDetect: boolean;
+}
+
+export class MultilingualDocumentProcessor extends BaseService {
   private ai: AIService | null = null;
   private supportedLanguages: string[] = ['uk', 'en', 'ru', 'pl', 'de', 'fr', 'es'];
   private languageNames: Record<string, string> = {
@@ -30,6 +47,11 @@ export class MultilingualDocumentProcessor extends BaseServiceClass {
     'fr': 'Français',
     'es': 'Español'
   };
+  
+  // New properties for enhanced functionality
+  private localizationConfigs: Map<string, LocalizationConfig> = new Map();
+  private translationCache: Map<string, TranslationResult> = new Map();
+  private readonly CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
   constructor(config: BotConfig) {
     super('MultilingualDocumentProcessor', config);
@@ -156,6 +178,21 @@ export class MultilingualDocumentProcessor extends BaseServiceClass {
     sourceLanguage?: string
   ): Promise<TranslationResult> {
     try {
+      // Check cache first
+      const cacheKey = `${text.substring(0, 100)}_${sourceLanguage || 'auto'}_${targetLanguage}`;
+      const cachedResult = this.translationCache.get(cacheKey);
+      
+      if (cachedResult) {
+        // Check if cache is still valid
+        const now = Date.now();
+        if (now - cachedResult.confidence < this.CACHE_TTL) {
+          return cachedResult;
+        } else {
+          // Remove expired cache entry
+          this.translationCache.delete(cacheKey);
+        }
+      }
+      
       if (!this.ai) {
         throw new Error('AIService не ініціалізовано');
       }
@@ -204,13 +241,18 @@ export class MultilingualDocumentProcessor extends BaseServiceClass {
         maxTokens: Math.min(4000, text.length * 2)
       });
 
-      return {
+      const result: TranslationResult = {
         originalText: text,
         translatedText: response.content.trim(),
         sourceLanguage: srcLang || 'unknown',
         targetLanguage,
-        confidence: 0.9 // Припускаємо високу впевненість для AI перекладу
+        confidence: Date.now() // Using timestamp as cache expiration marker
       };
+      
+      // Cache the result
+      this.translationCache.set(cacheKey, result);
+      
+      return result;
     } catch (error) {
       logger.error('Помилка перекладу документа', {
         component: 'MultilingualDocumentProcessor',
@@ -260,6 +302,210 @@ export class MultilingualDocumentProcessor extends BaseServiceClass {
       
       throw error;
     }
+  }
+
+  /**
+   * Встановлює конфігурацію локалізації для користувача
+   */
+  setUserLocalizationConfig(userId: string, config: LocalizationConfig): void {
+    this.localizationConfigs.set(userId, config);
+  }
+
+  /**
+   * Отримує конфігурацію локалізації для користувача
+   */
+  getUserLocalizationConfig(userId: string): LocalizationConfig | undefined {
+    return this.localizationConfigs.get(userId);
+  }
+
+  /**
+   * Локалізує інтерфейс для користувача
+   */
+  async localizeInterface(userId: string, interfaceText: string): Promise<string> {
+    try {
+      const config = this.localizationConfigs.get(userId);
+      if (!config) {
+        // Return original text if no config
+        return interfaceText;
+      }
+      
+      // Use user's preferred language or auto-detect
+      const targetLanguage = config.userLanguage;
+      
+      // Translate interface text
+      const translation = await this.translateDocument(
+        interfaceText,
+        targetLanguage
+      );
+      
+      return translation.translatedText;
+    } catch (error) {
+      logger.error('Помилка локалізації інтерфейсу', {
+        component: 'MultilingualDocumentProcessor',
+        userId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      // Return original text in case of error
+      return interfaceText;
+    }
+  }
+
+  /**
+   * Виконує крос-мовний пошук
+   */
+  async crossLanguageSearch(
+    query: string,
+    documents: Array<{ id: string; name: string; content: string }>,
+    targetLanguage: string
+  ): Promise<CrossLanguageSearchResult[]> {
+    try {
+      // Detect query language
+      const queryDetection = await this.detectLanguage(query);
+      const queryLanguage = queryDetection.language;
+      
+      // If query is already in target language, do regular search
+      if (queryLanguage === targetLanguage) {
+        return this.performRegularSearch(query, documents);
+      }
+      
+      // Translate query to target language
+      const translatedQuery = await this.translateDocument(
+        query,
+        targetLanguage,
+        queryLanguage
+      );
+      
+      // Search in translated documents
+      const results: CrossLanguageSearchResult[] = [];
+      
+      for (const doc of documents) {
+        // Detect document language
+        const docDetection = await this.detectLanguage(doc.content);
+        const docLanguage = docDetection.language;
+        
+        // If document is already in target language, search directly
+        if (docLanguage === targetLanguage) {
+          const relevance = this.calculateRelevance(translatedQuery.translatedText, doc.content);
+          if (relevance > 0.1) {
+            results.push({
+              fileId: doc.id,
+              fileName: doc.name,
+              snippet: this.extractSnippet(doc.content, translatedQuery.translatedText),
+              sourceLanguage: docLanguage,
+              targetLanguage,
+              relevanceScore: relevance
+            });
+          }
+        } else {
+          // Translate document to target language
+          const translatedDoc = await this.translateDocument(
+            doc.content,
+            targetLanguage,
+            docLanguage
+          );
+          
+          const relevance = this.calculateRelevance(translatedQuery.translatedText, translatedDoc.translatedText);
+          if (relevance > 0.1) {
+            results.push({
+              fileId: doc.id,
+              fileName: doc.name,
+              snippet: this.extractSnippet(translatedDoc.translatedText, translatedQuery.translatedText),
+              sourceLanguage: docLanguage,
+              targetLanguage,
+              relevanceScore: relevance
+            });
+          }
+        }
+      }
+      
+      // Sort by relevance score
+      return results.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    } catch (error) {
+      logger.error('Помилка крос-мовного пошуку', {
+        component: 'MultilingualDocumentProcessor',
+        targetLanguage,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      // Fall back to regular search
+      return this.performRegularSearch(query, documents);
+    }
+  }
+
+  /**
+   * Виконує звичайний пошук
+   */
+  private performRegularSearch(
+    query: string,
+    documents: Array<{ id: string; name: string; content: string }>
+  ): CrossLanguageSearchResult[] {
+    const results: CrossLanguageSearchResult[] = [];
+    
+    for (const doc of documents) {
+      const relevance = this.calculateRelevance(query, doc.content);
+      if (relevance > 0.1) {
+        results.push({
+          fileId: doc.id,
+          fileName: doc.name,
+          snippet: this.extractSnippet(doc.content, query),
+          sourceLanguage: 'unknown',
+          targetLanguage: 'unknown',
+          relevanceScore: relevance
+        });
+      }
+    }
+    
+    return results.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  }
+
+  /**
+   * Обчислює релевантність між запитом та текстом
+   */
+  private calculateRelevance(query: string, text: string): number {
+    // Simple keyword matching approach
+    const queryWords = query.toLowerCase().split(/\s+/);
+    const textWords = text.toLowerCase().split(/\s+/);
+    
+    let matches = 0;
+    for (const queryWord of queryWords) {
+      if (textWords.some(textWord => textWord.includes(queryWord))) {
+        matches++;
+      }
+    }
+    
+    return matches / queryWords.length;
+  }
+
+  /**
+   * Витягує фрагмент тексту навколо ключових слів
+   */
+  private extractSnippet(text: string, query: string, snippetLength: number = 200): string {
+    const queryWords = query.toLowerCase().split(/\s+/);
+    
+    // Find the first occurrence of any query word
+    let bestPosition = -1;
+    for (const queryWord of queryWords) {
+      const position = text.toLowerCase().indexOf(queryWord);
+      if (position !== -1 && (bestPosition === -1 || position < bestPosition)) {
+        bestPosition = position;
+      }
+    }
+    
+    if (bestPosition === -1) {
+      // If no query word found, return beginning of text
+      return text.substring(0, snippetLength) + (text.length > snippetLength ? '...' : '');
+    }
+    
+    // Extract snippet centered around the found position
+    const start = Math.max(0, bestPosition - Math.floor(snippetLength / 2));
+    const end = Math.min(text.length, start + snippetLength);
+    
+    let snippet = text.substring(start, end);
+    if (start > 0) snippet = '...' + snippet;
+    if (end < text.length) snippet = snippet + '...';
+    
+    return snippet;
   }
 
   /**
@@ -314,7 +560,7 @@ export class MultilingualDocumentProcessor extends BaseServiceClass {
     return this.supportedLanguages.includes(languageCode);
   }
 
-  // === BaseServiceClass required methods ===
+  // === BaseService required methods ===
   
   protected async onInitialize(): Promise<void> {
     logger.info('MultilingualDocumentProcessor ініціалізовано', {
@@ -332,13 +578,17 @@ export class MultilingualDocumentProcessor extends BaseServiceClass {
     return {
       healthy: true,
       service: this.name,
-      supportedLanguages: this.supportedLanguages.length
+      supportedLanguages: this.supportedLanguages.length,
+      cachedTranslations: this.translationCache.size,
+      userConfigs: this.localizationConfigs.size
     };
   }
 
   protected onGetStats(): any {
     return {
-      supportedLanguages: this.supportedLanguages.length
+      supportedLanguages: this.supportedLanguages.length,
+      cachedTranslations: this.translationCache.size,
+      userConfigs: this.localizationConfigs.size
     };
   }
 }
