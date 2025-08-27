@@ -45,20 +45,6 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 > Примітка: детальні README з підпапок коду переїхали в `docs/...` з тією самою структурою (див. нижче «README по папках коду»).
 
-### **📂 README по папках коду**
-- **[docs/src/core/README.md](docs/src/core/README.md)** — ядро системи
-- **[docs/src/services/README.md](docs/src/services/README.md)** — бізнес-логіка та інтеграції
-- **[docs/src/commands/README.md](docs/src/commands/README.md)** — команди бота
-- **[docs/src/commands/modules/README.md](docs/src/commands/modules/README.md)** — метрики та валідація команд
-- **[docs/src/utils/README.md](docs/src/utils/README.md)** — утиліти та інфраструктура
-- **[docs/src/config/README.md](docs/src/config/README.md)** — конфігурація та ENV валідація
-- **[docs/src/scripts/README.md](docs/src/scripts/README.md)** — керування Slash-командами
-- **[docs/src/types/README.md](docs/src/types/README.md)** — спільні типи
-- **[docs/data/README.md](docs/data/README.md)** — дані та артефакти
-- **[docs/data/metrics/README.md](docs/data/metrics/README.md)** — Prometheus метрики
-- **[docs/data/tmp/README.md](docs/data/tmp/README.md)** — тимчасові файли
-
----
 
 ## 🎯 **ОСНОВНІ КОМАНДИ**
 
