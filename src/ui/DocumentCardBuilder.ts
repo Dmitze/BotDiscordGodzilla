@@ -7,6 +7,17 @@ export interface DocumentCardOptions {
   showStats?: boolean;
   showActions?: boolean;
   maxPreviewLength?: number;
+  // New options for enhanced functionality
+  showHistory?: boolean;
+  showQuickActions?: boolean;
+}
+
+// New interface for interaction history
+export interface DocumentInteraction {
+  userId: string;
+  action: string;
+  timestamp: Date;
+  details?: any;
 }
 
 export class DocumentCardBuilder {
@@ -14,6 +25,9 @@ export class DocumentCardBuilder {
   private options: DocumentCardOptions;
   private previewContent?: string;
   private tags: string[] = [];
+  // New properties for enhanced functionality
+  private interactions: DocumentInteraction[] = [];
+  private quickActions: { label: string; action: string; emoji: string }[] = [];
 
   constructor(file: DriveFile, options: DocumentCardOptions = {}) {
     this.file = file;
@@ -21,7 +35,10 @@ export class DocumentCardBuilder {
       showPreview: options.showPreview ?? true,
       showStats: options.showStats ?? true,
       showActions: options.showActions ?? true,
-      maxPreviewLength: options.maxPreviewLength ?? 500
+      maxPreviewLength: options.maxPreviewLength ?? 500,
+      // New options with defaults
+      showHistory: options.showHistory ?? true,
+      showQuickActions: options.showQuickActions ?? true
     };
   }
 
@@ -38,6 +55,22 @@ export class DocumentCardBuilder {
    */
   setTags(tags: string[]): this {
     this.tags = tags;
+    return this;
+  }
+
+  /**
+   * Встановлює історію взаємодій з документом
+   */
+  setInteractions(interactions: DocumentInteraction[]): this {
+    this.interactions = interactions;
+    return this;
+  }
+
+  /**
+   * Встановлює швидкі дії для документа
+   */
+  setQuickActions(actions: { label: string; action: string; emoji: string }[]): this {
+    this.quickActions = actions;
     return this;
   }
 
@@ -78,6 +111,17 @@ export class DocumentCardBuilder {
       }
     }
 
+    // Додаємо історію взаємодій якщо потрібно
+    if (this.options.showHistory && this.interactions.length > 0) {
+      const history = this.formatInteractionHistory();
+      if (history) {
+        embed.addFields({
+          name: '🕒 Історія взаємодій',
+          value: history
+        });
+      }
+    }
+
     // Додаємо теги якщо є
     if (this.tags.length > 0) {
       embed.addFields({
@@ -87,6 +131,55 @@ export class DocumentCardBuilder {
     }
 
     return embed;
+  }
+
+  private formatInteractionHistory(): string | null {
+    if (this.interactions.length === 0) return null;
+    
+    // Sort interactions by timestamp (newest first)
+    const sortedInteractions = [...this.interactions].sort((a, b) => 
+      b.timestamp.getTime() - a.timestamp.getTime()
+    );
+    
+    // Take only the last 5 interactions
+    const recentInteractions = sortedInteractions.slice(0, 5);
+    
+    const historyItems = recentInteractions.map(interaction => {
+      const actionEmoji = this.getActionEmoji(interaction.action);
+      const timeAgo = this.getTimeAgo(interaction.timestamp);
+      return `${actionEmoji} **${interaction.action}** ${timeAgo}`;
+    });
+    
+    return historyItems.join('\n');
+  }
+
+  private getActionEmoji(action: string): string {
+    const emojiMap: Record<string, string> = {
+      'view': '👁️',
+      'download': '📥',
+      'edit': '✏️',
+      'share': '🔗',
+      'comment': '💬',
+      'analyze': '🧠',
+      'export': '📤',
+      'tag': '🏷️',
+      'history': '🕒'
+    };
+    
+    return emojiMap[action.toLowerCase()] || '📋';
+  }
+
+  private getTimeAgo(timestamp: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - timestamp.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 1) return 'тільки що';
+    if (diffMins < 60) return `${diffMins} хв. тому`;
+    if (diffHours < 24) return `${diffHours} год. тому`;
+    return `${diffDays} дн. тому`;
   }
 
   private createComponents(sessionId: string): ActionRowBuilder<any>[] {
@@ -127,6 +220,28 @@ export class DocumentCardBuilder {
       components.push(actionRow);
     }
 
+    // Add quick actions if enabled
+    if (this.options.showQuickActions && this.quickActions.length > 0) {
+      const quickActionRow = new ActionRowBuilder();
+      
+      // Add up to 4 quick actions
+      const actionsToAdd = this.quickActions.slice(0, 4);
+      
+      for (const action of actionsToAdd) {
+        const button = new ButtonBuilder()
+          .setCustomId(signComponentId(`doc-quick-${action.action}-${this.file.id}-${sessionId}`))
+          .setLabel(action.label)
+          .setStyle(ButtonStyle.Success)
+          .setEmoji(action.emoji);
+        
+        quickActionRow.addComponents(button);
+      }
+      
+      if (components.length < 4) { // Discord limit is 5 action rows, reserve one for pagination
+        components.push(quickActionRow);
+      }
+    }
+
     return components;
   }
 
@@ -161,6 +276,11 @@ export class DocumentCardBuilder {
     // Посилання на перегляд
     if (this.file.webViewLink) {
       stats.push(`🔗 [Відкрити в Google Drive](${this.file.webViewLink})`);
+    }
+
+    // Add interaction count if history is enabled
+    if (this.options.showHistory && this.interactions.length > 0) {
+      stats.push(`👥 Взаємодій: ${this.interactions.length}`);
     }
 
     return stats.length > 0 ? stats.join('\n') : null;
