@@ -490,3 +490,263 @@ export function createPaginationRow(
 
   return { components };
 }
+
+/**
+ * Enhanced pagination utilities for handling large result sets
+ */
+
+export interface PaginationOptions {
+  page: number;
+  limit: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  filters?: Record<string, any>;
+}
+
+export interface PaginationResult<T> {
+  data: T[];
+  totalCount: number;
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  pageSize: number;
+  startIndex: number;
+  endIndex: number;
+}
+
+/**
+ * Enhanced pagination function for large datasets
+ */
+export function paginate<T>(
+  items: T[],
+  options: PaginationOptions
+): PaginationResult<T> {
+  const { page = 1, limit = 10, sortBy, sortOrder = 'asc', filters = {} } = options;
+  
+  // Apply filters if provided
+  let filteredItems = items;
+  if (Object.keys(filters).length > 0) {
+    filteredItems = items.filter(item => {
+      return Object.entries(filters).every(([key, value]) => {
+        const itemValue = (item as any)[key];
+        if (value === undefined || value === null) return true;
+        if (typeof value === 'string' && typeof itemValue === 'string') {
+          return itemValue.toLowerCase().includes(value.toLowerCase());
+        }
+        return itemValue === value;
+      });
+    });
+  }
+  
+  // Apply sorting if provided
+  if (sortBy) {
+    filteredItems = [...filteredItems].sort((a, b) => {
+      const aVal = (a as any)[sortBy];
+      const bVal = (b as any)[sortBy];
+      
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+  
+  // Calculate pagination
+  const totalCount = filteredItems.length;
+  const totalPages = Math.ceil(totalCount / limit);
+  const currentPage = Math.max(1, Math.min(page, totalPages || 1));
+  const startIndex = (currentPage - 1) * limit;
+  const endIndex = Math.min(startIndex + limit, totalCount);
+  
+  // Get page data
+  const pageData = filteredItems.slice(startIndex, endIndex);
+  
+  return {
+    data: pageData,
+    totalCount,
+    currentPage,
+    totalPages,
+    hasNextPage: currentPage < totalPages,
+    hasPrevPage: currentPage > 1,
+    pageSize: limit,
+    startIndex,
+    endIndex: endIndex - 1,
+  };
+}
+
+/**
+ * Cursor-based pagination for better performance with large datasets
+ */
+export interface CursorPaginationOptions<T> {
+  first: number;
+  after?: string;
+  last?: number;
+  before?: string;
+  sortBy?: keyof T;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface CursorPaginationResult<T> {
+  edges: Array<{ cursor: string; node: T }>;
+  pageInfo: {
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    startCursor: string | null;
+    endCursor: string | null;
+  };
+  totalCount: number;
+}
+
+/**
+ * Generate cursor for an item
+ */
+function generateCursor<T>(item: T, index: number, sortBy?: keyof T): string {
+  // In a real implementation, this would be more sophisticated
+  // For now, we'll use a simple approach
+  const value = sortBy ? (item[sortBy] as unknown as string) : index.toString();
+  return Buffer.from(`${index}:${value}`).toString('base64');
+}
+
+/**
+ * Parse cursor to get index
+ */
+function parseCursor(cursor: string): { index: number; value: string } {
+  try {
+    const decoded = Buffer.from(cursor, 'base64').toString('utf-8');
+    const [indexStr, value] = decoded.split(':', 2);
+    return { index: parseInt(indexStr, 10), value };
+  } catch {
+    return { index: 0, value: '' };
+  }
+}
+
+/**
+ * Cursor-based pagination implementation
+ */
+export function paginateWithCursor<T>(
+  items: T[],
+  options: CursorPaginationOptions<T>
+): CursorPaginationResult<T> {
+  const { first, after, last, before, sortBy, sortOrder = 'asc' } = options;
+  
+  // Sort items if sortBy is provided
+  let sortedItems = items;
+  if (sortBy) {
+    sortedItems = [...items].sort((a, b) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+  
+  let startIndex = 0;
+  let endIndex = sortedItems.length;
+  
+  // Handle forward pagination
+  if (after) {
+    const afterInfo = parseCursor(after);
+    startIndex = afterInfo.index + 1;
+  }
+  
+  // Handle backward pagination
+  if (before) {
+    const beforeInfo = parseCursor(before);
+    endIndex = beforeInfo.index;
+  }
+  
+  // Apply limits
+  if (first !== undefined) {
+    endIndex = Math.min(endIndex, startIndex + first);
+  }
+  
+  if (last !== undefined) {
+    startIndex = Math.max(startIndex, endIndex - last);
+  }
+  
+  // Ensure valid range
+  startIndex = Math.max(0, startIndex);
+  endIndex = Math.min(sortedItems.length, endIndex);
+  
+  // Get page data
+  const pageData = sortedItems.slice(startIndex, endIndex);
+  
+  // Create edges
+  const edges = pageData.map((item, index) => ({
+    cursor: generateCursor(item, startIndex + index, sortBy),
+    node: item,
+  }));
+  
+  // Create page info
+  const pageInfo = {
+    hasNextPage: endIndex < sortedItems.length,
+    hasPreviousPage: startIndex > 0,
+    startCursor: edges.length > 0 ? edges[0].cursor : null,
+    endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+  };
+  
+  return {
+    edges,
+    pageInfo,
+    totalCount: sortedItems.length,
+  };
+}
+
+/**
+ * Virtual scrolling pagination for very large datasets
+ */
+export interface VirtualScrollOptions {
+  startIndex: number;
+  endIndex: number;
+  bufferSize?: number;
+}
+
+export interface VirtualScrollResult<T> {
+  data: T[];
+  startIndex: number;
+  endIndex: number;
+  totalLength: number;
+  bufferedStart: number;
+  bufferedEnd: number;
+}
+
+/**
+ * Virtual scrolling implementation for handling very large datasets efficiently
+ */
+export function virtualScroll<T>(
+  getItems: (start: number, end: number) => T[] | Promise<T[]>,
+  totalLength: number,
+  options: VirtualScrollOptions
+): VirtualScrollResult<T> | Promise<VirtualScrollResult<T>> {
+  const { startIndex, endIndex, bufferSize = 50 } = options;
+  
+  // Calculate buffered range
+  const bufferedStart = Math.max(0, startIndex - bufferSize);
+  const bufferedEnd = Math.min(totalLength, endIndex + bufferSize);
+  
+  // Get items for the buffered range
+  const itemsResult = getItems(bufferedStart, bufferedEnd);
+  
+  // Handle both synchronous and asynchronous results
+  if (itemsResult instanceof Promise) {
+    return itemsResult.then(items => ({
+      data: items.slice(startIndex - bufferedStart, endIndex - bufferedStart + 1),
+      startIndex,
+      endIndex,
+      totalLength,
+      bufferedStart,
+      bufferedEnd,
+    }));
+  } else {
+    return {
+      data: itemsResult.slice(startIndex - bufferedStart, endIndex - bufferedStart + 1),
+      startIndex,
+      endIndex,
+      totalLength,
+      bufferedStart,
+      bufferedEnd,
+    };
+  }
+}
