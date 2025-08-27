@@ -1,4 +1,4 @@
-import { BaseServiceClass } from '@/core/BaseService';
+import { BaseService } from '@/core/BaseService';
 import type { BotConfig } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
 import type { DriveFile } from '@/types/drive';
@@ -8,7 +8,7 @@ import logger from '@/utils/logger';
 export interface ChangeNotification {
   fileId: string;
   fileName: string;
-  changeType: 'created' | 'modified' | 'deleted' | 'shared';
+  changeType: 'created' | 'modified' | 'deleted' | 'shared' | 'version_added' | 'access_changed';
   timestamp: Date;
   userId?: string;
   details?: any;
@@ -22,12 +22,37 @@ export interface WatchedFolder {
   usersToNotify: string[]; // Discord user IDs
 }
 
-export class DriveChangesService extends BaseServiceClass {
+// New interface for version history
+export interface FileVersion {
+  id: string;
+  fileId: string;
+  versionId: string;
+  modifiedTime: Date;
+  lastModifyingUser?: string;
+  size?: number;
+  md5Checksum?: string;
+}
+
+// New interface for access monitoring
+export interface FileAccessInfo {
+  fileId: string;
+  userId: string;
+  accessType: 'owner' | 'writer' | 'reader' | 'commenter';
+  timestamp: Date;
+  grantedBy?: string;
+}
+
+export class DriveChangesService extends BaseService {
   private google: GoogleService | null = null;
   private scheduler: SchedulerService | null = null;
   private watchedFolders: WatchedFolder[] = [];
   private changeHistory: Map<string, ChangeNotification[]> = new Map();
+  // New properties for enhanced functionality
+  private versionHistory: Map<string, FileVersion[]> = new Map();
+  private accessHistory: Map<string, FileAccessInfo[]> = new Map();
   private readonly CHANGE_HISTORY_LIMIT = 100;
+  private readonly VERSION_HISTORY_LIMIT = 50;
+  private readonly ACCESS_HISTORY_LIMIT = 100;
 
   constructor(config: BotConfig) {
     super('DriveChangesService', config);
@@ -47,6 +72,30 @@ export class DriveChangesService extends BaseServiceClass {
           await this.checkForChanges();
         } catch (error) {
           logger.error('Помилка перевірки змін у Drive', {
+            component: 'DriveChangesService',
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      });
+      
+      // Schedule version history check every 30 minutes
+      this.scheduler.scheduleJob('drive-version-check', '*/30 * * * *', async () => {
+        try {
+          await this.checkFileVersionHistory();
+        } catch (error) {
+          logger.error('Помилка перевірки історії версій у Drive', {
+            component: 'DriveChangesService',
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      });
+      
+      // Schedule access monitoring check every hour
+      this.scheduler.scheduleJob('drive-access-check', '0 * * * *', async () => {
+        try {
+          await this.checkFileAccessChanges();
+        } catch (error) {
+          logger.error('Помилка перевірки доступу до файлів у Drive', {
             component: 'DriveChangesService',
             error: error instanceof Error ? error.message : String(error)
           });
@@ -238,6 +287,156 @@ export class DriveChangesService extends BaseServiceClass {
   }
 
   /**
+   * Перевіряє історію версій файлів
+   */
+  private async checkFileVersionHistory(): Promise<void> {
+    if (!this.google) return;
+
+    logger.debug('Перевірка історії версій файлів', {
+      component: 'DriveChangesService'
+    });
+
+    try {
+      // Отримуємо всі відстежувані файли
+      for (const [fileId, history] of this.changeHistory) {
+        // Отримуємо інформацію про версії файлу
+        const versions = await this.getFileVersions(fileId);
+        
+        // Перевіряємо чи є нові версії
+        const previousVersions = this.versionHistory.get(fileId) || [];
+        const newVersions = versions.filter(version => 
+          !previousVersions.some(prev => prev.versionId === version.versionId)
+        );
+        
+        // Якщо є нові версії, створюємо сповіщення
+        for (const version of newVersions) {
+          const notification: ChangeNotification = {
+            fileId,
+            fileName: version.fileId, // This would be looked up in a real implementation
+            changeType: 'version_added',
+            timestamp: version.modifiedTime,
+            details: {
+              versionId: version.versionId,
+              size: version.size,
+              lastModifyingUser: version.lastModifyingUser
+            }
+          };
+          
+          // Зберігаємо сповіщення
+          this.saveNotification(fileId, notification);
+          
+          // Оновлюємо історію версій
+          this.saveFileVersion(fileId, version);
+        }
+      }
+    } catch (error) {
+      logger.error('Помилка перевірки історії версій файлів', {
+        component: 'DriveChangesService',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Перевіряє зміни в доступі до файлів
+   */
+  private async checkFileAccessChanges(): Promise<void> {
+    if (!this.google) return;
+
+    logger.debug('Перевірка змін в доступі до файлів', {
+      component: 'DriveChangesService'
+    });
+
+    try {
+      // Отримуємо всі відстежувані файли
+      for (const [fileId, history] of this.changeHistory) {
+        // Отримуємо інформацію про доступ до файлу
+        const accessInfo = await this.getFileAccessInfo(fileId);
+        
+        // Перевіряємо чи є зміни в доступі
+        const previousAccess = this.accessHistory.get(fileId) || [];
+        const newAccess = accessInfo.filter(info => 
+          !previousAccess.some(prev => prev.userId === info.userId && prev.accessType === info.accessType)
+        );
+        
+        // Якщо є зміни в доступі, створюємо сповіщення
+        for (const access of newAccess) {
+          const notification: ChangeNotification = {
+            fileId,
+            fileName: access.fileId, // This would be looked up in a real implementation
+            changeType: 'access_changed',
+            timestamp: access.timestamp,
+            details: {
+              userId: access.userId,
+              accessType: access.accessType,
+              grantedBy: access.grantedBy
+            }
+          };
+          
+          // Зберігаємо сповіщення
+          this.saveNotification(fileId, notification);
+          
+          // Оновлюємо історію доступу
+          this.saveFileAccess(fileId, access);
+        }
+      }
+    } catch (error) {
+      logger.error('Помилка перевірки змін в доступі до файлів', {
+        component: 'DriveChangesService',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Отримує версії файлу
+   */
+  private async getFileVersions(fileId: string): Promise<FileVersion[]> {
+    // В реальній реалізації тут потрібно отримати інформацію про версії файлу з Google Drive API
+    // Для спрощення повертаємо порожній масив
+    return [];
+  }
+
+  /**
+   * Отримує інформацію про доступ до файлу
+   */
+  private async getFileAccessInfo(fileId: string): Promise<FileAccessInfo[]> {
+    // В реальній реалізації тут потрібно отримати інформацію про доступ до файлу з Google Drive API
+    // Для спрощення повертаємо порожній масив
+    return [];
+  }
+
+  /**
+   * Зберігає інформацію про версію файлу
+   */
+  private saveFileVersion(fileId: string, version: FileVersion): void {
+    let versions = this.versionHistory.get(fileId) || [];
+    versions.push(version);
+    
+    // Обмежуємо розмір історії версій
+    if (versions.length > this.VERSION_HISTORY_LIMIT) {
+      versions = versions.slice(-this.VERSION_HISTORY_LIMIT);
+    }
+    
+    this.versionHistory.set(fileId, versions);
+  }
+
+  /**
+   * Зберігає інформацію про доступ до файлу
+   */
+  private saveFileAccess(fileId: string, access: FileAccessInfo): void {
+    let accessInfo = this.accessHistory.get(fileId) || [];
+    accessInfo.push(access);
+    
+    // Обмежуємо розмір історії доступу
+    if (accessInfo.length > this.ACCESS_HISTORY_LIMIT) {
+      accessInfo = accessInfo.slice(-this.ACCESS_HISTORY_LIMIT);
+    }
+    
+    this.accessHistory.set(fileId, accessInfo);
+  }
+
+  /**
    * Відправляє сповіщення про зміни
    */
   private async sendNotification(notification: ChangeNotification, watchedFolder: WatchedFolder): Promise<void> {
@@ -315,13 +514,27 @@ export class DriveChangesService extends BaseServiceClass {
   }
 
   /**
+   * Отримує історію версій для файлу
+   */
+  getVersionHistory(fileId: string): FileVersion[] {
+    return this.versionHistory.get(fileId) || [];
+  }
+
+  /**
+   * Отримує історію доступу для файлу
+   */
+  getAccessHistory(fileId: string): FileAccessInfo[] {
+    return this.accessHistory.get(fileId) || [];
+  }
+
+  /**
    * Отримує всі відстежувані папки
    */
   getWatchedFolders(): WatchedFolder[] {
     return [...this.watchedFolders];
   }
 
-  // === BaseServiceClass required methods ===
+  // === BaseService required methods ===
   
   protected async onInitialize(): Promise<void> {
     logger.info('DriveChangesService ініціалізовано', {
@@ -340,14 +553,18 @@ export class DriveChangesService extends BaseServiceClass {
       healthy: true,
       service: this.name,
       watchedFolders: this.watchedFolders.length,
-      changeHistorySize: this.changeHistory.size
+      changeHistorySize: this.changeHistory.size,
+      versionHistorySize: this.versionHistory.size,
+      accessHistorySize: this.accessHistory.size
     };
   }
 
   protected onGetStats(): any {
     return {
       watchedFolders: this.watchedFolders.length,
-      changeHistorySize: this.changeHistory.size
+      changeHistorySize: this.changeHistory.size,
+      versionHistorySize: this.versionHistory.size,
+      accessHistorySize: this.accessHistory.size
     };
   }
 }
