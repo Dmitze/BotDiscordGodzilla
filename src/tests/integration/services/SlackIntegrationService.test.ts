@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { DocumentAccessAuditService } from '../../services/DocumentAccessAuditService';
-import { SlackIntegrationService } from '../../services/SlackIntegrationService';
-import { createMockConfig, createMockDriveFile } from '../utils/testHelpers';
+import { DocumentAccessAuditService } from '../../../services/DocumentAccessAuditService';
+import { SlackIntegrationService } from '../../../services/SlackIntegrationService';
+import { createMockConfig, createMockDriveFile } from '../../utils/testHelpers';
 
 // Mock the Slack WebClient
 jest.mock('@slack/web-api', () => {
