@@ -97,6 +97,7 @@
     "@discordjs/builders": "^1.11.2",
     "@discordjs/rest": "^2.5.0",
     "@google-cloud/vision": "^5.3.3",
+    "@slack/web-api": "^7.10.0",
     "better-sqlite3": "^12.2.0",
     "buffer": "^6.0.3",
     "crypto": "^1.0.1",
