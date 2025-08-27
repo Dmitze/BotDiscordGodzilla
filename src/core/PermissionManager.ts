@@ -17,6 +17,26 @@ const PERMISSION_CONSTANTS = {
   ADMIN_BYPASS: true,
 } as const;
 
+// Нові інтерфейси для детального контролю доступу
+export interface ResourcePermission {
+  resourceId: string;
+  resourceType: 'document' | 'folder' | 'command' | 'feature';
+  actions: ('read' | 'write' | 'delete' | 'share' | 'admin')[];
+  conditions?: PermissionCondition[];
+}
+
+export interface PermissionCondition {
+  type: 'time' | 'ip' | 'userAttribute' | 'custom';
+  operator: 'equals' | 'notEquals' | 'greaterThan' | 'lessThan' | 'contains' | 'between';
+  value: string | number | string[] | number[];
+  attribute?: string; // For userAttribute type
+}
+
+export interface DetailedPermissionConfig extends PermissionConfig {
+  resourcePermissions?: ResourcePermission[];
+  attributes?: Record<string, any>; // Custom attributes for advanced permissions
+}
+
 export interface PermissionConfig {
   command: string;
   requiredRoles: string[];
@@ -45,6 +65,12 @@ export interface PermissionCheckResult {
   hasRequiredPermissions: boolean;
   canUseInChannel: boolean;
   remainingUses?: number;
+  // Нові поля для детального контролю
+  resourceAccess?: {
+    resourceId: string;
+    allowed: boolean;
+    reason?: string;
+  }[];
 }
 
 interface UserPermissionCache {
@@ -55,6 +81,9 @@ interface UserPermissionCache {
   permissions: string[];
   timestamp: number;
   lastActivity: number;
+  // Нові поля для детального контролю
+  resourcePermissions?: Map<string, ResourcePermission>;
+  attributes?: Record<string, any>;
 }
 
 interface CommandUsage {
@@ -65,11 +94,22 @@ interface CommandUsage {
   lastUse: number;
 }
 
+// Новий інтерфейс для документів
+export interface DocumentAccessControl {
+  documentId: string;
+  allowedUsers: string[]; // Discord user IDs
+  allowedRoles: string[]; // Role names
+  permissions: ('view' | 'edit' | 'delete' | 'share' | 'download')[];
+  expiration?: Date;
+  conditions?: PermissionCondition[];
+}
+
 export class PermissionManager {
   private static instance: PermissionManager | null = null;
-  private permissionConfigs = new Map<string, PermissionConfig>();
+  private permissionConfigs = new Map<string, DetailedPermissionConfig>();
   private userCache = new Map<string, UserPermissionCache>();
   private commandUsage = new Map<string, CommandUsage>();
+  private documentAccessControls = new Map<string, DocumentAccessControl>();
   private isInitialized = false;
 
   constructor(_config: BotConfig) {
@@ -113,7 +153,7 @@ export class PermissionManager {
    */
   private loadPermissionConfigs(): void {
     // Конфігурації для різних команд
-    const configs: PermissionConfig[] = [
+    const configs: DetailedPermissionConfig[] = [
       {
         command: 'пошук',
         requiredRoles: ['Bot User'],
@@ -121,6 +161,13 @@ export class PermissionManager {
         minUserLevel: UserLevel.USER,
         cooldown: 5000,
         maxUsesPerDay: 100,
+        resourcePermissions: [
+          {
+            resourceId: 'global-search',
+            resourceType: 'feature',
+            actions: ['read'],
+          }
+        ]
       },
       {
         command: 'ai-асистент',
@@ -129,6 +176,13 @@ export class PermissionManager {
         minUserLevel: UserLevel.TRUSTED,
         cooldown: 10000,
         maxUsesPerDay: 50,
+        resourcePermissions: [
+          {
+            resourceId: 'ai-assistant',
+            resourceType: 'feature',
+            actions: ['read', 'write'],
+          }
+        ]
       },
       {
         command: 'файли',
@@ -137,6 +191,13 @@ export class PermissionManager {
         minUserLevel: UserLevel.TRUSTED,
         cooldown: 3000,
         maxUsesPerDay: 200,
+        resourcePermissions: [
+          {
+            resourceId: 'file-management',
+            resourceType: 'feature',
+            actions: ['read', 'write', 'delete'],
+          }
+        ]
       },
       {
         command: 'аналітика',
@@ -145,6 +206,13 @@ export class PermissionManager {
         minUserLevel: UserLevel.TRUSTED,
         cooldown: 15000,
         maxUsesPerDay: 20,
+        resourcePermissions: [
+          {
+            resourceId: 'analytics',
+            resourceType: 'feature',
+            actions: ['read'],
+          }
+        ]
       },
       {
         command: 'операції',
@@ -153,6 +221,13 @@ export class PermissionManager {
         minUserLevel: UserLevel.MODERATOR,
         cooldown: 30000,
         maxUsesPerDay: 10,
+        resourcePermissions: [
+          {
+            resourceId: 'admin-operations',
+            resourceType: 'feature',
+            actions: ['read', 'write', 'delete', 'admin'],
+          }
+        ]
       },
       {
         command: 'продуктивність',
@@ -161,6 +236,13 @@ export class PermissionManager {
         minUserLevel: UserLevel.ADMIN,
         cooldown: 60000,
         maxUsesPerDay: 5,
+        resourcePermissions: [
+          {
+            resourceId: 'performance-monitoring',
+            resourceType: 'feature',
+            actions: ['read', 'admin'],
+          }
+        ]
       },
     ];
 
@@ -178,7 +260,8 @@ export class PermissionManager {
     user: User,
     member: GuildMember | null,
     commandName: string,
-    channelId?: string
+    channelId?: string,
+    resourceChecks?: { resourceId: string; action: string }[]
   ): Promise<PermissionCheckResult> {
     try {
       const startTime = Date.now();
@@ -245,9 +328,17 @@ export class PermissionManager {
       // Перевірка використання команди (rate limiting + daily limits)
       const usageCheck = this.checkCommandUsage(user.id, commandName, permConfig);
 
+      // Перевірка доступу до ресурсів, якщо вказано
+      const resourceAccessResults = resourceChecks ? await this.checkResourcePermissions(
+        user.id,
+        resourceChecks,
+        userInfo
+      ) : [];
+
       // Загальна перевірка
       const allowed =
-        hasRequiredRoles && hasRequiredPermissions && canUseInChannel && usageCheck.allowed;
+        hasRequiredRoles && hasRequiredPermissions && canUseInChannel && usageCheck.allowed &&
+        (resourceAccessResults.length === 0 || resourceAccessResults.every(r => r.allowed));
 
       const resultBase = {
         allowed,
@@ -256,6 +347,7 @@ export class PermissionManager {
         hasRequiredPermissions,
         canUseInChannel,
         remainingUses: usageCheck.remainingUses,
+        resourceAccess: resourceAccessResults,
       } as PermissionCheckResult;
       if (!allowed) {
         const denialObj: {
@@ -263,6 +355,7 @@ export class PermissionManager {
           hasRequiredPermissions: boolean;
           canUseInChannel: boolean;
           usageAllowed: boolean;
+          resourceAccessAllowed: boolean;
           // do not include usageReason key when undefined (exactOptionalPropertyTypes)
           usageReason?: string;
         } = {
@@ -270,6 +363,7 @@ export class PermissionManager {
           hasRequiredPermissions,
           canUseInChannel,
           usageAllowed: usageCheck.allowed,
+          resourceAccessAllowed: resourceAccessResults.length === 0 || resourceAccessResults.every(r => r.allowed),
         };
         if (usageCheck.reason !== undefined) {
           denialObj.usageReason = usageCheck.reason;
@@ -331,6 +425,9 @@ export class PermissionManager {
     const roles = Array.from((member.roles.cache as any).values()).map((role: any) => role.name);
     const permissions = member.permissions.toArray();
 
+    // Отримання детальних дозволів користувача
+    const resourcePermissions = await this.getUserResourcePermissions(userId, member);
+
     const userInfo: UserPermissionCache = {
       userId,
       guildId: member.guild.id,
@@ -339,6 +436,8 @@ export class PermissionManager {
       permissions,
       timestamp: Date.now(),
       lastActivity: Date.now(),
+      resourcePermissions,
+      attributes: await this.getUserAttributes(userId, member),
     };
 
     // Кешування з обмеженням розміру
@@ -348,6 +447,34 @@ export class PermissionManager {
 
     this.userCache.set(cacheKey, userInfo);
     return userInfo;
+  }
+
+  /**
+   * Отримання детальних дозволів користувача для ресурсів
+   */
+  private async getUserResourcePermissions(userId: string, member: GuildMember): Promise<Map<string, ResourcePermission>> {
+    // В реальній реалізації тут би була логіка отримання детальних дозволів користувача
+    // з бази даних або іншого джерела
+    
+    // Для демонстрації повертаємо порожню мапу
+    return new Map();
+  }
+
+  /**
+   * Отримання атрибутів користувача
+   */
+  private async getUserAttributes(userId: string, member: GuildMember): Promise<Record<string, any>> {
+    // В реальній реалізації тут би була логіка отримання атрибутів користувача
+    // з бази даних або іншого джерела
+    
+    return {
+      userId,
+      guildId: member.guild.id,
+      joinedAt: member.joinedAt?.toISOString(),
+      premiumSince: member.premiumSince?.toISOString(),
+      isOwner: member.guild.ownerId === userId,
+      isAdministrator: member.permissions.has(PermissionFlagsBits.Administrator),
+    };
   }
 
   /**
@@ -519,6 +646,164 @@ export class PermissionManager {
   }
 
   /**
+   * Перевірка доступу до ресурсів
+   */
+  private async checkResourcePermissions(
+    userId: string,
+    resourceChecks: { resourceId: string; action: string }[],
+    userInfo: UserPermissionCache
+  ): Promise<{ resourceId: string; allowed: boolean; reason?: string }[]> {
+    const results: { resourceId: string; allowed: boolean; reason?: string }[] = [];
+
+    for (const check of resourceChecks) {
+      const { resourceId, action } = check;
+      let allowed = false;
+      let reason = '';
+
+      try {
+        // Перевірка документних дозволів
+        if (this.documentAccessControls.has(resourceId)) {
+          const accessControl = this.documentAccessControls.get(resourceId)!;
+          allowed = this.checkDocumentAccess(userId, userInfo, accessControl, action as any);
+          if (!allowed) {
+            reason = `Недостатні дозволи для дії "${action}" над ресурсом "${resourceId}"`;
+          }
+        } 
+        // Перевірка загальних ресурсних дозволів
+        else if (userInfo.resourcePermissions?.has(resourceId)) {
+          const resourcePerm = userInfo.resourcePermissions.get(resourceId)!;
+          allowed = resourcePerm.actions.includes(action as any);
+          if (!allowed) {
+            reason = `Недостатні дозволи для дії "${action}" над ресурсом "${resourceId}"`;
+          }
+        } 
+        // Якщо немає спеціальних дозволів, дозволяємо доступ для адміністраторів
+        else if (userInfo.userLevel >= UserLevel.ADMIN) {
+          allowed = true;
+        } 
+        // Для інших користувачів відмовляємо в доступі
+        else {
+          allowed = false;
+          reason = `Немає дозволів для доступу до ресурсу "${resourceId}"`;
+        }
+
+        results.push({
+          resourceId,
+          allowed,
+          reason: allowed ? undefined : reason,
+        });
+      } catch (error) {
+        logger.error(`Помилка перевірки доступу до ресурсу: ${error}`);
+        results.push({
+          resourceId,
+          allowed: false,
+          reason: `Помилка перевірки доступу: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Перевірка доступу до документа
+   */
+  private checkDocumentAccess(
+    userId: string,
+    userInfo: UserPermissionCache,
+    accessControl: DocumentAccessControl,
+    action: 'view' | 'edit' | 'delete' | 'share' | 'download'
+  ): boolean {
+    // Перевірка терміну дії
+    if (accessControl.expiration && new Date() > accessControl.expiration) {
+      return false;
+    }
+
+    // Перевірка дозволів для конкретної дії
+    if (!accessControl.permissions.includes(action)) {
+      return false;
+    }
+
+    // Перевірка дозволених користувачів
+    if (accessControl.allowedUsers.length > 0 && !accessControl.allowedUsers.includes(userId)) {
+      // Якщо є список дозволених користувачів і поточний користувач не в ньому, відмовити
+      return false;
+    }
+
+    // Перевірка дозволених ролей
+    if (accessControl.allowedRoles.length > 0) {
+      const hasAllowedRole = accessControl.allowedRoles.some(role => 
+        userInfo.roles.includes(role)
+      );
+      if (!hasAllowedRole) {
+        // Якщо є список дозволених ролей і користувач не має жодної з них, відмовити
+        return false;
+      }
+    }
+
+    // Перевірка умов доступу
+    if (accessControl.conditions && accessControl.conditions.length > 0) {
+      for (const condition of accessControl.conditions) {
+        if (!this.evaluateCondition(condition, userInfo)) {
+          return false;
+        }
+      }
+    }
+
+    // Якщо всі перевірки пройшли, дозволити доступ
+    return true;
+  }
+
+  /**
+   * Оцінка умови доступу
+   */
+  private evaluateCondition(condition: PermissionCondition, userInfo: UserPermissionCache): boolean {
+    try {
+      switch (condition.type) {
+        case 'time':
+          // Перевірка часу доступу
+          const now = new Date().getTime();
+          if (condition.operator === 'between' && Array.isArray(condition.value) && condition.value.length === 2) {
+            const [start, end] = condition.value as number[];
+            return now >= start && now <= end;
+          }
+          return false;
+
+        case 'userAttribute':
+          // Перевірка атрибутів користувача
+          if (condition.attribute && userInfo.attributes) {
+            const userValue = userInfo.attributes[condition.attribute];
+            const conditionValue = condition.value;
+            
+            switch (condition.operator) {
+              case 'equals':
+                return userValue === conditionValue;
+              case 'notEquals':
+                return userValue !== conditionValue;
+              case 'greaterThan':
+                return typeof userValue === 'number' && typeof conditionValue === 'number' && userValue > conditionValue;
+              case 'lessThan':
+                return typeof userValue === 'number' && typeof conditionValue === 'number' && userValue < conditionValue;
+              case 'contains':
+                if (Array.isArray(userValue)) {
+                  return userValue.includes(conditionValue as string);
+                }
+                return false;
+            }
+          }
+          return false;
+
+        default:
+          // Для інших типів умов повертаємо false
+          return false;
+      }
+    } catch (error) {
+      logger.warn(`Помилка оцінки умови доступу: ${error}`);
+      return false;
+    }
+  }
+
+  /**
    * Створення повідомлення про відмову
    */
   private buildDenialReason(checks: {
@@ -526,6 +811,7 @@ export class PermissionManager {
     hasRequiredPermissions: boolean;
     canUseInChannel: boolean;
     usageAllowed: boolean;
+    resourceAccessAllowed: boolean;
     usageReason?: string;
   }): string {
     const reasons = [];
@@ -544,6 +830,10 @@ export class PermissionManager {
 
     if (!checks.usageAllowed && checks.usageReason) {
       reasons.push(checks.usageReason);
+    }
+
+    if (!checks.resourceAccessAllowed) {
+      reasons.push('недостатні дозволи для доступу до ресурсу');
     }
 
     return reasons.join(', ');
@@ -611,9 +901,35 @@ export class PermissionManager {
   /**
    * Додавання нової конфігурації прав
    */
-  public addPermissionConfig(config: PermissionConfig): void {
+  public addPermissionConfig(config: DetailedPermissionConfig): void {
     this.permissionConfigs.set(config.command, config);
     logger.info(`➕ Додано конфігурацію прав для команди "${config.command}"`);
+  }
+
+  /**
+   * Встановлення контролю доступу до документа
+   */
+  public setDocumentAccessControl(documentId: string, accessControl: DocumentAccessControl): void {
+    this.documentAccessControls.set(documentId, accessControl);
+    logger.info(`🔒 Встановлено контроль доступу до документа ${documentId}`);
+  }
+
+  /**
+   * Видалення контролю доступу до документа
+   */
+  public removeDocumentAccessControl(documentId: string): boolean {
+    const result = this.documentAccessControls.delete(documentId);
+    if (result) {
+      logger.info(`🔓 Видалено контроль доступу до документа ${documentId}`);
+    }
+    return result;
+  }
+
+  /**
+   * Отримання контролю доступу до документа
+   */
+  public getDocumentAccessControl(documentId: string): DocumentAccessControl | undefined {
+    return this.documentAccessControls.get(documentId);
   }
 
   /**
@@ -622,6 +938,7 @@ export class PermissionManager {
   public getStats(): {
     cachedUsers: number;
     commandConfigs: number;
+    documentAccessControls: number;
     dailyUsage: number;
     isInitialized: boolean;
   } {
@@ -633,6 +950,7 @@ export class PermissionManager {
     return {
       cachedUsers: this.userCache.size,
       commandConfigs: this.permissionConfigs.size,
+      documentAccessControls: this.documentAccessControls.size,
       dailyUsage,
       isInitialized: this.isInitialized,
     };
@@ -645,6 +963,7 @@ export class PermissionManager {
     this.userCache.clear();
     this.commandUsage.clear();
     this.permissionConfigs.clear();
+    this.documentAccessControls.clear();
     this.isInitialized = false;
     logger.info('🧹 PermissionManager ресурси очищено');
   }
