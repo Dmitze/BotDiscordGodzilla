@@ -1,6 +1,6 @@
 {
   "name": "discord-google-bot",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Discord AI Assistant Bot з інтеграцією Google Sheets, Google Drive та AI-функціоналом",
   "main": "dist/index.js",
   "type": "commonjs",
