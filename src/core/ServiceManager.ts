@@ -402,7 +402,6 @@ class ServiceManager {
       const responseCacheSvc = this.services.get('responseCache');
       if (googleSvc && aiSvc && ragSvc && responseCacheSvc) {
         const knowledgeBase = new KnowledgeBaseService(
-          googleSvc as any,
           aiSvc as any,
           ragSvc as any,
           responseCacheSvc as any
