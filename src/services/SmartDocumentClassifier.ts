@@ -1,9 +1,4 @@
-/**
- * Розумна класифікація та автоматичне тегування документів
- * Smart Document Classification & Auto-Tagging Service
- */
-
-import { BaseServiceClass } from '@/core/BaseService';
+import { BaseService } from '@/core/BaseService';
 import type { BotConfig } from '@/types';
 import type { DriveFile } from '@/types/drive';
 import logger from '@/utils/logger';
@@ -16,14 +11,32 @@ export interface DocumentCategory {
   priority: number;
 }
 
+export interface ProjectTheme {
+  id: string;
+  name: string;
+  description: string;
+  keywords: string[];
+  color: string;
+}
+
+export interface DocumentRelationship {
+  sourceId: string;
+  targetId: string;
+  relationshipType: 'reference' | 'attachment' | 'version' | 'related';
+  confidence: number;
+}
+
 export interface ClassifiedDocument {
   file: DriveFile;
   categories: DocumentCategory[];
   confidence: number;
   tags: string[];
+  // New properties for enhanced functionality
+  projectThemes: ProjectTheme[];
+  relationships: DocumentRelationship[];
 }
 
-export class SmartDocumentClassifier extends BaseServiceClass {
+export class SmartDocumentClassifier extends BaseService {
   private categories: DocumentCategory[] = [
     {
       id: 'orders',
@@ -83,6 +96,38 @@ export class SmartDocumentClassifier extends BaseServiceClass {
     }
   ];
 
+  // New project themes for grouping documents by projects/themes
+  private projectThemes: ProjectTheme[] = [
+    {
+      id: 'project-a',
+      name: 'Проект А',
+      description: 'Основний проект розробки',
+      keywords: ['проект а', 'розробка', 'основний'],
+      color: '#FF6B6B'
+    },
+    {
+      id: 'project-b',
+      name: 'Проект Б',
+      description: 'Дослідницький проект',
+      keywords: ['проект б', 'дослідження', 'експеримент'],
+      color: '#4ECDC4'
+    },
+    {
+      id: 'maintenance',
+      name: 'Технічне обслуговування',
+      description: 'Документи з технічного обслуговування',
+      keywords: ['обслуговування', 'техніка', 'ремонт'],
+      color: '#45B7D1'
+    },
+    {
+      id: 'training-program',
+      name: 'Навчальна програма',
+      description: 'Документи навчальної програми',
+      keywords: ['навчання', 'програма', 'курс'],
+      color: '#96CEB4'
+    }
+  ];
+
   constructor(config: BotConfig) {
     super('SmartDocumentClassifier', config);
   }
@@ -122,11 +167,19 @@ export class SmartDocumentClassifier extends BaseServiceClass {
       const confidence = matchedCategories.length > 0 ? 
         categoryScores[0].score : 0;
       
+      // Identify project themes for the document
+      const projectThemes = this.identifyProjectThemes(file, allKeywords);
+      
+      // Identify relationships with other documents
+      const relationships = this.identifyDocumentRelationships(file, allKeywords);
+      
       return {
         file,
         categories: matchedCategories,
         confidence,
-        tags
+        tags,
+        projectThemes,
+        relationships
       };
     } catch (error) {
       logger.error('Помилка класифікації документу', {
@@ -140,7 +193,9 @@ export class SmartDocumentClassifier extends BaseServiceClass {
         file,
         categories: [],
         confidence: 0,
-        tags: []
+        tags: [],
+        projectThemes: [],
+        relationships: []
       };
     }
   }
@@ -165,13 +220,70 @@ export class SmartDocumentClassifier extends BaseServiceClass {
         // Використовуємо категорію з найвищим пріоритетом
         const primaryCategory = doc.categories
           .sort((a, b) => a.priority - b.priority)[0];
-        groups.get(primaryCategory.id)?.push(doc);
+        const group = groups.get(primaryCategory.id);
+        if (group) {
+          group.push(doc);
+        }
       } else {
-        groups.get('uncategorized')?.push(doc);
+        const group = groups.get('uncategorized');
+        if (group) {
+          group.push(doc);
+        }
       }
     }
     
     return groups;
+  }
+
+  /**
+   * Групує документи за проектами/темами
+   */
+  groupDocumentsByProjectTheme(documents: ClassifiedDocument[]): Map<string, ClassifiedDocument[]> {
+    const groups = new Map<string, ClassifiedDocument[]>();
+    
+    // Додаємо всі теми як порожні групи
+    for (const theme of this.projectThemes) {
+      groups.set(theme.id, []);
+    }
+    
+    // Додаємо групу для документів без теми
+    groups.set('no-theme', []);
+    
+    // Розподіляємо документи по групах
+    for (const doc of documents) {
+      if (doc.projectThemes.length > 0) {
+        // Використовуємо першу тему (найбільш вірогідну)
+        const primaryTheme = doc.projectThemes[0];
+        const group = groups.get(primaryTheme.id);
+        if (group) {
+          group.push(doc);
+        }
+      } else {
+        const group = groups.get('no-theme');
+        if (group) {
+          group.push(doc);
+        }
+      }
+    }
+    
+    return groups;
+  }
+
+  /**
+   * Візуалізує зв'язки між документами
+   */
+  visualizeDocumentRelationships(documents: ClassifiedDocument[]): DocumentRelationship[] {
+    const allRelationships: DocumentRelationship[] = [];
+    
+    // Збираємо всі зв'язки з документів
+    for (const doc of documents) {
+      allRelationships.push(...doc.relationships);
+    }
+    
+    // Видаляємо дублікати зв'язків
+    const uniqueRelationships = this.deduplicateRelationships(allRelationships);
+    
+    return uniqueRelationships;
   }
 
   /**
@@ -193,7 +305,7 @@ export class SmartDocumentClassifier extends BaseServiceClass {
       .filter(word => word.length > 2);
     
     // Видаляємо дублікати
-    return [...new Set(words)];
+    return Array.from(new Set(words));
   }
 
   /**
@@ -231,7 +343,7 @@ export class SmartDocumentClassifier extends BaseServiceClass {
     }
     
     // Сортуємо за частотою та обираємо топ-5
-    const sortedKeywords = [...keywordCounts.entries()]
+    const sortedKeywords = Array.from(keywordCounts.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(entry => entry[0]);
@@ -240,7 +352,105 @@ export class SmartDocumentClassifier extends BaseServiceClass {
       tags.add(keyword);
     }
     
-    return [...tags].slice(0, 10); // Максимум 10 тегів
+    return Array.from(tags).slice(0, 10); // Максимум 10 тегів
+  }
+
+  /**
+   * Ідентифікує проектні теми для документа
+   */
+  private identifyProjectThemes(file: DriveFile, keywords: string[]): ProjectTheme[] {
+    const themeScores = this.projectThemes.map(theme => {
+      const score = this.calculateThemeScore(theme, keywords, file);
+      return { theme, score };
+    });
+    
+    // Сортуємо за спаданням оцінки
+    themeScores.sort((a, b) => b.score - a.score);
+    
+    // Відбираємо теми з високою оцінкою
+    return themeScores
+      .filter(ts => ts.score > 0.1)
+      .map(ts => ts.theme);
+  }
+
+  /**
+   * Обчислює оцінку відповідності теми
+   */
+  private calculateThemeScore(theme: ProjectTheme, keywords: string[], file: DriveFile): number {
+    if (keywords.length === 0) return 0;
+    
+    // Підраховуємо кількість ключових слів, що відповідають темі
+    const matches = keywords.filter(keyword => 
+      theme.keywords.some(themeKeyword => 
+        keyword.includes(themeKeyword) || themeKeyword.includes(keyword)
+      )
+    );
+    
+    // Також перевіряємо назву файлу
+    const nameMatches = theme.keywords.filter(keyword => 
+      (file.name?.toLowerCase() || '').includes(keyword)
+    ).length;
+    
+    // Обчислюємо оцінку (від 0 до 1)
+    const keywordScore = matches.length / keywords.length;
+    const nameScore = nameMatches / theme.keywords.length;
+    
+    return (keywordScore * 0.7) + (nameScore * 0.3);
+  }
+
+  /**
+   * Ідентифікує зв'язки документа з іншими документами
+   */
+  private identifyDocumentRelationships(file: DriveFile, keywords: string[]): DocumentRelationship[] {
+    const relationships: DocumentRelationship[] = [];
+    
+    // Шукаємо згадки інших файлів у вмісті
+    const fileReferences = this.extractFileReferences(keywords);
+    
+    // Створюємо зв'язки для знайдених згадок
+    for (const reference of fileReferences) {
+      relationships.push({
+        sourceId: file.id,
+        targetId: reference.fileId,
+        relationshipType: reference.type,
+        confidence: reference.confidence
+      });
+    }
+    
+    return relationships;
+  }
+
+  /**
+   * Витягує згадки інших файлів з ключових слів
+   */
+  private extractFileReferences(keywords: string[]): Array<{fileId: string, type: DocumentRelationship['relationshipType'], confidence: number}> {
+    // Це спрощена реалізація
+    // У реальному застосунку тут би був аналіз посилань між документами
+    return [];
+  }
+
+  /**
+   * Видаляє дублікати зв'язків
+   */
+  private deduplicateRelationships(relationships: DocumentRelationship[]): DocumentRelationship[] {
+    const uniqueMap = new Map<string, DocumentRelationship>();
+    
+    for (const rel of relationships) {
+      // Створюємо унікальний ключ для зв'язку
+      const key = `${rel.sourceId}-${rel.targetId}-${rel.relationshipType}`;
+      
+      // Якщо зв'язок вже існує, зберігаємо той з вищою впевненістю
+      if (uniqueMap.has(key)) {
+        const existing = uniqueMap.get(key)!;
+        if (rel.confidence > existing.confidence) {
+          uniqueMap.set(key, rel);
+        }
+      } else {
+        uniqueMap.set(key, rel);
+      }
+    }
+    
+    return Array.from(uniqueMap.values());
   }
 
   /**
@@ -248,6 +458,13 @@ export class SmartDocumentClassifier extends BaseServiceClass {
    */
   getCategories(): DocumentCategory[] {
     return [...this.categories];
+  }
+
+  /**
+   * Отримує всі доступні теми проектів
+   */
+  getProjectThemes(): ProjectTheme[] {
+    return [...this.projectThemes];
   }
 
   /**
@@ -278,7 +495,31 @@ export class SmartDocumentClassifier extends BaseServiceClass {
     this.categories = this.categories.filter(c => c.id !== categoryId);
   }
 
-  // === BaseServiceClass required methods ===
+  /**
+   * Додає нову тему проекту
+   */
+  addProjectTheme(theme: ProjectTheme): void {
+    this.projectThemes.push(theme);
+  }
+
+  /**
+   * Оновлює існуючу тему проекту
+   */
+  updateProjectTheme(themeId: string, updatedTheme: ProjectTheme): void {
+    const index = this.projectThemes.findIndex(t => t.id === themeId);
+    if (index !== -1) {
+      this.projectThemes[index] = updatedTheme;
+    }
+  }
+
+  /**
+   * Видаляє тему проекту
+   */
+  removeProjectTheme(themeId: string): void {
+    this.projectThemes = this.projectThemes.filter(t => t.id !== themeId);
+  }
+
+  // === BaseService required methods ===
   
   protected async onInitialize(): Promise<void> {
     logger.info('SmartDocumentClassifier ініціалізовано', {
@@ -296,13 +537,15 @@ export class SmartDocumentClassifier extends BaseServiceClass {
     return {
       healthy: true,
       service: this.name,
-      categoriesCount: this.categories.length
+      categoriesCount: this.categories.length,
+      themesCount: this.projectThemes.length
     };
   }
 
   protected onGetStats(): any {
     return {
-      categoriesCount: this.categories.length
+      categoriesCount: this.categories.length,
+      themesCount: this.projectThemes.length
     };
   }
 }
