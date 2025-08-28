@@ -12,10 +12,7 @@ import type { DocumentAnalysisService } from '@/services/DocumentAnalysisService
 import type {
   SlashCommandBuilder,
   SlashCommandStringOption,
-  ChatInputCommandInteraction,
-  GuildMember,
 } from 'discord.js';
-import { AnalyticsService } from '@/services/AnalyticsService';
 import { t } from '@/i18n';
 
 type DocumentAnalysisOptions = {
@@ -66,7 +63,9 @@ export class DocumentAnalysisCommand extends BaseCommand {
   /**
    * Execute the document analysis command
    */
-  async execute({ interaction, services }: CommandExecuteOptions): Promise<void> {
+  protected async onExecute(options: CommandExecuteOptions): Promise<void> {
+    const { interaction } = options;
+    
     try {
       // Defer reply as this might take some time
       await interaction.deferReply({ ephemeral: false });
@@ -101,54 +100,79 @@ export class DocumentAnalysisCommand extends BaseCommand {
       }
 
       // Find the file in Google Drive
-      const files = await this.googleService.searchDriveFiles({
-        query: options.file,
-        limit: 1
-      });
-
-      if (!files.results || files.results.length === 0) {
+      const files = await this.googleService.searchFiles(`name contains '${options.file}'`);
+      
+      if (!files || files.length === 0) {
         await interaction.editReply({
           content: t('document.analysis.error.file_not_found', { fileName: options.file })
         });
         return;
       }
 
-      const file = files.results[0];
+      const file = files[0];
+      
+      // Ensure the file has an id
+      if (!file || !file.id) {
+        await interaction.editReply({
+          content: t('document.analysis.error.file_no_id', { fileName: options.file })
+        });
+        return;
+      }
 
       // Perform analysis based on type
       let analysisResult: string;
       
       switch (options.analysisType) {
         case 'structure':
-          const structureAnalysis = await this.documentAnalysisService.analyzeDocument(file, {
+          const structureAnalysis = await this.documentAnalysisService.analyzeDocument({
+            id: file.id,
+            name: file.name || options.file,
+            mimeType: file.mimeType || 'unknown'
+          }, {
             includeStructure: true
           });
           analysisResult = this.formatStructureAnalysis(structureAnalysis);
           break;
           
         case 'summary':
-          const summaryAnalysis = await this.documentAnalysisService.analyzeDocument(file, {
+          const summaryAnalysis = await this.documentAnalysisService.analyzeDocument({
+            id: file.id,
+            name: file.name || options.file,
+            mimeType: file.mimeType || 'unknown'
+          }, {
             includeSummary: true
           });
           analysisResult = this.formatSummaryAnalysis(summaryAnalysis);
           break;
           
         case 'actions':
-          const actionAnalysis = await this.documentAnalysisService.analyzeDocument(file, {
+          const actionAnalysis = await this.documentAnalysisService.analyzeDocument({
+            id: file.id,
+            name: file.name || options.file,
+            mimeType: file.mimeType || 'unknown'
+          }, {
             includeActionItems: true
           });
           analysisResult = this.formatActionItemsAnalysis(actionAnalysis);
           break;
           
         case 'compliance':
-          const complianceAnalysis = await this.documentAnalysisService.analyzeDocument(file, {
+          const complianceAnalysis = await this.documentAnalysisService.analyzeDocument({
+            id: file.id,
+            name: file.name || options.file,
+            mimeType: file.mimeType || 'unknown'
+          }, {
             includeCompliance: true
           });
           analysisResult = this.formatComplianceAnalysis(complianceAnalysis);
           break;
           
         case 'quality':
-          const qualityAnalysis = await this.documentAnalysisService.analyzeDocument(file, {
+          const qualityAnalysis = await this.documentAnalysisService.analyzeDocument({
+            id: file.id,
+            name: file.name || options.file,
+            mimeType: file.mimeType || 'unknown'
+          }, {
             includeQuality: true
           });
           analysisResult = this.formatQualityAnalysis(qualityAnalysis);
@@ -156,7 +180,11 @@ export class DocumentAnalysisCommand extends BaseCommand {
           
         case 'full':
         default:
-          const fullAnalysis = await this.documentAnalysisService.analyzeDocument(file);
+          const fullAnalysis = await this.documentAnalysisService.analyzeDocument({
+            id: file.id,
+            name: file.name || options.file,
+            mimeType: file.mimeType || 'unknown'
+          });
           analysisResult = this.formatFullAnalysis(fullAnalysis);
           break;
       }
@@ -174,15 +202,6 @@ export class DocumentAnalysisCommand extends BaseCommand {
         analysisType: options.analysisType
       });
 
-      // Track analytics
-      if (services.analytics) {
-        await services.analytics.trackCommandUsage('analyze-doc', {
-          userId: interaction.user.id,
-          guildId: interaction.guild?.id,
-          fileId: file.id,
-          analysisType: options.analysisType
-        });
-      }
     } catch (error) {
       logger.error('Error executing document analysis command', {
         component: 'DocumentAnalysisCommand',
