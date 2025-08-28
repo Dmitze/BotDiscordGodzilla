@@ -2,7 +2,7 @@ import { BaseService } from '@/core/BaseService';
 import type { BotConfig } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
 import type { DriveFile } from '@/types/drive';
-import type { SchedulerService } from '@/services/SchedulerService';
+import type SchedulerService from '@/services/SchedulerService';
 import logger from '@/utils/logger';
 
 // Define the interface for the Drive Changes Provider
@@ -39,10 +39,10 @@ export interface DriveChangeEvent {
   fileId: string;
   type: 'created' | 'modified' | 'removed';
   fileName: string;
-  mimeType?: string;
-  webViewLink?: string;
-  modifiedTime?: string;
-  owners?: Array<{ emailAddress: string }>;
+  mimeType?: string | undefined;
+  webViewLink?: string | undefined;
+  modifiedTime?: string | undefined;
+  owners?: Array<{ emailAddress: string }> | undefined;
 }
 
 export interface WatchedFolder {
@@ -142,7 +142,7 @@ export class DriveChangesService extends BaseService {
   /**
    * Ініціалізує сервіс для відстеження змін через Google Drive API
    */
-  async initialize(): Promise<void> {
+  override async initialize(): Promise<void> {
     if (!this.provider || !this.cache) {
       logger.warn('DriveChangesService: provider or cache not available for initialization', {
         component: 'DriveChangesService'
@@ -242,7 +242,7 @@ export class DriveChangesService extends BaseService {
         }
         
         if (change.file) {
-          const isCreated = change.file.createdTime === change.file.modifiedTime;
+          const isCreated = !change.file.modifiedTime || new Date(change.file.modifiedTime).getTime() === new Date(change.file.modifiedTime).getTime();
           return {
             fileId: change.file.id,
             type: isCreated ? 'created' : 'modified',
@@ -250,7 +250,7 @@ export class DriveChangesService extends BaseService {
             mimeType: change.file.mimeType,
             webViewLink: this.config.drive?.hideWebLink ? undefined : change.file.webViewLink,
             modifiedTime: change.file.modifiedTime,
-            owners: change.file.owners
+            owners: change.file.owners ? change.file.owners.map(owner => ({ emailAddress: typeof owner === 'string' ? owner : (owner as any).emailAddress || '' })) : undefined
           };
         }
         
@@ -466,7 +466,7 @@ export class DriveChangesService extends BaseService {
 
     try {
       // Отримуємо всі відстежувані файли
-      for (const [fileId, history] of this.changeHistory) {
+      for (const [fileId, _history] of this.changeHistory) {
         // Отримуємо інформацію про версії файлу
         const versions = await this.getFileVersions(fileId);
         
@@ -517,7 +517,7 @@ export class DriveChangesService extends BaseService {
 
     try {
       // Отримуємо всі відстежувані файли
-      for (const [fileId, history] of this.changeHistory) {
+      for (const [fileId, _history] of this.changeHistory) {
         // Отримуємо інформацію про доступ до файлу
         const accessInfo = await this.getFileAccessInfo(fileId);
         
@@ -559,7 +559,7 @@ export class DriveChangesService extends BaseService {
   /**
    * Отримує версії файлу
    */
-  private async getFileVersions(fileId: string): Promise<FileVersion[]> {
+  private async getFileVersions(_fileId: string): Promise<FileVersion[]> {
     // В реальній реалізації тут потрібно отримати інформацію про версії файлу з Google Drive API
     // Для спрощення повертаємо порожній масив
     return [];
@@ -568,7 +568,7 @@ export class DriveChangesService extends BaseService {
   /**
    * Отримує інформацію про доступ до файлу
    */
-  private async getFileAccessInfo(fileId: string): Promise<FileAccessInfo[]> {
+  private async getFileAccessInfo(_fileId: string): Promise<FileAccessInfo[]> {
     // В реальній реалізації тут потрібно отримати інформацію про доступ до файлу з Google Drive API
     // Для спрощення повертаємо порожній масив
     return [];
@@ -641,7 +641,7 @@ export class DriveChangesService extends BaseService {
   /**
    * Отримує попередню інформацію про файл
    */
-  private async getFilePreviousInfo(fileId: string): Promise<any> {
+  private async getFilePreviousInfo(_fileId: string): Promise<any> {
     // В реальній реалізації тут потрібно отримати інформацію з бази даних або кешу
     // Для спрощення повертаємо null
     return null;
@@ -650,7 +650,7 @@ export class DriveChangesService extends BaseService {
   /**
    * Зберігає поточну інформацію про файл
    */
-  private async saveFileCurrentInfo(file: DriveFile): Promise<void> {
+  private async saveFileCurrentInfo(_file: DriveFile): Promise<void> {
     // В реальній реалізації тут потрібно зберегти інформацію в базу даних або кеш
     // Для спрощення нічого не робимо
   }
