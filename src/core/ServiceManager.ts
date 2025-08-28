@@ -421,13 +421,11 @@ class ServiceManager {
 
     // Knowledge Base Service (depends on Google + AI + RAG + ResponseCache services)
     try {
-      const googleSvc = this.services.get('google');
       const aiSvc = this.services.get('ai');
       const ragSvc = this.services.get('rag');
       const responseCache = this.services.get('responseCache');
-      if (googleSvc && aiSvc && ragSvc && responseCache) {
+      if (aiSvc && ragSvc && responseCache) {
         const knowledgeBase = new KnowledgeBaseService(
-          googleSvc as any,
           aiSvc as any,
           ragSvc as any,
           responseCache as any
@@ -456,11 +454,18 @@ class ServiceManager {
       const googleSvc = this.services.get('google');
       const ragSvc = this.services.get('rag');
       const embeddingsSvc = this.services.get('embeddings');
-      if (aiSvc && googleSvc && ragSvc && embeddingsSvc) {
+      const searchIndex = this.services.get('searchIndex');
+      const driveIndexer = this.services.get('driveIndexer');
+      const responseCache = this.services.get('responseCache');
+      const scheduler = this.services.get('scheduler');
+      if (aiSvc && googleSvc && ragSvc && embeddingsSvc && searchIndex && driveIndexer && responseCache && scheduler) {
         const enhancedRag = new EnhancedRagService(
+          searchIndex as any,
           aiSvc as any,
           googleSvc as any,
-          ragSvc as any,
+          driveIndexer as any,
+          responseCache as any,
+          scheduler as any,
           embeddingsSvc as any
         );
         this.services.set('enhancedRag', enhancedRag as unknown as NonNullable<ServiceRegistry['enhancedRag']>);
