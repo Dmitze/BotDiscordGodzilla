@@ -193,7 +193,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeStructure && this.aiService) {
         analysisPromises.push(
           this.aiService.analyzeDocumentStructure(content)
-            .then(response => {
+            .then(_response => {
               // In a real implementation, we would parse the AI response
               // For now, we'll just mark that the analysis was performed
               analysis.structure = {
@@ -217,7 +217,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeSummary && this.aiService) {
         analysisPromises.push(
           this.aiService.summarizeDocumentContent(content)
-            .then(response => {
+            .then(_response => {
               analysis.summary = {
                 brief: 'Document brief summary',
                 medium: 'Document medium summary',
@@ -239,7 +239,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeActionItems && this.aiService) {
         analysisPromises.push(
           this.aiService.extractActionItems(content)
-            .then(response => {
+            .then(_response => {
               analysis.actionItems = [];
             })
             .catch(error => {
@@ -255,7 +255,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeQnA && this.aiService) {
         analysisPromises.push(
           this.aiService.generateQnA(content)
-            .then(response => {
+            .then(_response => {
               analysis.qna = [];
             })
             .catch(error => {
@@ -271,7 +271,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeCompliance && this.aiService) {
         analysisPromises.push(
           this.aiService.checkCompliance(content)
-            .then(response => {
+            .then(_response => {
               analysis.compliance = {
                 score: 85,
                 issues: [],
@@ -291,7 +291,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeTranslation && this.aiService) {
         analysisPromises.push(
           this.aiService.translateDocument(content)
-            .then(response => {
+            .then(_response => {
               analysis.translation = {
                 translatedContent: content,
                 glossary: {}
@@ -310,7 +310,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeQuality && this.aiService) {
         analysisPromises.push(
           this.aiService.assessDocumentQuality(content)
-            .then(response => {
+            .then(_response => {
               analysis.quality = {
                 clarity: 80,
                 organization: 75,
@@ -333,7 +333,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeStakeholders && this.aiService) {
         analysisPromises.push(
           this.aiService.analyzeStakeholders(content)
-            .then(response => {
+            .then(_response => {
               analysis.stakeholders = [];
             })
             .catch(error => {
@@ -349,7 +349,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeBudget && this.aiService) {
         analysisPromises.push(
           this.aiService.analyzeBudget(content)
-            .then(response => {
+            .then(_response => {
               analysis.budget = {
                 totalEstimatedCost: 0,
                 fundingSources: [],
@@ -370,7 +370,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeRisks && this.aiService) {
         analysisPromises.push(
           this.aiService.assessRisks(content)
-            .then(response => {
+            .then(_response => {
               analysis.risks = [];
             })
             .catch(error => {
@@ -386,7 +386,7 @@ export class DocumentAnalysisService extends BaseService {
       if (includeAudienceSegments && this.aiService) {
         analysisPromises.push(
           this.aiService.segmentAudience(content)
-            .then(response => {
+            .then(_response => {
               analysis.audienceSegments = [];
             })
             .catch(error => {
@@ -546,5 +546,37 @@ export class DocumentAnalysisService extends BaseService {
    */
   clearAllAnalyses(): void {
     this.analyses.clear();
+  }
+
+  // === BaseService required methods ===
+  
+  protected async onInitialize(): Promise<void> {
+    // DocumentAnalysisService doesn't need any special initialization
+    logger.info('DocumentAnalysisService initialized', {
+      component: 'DocumentAnalysisService'
+    });
+  }
+
+  protected async onShutdown(): Promise<void> {
+    // Clear all cached analyses on shutdown
+    this.clearAllAnalyses();
+    logger.info('DocumentAnalysisService shut down', {
+      component: 'DocumentAnalysisService'
+    });
+  }
+
+  protected async onHealthCheck(): Promise<any> {
+    return {
+      healthy: true,
+      service: this.name,
+      cachedAnalyses: this.analyses.size
+    };
+  }
+
+  protected onGetStats(): any {
+    return {
+      cachedAnalyses: this.analyses.size,
+      maxCacheEntries: this.MAX_CACHE_ENTRIES
+    };
   }
 }
