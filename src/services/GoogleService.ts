@@ -1147,70 +1147,78 @@ export class GoogleService extends BaseServiceClass {
   }
 
   /**
-   * Ініціалізація Google сервісів
+   * Тестування підключення до Google Drive
+   */
+  public async testDriveConnection(): Promise<boolean> {
+    try {
+      if (!this.drive) {
+        logger.warn('Google Drive API not initialized');
+        return false;
+      }
+      
+      // Простий запит до кореневої папки для перевірки підключення
+      const response = await this.drive.files.list({
+        pageSize: 1,
+        fields: 'files(id, name)',
+      });
+      
+      logger.info('✅ Google Drive connection test successful', {
+        filesFound: response.data.files?.length || 0
+      });
+      return true;
+    } catch (error) {
+      logger.error('❌ Google Drive connection test failed', {
+        error: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code,
+        status: (error as any)?.response?.status,
+      });
+      return false;
+    }
+  }
+  
+  /**
+   * Покращена ініціалізація сервісів Google
    */
   protected async onInitialize(): Promise<void> {
     try {
-      logger.info('🔧 Ініціалізація Google Service...', {
-        type: 'system',
-        event: 'google_service_init',
+      logger.info('🚀 Ініціалізація Google Service...', {
+        type: 'service',
+        event: 'google_init_start',
         component: 'GoogleService',
       });
 
-      // Ініціалізація кешу
-      await this.cacheService.initialize();
+      await this.initializeAuth();
+      await this.initializeApis();
 
-      // У тестовому режимі або коли сервіс вимкнено/немає credentials — пропускаємо зовнішню ініціалізацію
-      const disabled =
-        process.env['NODE_ENV'] === 'test' ||
-        process.env['DISABLE_GOOGLE_SERVICE'] === 'true' ||
-        !this.config.google?.credentials;
-
-      if (disabled) {
-        logger.warn('🧪 Режим тесту/відключено/немає credentials: пропущено auth/API/pool для GoogleService', {
-          type: 'system',
-          event: 'google_service_init_skipped_external',
+      // Тестуємо підключення до Google Drive
+      const driveConnected = await this.testDriveConnection();
+      if (!driveConnected) {
+        logger.warn('⚠️ Google Drive connection test failed, but continuing...', {
+          type: 'service',
+          event: 'google_drive_test_failed',
           component: 'GoogleService',
         });
       } else {
-        // Створення автентифікації
-        await this.initializeAuth();
-
-        // Ініціалізація API клієнтів
-        this.initializeAPIs();
-
-        // Створення connection pool
-        this.initializeConnectionPool();
-        
-        // Перевірка підключення до Google Drive
-        await this.testDriveConnection();
+        logger.info('✅ Google Drive connection confirmed', {
+          type: 'service',
+          event: 'google_drive_connected',
+          component: 'GoogleService',
+        });
       }
 
-      logger.info('✅ Google Service ініціалізовано', {
-        type: 'system',
-        event: 'google_service_init_success',
+      logger.info('✅ Google Service ініціалізовано успішно', {
+        type: 'service',
+        event: 'google_init_success',
         component: 'GoogleService',
       });
     } catch (error) {
-      if (error instanceof Error) {
-        logger.error('❌ Помилка ініціалізації Google Service', {
-          type: 'system',
-          event: 'google_service_init_failed',
-          component: 'GoogleService',
-          errorName: error.name,
-          errorMessage: error.message,
-          stack: error.stack,
-          severity: 'critical',
-        });
-      } else {
-        logger.error('❌ Помилка ініціалізації Google Service', {
-          type: 'system',
-          event: 'google_service_init_failed',
-          component: 'GoogleService',
-          errorMessage: String(error),
-          severity: 'critical',
-        });
-      }
+      logger.error('❌ Критична помилка ініціалізації Google Service', {
+        type: 'service',
+        event: 'google_init_failed',
+        component: 'GoogleService',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -1257,69 +1265,169 @@ export class GoogleService extends BaseServiceClass {
   }
 
   /**
-   * Тестове підключення до Google Drive для перевірки працездатності
-   */
-  private async testDriveConnection(): Promise<void> {
-    try {
-      if (!this.drive) {
-        throw new Error('Drive API не ініціалізовано');
-      }
-      
-      // Простий тестовий запит до Drive API
-      await this.drive.about.get({ fields: 'kind' });
-      logger.info('✅ Підключення до Google Drive успішне', {
-        type: 'system',
-        event: 'drive_connection_test_success',
-        component: 'GoogleService',
-      });
-    } catch (error) {
-      logger.error('❌ Помилка підключення до Google Drive', {
-        type: 'system',
-        event: 'drive_connection_test_failed',
-        component: 'GoogleService',
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw new Error(`Не вдалося підключитися до Google Drive: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  /**
-   * Перевірка здоров'я Google сервісів
+   * Health check для Google API
    */
   protected async onHealthCheck(): Promise<HealthStatus> {
     try {
-      // Перевірка автентифікації
-      if (!this.auth) {
+      // Перевірка наявності необхідних сервісів
+      if (!this.auth || !this.drive || !this.sheets || !this.docs) {
         return {
           healthy: false,
           service: this.name,
-          error: 'Сервіс не ініціалізовано',
+          error: 'Google API не ініціалізовано',
         };
       }
 
-      // Перевірка API клієнтів
-      if (!this.sheets || !this.drive || !this.docs) {
+      // Перевірка підключення до Drive API
+      try {
+        await this.drive.about.get({
+          fields: 'kind'
+        });
+      } catch (error) {
         return {
           healthy: false,
           service: this.name,
-          error: 'API клієнти не ініціалізовано',
+          error: `Помилка підключення до Drive API: ${error instanceof Error ? error.message : String(error)}`,
         };
       }
 
-      // Перевірка підключення до Google Drive
-      if (this.drive) {
-        await this.drive.about.get({ fields: 'kind' });
+      // Перевірка підключення до Sheets API
+      try {
+        // Простий запит для перевірки
+        await this.sheets.spreadsheets.get({
+          spreadsheetId: this.config.google.spreadsheetId || 'test',
+          fields: 'spreadsheetId'
+        });
+      } catch (error) {
+        // Якщо помилка через невірний ID, це не критично для health check
+        if (!(error instanceof Error && error.message.includes('Unable to parse'))) {
+          // Інші помилки можуть свідчити про проблеми з підключенням
+          logger.warn('Попередження під час health check Sheets API:', {
+            type: 'health',
+            event: 'sheets_health_warning',
+            component: 'GoogleService',
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // Перевірка підключення до Docs API
+      try {
+        // Простий запит для перевірки
+        await this.docs.documents.get({
+          documentId: 'test',
+          fields: 'title'
+        });
+      } catch (error) {
+        // Якщо помилка через невірний ID, це не критично для health check
+        if (!(error instanceof Error && error.message.includes('Unable to parse'))) {
+          // Інші помилки можуть свідчити про проблеми з підключенням
+          logger.warn('Попередження під час health check Docs API:', {
+            type: 'health',
+            event: 'docs_health_warning',
+            component: 'GoogleService',
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
 
       return {
         healthy: true,
         service: this.name,
+        details: {
+          authInitialized: !!this.auth,
+          driveInitialized: !!this.drive,
+          sheetsInitialized: !!this.sheets,
+          docsInitialized: !!this.docs,
+          requests: this.stats.requests,
+          errors: this.stats.errors,
+          successRate: this.stats.requests > 0 ? ((this.stats.requests - this.stats.errors) / this.stats.requests) * 100 : 0,
+          averageResponseTime: this.stats.averageResponseTime,
+          cacheHits: this.stats.cacheHits,
+          cacheMisses: this.stats.cacheMisses,
+        },
       };
     } catch (error) {
       return {
         healthy: false,
         service: this.name,
-        error: error instanceof Error ? error.message : 'Невідома помилка',
+        error: `Health check failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  /**
+   * Отримання детального статусу сервісу
+   */
+  public async getDetailedStatus(): Promise<any> {
+    const health = await this.onHealthCheck();
+    
+    return {
+      health,
+      stats: this.onGetStats(),
+      config: {
+        driveFolderId: this.config.drive?.folderId,
+        spreadsheetId: this.config.google?.spreadsheetId,
+        ocrProvider: this.config.ocr?.provider,
+      },
+    };
+  }
+
+  /**
+   * Тестування підключення до Google Drive
+   */
+  public async testDriveConnection(): Promise<{ success: boolean; message: string; details?: any }> {
+    try {
+      if (!this.drive) {
+        return {
+          success: false,
+          message: 'Google Drive API не ініціалізовано',
+          details: { issue: 'drive_api_not_initialized' }
+        };
+      }
+      
+      // Простий запит до кореневої папки для перевірки підключення
+      const response = await this.drive.files.list({
+        pageSize: 1,
+        fields: 'files(id, name, mimeType)',
+      });
+      
+      const filesFound = response.data.files?.length || 0;
+      logger.info('✅ Google Drive connection test successful', {
+        filesFound
+      });
+      
+      return {
+        success: true,
+        message: `Успішне підключення до Google Drive. Знайдено файлів: ${filesFound}`,
+        details: { filesFound, sampleFile: response.data.files?.[0] }
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorCode = (error as any)?.code;
+      const status = (error as any)?.response?.status;
+      
+      logger.error('❌ Google Drive connection test failed', {
+        error: errorMessage,
+        code: errorCode,
+        status: status,
+      });
+      
+      let userMessage = `Помилка підключення до Google Drive: ${errorMessage}`;
+      
+      // Спеціальні повідомлення для поширених помилок
+      if (errorCode === 403) {
+        userMessage += '. Перевірте, чи ввімкнено Google Drive API у Google Cloud Console та чи має service account необхідні дозволи.';
+      } else if (errorCode === 401) {
+        userMessage += '. Проблема з аутентифікацією. Перевірте ваші credentials.';
+      } else if (errorMessage.includes('invalid_grant')) {
+        userMessage += '. Недійсний grant. Перевірте, чи не закінчився термін дії вашого service account key.';
+      }
+      
+      return {
+        success: false,
+        message: userMessage,
+        details: { error: errorMessage, code: errorCode, status: status }
       };
     }
   }
@@ -1596,136 +1704,240 @@ export class GoogleService extends BaseServiceClass {
   }
 
   /**
-   * Ініціалізація автентифікації
+   * Покращена ініціалізація Google API з детальним логуванням
    */
-  private async initializeAuth(): Promise<void> {
+  protected async onInitialize(): Promise<void> {
     try {
-      // Перевірка наявності credentials
-      if (!this.config.google.credentials) {
-        throw new Error('Google credentials не налаштовано');
-      }
-
-      // Створення JWT автентифікації
-      const jwt = new google.auth.JWT(
-        this.config.google.credentials.client_email,
-        undefined,
-        this.config.google.credentials.private_key,
-        [
-          'https://www.googleapis.com/auth/spreadsheets',
-          'https://www.googleapis.com/auth/drive',
-          'https://www.googleapis.com/auth/documents',
-        ]
-      );
-
-      // Авторизація
-      await jwt.authorize();
-      this.auth = jwt;
-      logger.info('✅ Google автентифікація успішна', {
-        type: 'system',
-        event: 'google_auth_success',
+      logger.info('🔐 Ініціалізація Google API...', {
+        type: 'auth',
+        event: 'google_init_start',
         component: 'GoogleService',
       });
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.error('❌ Помилка Google автентифікації', {
-          type: 'api_error',
-          event: 'google_auth_failed',
+
+      // Перевірка наявності облікових даних
+      const credentialsPath = this.config.google?.applicationCredentials;
+      const clientEmail = this.config.google?.clientEmail;
+      const privateKey = this.config.google?.privateKey;
+
+      if (!credentialsPath && (!clientEmail || !privateKey)) {
+        throw new Error('Не вказано облікові дані Google API. Перевірте GOOGLE_APPLICATION_CREDENTIALS або GOOGLE_CLIENT_EMAIL/GOOGLE_PRIVATE_KEY');
+      }
+
+      // Спроба завантажити облікові дані
+      let credentials: any = null;
+      
+      if (credentialsPath) {
+        try {
+          const fs = await import('fs');
+          const path = await import('path');
+          const resolvedPath = path.resolve(credentialsPath);
+          
+          if (!fs.existsSync(resolvedPath)) {
+            throw new Error(`Файл облікових даних не знайдено: ${resolvedPath}`);
+          }
+          
+          const rawCredentials = fs.readFileSync(resolvedPath, 'utf8');
+          credentials = JSON.parse(rawCredentials);
+          logger.info('✅ Облікові дані завантажено з файлу', {
+            type: 'auth',
+            event: 'credentials_loaded',
+            component: 'GoogleService',
+            path: resolvedPath,
+          });
+        } catch (error) {
+          logger.error('❌ Помилка завантаження облікових даних з файлу', {
+            type: 'auth_error',
+            event: 'credentials_load_failed',
+            component: 'GoogleService',
+            error: error instanceof Error ? error.message : String(error),
+          });
+          throw error;
+        }
+      } else if (clientEmail && privateKey) {
+        credentials = {
+          client_email: clientEmail,
+          private_key: privateKey.replace(/\\n/g, '\n'),
+        };
+        logger.info('✅ Облікові дані завантажено з змінних середовища', {
+          type: 'auth',
+          event: 'credentials_env_loaded',
           component: 'GoogleService',
-          errorName: error.name,
-          errorMessage: error.message,
-          stack: error.stack,
-          service: 'google',
-        });
-      } else {
-        logger.error('❌ Помилка Google автентифікації', {
-          type: 'api_error',
-          event: 'google_auth_failed',
-          component: 'GoogleService',
-          service: 'google',
-          errorMessage: String(error),
         });
       }
-      throw error;
-    }
-  }
 
-  /**
-   * Ініціалізація API клієнтів
-   */
-  private initializeAPIs(): void {
-    try {
-      if (!this.auth) throw new Error('Auth client is not initialized');
-      // Google Sheets API
+      // Ініціалізація JWT клієнта
+      this.auth = new google.auth.JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: [
+          'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/drive.file',
+          'https://www.googleapis.com/auth/drive.readonly',
+          'https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/documents',
+        ],
+      });
+
+      // Ініціалізація сервісів
       this.sheets = google.sheets({ version: 'v4', auth: this.auth });
-
-      // Google Drive API
       this.drive = google.drive({ version: 'v3', auth: this.auth });
-
-      // Google Docs API
       this.docs = google.docs({ version: 'v1', auth: this.auth });
 
-      logger.info('✅ Google API клієнти ініціалізовано', {
-        type: 'system',
-        event: 'google_api_init_success',
+      logger.info('✅ Google API ініціалізовано', {
+        type: 'auth',
+        event: 'google_init_success',
         component: 'GoogleService',
       });
+
+      // Перевірка підключення
+      await this.healthCheck();
+
     } catch (error) {
-      if (error instanceof Error) {
-        logger.error('❌ Помилка ініціалізації Google API', {
-          type: 'api_error',
-          event: 'google_api_init_failed',
-          component: 'GoogleService',
-          errorName: error.name,
-          errorMessage: error.message,
-          stack: error.stack,
-          service: 'google',
-        });
-      } else {
-        logger.error('❌ Помилка ініціалізації Google API', {
-          type: 'api_error',
-          event: 'google_api_init_failed',
-          component: 'GoogleService',
-          service: 'google',
-          errorMessage: String(error),
-        });
-      }
+      logger.error('❌ Помилка ініціалізації Google API', {
+        type: 'auth_error',
+        event: 'google_init_failed',
+        component: 'GoogleService',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
 
   /**
-   * Ініціалізація Connection Pool
+   * Покращений health check для Google API
    */
-  private initializeConnectionPool(): void {
+  public async healthCheck(): Promise<boolean> {
     try {
-      const apiTypes = ['sheets', 'drive', 'docs'];
-
-      for (const apiType of apiTypes) {
-        this.connectionPool.set(apiType, {
-          inUse: false,
-          lastUsed: Date.now(),
-          requestCount: 0,
-        });
-      }
-
-      logger.info('✅ Connection Pool ініціалізовано', {
-        type: 'system',
-        event: 'connection_pool_init_success',
+      logger.info('🔍 Перевірка підключення до Google API...', {
+        type: 'health',
+        event: 'google_health_check_start',
         component: 'GoogleService',
       });
+
+      if (!this.drive || !this.auth) {
+        throw new Error('Google API не ініціалізовано');
+      }
+
+      
+      // Перевірка авторизації
+      const authClient = await this.auth.authorize();
+      
+      // Простий запит до Drive API для перевірки підключення
+      await this.drive.about.get({
+        fields: 'kind'
+      });
+
+      logger.info('✅ Підключення до Google API успішне', {
+        type: 'health',
+        event: 'google_health_check_success',
+        component: 'GoogleService',
+      });
+
+      return true;
     } catch (error) {
-      if (error instanceof Error) {
-        logger.error('❌ Помилка ініціалізації Connection Pool', {
+      logger.error('❌ Помилка підключення до Google API', {
+        type: 'health_error',
+        event: 'google_health_check_failed',
+        component: 'GoogleService',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      
+      return false;
+    }
+  }
           type: 'system',
           event: 'connection_pool_init_failed',
           component: 'GoogleService',
-          errorName: error.name,
-          errorMessage: error.message,
-          stack: error.stack,
+          service: 'google',
+          errorMessage: String(error),
         });
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Виконання запиту з повторною спробою
+   */
+  private async executeWithRetry<T>(
+    fn: () => Promise<T>,
+    apiType: string,
+    retryDelay: number = 1000,
+    retryCount: number = 3,
+    retryOnCodes: number[] = [429, 500, 502, 503, 504]
+  ): Promise<T> {
+    const apiInfo = this.connectionPool.get(apiType);
+    if (!apiInfo) throw new Error(`API type ${apiType} not initialized`);
+
+    if (apiInfo.inUse) {
+      await this.waitForAvailability(apiType);
+    }
+
+    this.connectionPool.set(apiType, {
+      ...apiInfo,
+      inUse: true,
+      lastUsed: Date.now(),
+    });
+
+    try {
+      const result = await fn();
+      this.connectionPool.set(apiType, {
+        inUse: false,
+        lastUsed: Date.now(),
+        requestCount: apiInfo.requestCount + 1,
+      });
+      return result;
+    } catch (error) {
+      this.connectionPool.set(apiType, {
+        inUse: false,
+        lastUsed: Date.now(),
+        requestCount: apiInfo.requestCount + 1,
+      });
+
+      if (error instanceof Error) {
+        const errorCode = (error as any).code;
+        if (retryOnCodes.includes(errorCode) && retryCount > 0) {
+          this.stats.retries++;
+          logger.warn(`⚠️ Retry ${retryCount} for ${apiType} due to error code ${errorCode}: ${error.message}`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          return this.executeWithRetry(fn, apiType, retryDelay * 2, retryCount - 1, retryOnCodes);
+        } else {
+          logger.error(`❌ Error executing ${apiType}: ${error.message}`, {
+            type: 'api_error',
+            event: 'api_execution_failed',
+            component: 'GoogleService',
+            errorName: error.name,
+            errorMessage: error.message,
+            stack: error.stack,
+            service: 'google',
+          });
+          throw error;
+        }
       } else {
-        logger.error('❌ Помилка ініціалізації Connection Pool', {
-          type: 'system',
+        logger.error(`❌ Error executing ${apiType}: ${error}`, {
+          type: 'api_error',
+          event: 'api_execution_failed',
+          component: 'GoogleService',
+          service: 'google',
+          errorMessage: String(error),
+        });
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Чекаємо на доступність API
+   */
+  private async waitForAvailability(apiType: string): Promise<void> {
+    const apiInfo = this.connectionPool.get(apiType);
+    if (!apiInfo) throw new Error(`API type ${apiType} not initialized`);
+
+    while (apiInfo.inUse) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
           event: 'connection_pool_init_failed',
           component: 'GoogleService',
           errorMessage: String(error),
