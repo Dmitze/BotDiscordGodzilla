@@ -6,12 +6,12 @@
 import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
 import type { DriveFile, DriveListResult, DriveListQuery } from '@/types/drive';
 import logger from '@/utils/logger';
-import { BaseService as BaseServiceClass } from '@/core/BaseService';
+import { BaseService } from '@/core/BaseService';
 import type { GoogleService } from './GoogleService';
 import type { SearchIndex } from '@/search/SearchIndex';
 import type { CacheService } from './CacheService';
 import type SchedulerService from './SchedulerService';
-import { chunkTextForDiscord } from '@/utils/chunk';
+// import { chunkTextForDiscord } from '@/utils/chunk';
 import RetryManager from '@/utils/retry';
 import { detectLanguage } from '@/nlp/LanguageDetector';
 
@@ -41,7 +41,7 @@ const INDEX_PREFIX = 'drive:index:file:'; // per-file запись
 const INDEX_KEYS = 'drive:index:keys'; // список fileIds
 const MAX_TEXT_STORED = 100_000; // ограничим объём для Redis
 
-export class DriveIndexerService extends BaseServiceClass {
+export class DriveIndexerService extends BaseService {
   private bot: BotLike;
   private google!: GoogleService;
   private cache!: CacheService;
@@ -159,6 +159,17 @@ export class DriveIndexerService extends BaseServiceClass {
       logger.warn('⚠️ SchedulerService недоступен — cron для индексации не будет запущен');
     }
 
+    // Выполняем начальную индексацию при запуске
+    try {
+      logger.info('🚀 Запуск начальной индексации Google Drive...');
+      await this.reindexIncremental();
+      logger.info('✅ Начальная индексация Google Drive завершена успешно');
+    } catch (error) {
+      logger.error('❌ Ошибка начальной индексации Google Drive', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+
     // формальный await, чтобы удовлетворить линтер (async без await)
     await Promise.resolve();
   }
@@ -195,7 +206,7 @@ export class DriveIndexerService extends BaseServiceClass {
     const durationMs = Date.now() - start;
     this.metrics?.observeHistogram?.('drive_index_duration_seconds', durationMs / 1000, { mode: 'full' });
     this.metrics?.incCounter?.('drive_index_files_indexed_total', { mode: 'full', total });
-    logger.info('✅ Полная индексация завершена', { total });
+    logger.info('✅ Полная индексация завершена', { total, durationMs });
   }
 
   /** Инкрементальная индексация: только новые/изменённые */
@@ -228,7 +239,7 @@ export class DriveIndexerService extends BaseServiceClass {
     const durationMs = Date.now() - start;
     this.metrics?.observeHistogram?.('drive_index_duration_seconds', durationMs / 1000, { mode: 'incremental' });
     this.metrics?.incCounter?.('drive_index_files_indexed_total', { mode: 'incremental', total: updated });
-    logger.info('✅ Инкрементальная индексация завершена', { updated });
+    logger.info('✅ Инкрементальная индексация завершена', { updated, durationMs });
   }
 
   /** Простая выдача по содержимому */
@@ -249,9 +260,9 @@ export class DriveIndexerService extends BaseServiceClass {
             textLength: hit.textLen || 0,
             updatedAt: Date.now(),
             snippet: hit.snippet || '',
-            modifiedTime: hit.modifiedTime,
-            owners: hit.ownerEmail ? [hit.ownerEmail] : undefined,
-            size: hit.sizeBytes || undefined // Use sizeBytes from FTS index
+            // Fix: Handle undefined modifiedTime properly
+            ...(hit.modifiedTime ? { modifiedTime: new Date(hit.modifiedTime).toISOString() } : {}),
+            ...(hit.ownerEmail ? { owners: [hit.ownerEmail] } : {}),
           },
           score: hit.score || 0
         }));
@@ -320,7 +331,58 @@ export class DriveIndexerService extends BaseServiceClass {
   public async getTextChunks(fileId: string, max = 1900): Promise<string[]> {
     const text = await this.getText(fileId);
     if (!text) return [];
-    return chunkTextForDiscord(text, max);
+    
+    // Розбиваємо текст на чанки з кращим форматуванням
+    const chunks: string[] = [];
+    let currentChunk = '';
+    
+    // Розбиваємо текст на рядки
+    const lines = text.split('\n');
+    
+    for (const line of lines) {
+      // Якщо додавання рядка перевищить ліміт, зберігаємо поточний чанк
+      if (currentChunk.length + line.length + 1 > max) {
+        if (currentChunk) {
+          chunks.push(currentChunk.trim());
+          currentChunk = '';
+        }
+        // Якщо один рядок більший за ліміт, розбиваємо його
+        if (line.length > max) {
+          const words = line.split(' ');
+          let currentLine = '';
+          
+          for (const word of words) {
+            if (currentLine.length + word.length + 1 > max) {
+              if (currentLine) {
+                chunks.push(currentLine.trim());
+                currentLine = '';
+              }
+              // Якщо одне слово більше за ліміт, обрізаємо його
+              if (word.length > max) {
+                chunks.push(word.substring(0, max - 3) + '...');
+                continue;
+              }
+            }
+            currentLine += (currentLine ? ' ' : '') + word;
+          }
+          
+          if (currentLine) {
+            currentChunk = currentLine;
+          }
+        } else {
+          currentChunk = line;
+        }
+      } else {
+        currentChunk += (currentChunk ? '\n' : '') + line;
+      }
+    }
+    
+    // Додаємо останній чанк, якщо він не порожній
+    if (currentChunk) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    return chunks;
   }
 
   /** Индексация одного файла по метаданным (без повторного запроса метаданных) */
