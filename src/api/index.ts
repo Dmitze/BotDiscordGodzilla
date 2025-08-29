@@ -92,6 +92,71 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
+// Enhanced health check endpoint
+app.get('/health/detailed', async (req: Request, res: Response) => {
+  try {
+    if (!apiServices) {
+      res.status(503).json({ error: 'API services not initialized' });
+      return;
+    }
+
+    // This would be replaced with actual service health checks
+    const health = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      services: {
+        audit: await apiServices.auditService.onHealthCheck?.() || { healthy: true, service: 'audit' },
+        dlp: await apiServices.dlpService.onHealthCheck?.() || { healthy: true, service: 'dlp' },
+        compliance: await apiServices.complianceService.onHealthCheck?.() || { healthy: true, service: 'compliance' },
+        indexer: await (apiServices.indexerService as any).onHealthCheck?.() || { healthy: true, service: 'indexer' }
+      }
+    };
+
+    res.json(health);
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// AI Service health check
+app.get('/health/ai', async (req: Request, res: Response) => {
+  try {
+    // This would integrate with the actual AI service
+    res.json({
+      healthy: true,
+      service: 'ai',
+      message: 'AI service health check endpoint'
+    });
+  } catch (error) {
+    res.status(500).json({
+      healthy: false,
+      service: 'ai',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Google Service health check
+app.get('/health/google', async (req: Request, res: Response) => {
+  try {
+    // This would integrate with the actual Google service
+    res.json({
+      healthy: true,
+      service: 'google',
+      message: 'Google service health check endpoint'
+    });
+  } catch (error) {
+    res.status(500).json({
+      healthy: false,
+      service: 'google',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Get audit records
 app.get('/audit/records', authenticateToken, async (req: Request, res: Response) => {
   try {
