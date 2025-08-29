@@ -1,5 +1,6 @@
 import * as xlsx from 'xlsx';
 import type { GoogleService } from '@/services/GoogleService';
+import type { DriveListQuery, DriveListResult } from '@/types/drive';
 
 export function tokenizeName(query: string, max = 5): string {
   const tokens = (query.match(/[\p{L}\p{N}\-_.]{2,}/giu) || [])
@@ -30,9 +31,10 @@ export function isDocLikeMime(mt?: string): boolean {
 }
 
 export async function ensureDriveIndex(googleService: GoogleService, folderId: string) {
-  let index = await googleService.getDriveIndex(folderId);
-  if (!index) index = await googleService.buildDriveIndex(folderId, { ttlSeconds: 1800, recursive: true, maxDepth: -1 });
-  return index;
+  // Instead of getDriveIndex, we'll use listDriveFiles to get the files in the folder
+  const query: DriveListQuery = { folderId };
+  const result: DriveListResult = await googleService.listDriveFiles(query);
+  return result.files;
 }
 
 export async function readGoogleSheet(googleService: GoogleService, spreadsheetId: string, range = 'A1:Z2000'): Promise<Array<Record<string, unknown>>> {
