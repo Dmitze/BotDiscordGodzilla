@@ -33,6 +33,12 @@ interface SearchResult {
   searchTime?: number;
   filters?: {
     documentType?: string;
+    column?: string;
+    value?: string;
+    priority?: string;
+    unit?: string;
+    dateFrom?: string;
+    dateTo?: string;
   };
 };
 type PaginationState = {
@@ -187,6 +193,7 @@ export class SearchCommand extends BaseCommand {
   private paginationStates = new Map<string, PaginationState>();
   private searchCache = new Map<string, { result: SearchResult; timestamp: number }>();
   private readonly googleService: GoogleService | undefined;
+  private performSearchWithCacheFn: PerformSearchWithCache;
   private searchStats: {
     totalSearches: number;
     cacheHits: number;
@@ -202,9 +209,12 @@ export class SearchCommand extends BaseCommand {
     averageSearchTime: 0,
     totalSearchTime: 0,
     errors: 0,
-    successfulSearches: 0
+    successfulSearches: 0,
   };
-  private performSearchWithCacheFn!: PerformSearchWithCache;
+
+  private generateSessionId(prefix: string): string {
+    return `${prefix}_${Math.random().toString(36).slice(2, 8)}_${Date.now().toString(36)}`;
+  }
 
   constructor(config: BotConfig, googleService?: GoogleService) {
     super(
@@ -622,6 +632,30 @@ export class SearchCommand extends BaseCommand {
   // performSearchWithCache moved to modules/search/runLegacySearch via factory
 
   /**
+   * Отримання даних з Google Sheets з таймаутом
+   */
+  private async getSheetDataWithTimeout(googleService: GoogleService): Promise<SheetData> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Таймаут отримання даних з Google Sheets'));
+      }, SEARCH_CONFIG.SEARCH_TIMEOUT);
+
+      googleService.getSheetData(
+        this.config.google.spreadsheetId,
+        `${this.config.google.sheetName}!A1:Z1000`
+      )
+        .then(result => {
+          clearTimeout(timeout);
+          resolve(result);
+        })
+        .catch(error => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+    });
+  }
+
+  /**
    * Виконання пошуку
    */
   private async performSearch(searchParams: SearchParams): Promise<SearchResult> {
@@ -964,7 +998,7 @@ export class SearchCommand extends BaseCommand {
   }
 
   /**
-   * Створення кнопок пагінації
+   * Створення компонентів пагінації з підтримкою пошуку по стовпцях
    */
   private createPaginationComponents(
     searchResult: SearchResult,
@@ -983,7 +1017,7 @@ export class SearchCommand extends BaseCommand {
     if (totalPages <= 1) return [] as any;
 
     const sessionId = sid ?? 'search';
-    const legacyBuild = ({ sid, page, action }: { sid: string; page: number; action?: 'toggle' | 'reset' | 'close' }) =>
+    const legacyBuild = ({ sid, page, action }: { sid: string; page: number; action?: 'toggle' | 'reset' | 'close' | 'column' }) =>
       `srch|sid=${sid}|p=${page}${action ? `|a=${action}` : ''}`;
     const rows = buildSearchPaginationRows({
       sid: sessionId,
@@ -1000,113 +1034,8 @@ export class SearchCommand extends BaseCommand {
   }
 
   /**
-   * Рендер результатів пошуку SQLite у вигляді Embed і відправка через editReply
+   * Створення сторінки пошуку з покращеним форматуванням та підтримкою стовпців
    */
-  // moved to modules/search/renderSqliteEmbed.ts
-
-  // --- Component handling ---
-  protected override async onComponent(options: import('@/commands/BaseCommand').CommandComponentOptions): Promise<void> {
-    const interaction = options.interaction as any;
-    if (!('isButton' in interaction) || !interaction.isButton()) return;
-    const customId: string = interaction.customId;
-    const payload = (options as any)?.context?.componentPayload as { kind?: string; sid?: string; page?: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } | undefined;
-    const isSigned = !!payload && payload.kind === 'srch';
-    if (!isSigned && (!customId || !customId.startsWith('srch|'))) return;
-    try {
-      const parsed = isSigned ? (payload as any) : this.parseSearchCustomId(customId);
-      if (!parsed) return;
-      const { sid, page, action } = parsed as { sid: string; page: number; action?: 'toggle' | 'reset' | 'close' };
-      const now = Math.floor(Date.now() / 1000);
-      const session = SearchCommand.sessions.get(sid);
-      if (!session) {
-        await replyWithPrivacy(interaction, { content: t('doc.sessionExpired') }, { ephemeralByDefault: true, shareFlagSupport: true });
-        return;
-      }
-      // Check server-side TTL
-      if (now - session.timestamp > SearchCommand.SESSION_TTL_SEC) {
-        SearchCommand.sessions.delete(sid);
-        await replyWithPrivacy(interaction, { content: t('doc.sessionExpired') }, { ephemeralByDefault: true, shareFlagSupport: true });
-        return;
-      }
-      // Owner restriction
-      if (interaction.user?.id && interaction.user.id !== session.userId) {
-        await replyWithPrivacy(interaction, { content: t('doc.sessionExpired') }, { ephemeralByDefault: true, shareFlagSupport: true });
-        return;
-      }
-      if (action === 'close') {
-        SearchCommand.sessions.delete(sid);
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({ components: [] });
-        } else {
-          await interaction.update({ components: [] });
-        }
-        return;
-      }
-      // toggle/reset
-      if (action === 'toggle') {
-        session.changesOnly = !session.changesOnly;
-      } else if (action === 'reset') {
-        session.changesOnly = false; // baseline reset placeholder
-      }
-
-      const totalPages = session.totalPages;
-      const safePage = Math.min(Math.max(1, page), totalPages);
-      session.currentPage = safePage;
-      session.timestamp = now;
-
-      const rows = this.createPaginationComponents(session.results, safePage, sid);
-      const embed = this.buildSearchPage(session.results, safePage, session.pageSize, session.changesOnly);
-
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed], components: rows });
-      } else {
-        await interaction.update({ embeds: [embed], components: rows });
-      }
-    } catch (error) {
-      logger.error('SearchCommand component error', { error: String(error) });
-      try {
-        await replyWithPrivacy(interaction, { content: t('files.error.process') }, { ephemeralByDefault: true, shareFlagSupport: true });
-      } catch {}
-    }
-  }
-
-  private parseSearchCustomId(id: string): { sid: string; page: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } | null {
-    try {
-      // Format: srch|sid=...|p=...|[a=toggle|reset|close|]t=...
-      const parts = id.split('|');
-      if (parts[0] !== 'srch') return null;
-      const map = new Map<string, string>();
-      for (let i = 1; i < parts.length; i++) {
-        const seg = parts[i] ?? '';
-        const eq = seg.indexOf('=');
-        if (eq > 0) {
-          const k = seg.slice(0, eq);
-          const v = seg.slice(eq + 1);
-          if (k && v !== undefined) map.set(k, v);
-        }
-      }
-      const sid = map.get('sid') || '';
-      const p = Number(map.get('p'));
-      const t = Number(map.get('t'));
-      const a = map.get('a') as any;
-      if (!sid || !Number.isFinite(p)) return null;
-      const res: { sid: string; page: number; ts?: number; action?: 'toggle' | 'reset' | 'close' } = {
-        sid,
-        page: Number.isFinite(p) ? p : 1,
-      };
-      if (Number.isFinite(t)) res.ts = t;
-      if (a === 'toggle' || a === 'reset' || a === 'close') res.action = a;
-      return res;
-    } catch {
-      return null;
-    }
-  }
-
-  private generateSessionId(prefix: string): string {
-    return `${prefix}_${Math.random().toString(36).slice(2, 8)}_${Date.now().toString(36)}`;
-  }
-
-  // Build single page embed considering page/pageSize and flags
   private buildSearchPage(result: SearchResult, page: number, pageSize: number, _changesOnly: boolean): EmbedBuilder {
     const { rows = [], filteredCount = 0, totalCount, cacheHit, headers = [] } = result;
     const start = (page - 1) * pageSize;
@@ -1125,40 +1054,70 @@ export class SearchCommand extends BaseCommand {
     }
 
     if (paginatedRows.length > 0) {
-      // If we have headers, use them for better formatting
+      // Якщо є заголовки, використовуємо їх для кращого форматування
       if (headers.length > 0) {
-        // Create a formatted table-like display
-        const headerRow = `**${headers.slice(0, 5).join(' | ')}**`;
+        // Створюємо таблицю з кращим форматуванням
+        const headerRow = `**${headers.slice(0, 8).join(' | ')}**`;
         const formattedRows = paginatedRows.map((row, index) => {
-          // If in the row there are many columns, limit the number for better display
-          const displayRow = row.length > 5 ? row.slice(0, 5) : row;
+          // Якщо в рядку багато стовпців, обмежуємо кількість для кращого відображення
+          const displayRow = row.length > 8 ? row.slice(0, 8) : row;
           const formattedCells = displayRow.map(cell => {
-            // Truncate long cell values
+            // Обрізаємо довгі значення клітинок
             const cellStr = String(cell ?? '');
-            return cellStr.length > 30 ? cellStr.substring(0, 27) + '...' : cellStr;
+            return cellStr.length > 50 ? cellStr.substring(0, 47) + '...' : cellStr;
           });
           return `${start + index + 1}. ${formattedCells.join(' | ')}`;
         });
         
-        // Add header and rows to the embed
+        // Додаємо заголовок і рядки до вбудовування
         embed.addFields({
-          name: `Результати пошуку (${headerRow})`,
+          name: `📊 Результати пошуку (${headerRow})`,
           value: formattedRows.join('\n') || 'Немає даних',
         });
       } else {
-        // Fallback to original formatting if no headers
+        // Резервне форматування, якщо немає заголовків
         const formattedRows = paginatedRows.map((row, index) => {
-          // If in the row there are many columns, limit the number for better display
-          const displayRow = row.length > 5 ? row.slice(0, 5) : row;
+          // Якщо в рядку багато стовпців, обмежуємо кількість для кращого відображення
+          const displayRow = row.length > 8 ? row.slice(0, 8) : row;
           return `${start + index + 1}. ${displayRow.join(' | ')}`;
         });
         embed.addFields({
-          name: 'Результати',
+          name: '📊 Результати',
           value: formattedRows.join('\n') || 'Немає даних',
         });
       }
+      
+      // Додаємо інформацію про фільтри, якщо вони є
+      if (result.filters) {
+        const filterInfo = [];
+        if (result.filters.column && result.filters.value) {
+          filterInfo.push(`**Стовпець:** ${result.filters.column} = ${result.filters.value}`);
+        }
+        if (result.filters.documentType && result.filters.documentType !== 'all') {
+          filterInfo.push(`**Тип документа:** ${result.filters.documentType}`);
+        }
+        if (result.filters.priority && result.filters.priority !== 'all') {
+          filterInfo.push(`**Пріоритет:** ${result.filters.priority}`);
+        }
+        if (result.filters.unit) {
+          filterInfo.push(`**Підрозділ:** ${result.filters.unit}`);
+        }
+        if (result.filters.dateFrom || result.filters.dateTo) {
+          const dateFrom = result.filters.dateFrom || '—';
+          const dateTo = result.filters.dateTo || '—';
+          filterInfo.push(`**Дата:** ${dateFrom} - ${dateTo}`);
+        }
+        
+        if (filterInfo.length > 0) {
+          embed.addFields({
+            name: '🔍 Фільтри',
+            value: filterInfo.join('\n'),
+            inline: false
+          });
+        }
+      }
     } else {
-      embed.setDescription('Нічого не знайдено');
+      embed.setDescription('❌ Нічого не знайдено. Спробуйте змінити критерії пошуку.');
     }
 
     return embed;
@@ -1258,6 +1217,106 @@ export class SearchCommand extends BaseCommand {
       cacheSize: this.searchCache.size,
       paginationStates: this.paginationStates.size,
     };
+  }
+
+  /**
+   * Запис останніх результатів пошуку у workspace користувача
+   */
+  private async recordWorkspaceRecents(interaction: ChatInputCommandInteraction, searchResult: SearchResult): Promise<void> {
+    try {
+      const workspace = (interaction.client as any)?.serviceContainer?.get?.('workspace');
+      if (workspace && typeof workspace.addRecent === 'function') {
+        const now = Date.now();
+        // Додаємо до 5 останніх результатів
+        const rows = searchResult.rows || [];
+        for (let i = 0; i < Math.min(5, rows.length); i++) {
+          const row = rows[i];
+          // Перевіряємо, чи row не є undefined
+          if (!row) continue;
+          
+          // Створюємо унікальний ідентифікатор для результату
+          const id = `search_result_${interaction.user.id}_${now}_${i}`;
+          // Створюємо назву з перших кількох стовпців
+          const name = row.slice(0, 3).join(' | ');
+          // Створюємо фрагмент тексту
+          const snippet = row.slice(0, 5).join(' | ');
+          
+          await workspace.addRecent(interaction.user.id, {
+            fileId: id,
+            name,
+            snippet,
+            openedAt: now,
+          });
+        }
+      }
+    } catch (error) {
+      logger.warn('Не вдалося записати останні результати пошуку', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Фіналізація пошуку з пагінацією
+   */
+  private async finalizeWithPagination(
+    interaction: ChatInputCommandInteraction,
+    searchResult: SearchResult,
+    searchParams: SearchParams,
+    startTime: number,
+    metrics: any,
+    guildId: string | undefined,
+    commandTimer: any
+  ): Promise<void> {
+    try {
+      const duration = performance.now() - startTime;
+      
+      // Створюємо сесію для пагінації
+      const sid = this.generateSessionId('search');
+      const { pageSize, totalPages } = computePagination({
+        filteredCount: searchResult.filteredCount,
+        limit: searchParams.limit
+      });
+      
+      const session: PaginationState = {
+        currentPage: 1,
+        totalPages,
+        results: searchResult,
+        timestamp: Math.floor(Date.now() / 1000),
+        userId: interaction.user.id,
+        pageSize,
+        changesOnly: false
+      };
+      
+      setSession(sid, session);
+      
+      // Створюємо embed з результатами
+      const embed = this.buildSearchPage(searchResult, 1, pageSize, false);
+      const components = this.createPaginationComponents(searchResult, 1, sid);
+      
+      // Відправляємо результат
+      await interaction.editReply({ embeds: [embed], components });
+      
+      // Оновлюємо статистику
+      this.updateSearchStats(true, duration, searchResult.cacheHit || false);
+      commandTimer.end(true, { results: searchResult.filteredCount, cacheHit: searchResult.cacheHit }, t('search.log.success'));
+      
+      try {
+        if (metrics?.measureCommandDurationLabeled) {
+          metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
+        } else if (metrics?.measureCommandDuration) {
+          metrics.measureCommandDuration('пошук', duration);
+        }
+      } catch {}
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      this.updateSearchStats(false, duration, false);
+      commandTimer.end(false, {
+        error: error instanceof Error ? error.message : String(error),
+        durationMs: Math.round(duration),
+      }, t('search.log.error'));
+      throw error;
+    }
   }
 
   // Примітка: керування очищенням/завершенням виконується базовим класом
