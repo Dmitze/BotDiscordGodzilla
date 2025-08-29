@@ -247,23 +247,24 @@ export class EnhancedRagService extends RagService {
       for (const folderId of foldersToScan) {
         // Using driveIndexer for file operations
         // Using driveIndexer for file operations
-        const files = await this.googleService.searchFiles(
-          `'${folderId}' in parents and trashed=false'`
-        );
+        const files = await this.googleService.listDriveFiles({
+          folderId: folderId,
+          query: 'trashed=false'
+        });
               
         // Using driveIndexer to index files
         if (this.driveIndexer) {
           await this.driveIndexer.reindexIncremental(folderId);
         }
 
-        for (const file of files) {
+        for (const file of files.files) {
           // Check if file type is supported
           if (!this.autoIndexConfig.fileTypes.includes(file.mimeType || '')) {
             continue;
           }
 
           // Check file size
-          const fileSize = parseInt(file.size || '0');
+          const fileSize = file.size || 0;
           if (fileSize > this.autoIndexConfig.maxFileSize) {
             continue;
           }
