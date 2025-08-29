@@ -21,6 +21,7 @@ import { validateInput } from '@/utils/security';
 // Імпорт необхідних команд
 import { SearchCommand } from '@/commands/SearchCommand';
 import { AIAssistantCommand } from '@/commands/AIAssistantCommand';
+import { OCRCommand } from '@/commands/OCRCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -270,11 +271,12 @@ export class CommandManager {
         | GoogleService
         | undefined;
 
-      // Створюємо екземпляри тільки необхідних команд (AI та Пошук)
+      // Створюємо екземпляри тільки необхідних команд (AI, Пошук, OCR)
       const commandInstances = [
         // Основні команди, які залишаємо
         new SearchCommand(this.config, googleService),
         new AIAssistantCommand(this.config, googleService),
+        new OCRCommand(this.config, googleService),
       ];
 
       // Реєструємо команди
