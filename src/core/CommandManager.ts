@@ -293,37 +293,11 @@ export class CommandManager {
         | SheetsContextService
         | undefined;
 
-      // Отримуємо розширені сервіси
-      const documentAnalyzer = (this.bot?.getService?.('documentAnalyzer') ?? undefined) as any;
-      const workflowOrchestrator = (this.bot?.getService?.('workflowOrchestrator') ?? undefined) as any;
-      const smartSearch = (this.bot?.getService?.('smartSearch') ?? undefined) as any;
-      const workflowEngine = (this.bot?.getService?.('workflowEngine') ?? undefined) as any;
-      const documentAnalysisService = (this.bot?.getService?.('documentAnalysis') ?? undefined) as any;
-
-      // Створюємо екземпляри всіх команд
+      // Створюємо екземпляри тільки необхідних команд (AI та Пошук)
       const commandInstances = [
+        // Основні команди, які залишаємо
         new SearchCommand(this.config, googleService),
-        new PerformanceCommand(this.config),
         new AIAssistantCommand(this.config, googleService),
-        new DocumentsCommand(this.config),
-        new FileManagerCommand(this.config),
-        new OperationsCommand(this.config),
-        new AnalyticsCommand(this.config),
-        new EnhancedSearchCommand(this.config, googleService),
-        new SelectSheetCommand(this.config, googleService, sheetsContext),
-        new OCRCommand(this.config, googleService),
-        new DriveExtractCommand(this.config, googleService),
-        new DocCommand(this.config, googleService),
-        new WorkspaceCommand(this.config),
-        new FavoritesCommand(this.config),
-        new SavedSearchCommand(this.config),
-        new LangCommand(this.config),
-        new AnalyzeCommand(this.config),
-        // Нові розширені команди
-        new AdvancedAnalysisCommand(this.config, documentAnalyzer, workflowOrchestrator, googleService),
-        new SmartSearchCommand(this.config, smartSearch),
-        ...(workflowEngine ? [new WorkflowCommand(this.config, workflowEngine)] : []),
-        new DocumentAnalysisCommand(this.config, googleService, documentAnalysisService),
       ];
 
       // Реєструємо команди
