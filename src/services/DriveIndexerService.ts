@@ -173,6 +173,64 @@ export class DriveIndexerService extends BaseService {
     // формальный await, чтобы удовлетворить линтер (async без await)
     await Promise.resolve();
   }
+  
+  /** Получить чанки текста, безопасные для Discord */
+  public async getTextChunks(fileId: string, max = 1900): Promise<string[]> {
+    const text = await this.getText(fileId);
+    if (!text) return [];
+    
+    // Розбиваємо текст на чанки з кращим форматуванням
+    const chunks: string[] = [];
+    let currentChunk = '';
+    
+    // Розбиваємо текст на рядки
+    const lines = text.split('\n');
+    
+    for (const line of lines) {
+      // Якщо додавання рядка перевищить ліміт, зберігаємо поточний чанк
+      if (currentChunk.length + line.length + 1 > max) {
+        if (currentChunk) {
+          chunks.push(currentChunk.trim());
+          currentChunk = '';
+        }
+        // Якщо один рядок більший за ліміт, розбиваємо його
+        if (line.length > max) {
+          const words = line.split(' ');
+          let currentLine = '';
+          
+          for (const word of words) {
+            if (currentLine.length + word.length + 1 > max) {
+              if (currentLine) {
+                chunks.push(currentLine.trim());
+                currentLine = '';
+              }
+              // Якщо одне слово більше за ліміт, обрізаємо його
+              if (word.length > max) {
+                chunks.push(word.substring(0, max - 3) + '...');
+                continue;
+              }
+            }
+            currentLine += (currentLine ? ' ' : '') + word;
+          }
+          
+          if (currentLine) {
+            currentChunk = currentLine;
+          }
+        } else {
+          currentChunk = line;
+        }
+      } else {
+        currentChunk += (currentChunk ? '\n' : '') + line;
+      }
+    }
+    
+    // Додаємо останній чанк, якщо він не порожній
+    if (currentChunk) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    return chunks;
+  }
 
   /** Переиндексация всех файлов (полная) */
   public async reindexAll(folderId?: string): Promise<void> {
@@ -325,64 +383,6 @@ export class DriveIndexerService extends BaseService {
   public async getText(fileId: string): Promise<string> {
     const entry = await this.getEntry(fileId);
     return entry?.text ?? '';
-  }
-
-  /** Получить чанки текста, безопасные для Discord */
-  public async getTextChunks(fileId: string, max = 1900): Promise<string[]> {
-    const text = await this.getText(fileId);
-    if (!text) return [];
-    
-    // Розбиваємо текст на чанки з кращим форматуванням
-    const chunks: string[] = [];
-    let currentChunk = '';
-    
-    // Розбиваємо текст на рядки
-    const lines = text.split('\n');
-    
-    for (const line of lines) {
-      // Якщо додавання рядка перевищить ліміт, зберігаємо поточний чанк
-      if (currentChunk.length + line.length + 1 > max) {
-        if (currentChunk) {
-          chunks.push(currentChunk.trim());
-          currentChunk = '';
-        }
-        // Якщо один рядок більший за ліміт, розбиваємо його
-        if (line.length > max) {
-          const words = line.split(' ');
-          let currentLine = '';
-          
-          for (const word of words) {
-            if (currentLine.length + word.length + 1 > max) {
-              if (currentLine) {
-                chunks.push(currentLine.trim());
-                currentLine = '';
-              }
-              // Якщо одне слово більше за ліміт, обрізаємо його
-              if (word.length > max) {
-                chunks.push(word.substring(0, max - 3) + '...');
-                continue;
-              }
-            }
-            currentLine += (currentLine ? ' ' : '') + word;
-          }
-          
-          if (currentLine) {
-            currentChunk = currentLine;
-          }
-        } else {
-          currentChunk = line;
-        }
-      } else {
-        currentChunk += (currentChunk ? '\n' : '') + line;
-      }
-    }
-    
-    // Додаємо останній чанк, якщо він не порожній
-    if (currentChunk) {
-      chunks.push(currentChunk.trim());
-    }
-    
-    return chunks;
   }
 
   /** Индексация одного файла по метаданным (без повторного запроса метаданных) */
