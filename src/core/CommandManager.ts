@@ -8,7 +8,6 @@ import type { ChatInputCommandInteraction, Interaction, Client } from 'discord.j
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 import type { GoogleService } from '@/services/GoogleService';
-import type { SheetsContextService } from '@/services/SheetsContextService';
 import { replyWithPrivacy } from '@/ui/reply';
 import { signComponentId, verifyComponentId } from '@/security/componentId';
 import { tUser } from '@/i18n';
@@ -19,28 +18,9 @@ import type { ClassifyIntentFn } from '@/nlp/IntentDetector';
 import { detectLanguage } from '@/nlp/LanguageDetector';
 import { validateInput } from '@/utils/security';
 
-// Імпорт всіх команд
+// Імпорт необхідних команд
 import { SearchCommand } from '@/commands/SearchCommand';
-import { PerformanceCommand } from '@/commands/PerformanceCommand';
 import { AIAssistantCommand } from '@/commands/AIAssistantCommand';
-import { DocumentsCommand } from '@/commands/DocumentsCommand';
-import { FileManagerCommand } from '@/commands/FileManagerCommand';
-import { OperationsCommand } from '@/commands/OperationsCommand';
-import { AnalyticsCommand } from '@/commands/AnalyticsCommand';
-import { EnhancedSearchCommand } from '@/commands/EnhancedSearchCommand';
-import { SelectSheetCommand } from '@/commands/SelectSheetCommand';
-import { OCRCommand } from '@/commands/OCRCommand';
-import { DriveExtractCommand } from '@/commands/DriveExtractCommand';
-import { DocCommand } from '@/commands/DocCommand';
-import { WorkspaceCommand } from '@/commands/WorkspaceCommand';
-import { LangCommand } from '@/commands/LangCommand';
-import { AnalyzeCommand } from '@/commands/AnalyzeCommand';
-import { FavoritesCommand } from '@/commands/FavoritesCommand';
-import { SavedSearchCommand } from '@/commands/SavedSearchCommand';
-import { AdvancedAnalysisCommand } from '@/commands/AdvancedAnalysisCommand';
-import { SmartSearchCommand } from '@/commands/SmartSearchCommand';
-import { WorkflowCommand } from '@/commands/WorkflowCommand';
-import { DocumentAnalysisCommand } from '@/commands/DocumentAnalysisCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -288,9 +268,6 @@ export class CommandManager {
       // Це гарантує доступ до сервісів, створених у ServiceManager
       const googleService = (this.bot?.getService?.('google') ?? undefined) as
         | GoogleService
-        | undefined;
-      const sheetsContext = (this.bot?.getService?.('sheetsContext') ?? undefined) as
-        | SheetsContextService
         | undefined;
 
       // Створюємо екземпляри тільки необхідних команд (AI та Пошук)
