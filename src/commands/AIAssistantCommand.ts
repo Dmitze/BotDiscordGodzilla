@@ -174,31 +174,35 @@ export class AIAssistantCommand extends BaseCommand {
       return '';
     }
     
-    // Останні 3 контексти для промпта
-    const recentContexts = session.contexts.slice(-3);
+    // Отримуємо більше контекстів для кращої повноти відповіді (останні 5 контекстів)
+    const recentContexts = session.contexts.slice(-5);
     
-    let contextText = '\n\n📎 КОНТЕКСТ ПОПЕРЕДНІХ ЗАПИТІВ:\n';
+    let contextText = '\n\n📎 ПОВНИЙ КОНТЕКСТ ПОПЕРЕДНІХ ЗАПИТІВ:\n';
     
     recentContexts.forEach((ctx, index) => {
       const timeAgo = Math.round((Date.now() - ctx.timestamp) / 1000 / 60); // хвилин
-      contextText += `${index + 1}. [Запит ${timeAgo}хв тому]: "${ctx.query.substring(0, 80)}...\"\n`;
-      contextText += `   [Відповідь]: "${ctx.response.substring(0, 100)}...\"\n`;
+      contextText += `\n--- Контекст ${index + 1} (${timeAgo}хв тому) ---\n`;
+      contextText += `Запит: "${ctx.query}"\n`;
+      contextText += `Відповідь: "${ctx.response}"\n`;
       if (ctx.fileIds && ctx.fileIds.length > 0) {
-        contextText += `   [Файли]: ${ctx.fileIds.join(', ')}\n`;
+        contextText += `Файли: ${ctx.fileIds.join(', ')}\n`;
       }
-      contextText += '\n';
+      if (ctx.action) {
+        contextText += `Дія: ${ctx.action}\n`;
+      }
     });
     
     // Перевіряємо, чи поточний запит посилається на контекст
     const contextReferences = [
       /а як щодо/i, /у тому ж файлі/i, /далі/i, /а тепер/i,
-      /там само/i, /тією ж таблицю/i, /раніше казав/i
+      /там само/i, /тією ж таблицю/i, /раніше казав/i,
+      /продовж/i, /доповн/i, /ще/i, /більш/i, /детальн/i
     ];
     
     const hasContextReference = contextReferences.some(pattern => pattern.test(currentQuery));
     
     if (hasContextReference) {
-      contextText += 'ℹ️ Користувач посилається на попередні дані. Використовуй контекст!\n';
+      contextText += '\nℹ️ Користувач посилається на попередні дані. Використовуй весь доступний контекст для повної відповіді!\n';
       logger.debug('Виявлено посилання на контекст', { userId, query: currentQuery.substring(0, 50) });
     }
     
@@ -353,27 +357,50 @@ export class AIAssistantCommand extends BaseCommand {
   }
 
   private buildResponse(result: AIQueryResult, commandOptions: AICommandOptions): string {
-    let response = `🤖 **${t('ai.reply.title')}**\n\n`;
+    // Формуємо більш структуровану відповідь з кращим форматуванням
+    let response = `🤖 **AI Асистент - Повна Відповідь**\n\n`;
 
+    // Додаємо індикатор впевненості з кращим форматуванням
+    const confidencePercent = Math.round(result.confidence * 100);
     if (result.confidence < 0.7) {
-      response += t('ai.reply.lowConfidence', { pct: Math.round(result.confidence * 100) });
-      response += '\n';
+      response += `⚠️ **Низька впевненість** (${confidencePercent}%)\n\n`;
+    } else if (result.confidence < 0.9) {
+      response += `✅ **Середня впевненість** (${confidencePercent}%)\n\n`;
+    } else {
+      response += `🟢 **Висока впевненість** (${confidencePercent}%)\n\n`;
     }
 
-    response += t('ai.reply.query', { query: String(commandOptions.query) });
-    response += '\n\n';
-    response += t('ai.reply.answer', { answer: result.response });
+    // Додаємо оригінальне запитання
+    response += `**🔍 Запит:**\n${String(commandOptions.query)}\n\n`;
+    
+    // Додаємо відповідь з кращим форматуванням
+    response += `**💬 Відповідь:**\n${result.response}\n\n`;
 
+    // Додаємо контекст, якщо він є
     if (commandOptions.context) {
-      response += '\n\n' + t('ai.reply.context', { context: String(commandOptions.context) });
+      response += `**📎 Контекст:**\n${String(commandOptions.context)}\n\n`;
+    }
+
+    // Додаємо інформацію про дію з кращим форматуванням
+    if (result.action) {
+      response += `**🔧 Дія:** ${result.action}\n`;
     }
 
     if (result.actionData) {
-      response += `\n\n` + t('ai.reply.action', { action: result.actionData.type });
+      response += `**📄 Тип даних:** ${result.actionData.type}\n`;
       if (result.actionData.format) {
-        response += ` ` + t('ai.reply.format', { format: result.actionData.format });
+        response += `**📊 Формат:** ${result.actionData.format}\n`;
       }
     }
+
+    // Додаємо рекомендації щодо подальших дій з кращим форматуванням
+    response += `\n---\n`;
+    response += `💡 **Рекомендації:**\n`;
+    response += `• Якщо відповідь не повна, уточніть запит\n`;
+    response += `• Використовуйте контекст для посилання на попередні запити\n`;
+    response += `• Для складних запитів розбийте їх на кілька простих\n`;
+    response += `• Якщо відповідь не задовольняє, спробуйте переформулювати запит\n`;
+
     return response;
   }
 
@@ -596,7 +623,7 @@ export class AIAssistantCommand extends BaseCommand {
         };
       }
 
-      // Якщо AI-сервіс недоступний — використовуємо Ollama напряму
+      // Якщо AI-сервіс недоступний — використовуємо Ollama напряму з покращеним промптом
       logger.info('Using Ollama fallback for AI query', { query: query.substring(0, 100) });
 
       const ollamaResponse = await fetch('http://localhost:11434/api/generate', {
@@ -615,15 +642,16 @@ export class AIAssistantCommand extends BaseCommand {
 5. 🧠 **ПРОФЕСІЙНІСТЬ**: Точність, структура, конкретні посилання.
 
 📌 **ФОРМАТ ВІДПОВІДІ:**
-- Відповідь (коротка, чітка)
+- Відповідь (повна, детальна, без скорочень)
 - Джерело (якщо є)
 - Практичні рекомендації
+- Конкретні приклади (якщо можливо)
 
 🔥 ТИ — ЕКСПЕРТ, НЕ ПОМИЛЯЄШСЯ У ТЕРМІНАХ, ДОТРИМУЄШСЯ УКРАЇНСЬКОЇ МОВИ.${contextText || ''}
 
 🔥 ЗАПИТАННЯ: ${query}
 
-💬 ВІДПОВІДЬ УКРАЇНСЬКОЮ:`,  
+💬 ВІДПОВІДЬ УКРАЇНСЬКОЮ (ПОВНА, ДЕТАЛЬНА, БЕЗ СКОРОЧЕНЬ):`,  
           stream: false,
         }),
       });
@@ -634,8 +662,60 @@ export class AIAssistantCommand extends BaseCommand {
 
       const data = await ollamaResponse.json() as { response?: string; };
 
+      // Покращення відповіді - додавання структури
+      let enhancedResponse = data.response || 'Отримано відповідь, але вона порожня.';
+      
+      // Якщо відповідь занадто коротка, намагаємось отримати більш детальну
+      if (enhancedResponse.length < 200) {
+        const detailedResponse = await fetch('http://localhost:11434/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'llama3.2',
+            prompt: `Розшир детальну відповідь на запитання: ${query}
+            
+            Попередня відповідь: ${enhancedResponse}
+            
+            Надай більш повну та детальну інформацію з конкретними прикладами та рекомендаціями.`,
+            stream: false,
+          }),
+        });
+        
+        if (detailedResponse.ok) {
+          const detailedData = await detailedResponse.json() as { response?: string; };
+          if (detailedData.response && detailedData.response.length > enhancedResponse.length) {
+            enhancedResponse = detailedData.response;
+          }
+        }
+      }
+
+      // Додаткове покращення - структурування відповіді
+      const structuredResponse = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama3.2',
+          prompt: `Структуруй наступну відповідь у форматі:
+          
+          🔍 Відповідь: [основна відповідь]
+          📚 Джерело: [джерело, якщо є]
+          💡 Рекомендації: [практичні рекомендації]
+          📋 Приклади: [конкретні приклади, якщо можливо]
+          
+          Відповідь для структурування: ${enhancedResponse}`,
+          stream: false,
+        }),
+      });
+      
+      if (structuredResponse.ok) {
+        const structuredData = await structuredResponse.json() as { response?: string; };
+        if (structuredData.response) {
+          enhancedResponse = structuredData.response;
+        }
+      }
+
       return {
-        response: data.response || 'Отримано відповідь, але вона порожня.',
+        response: enhancedResponse,
         confidence: 0.85,
         action: 'ollama_fallback',
         actionData: { type: 'ai_response', format: 'text' },
@@ -648,7 +728,15 @@ export class AIAssistantCommand extends BaseCommand {
 
       // Остаточний fallback
       return {
-        response: `❌ Не вдалося отримати відповідь від AI. Ваш запит: "${query}"`,
+        response: `❌ Не вдалося отримати відповідь від AI. Ваш запит: "${query}"
+
+Покращена відповідь:
+Для отримання повної відповіді на ваше запитання, рекомендую:
+1. Уточнити формулювання запиту
+2. Додати контекст або конкретні деталі
+3. Перевірити доступність AI-сервісу
+
+Якщо проблема повторюється, зверніться до адміністратора системи.`,
         confidence: 0.5,
         action: 'error_fallback',
         actionData: { type: 'text', format: 'text' },
