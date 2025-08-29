@@ -452,7 +452,7 @@ export class PermissionManager {
   /**
    * Отримання детальних дозволів користувача для ресурсів
    */
-  private async getUserResourcePermissions(userId: string, member: GuildMember): Promise<Map<string, ResourcePermission>> {
+  private async getUserResourcePermissions(_userId: string, _member: GuildMember): Promise<Map<string, ResourcePermission>> {
     // В реальній реалізації тут би була логіка отримання детальних дозволів користувача
     // з бази даних або іншого джерела
     
@@ -691,6 +691,10 @@ export class PermissionManager {
           resourceId,
           allowed,
           reason: allowed ? undefined : reason,
+        } as {
+          resourceId: string;
+          allowed: boolean;
+          reason?: string;
         });
       } catch (error) {
         logger.error(`Помилка перевірки доступу до ресурсу: ${error}`);
@@ -765,7 +769,9 @@ export class PermissionManager {
           const now = new Date().getTime();
           if (condition.operator === 'between' && Array.isArray(condition.value) && condition.value.length === 2) {
             const [start, end] = condition.value as number[];
-            return now >= start && now <= end;
+            if (start !== undefined && end !== undefined) {
+              return now >= start && now <= end;
+            }
           }
           return false;
 
