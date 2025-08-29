@@ -22,7 +22,7 @@ import { buildSearchPaginationRows } from '@/ui/components';
 import type { SearchQuery } from '@/search/SearchIndex';
 import { replyWithPrivacy } from '@/ui/reply';
 import { signComponentId } from '@/security/componentId';
-// Deleted module shims: inline local equivalents for types/helpers
+
 interface SearchResult {
   headers?: string[];
   rows?: unknown[][];
@@ -221,6 +221,7 @@ export class SearchCommand extends BaseCommand {
           '/пошук запит:особовий склад тип_документа:накази',
           '/пошук запит:техніка дата_від:01.01.2024 дата_до:31.12.2024',
           '/пошук запит:зброя підрозділ:рота пріоритет:критичний',
+          '/пошук запит:зброя стовпець:кількість значення:10',
         ],
         i18n: {
           nameKey: 'commands.search.name',
@@ -278,6 +279,20 @@ export class SearchCommand extends BaseCommand {
                 { name: t('search.choices.priority.medium'), value: 'medium' },
                 { name: t('search.choices.priority.low'), value: 'low' }
               )
+          )
+          .addStringOption(option =>
+            option
+              .setName('стовпець')
+              .setDescription('Назва стовпця для пошуку')
+              .setRequired(false)
+              .setMaxLength(100)
+          )
+          .addStringOption(option =>
+            option
+              .setName('значення')
+              .setDescription('Значення для пошуку в стовпці')
+              .setRequired(false)
+              .setMaxLength(100)
           )
           .addIntegerOption(option =>
             option
@@ -554,6 +569,8 @@ export class SearchCommand extends BaseCommand {
     const dateTo = interaction.options.getString('дата_до') ?? undefined;
     const unit = interaction.options.getString('підрозділ') ?? undefined;
     const priority = interaction.options.getString('пріоритет') || 'all';
+    const column = interaction.options.getString('стовпець') ?? undefined;
+    const value = interaction.options.getString('значення') ?? undefined;
     const limit = interaction.options.getInteger('ліміт') || SEARCH_CONFIG.DEFAULT_LIMIT;
 
     // Валідація запиту
@@ -597,101 +614,12 @@ export class SearchCommand extends BaseCommand {
     if (dateFrom) result.dateFrom = dateFrom;
     if (dateTo) result.dateTo = dateTo;
     if (unit) result.unit = sanitizeInput(unit, 'command').sanitizedValue;
+    if (column) result.column = column;
+    if (value) result.value = value;
     return result;
   }
 
   // performSearchWithCache moved to modules/search/runLegacySearch via factory
-
-  /**
-   * Записати останні документи користувача на основі результатів пошуку
-   */
-  private async recordWorkspaceRecents(
-    interaction: ChatInputCommandInteraction,
-    searchResult: SearchResult,
-  ): Promise<void> {
-    try {
-      const workspace: any = (interaction as any)?.client?.serviceContainer?.get?.('workspace');
-      if (!workspace?.addRecent) return;
-
-      const headers = Array.isArray(searchResult?.headers) ? searchResult.headers.map(h => String(h).toLowerCase()) : [];
-      const rows = Array.isArray(searchResult?.rows) ? searchResult.rows : [];
-      const pickIdx = (...names: string[]) => headers.findIndex(h => names.map(n => n.toLowerCase()).includes(h));
-      const idIdx = pickIdx('id', 'file id', 'fileId', 'doc id', 'docId');
-      const nameIdx = pickIdx('name', 'title');
-      const snipIdx = pickIdx('snippet', 'preview');
-      const docs = rows.map(r => ({
-        id: idIdx >= 0 ? r[idIdx] : undefined,
-        name: nameIdx >= 0 ? r[nameIdx] : undefined,
-        snippet: snipIdx >= 0 ? r[snipIdx] : undefined,
-      })).filter(d => d.id);
-      if (!docs.length) return;
-
-      const now = Date.now();
-      for (const d of docs.slice(0, 5)) {
-        await workspace.addRecent(interaction.user.id, {
-          fileId: d.id as string,
-          name: d.name,
-          snippet: d.snippet,
-          openedAt: now,
-        });
-      }
-    } catch {}
-  }
-
-  /**
-   * Завершити відповідь: обчислити пагінацію, створити embed/кнопки і зафіксувати метрики
-   */
-  private async finalizeWithPagination(
-    interaction: ChatInputCommandInteraction,
-    searchResult: SearchResult,
-    searchParams: SearchParams,
-    startTime: number,
-    metrics: any,
-    guildId: string | null | undefined,
-    commandTimer: any,
-  ): Promise<void> {
-    // Параметри пагінації (через модуль)
-    const { pageSize, totalPages } = computePagination({
-      filteredCount: searchResult.filteredCount,
-      limit: searchParams.limit ?? SEARCH_CONFIG.DEFAULT_LIMIT,
-    });
-
-    // Створення embed (1-я сторінка)
-    const embed = this.buildSearchPage(searchResult, 1, pageSize, false);
-
-    const sid = this.generateSessionId('srch');
-    const state: PaginationState = {
-      currentPage: 1,
-      totalPages,
-      results: searchResult,
-      timestamp: Math.floor(Date.now() / 1000),
-      userId: interaction.user.id,
-      pageSize,
-      changesOnly: false,
-    };
-    setSession(sid, state);
-
-    // Створення кнопок пагінації з урахуванням sid
-    const components = this.createPaginationComponents(searchResult, 1, sid);
-
-    // Відправка відповіді
-    await interaction.editReply({ embeds: [embed], components });
-
-    // Оновлення статистики
-    const duration = performance.now() - startTime;
-    this.updateSearchStats(true, duration, searchResult.cacheHit);
-
-    // Завершення таймерів + структурований успішний лог
-    commandTimer.end(
-      true,
-      { durationMs: Math.round(duration), results: searchResult.filteredCount, cacheHit: searchResult.cacheHit },
-      t('search.log.success'),
-    );
-    try {
-      if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
-      else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
-    } catch {}
-  }
 
   /**
    * Виконання пошуку
@@ -745,39 +673,27 @@ export class SearchCommand extends BaseCommand {
   }
 
   /**
-   * Отримання даних з таймаутом
+   * Фільтрація даних з покращеною логікою
    */
-  private async getSheetDataWithTimeout(googleService: GoogleService): Promise<SheetData> {
-    const spreadsheetId: string | undefined = this.config?.google?.spreadsheetId;
-    if (!spreadsheetId) {
-      throw new Error(t('search.error.noSpreadsheet'));
-    }
-    return Promise.race([
-      googleService.getSheetData(spreadsheetId, 'A:Z', {
-        useCache: true,
-        cacheTTL: SEARCH_CONFIG.CACHE_TTL,
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Таймаут отримання даних')), SEARCH_CONFIG.SEARCH_TIMEOUT)
-      ),
-    ]);
-  }
-
-  /**
-   * Фільтрація даних з оптимізацією
-   */
-  private filterData(rows: string[][], headers: string[], searchParams: SearchParams): string[][] {
+  private filterData(
+    rows: string[][],
+    headers: string[],
+    searchParams: SearchParams
+  ): string[][] {
     const startTime = performance.now();
-
     try {
+      if (rows.length === 0) return [];
+
+      // Фільтрація рядків
       const filteredRows = rows.filter(row => {
-        // Перевірка запиту
-        if (!this.matchesQuery(row, headers, searchParams.query)) {
+        // Перевірка текстового запиту
+        if (searchParams.query && !this.matchesQuery(row, headers, searchParams.query)) {
           return false;
         }
 
         // Перевірка типу документа
         if (
+          searchParams.documentType &&
           searchParams.documentType !== 'all' &&
           !this.matchesDocumentType(row, headers, searchParams.documentType)
         ) {
@@ -785,21 +701,35 @@ export class SearchCommand extends BaseCommand {
         }
 
         // Перевірка діапазону дат
-        if (searchParams.dateFrom || searchParams.dateTo) {
-          if (!this.matchesDateRange(row, headers, searchParams.dateFrom, searchParams.dateTo)) {
-            return false;
-          }
+        if (
+          (searchParams.dateFrom || searchParams.dateTo) &&
+          !this.matchesDateRange(row, headers, searchParams.dateFrom, searchParams.dateTo)
+        ) {
+          return false;
         }
 
         // Перевірка підрозділу
-        if (searchParams.unit && !this.matchesUnit(row, headers, searchParams.unit)) {
+        if (
+          searchParams.unit &&
+          !this.matchesUnit(row, headers, searchParams.unit)
+        ) {
           return false;
         }
 
         // Перевірка пріоритету
         if (
+          searchParams.priority &&
           searchParams.priority !== 'all' &&
           !this.matchesPriority(row, headers, searchParams.priority)
+        ) {
+          return false;
+        }
+
+        // Перевірка по стовпцю
+        if (
+          searchParams.column &&
+          searchParams.value &&
+          !this.matchesColumnValue(row, headers, searchParams.column, searchParams.value)
         ) {
           return false;
         }
@@ -909,6 +839,71 @@ export class SearchCommand extends BaseCommand {
 
     const rowPriority = row[priorityIndex]?.toLowerCase() || '';
     return rowPriority.includes(priority.toLowerCase());
+  }
+
+  /**
+   * Перевірка відповідності значення в стовпці
+   */
+  private matchesColumnValue(row: string[], headers: string[], column: string, value: string): boolean {
+    // Find column index with more flexible matching
+    const columnIndex = headers.findIndex(h => 
+      h.toLowerCase().includes(column.toLowerCase()) || 
+      column.toLowerCase().includes(h.toLowerCase())
+    );
+    
+    if (columnIndex === -1) {
+      // If exact column name not found, try partial matching
+      const partialMatches = headers.filter(h => 
+        h.toLowerCase().includes(column.toLowerCase()) || 
+        column.toLowerCase().includes(h.toLowerCase())
+      );
+      
+      if (partialMatches.length === 0) return true;
+      
+      // Check all partial matches
+      for (const match of partialMatches) {
+        const idx = headers.indexOf(match);
+        if (idx !== -1) {
+          const cellValue = row[idx]?.toLowerCase() || '';
+          if (cellValue.includes(value.toLowerCase())) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    const cellValue = row[columnIndex]?.toLowerCase() || '';
+    
+    // Support for numeric comparisons
+    const numericValue = parseFloat(value);
+    const numericCell = parseFloat(cellValue);
+    
+    if (!isNaN(numericValue) && !isNaN(numericCell)) {
+      // Handle numeric comparisons (=, >, <, >=, <=)
+      if (value.startsWith('>=')) {
+        const threshold = parseFloat(value.substring(2));
+        return !isNaN(threshold) && numericCell >= threshold;
+      } else if (value.startsWith('<=')) {
+        const threshold = parseFloat(value.substring(2));
+        return !isNaN(threshold) && numericCell <= threshold;
+      } else if (value.startsWith('>')) {
+        const threshold = parseFloat(value.substring(1));
+        return !isNaN(threshold) && numericCell > threshold;
+      } else if (value.startsWith('<')) {
+        const threshold = parseFloat(value.substring(1));
+        return !isNaN(threshold) && numericCell < threshold;
+      } else if (value.startsWith('=')) {
+        const threshold = parseFloat(value.substring(1));
+        return !isNaN(threshold) && numericCell === threshold;
+      } else {
+        // Default numeric equality check
+        return numericCell === numericValue;
+      }
+    }
+    
+    // Default string contains check
+    return cellValue.includes(value.toLowerCase());
   }
 
   /**
@@ -1113,7 +1108,7 @@ export class SearchCommand extends BaseCommand {
 
   // Build single page embed considering page/pageSize and flags
   private buildSearchPage(result: SearchResult, page: number, pageSize: number, _changesOnly: boolean): EmbedBuilder {
-    const { rows = [], filteredCount = 0, totalCount, cacheHit } = result;
+    const { rows = [], filteredCount = 0, totalCount, cacheHit, headers = [] } = result;
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
     const paginatedRows = (rows as unknown[][]).slice(start, end);
@@ -1130,13 +1125,38 @@ export class SearchCommand extends BaseCommand {
     }
 
     if (paginatedRows.length > 0) {
-      const formattedRows = paginatedRows.map((row, index) => {
-        return `${start + index + 1}. ${row.join(' | ')}`;
-      });
-      embed.addFields({
-        name: 'Результати',
-        value: formattedRows.join('\n') || 'Немає даних',
-      });
+      // If we have headers, use them for better formatting
+      if (headers.length > 0) {
+        // Create a formatted table-like display
+        const headerRow = `**${headers.slice(0, 5).join(' | ')}**`;
+        const formattedRows = paginatedRows.map((row, index) => {
+          // If in the row there are many columns, limit the number for better display
+          const displayRow = row.length > 5 ? row.slice(0, 5) : row;
+          const formattedCells = displayRow.map(cell => {
+            // Truncate long cell values
+            const cellStr = String(cell ?? '');
+            return cellStr.length > 30 ? cellStr.substring(0, 27) + '...' : cellStr;
+          });
+          return `${start + index + 1}. ${formattedCells.join(' | ')}`;
+        });
+        
+        // Add header and rows to the embed
+        embed.addFields({
+          name: `Результати пошуку (${headerRow})`,
+          value: formattedRows.join('\n') || 'Немає даних',
+        });
+      } else {
+        // Fallback to original formatting if no headers
+        const formattedRows = paginatedRows.map((row, index) => {
+          // If in the row there are many columns, limit the number for better display
+          const displayRow = row.length > 5 ? row.slice(0, 5) : row;
+          return `${start + index + 1}. ${displayRow.join(' | ')}`;
+        });
+        embed.addFields({
+          name: 'Результати',
+          value: formattedRows.join('\n') || 'Немає даних',
+        });
+      }
     } else {
       embed.setDescription('Нічого не знайдено');
     }
