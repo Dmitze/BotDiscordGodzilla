@@ -46,7 +46,7 @@ export class DriveIndexerService extends BaseServiceClass {
   private google!: GoogleService;
   private cache!: CacheService;
   private searchIndex: SearchIndex | undefined;
-  private metrics?: { incCounter?: (...args: any[]) => void; observeHistogram?: (...args: any[]) => void };
+  private metrics?: { incCounter?: (...args: any[]) => void; observeHistogram?: (...args: any[]) => void } | undefined;
   private indexedCount = 0;
   private lastRunAt: number | null = null;
   // simple in-memory queue for batching with limited concurrency
@@ -55,6 +55,18 @@ export class DriveIndexerService extends BaseServiceClass {
   private queueDrained?: Promise<void>;
   private queueResolve?: () => void;
   
+  public initializeServices(
+    googleService: GoogleService,
+    cacheService: CacheService,
+    searchIndex: SearchIndex | undefined,
+    metricsService: { incCounter?: (...args: any[]) => void; observeHistogram?: (...args: any[]) => void } | undefined
+  ): void {
+    this.google = googleService;
+    this.cache = cacheService;
+    this.searchIndex = searchIndex;
+    this.metrics = metricsService;
+  }
+
   private isCronDisabled(): boolean {
     return (
       process.env['NODE_ENV'] === 'test' ||
@@ -221,6 +233,37 @@ export class DriveIndexerService extends BaseServiceClass {
 
   /** Простая выдача по содержимому */
   public async search(query: string, limit = 10): Promise<DriveSearchResult[]> {
+    // If we have SQLite FTS available, use it for better search results
+    if (this.searchIndex) {
+      try {
+        const result = await this.searchIndex.search({
+          text: query,
+          limit
+        });
+        
+        return result.hits.map(hit => ({
+          file: {
+            id: hit.fileId,
+            name: hit.name,
+            mimeType: hit.mimeType || '',
+            textLength: hit.textLen || 0,
+            updatedAt: Date.now(),
+            snippet: hit.snippet || '',
+            modifiedTime: hit.modifiedTime,
+            owners: hit.ownerEmail ? [hit.ownerEmail] : undefined,
+            size: hit.sizeBytes || undefined // Use sizeBytes from FTS index
+          },
+          score: hit.score || 0
+        }));
+      } catch (error) {
+        logger.warn('⚠️ Пошук через FTS не вдався, використовуємо резервний метод', { 
+          error: error instanceof Error ? error.message : String(error) 
+        });
+        // Fall back to the original search method
+      }
+    }
+    
+    // Original search method as fallback
     if (!this.ensureReady()) return [];
     const ids = await this.cache.get<string[]>(INDEX_KEYS);
     if (!ids || ids.length === 0) return [];
