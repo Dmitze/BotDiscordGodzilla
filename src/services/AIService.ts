@@ -61,6 +61,8 @@ export class AIService extends BaseServiceClass {
   private memoryCleanupInterval: NodeJS.Timeout | null = null;
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private cacheService: CacheService;
+  // Додаткова властивість для зберігання налаштувань AI для каналів
+  private channelProviders: Map<string, string> = new Map();
 
   constructor(config: BotConfig) {
     super('AIService', config);
@@ -81,6 +83,50 @@ export class AIService extends BaseServiceClass {
       providerSwitches: 0,
       contextCleanups: 0,
     };
+  }
+
+  /**
+   * Встановити провайдера AI для конкретного каналу
+   */
+  public setChannelProvider(channelId: string, provider: string): void {
+    if (this.providers[provider]) {
+      this.channelProviders.set(channelId, provider);
+      logger.info(`✅ Встановлено провайдера ${provider} для каналу ${channelId}`, {
+        type: 'ai',
+        event: 'channel_provider_set',
+        component: 'AIService',
+        channelId,
+        provider,
+      });
+    } else {
+      logger.warn(`⚠️ Спроба встановити невідомий провайдер ${provider} для каналу ${channelId}`, {
+        type: 'ai',
+        event: 'channel_provider_invalid',
+        component: 'AIService',
+        channelId,
+        provider,
+      });
+    }
+  }
+
+  /**
+   * Отримати провайдера AI для конкретного каналу
+   */
+  public getChannelProvider(channelId: string): string {
+    return this.channelProviders.get(channelId) || this.currentProvider;
+  }
+
+  /**
+   * Видалити налаштування провайдера для каналу
+   */
+  public removeChannelProvider(channelId: string): void {
+    this.channelProviders.delete(channelId);
+    logger.info(`✅ Видалено налаштування провайдера для каналу ${channelId}`, {
+      type: 'ai',
+      event: 'channel_provider_removed',
+      component: 'AIService',
+      channelId,
+    });
   }
 
   /**
@@ -311,10 +357,17 @@ export class AIService extends BaseServiceClass {
         );
 
         try {
+          // Перевірка доступності Ollama
+          const healthCheck = await fetch(`${ollamaConfig.host}/api/tags`, { signal: controller.signal });
+          if (!healthCheck.ok) {
+            throw new Error(`Ollama не доступний: ${healthCheck.status} ${healthCheck.statusText}`);
+          }
+
           logger.debug('🔄 Ollama запит...', {
             host: ollamaConfig.host,
             model: options.model || ollamaConfig.model,
             temperature: options.temperature || 0.7,
+            promptLength: prompt.length
           });
 
           const response = await fetch(`${ollamaConfig.host}/api/generate`, {
@@ -325,7 +378,7 @@ export class AIService extends BaseServiceClass {
               prompt,
               stream: false,
               options: {
-                temperature: options.temperature || 0.7,
+                temperature: options.temperature !== undefined ? options.temperature : 0.7,
                 num_predict: options.maxTokens || 1000,
               },
             }),
@@ -335,7 +388,8 @@ export class AIService extends BaseServiceClass {
           clearTimeout(timeoutId);
 
           if (!response.ok) {
-            throw new Error(`Ollama API error: ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`Ollama API error: ${response.status} ${response.statusText} - ${errorText}`);
           }
 
           const data: any = await response.json();
@@ -345,7 +399,32 @@ export class AIService extends BaseServiceClass {
           logger.debug('✅ Ollama відповідь отримана', {
             duration: `${duration}ms`,
             model: data.model || ollamaConfig.model,
+            responseLength: data.response?.length || 0
           });
+
+          // Перевірка якості відповіді
+          if (!data.response || data.response.trim().length === 0) {
+            logger.warn('⚠️ Ollama повернув порожню відповідь', {
+              model: data.model || ollamaConfig.model,
+              promptPreview: prompt.substring(0, 100) + '...'
+            });
+            throw new Error('Ollama повернув порожню відповідь');
+          }
+
+          // Перевірка якості відповіді (спрацьовує при занадто коротких або неінформативних відповідях)
+          const responseText = data.response.trim();
+          if (responseText.length < 10 || 
+              responseText.toLowerCase().includes('не можу') || 
+              responseText.toLowerCase().includes('не знаю') ||
+              responseText.toLowerCase().includes('sorry') ||
+              responseText.toLowerCase().includes('unable')) {
+            logger.warn('⚠️ Ollama повернув низькоякісну відповідь', {
+              model: data.model || ollamaConfig.model,
+              response: responseText,
+              promptPreview: prompt.substring(0, 100) + '...'
+            });
+            throw new Error('Ollama повернув низькоякісну відповідь');
+          }
 
           return {
             content: data.response || '',
@@ -357,21 +436,48 @@ export class AIService extends BaseServiceClass {
         } catch (error) {
           clearTimeout(timeoutId);
           const duration = Date.now() - startTime;
+          
+          // Деталізована обробка помилок
+          let errorMessage = 'Невідома помилка';
+          if (error instanceof Error) {
+            if (error.name === 'AbortError') {
+              errorMessage = `Таймаут запиту до Ollama (${AI_SERVICE_CONSTANTS.REQUEST_TIMEOUT}ms)`;
+            } else {
+              errorMessage = error.message;
+            }
+          } else {
+            errorMessage = String(error);
+          }
+          
           logger.error('❌ Помилка Ollama запиту:', {
-            error: error instanceof Error ? error.message : String(error),
+            error: errorMessage,
             duration: `${duration}ms`,
+            host: ollamaConfig.host,
+            model: ollamaConfig.model
           });
-          throw new Error(
-            `Ollama error: ${error instanceof Error ? error.message : String(error)}`
-          );
+          
+          throw new Error(`Ollama error: ${errorMessage}`);
         }
       },
       async isHealthy(): Promise<boolean> {
         try {
-          const response = await fetch(`${ollamaConfig.host}/api/tags`);
-          return response.ok;
+          // Перевірка базової доступності
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          try {
+            const response = await fetch(`${ollamaConfig.host}/api/tags`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            return response.ok;
+          } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+          }
         } catch (error) {
-          logger.error('❌ Ollama health check невдалий:', { error });
+          logger.error('❌ Ollama health check невдалий:', { 
+            error: error instanceof Error ? error.message : String(error),
+            host: ollamaConfig.host
+          });
           return false;
         }
       },
@@ -400,15 +506,20 @@ export class AIService extends BaseServiceClass {
    */
   public async generateResponse(
     prompt: string,
-    options: AIRequestOptions = {}
+    options: AIRequestOptions = {},
+    channelId?: string
   ): Promise<AIResponse> {
+    // Використовуємо провайдера для конкретного каналу, якщо він вказаний
+    const provider = channelId ? this.getChannelProvider(channelId) : (options.provider || this.currentProvider);
+    const updatedOptions = { ...options, provider };
+    
     const {
       useCache = true,
       cacheTTL = 3600,
       forceRefresh = false,
       retryAttempts = AI_SERVICE_CONSTANTS.MAX_RETRY_ATTEMPTS,
-      provider = this.currentProvider,
-    } = options;
+      provider: _provider = provider, // Використовуємо визначений вище провайдер
+    } = updatedOptions;
 
     try {
       // Fast path for perf or explicitly requested tests: avoid external calls and return deterministic response
@@ -915,12 +1026,23 @@ export class AIService extends BaseServiceClass {
         };
       }
 
+      // Отримуємо статус для всіх провайдерів
+      const providerStatuses: Record<string, boolean> = {};
+      for (const [name, provider] of Object.entries(this.providers)) {
+        try {
+          providerStatuses[name] = await provider.isHealthy();
+        } catch {
+          providerStatuses[name] = false;
+        }
+      }
+
       return {
         healthy: true,
         service: this.name,
         details: {
           activeProvider: this.currentProvider,
           availableProviders: Object.keys(this.providers),
+          providerStatuses,
           conversationContexts: this.conversationMemory.size,
           totalRequests: this.stats.totalRequests,
           successRate:
@@ -928,6 +1050,7 @@ export class AIService extends BaseServiceClass {
               ? (this.stats.successfulRequests / this.stats.totalRequests) * 100
               : 0,
           averageResponseTime: this.stats.averageResponseTime,
+          channelProviders: Array.from(this.channelProviders.entries()),
         },
       };
     } catch (error) {
@@ -937,6 +1060,22 @@ export class AIService extends BaseServiceClass {
         error: `Health check failed: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
+  }
+
+  /**
+   * Отримання детального статусу сервісу
+   */
+  public async getDetailedStatus(): Promise<any> {
+    const health = await this.onHealthCheck();
+    
+    return {
+      health,
+      stats: this.onGetStats(),
+      providers: Object.keys(this.providers),
+      activeProvider: this.currentProvider,
+      channelProviders: Array.from(this.channelProviders.entries()),
+      conversationContexts: this.conversationMemory.size,
+    };
   }
 
   /**
@@ -1057,7 +1196,7 @@ ${content.substring(0, 4000)}
 
 1. 5 фактичних запитань з відповідями
 2. 3 аналітичних запитання, що потребують інтерпретації
-3. 2 оцінювальних запитання про якість/вміст документа
+3. 2 оцінювальних запитань про якість/вміст документа
 
 Форматуй кожне запитання з його відповіддю та вкажи тип запитання.
 
