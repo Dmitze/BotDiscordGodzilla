@@ -521,6 +521,8 @@ export interface SearchParams {
   unit?: string;
   priority: string;
   limit: number;
+  column?: string;
+  value?: string;
 }
 
 // Моніторинг та метрики
