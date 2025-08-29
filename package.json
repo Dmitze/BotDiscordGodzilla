@@ -64,7 +64,8 @@
     "ocr:smoke:drive": "ts-node -r tsconfig-paths/register src/scripts/ocrSmokeDrive.ts",
     "drive:smoke": "ts-node -r tsconfig-paths/register src/scripts/driveExtractSmoke.ts",
     "i18n:coverage": "ts-node -r tsconfig-paths/register src/scripts/i18nCoverage.ts",
-    "test:integration:advanced": "ts-node -r tsconfig-paths/register src/scripts/testAdvancedServicesIntegration.ts"
+    "test:integration:advanced": "ts-node -r tsconfig-paths/register src/scripts/testAdvancedServicesIntegration.ts",
+    "start:simple": "ts-node -r tsconfig-paths/register src/index.ts"
   },
   "keywords": [
     "discord",
