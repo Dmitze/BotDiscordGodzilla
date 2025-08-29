@@ -196,22 +196,17 @@ export class AIAssistantCommand extends BaseCommand {
     const contextReferences = [
       /а як щодо/i, /у тому ж файлі/i, /далі/i, /а тепер/i,
       /там само/i, /тією ж таблицю/i, /раніше казав/i,
-      /продовж/i, /доповн/i, /ще/i, /більш/i, /детальн/i
+      /продовж/i, /доповн/i, /ще/i, /більш/i, /детальн/i,
+      /what about/i, /in the same file/i, /continue/i, /now/i,
+      /the same/i, /that table/i, /you said earlier/i,
+      /continue/i, /more/i, /detailed/i
     ];
     
-    const hasContextReference = contextReferences.some(pattern => pattern.test(currentQuery));
+    const hasContextReference = contextReferences.some(regex => regex.test(currentQuery));
     
     if (hasContextReference) {
-      contextText += '\nℹ️ Користувач посилається на попередні дані. Використовуй весь доступний контекст для повної відповіді!\n';
-      logger.debug('Виявлено посилання на контекст', { userId, query: currentQuery.substring(0, 50) });
+      contextText += '\n⚠️ ВАЖЛИВО: Користувач посилається на попередній контекст. Переконайся, що ти враховуєш попередні запити та відповіді.\n';
     }
-    
-    logger.debug('Контекст підготовлено для промпта', {
-      userId,
-      contextCount: recentContexts.length,
-      hasContextReference,
-      contextLength: contextText.length
-    });
     
     return contextText;
   }
@@ -356,6 +351,9 @@ export class AIAssistantCommand extends BaseCommand {
     }
   }
 
+  /**
+   * Побудова структурованої відповіді з повною інформацією
+   */
   private buildResponse(result: AIQueryResult, commandOptions: AICommandOptions): string {
     // Формуємо більш структуровану відповідь з кращим форматуванням
     let response = `🤖 **AI Асистент - Повна Відповідь**\n\n`;
@@ -399,20 +397,39 @@ export class AIAssistantCommand extends BaseCommand {
     response += `• Якщо відповідь не повна, уточніть запит\n`;
     response += `• Використовуйте контекст для посилання на попередні запити\n`;
     response += `• Для складних запитів розбийте їх на кілька простих\n`;
-    response += `• Якщо потрібна інформація з конкретного документа, вкажіть його назву\n\n`;
-    
-    // Додаємо інформацію про джерела, якщо вони є
-    if (result.response.includes('Джерело:') || result.response.includes('джерело')) {
-      response += `📚 **Джерела:**\n`;
-      response += `Відповідь базується на інформації з Google Диску та інших джерел.\n\n`;
-    }
 
-    // Обмежуємо довжину відповіді до 2000 символів, щоб уникнути помилок Discord
+    // Обмежуємо довжину відповіді для Discord
     if (response.length > 1900) {
-      response = response.substring(0, 1900) + '\n\n... [Відповідь обрізана через обмеження Discord]\n\n';
+      response = response.substring(0, 1900) + '\n\n... [Відповідь обрізана через обмеження Discord]';
     }
 
     return response;
+  }
+
+  /**
+   * Побудова запиту до AI з кращим контекстом
+   */
+  private buildDefaultAIQueryResult(
+    query: string,
+    contextText: string,
+    userId: string
+  ): string {
+    // Створюємо більш структурований промпт для Ollama
+    return `Ви є експертом з аналізу документів та надання повної інформації.
+    
+Користувач запитує: "${query}"
+
+Додатковий контекст:
+${contextText}
+
+ВАЖЛИВІ ІНСТРУКЦІЇ:
+1. Надайте ПОВНУ та ДЕТАЛЬНУ відповідь
+2. Використовуйте всі доступні дані з контексту
+3. Якщо знайдено документи, вкажіть їх назви та основну інформацію
+4. Якщо потрібно, запропонуйте подальші дії
+5. Відповідь має бути структурованою та зрозумілою
+
+Відповідь:`;
   }
 
   /**
@@ -610,162 +627,6 @@ export class AIAssistantCommand extends BaseCommand {
       if (res) return res;
     }
     return null;
-  }
-
-  /**
-   * Базова відповідь за замовчуванням, якщо намір не розпізнано
-   */
-  private async buildDefaultAIQueryResult(query: string, interaction?: ChatInputCommandInteraction, contextText?: string): Promise<AIQueryResult> {
-    try {
-      // Спробуємо використати AI-сервіс, якщо він є
-      const aiService = (interaction?.client as any)?.serviceContainer?.get?.('ai');
-      if (aiService && typeof aiService.processNaturalLanguageQuery === 'function') {
-        const userId = interaction?.user?.id || 'unknown';
-        const aiResponse = await aiService.processNaturalLanguageQuery(userId, query, {
-          source: 'discord_command',
-          timestamp: Date.now(),
-        });
-
-        return {
-          response: aiResponse.content,
-          confidence: 0.9,
-          action: 'ai_response',
-          actionData: { type: 'ai_response', format: 'text' },
-        };
-      }
-
-      // Якщо AI-сервіс недоступний — використовуємо Ollama напряму з покращеним промптом
-      logger.info('Using Ollama fallback for AI query', { query: query.substring(0, 100) });
-
-      const ollamaResponse = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'llama3.2', // ← зміни на свою модель, якщо потрібно
-          prompt: `📚 Ти — офіційний AI-асистент "GodzillaBot" для військових, держслужбовців та адміністративних працівників України. Ти маєш високий рівень професійної ерудиції, відмінно володієш українською мовою та дотримуєшся офіційно-ділового стилю.
-
-🎯 ГОЛОВНІ ПРИНЦИПИ РОБОТИ:
-
-1. 🔄 **ПІДТРИМКА ДІАЛОГУ**: Запам'ятовуй контекст, посилайся на попередні відповіді.
-2. 💾 **КЕШУВАННЯ**: Посилайся на відомі дані з попередніх запитів.
-3. 📁 **RAG З GOOGLE ДИСКУ**: Перевіряй наявність документів, посилайся на них з ID і назвою.
-4. 🇺🇦 **МОВА**: Лише чиста українська, офіційно-діловий стиль.
-5. 🧠 **ПРОФЕСІЙНІСТЬ**: Точність, структура, конкретні посилання.
-
-📌 **ФОРМАТ ВІДПОВІДІ:**
-- Повна відповідь (без скорочень)
-- Джерело (якщо є)
-- Практичні рекомендації
-- Конкретні приклади (якщо можливо)
-
-🔥 ТИ — ЕКСПЕРТ, НЕ ПОМИЛЯЄШСЯ У ТЕРМІНАХ, ДОТРИМУЄШСЯ УКРАЇНСЬКОЇ МОВИ.${contextText || ''}
-
-🔥 ЗАПИТАННЯ: ${query}
-
-💬 ВІДПОВІДЬ УКРАЇНСЬКОЮ (ПОВНА, ДЕТАЛЬНА, БЕЗ СКОРОЧЕНЬ):`,  
-          stream: false,
-        }),
-      });
-
-      if (!ollamaResponse.ok) {
-        throw new Error(`Ollama error: ${await ollamaResponse.text()}`);
-      }
-
-      const data = await ollamaResponse.json() as { response?: string; };
-
-      // Покращення відповіді - додавання структури
-      let enhancedResponse = data.response || 'Отримано відповідь, але вона порожня.';
-      
-      // Якщо відповідь занадто коротка, намагаємось отримати більш детальну
-      if (enhancedResponse.length < 300) {
-        const detailedResponse = await fetch('http://localhost:11434/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'llama3.2',
-            prompt: `Розшир детальну відповідь на запитання: ${query}
-            
-            Попередня відповідь: ${enhancedResponse}
-            
-            Надай більш повну та детальну інформацію з конкретними прикладами та рекомендаціями.
-            
-            Форматуй відповідь як:
-            1. Основна інформація
-            2. Джерела (якщо є)
-            3. Практичні рекомендації
-            4. Приклади (якщо можливо)`,
-            stream: false,
-          }),
-        });
-        
-        if (detailedResponse.ok) {
-          const detailedData = await detailedResponse.json() as { response?: string; };
-          if (detailedData.response && detailedData.response.length > enhancedResponse.length) {
-            enhancedResponse = detailedData.response;
-          }
-        }
-      }
-
-      // Додаткове покращення - структурування відповіді
-      const structuredResponse = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'llama3.2',
-          prompt: `Структуруй наступну відповідь у форматі:
-          
-          🔍 Основна інформація:
-          [основна відповідь з деталями]
-          
-          📚 Джерело:
-          [джерело, якщо є]
-          
-          💡 Рекомендації:
-          [практичні рекомендації]
-          
-          📋 Приклади:
-          [конкретні приклади, якщо можливо]
-          
-          Відповідь для структурування: ${enhancedResponse}`,
-          stream: false,
-        }),
-      });
-      
-      if (structuredResponse.ok) {
-        const structuredData = await structuredResponse.json() as { response?: string; };
-        if (structuredData.response) {
-          enhancedResponse = structuredData.response;
-        }
-      }
-
-      return {
-        response: enhancedResponse,
-        confidence: 0.85,
-        action: 'ollama_fallback',
-        actionData: { type: 'ai_response', format: 'text' },
-      };
-    } catch (error) {
-      logger.warn('Failed to get response from Ollama or AI service', {
-        error: error instanceof Error ? error.message : String(error),
-        query: query.substring(0, 50),
-      });
-
-      // Остаточний fallback
-      return {
-        response: `❌ Не вдалося отримати відповідь від AI. Ваш запит: "${query}"
-
-Покращена відповідь:
-Для отримання повної відповіді на ваше запитання, рекомендую:
-1. Уточнити формулювання запиту
-2. Додати контекст або конкретні деталі
-3. Перевірити доступність AI-сервісу
-
-Якщо проблема повторюється, зверніться до адміністратора системи.`,
-        confidence: 0.5,
-        action: 'error_fallback',
-        actionData: { type: 'text', format: 'text' },
-      };
-    }
   }
 
   private async tryOcrImage(query: string, q: string): Promise<AIQueryResult | null> {
