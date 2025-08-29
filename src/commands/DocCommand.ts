@@ -341,7 +341,15 @@ function buildBlocksPage(args: {
     if (f) fields.push(f);
     idx++;
   }
-  for (const f of fields.slice(0, 25)) embed.addFields(f);
+  
+  // Limit fields to 25 (Discord limit) and add them to the embed
+  for (const f of fields.slice(0, 25)) {
+    // Truncate field values to Discord limits (1024 characters)
+    if (f.value.length > 1024) {
+      f.value = f.value.substring(0, 1021) + '...';
+    }
+    embed.addFields(f);
+  }
 
   const nowSec = Math.floor(Date.now() / 1000);
   const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
