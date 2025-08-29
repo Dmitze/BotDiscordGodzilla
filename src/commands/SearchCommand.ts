@@ -8,7 +8,9 @@ import type {
   SlashCommandBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ChatInputCommandInteraction} from 'discord.js';
+  ChatInputCommandInteraction,
+  MessageActionRowComponentBuilder
+} from 'discord.js';
 import {
   EmbedBuilder
 } from 'discord.js';
@@ -399,147 +401,34 @@ export class SearchCommand extends BaseCommand {
       type: 'command',
       component: 'SearchCommand',
       command: 'пошук',
-      user: interaction.user.tag,
       userId: interaction.user.id,
+      guildId,
       channelId: interaction.channelId,
-      ...(guildId ? { guildId } : {}),
     };
-    const commandTimer = logger.startStructuredTimer('command_execute', baseMeta, 'info');
-    // Metrics will be initialized after early option/service access to satisfy unit-test expectations
-    const metrics: any = null;
+    const commandTimer = logger.startTimer();
+    commandTimer.log(t('search.log.start'), baseMeta);
 
     try {
-      // Ensure query option is accessed (some unit tests assert this call)
-      try {
-        // Explicitly pass the required flag to match tests; discard result to avoid unused var
-        void interaction.options.getString('запит', true);
-      } catch {}
+      // Перевіряємо стан інтеракції перед defer
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ ephemeral: true });
+      }
 
-      // Вибір режиму індексації та попередній збір сервісів (повторно використовуємо вибір з execute, якщо він є)
-      const indexChoice = (interaction as any).__indexChoice ?? chooseIndexMode(interaction as any);
+      // Отримання та валідація параметрів
+      const searchParams = await this.extractAndValidateParams(interaction);
 
-      // Ранній fast-path для юніт-тестів і низької затримки: виконуємо мінімальний запит до доступного індексу/легасі до deferReply
-      try {
-        // SQLite fast-path: call search early to satisfy tests, but do not short-circuit reply
-        if (indexChoice.mode === 'sqlite' && indexChoice.services.searchIndex) {
-          const text = interaction.options.getString('запит', true);
-          const limit = interaction.options.getInteger('ліміт') ?? 10;
-          const q: SearchQuery = { text, limit, sample: undefined, filters: {} as any } as any;
-          try {
-            await indexChoice.services.searchIndex.search(q);
-          } catch {}
-          // Continue to standard flow (deferReply + render)
-        }
-
-        // Legacy fast-path
-        if (indexChoice.mode === 'legacy' && indexChoice.services.google && typeof indexChoice.services.google.searchData === 'function') {
-          const text = interaction.options.getString('запит', true);
-          const cache = indexChoice.services.cache;
-          const cacheKey = `search:${String(text ?? '')}`;
-          let rows: unknown = null;
-          try { rows = cache?.get ? await cache.get(cacheKey) : null; } catch { rows = null; }
-          if (!rows) {
-            rows = await indexChoice.services.google.searchData(String(text ?? ''));
-            try { if (cache?.set) await cache.set(cacheKey, rows); } catch {}
-          }
-          if (!rows || (Array.isArray(rows) && rows.length === 0)) {
-            await replyWithPrivacy(interaction as any, { content: tUser('search.reply.noResults', interaction) });
-            return;
-          }
-          await replyWithPrivacy(interaction as any, { content: tUser('search.reply.found', interaction) });
-          const duration = performance.now() - startTime;
-          this.updateSearchStats(true, duration, false);
-          commandTimer.end(true, { results: Array.isArray(rows) ? rows.length : 1, cacheHit: false }, t('search.log.success'));
-          try { if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration); } catch {}
-          return;
-        }
-      } catch {}
-
-      // Відкладена відповідь: робимо до парсингу опцій, щоб гарантувати defer у всіх гілках
-      await interaction.deferReply({ ephemeral: true });
-
-      // Валідація та отримання параметрів пошуку
-      const searchParams = await parseOptions(interaction as any, this.extractAndValidateParams.bind(this));
-
-      // Структурований стартовий лог
-      logger.logStructured('info', t('search.log.start'), {
-        ...baseMeta,
+      // Логування події
+      this.logSecurityEvent('search_command_executed', {
+        userId: interaction.user.id,
+        userTag: interaction.user.tag,
+        command: this.name,
         query: searchParams.query,
-        filters: searchParams,
+        documentType: searchParams.documentType,
+        priority: searchParams.priority,
+        limit: searchParams.limit,
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
       });
-
-      // Режим SQLite: швидка відповідь, якщо є хіти
-      if (indexChoice.mode === 'sqlite' && indexChoice.services.searchIndex) {
-        try {
-          const res = await runSearchSqlite({ searchIndex: indexChoice.services.searchIndex, params: searchParams });
-          const hits = Array.isArray(res?.hits) ? res.hits : [];
-          if (hits.length) {
-            try {
-              const workspace: any = (interaction as any)?.client?.serviceContainer?.get?.('workspace');
-              if (workspace?.addRecent) {
-                const now = Date.now();
-                for (const h of hits.slice(0, 5)) {
-                  const fileId = h?.fileId || h?.id;
-                  if (!fileId) continue;
-                  await workspace.addRecent(interaction.user.id, {
-                    fileId,
-                    name: h?.name,
-                    snippet: h?.snippet,
-                    openedAt: now,
-                  });
-                }
-              }
-            } catch {}
-            await renderSqliteEmbed(
-              interaction as any,
-              String(searchParams.query || ''),
-              hits as any[],
-              res?.total ?? hits.length,
-              Math.max(1, Math.min(SEARCH_CONFIG.MAX_RESULTS, searchParams.limit || SEARCH_CONFIG.DEFAULT_LIMIT))
-            );
-            const duration = performance.now() - startTime;
-            this.updateSearchStats(true, duration, true);
-            commandTimer.end(true, { results: hits.length, cacheHit: false }, t('search.log.success'));
-            try {
-              if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
-              else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
-            } catch {}
-            return;
-          }
-        } catch (e) {
-          logger.warn('SQLite SearchIndex недоступний або помилка пошуку, фоллбек на Google Sheets', { error: e instanceof Error ? e.message : String(e) });
-        }
-      }
-
-      // Легасі-шлях: якщо обрано legacy і є google сервіс
-      if (indexChoice.mode === 'legacy' && indexChoice.services.google && typeof indexChoice.services.google.searchData === 'function') {
-        const query = interaction.options.getString('запит', true);
-        const cache = indexChoice.services.cache;
-        const cacheKey = `search:${String(query ?? '')}`;
-        let rows: unknown;
-        try {
-          rows = cache?.get ? await cache.get(cacheKey) : null;
-        } catch {
-          rows = null;
-        }
-        if (!rows) {
-          rows = await indexChoice.services.google.searchData(String(query ?? ''));
-          try { if (cache?.set) await cache.set(cacheKey, rows); } catch {}
-        }
-        if (!rows || (Array.isArray(rows) && rows.length === 0)) {
-          await replyWithPrivacy(interaction as any, { content: tUser('search.reply.noResults', interaction) });
-          return;
-        }
-        await replyWithPrivacy(interaction as any, { content: tUser('search.reply.found', interaction) });
-        const duration = performance.now() - startTime;
-        this.updateSearchStats(true, duration, false);
-        commandTimer.end(true, { results: Array.isArray(rows) ? rows.length : 1, cacheHit: false }, t('search.log.success'));
-        try {
-          if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
-          else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
-        } catch {}
-        return;
-      }
 
       // Виконання пошуку (фоллбек через Google Sheets)
       const searchResult = await this.performSearchWithCacheFn(searchParams, interaction.user.id);
@@ -548,7 +437,21 @@ export class SearchCommand extends BaseCommand {
       await this.recordWorkspaceRecents(interaction, searchResult);
 
       // Відправити пагіновану відповідь і зафіксувати метрики/таймери
-      await this.finalizeWithPagination(interaction, searchResult, searchParams, startTime, metrics, guildId, commandTimer);
+      const duration = performance.now() - startTime;
+      this.updateSearchStats(true, duration, searchResult.cacheHit);
+      
+      // Завершення таймерів + структурований лог
+      commandTimer.end(true, {
+        durationMs: Math.round(duration),
+        resultsCount: searchResult.filteredCount,
+      }, t('search.log.success'));
+
+      try {
+        if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
+        else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
+      } catch {}
+
+      await this.finalizeWithPagination(interaction, searchResult, searchParams);
     } catch (error) {
       const duration = performance.now() - startTime;
       this.updateSearchStats(false, duration, false);
@@ -742,14 +645,6 @@ export class SearchCommand extends BaseCommand {
           return false;
         }
 
-        // Перевірка підрозділу
-        if (
-          searchParams.unit &&
-          !this.matchesUnit(row, headers, searchParams.unit)
-        ) {
-          return false;
-        }
-
         // Перевірка пріоритету
         if (
           searchParams.priority &&
@@ -759,74 +654,93 @@ export class SearchCommand extends BaseCommand {
           return false;
         }
 
-        // Перевірка по стовпцю
-        if (
-          searchParams.column &&
-          searchParams.value &&
-          !this.matchesColumnValue(row, headers, searchParams.column, searchParams.value)
-        ) {
+        // Перевірка підрозділу
+        if (searchParams.unit && !this.matchesUnit(row, headers, searchParams.unit)) {
           return false;
+        }
+
+        // Перевірка стовпця та значення
+        if (searchParams.column && searchParams.value) {
+          const columnIndex = headers.indexOf(searchParams.column);
+          if (columnIndex !== -1) {
+            const cellValue = row[columnIndex] || '';
+            if (!String(cellValue).toLowerCase().includes(searchParams.value.toLowerCase())) {
+              return false;
+            }
+          }
         }
 
         return true;
       });
 
       const filterTime = performance.now() - startTime;
-      logger.debug('Фільтрація завершена', {
-        type: 'performance',
+      logger.debug('Фільтрація даних завершена', {
+        type: 'command',
         component: 'SearchCommand',
-        totalRows: rows.length,
-        filteredRows: filteredRows.length,
         filterTime: `${filterTime.toFixed(2)}ms`,
+        originalCount: rows.length,
+        filteredCount: filteredRows.length,
       });
-
-      // Обмеження кількості результатів
-      if (filteredRows.length > SEARCH_CONFIG.MAX_FILTERED_RESULTS) {
-        logger.warn('Кількість результатів обмежена', {
-          type: 'performance',
-          component: 'SearchCommand',
-          maxResults: SEARCH_CONFIG.MAX_FILTERED_RESULTS,
-          actualResults: filteredRows.length,
-        });
-        return filteredRows.slice(0, SEARCH_CONFIG.MAX_FILTERED_RESULTS);
-      }
 
       return filteredRows;
     } catch (error) {
-      logger.error('Помилка фільтрації даних', { component: 'SearchCommand', error });
+      const filterTime = performance.now() - startTime;
+      logger.error('Помилка фільтрації даних', {
+        type: 'command',
+        component: 'SearchCommand',
+        error: error instanceof Error ? error.message : String(error),
+        filterTime: `${filterTime.toFixed(2)}ms`,
+      });
       throw error;
     }
   }
 
   /**
-   * Перевірка відповідності запиту з оптимізацією
+   * Перевірка відповідності текстового запиту
    */
-  private matchesQuery(row: string[], _headers: string[], query: string): boolean {
-    const searchTerms = query
-      .toLowerCase()
-      .split(' ')
-      .filter(term => term.length > 0);
-    if (searchTerms.length === 0) return true;
-
-    return row.some(cell => {
-      const cellValue = cell.toLowerCase();
-      return searchTerms.some(term => cellValue.includes(term));
+  private matchesQuery(row: string[], headers: string[], query: string): boolean {
+    const queryLower = query.toLowerCase();
+    return row.some((cell, index) => {
+      // Пропускаємо стовпець дати для текстового пошуку
+      const header = headers[index]?.toLowerCase();
+      if (header && (header.includes('дата') || header.includes('date'))) {
+        return false;
+      }
+      return String(cell || '').toLowerCase().includes(queryLower);
     });
   }
 
   /**
-   * Перевірка типу документа
+   * Перевірка відповідності типу документа
    */
   private matchesDocumentType(row: string[], headers: string[], documentType: string): boolean {
-    const typeIndex = headers.findIndex(h => h.toLowerCase().includes('тип'));
-    if (typeIndex === -1) return true;
+    const typeColumnIndex = headers.findIndex(header =>
+      header.toLowerCase().includes('тип') || header.toLowerCase().includes('type')
+    );
 
-    const rowType = row[typeIndex]?.toLowerCase() || '';
-    return rowType.includes(documentType.toLowerCase());
+    if (typeColumnIndex === -1) return true;
+
+    const rowType = String(row[typeColumnIndex] || '').toLowerCase();
+    const searchType = documentType.toLowerCase();
+
+    // Маппинг типів документів
+    const typeMap: Record<string, string[]> = {
+      orders: ['наказ', 'order', 'приказ'],
+      reports: ['звіт', 'report', 'рапорт'],
+      statistics: ['статистика', 'statistic', 'стат'],
+      plans: ['план', 'plan'],
+      instructions: ['інструкція', 'instruction', 'настанова'],
+      protocols: ['протокол', 'protocol'],
+      cards: ['картка', 'card'],
+      journals: ['журнал', 'journal', 'реєстр'],
+    };
+
+    const validTypes = typeMap[searchType] || [];
+    return validTypes.some(type => rowType.includes(type));
   }
 
   /**
-   * Перевірка діапазону дат
+   * Перевірка відповідності діапазону дат
    */
   private matchesDateRange(
     row: string[],
@@ -834,136 +748,105 @@ export class SearchCommand extends BaseCommand {
     dateFrom?: string,
     dateTo?: string
   ): boolean {
-    const dateIndex = headers.findIndex(h => h.toLowerCase().includes('дата'));
-    if (dateIndex === -1) return true;
+    const dateColumnIndex = headers.findIndex(header =>
+      header.toLowerCase().includes('дата') || header.toLowerCase().includes('date')
+    );
 
-    const rowDate = this.parseDate(row[dateIndex]);
+    if (dateColumnIndex === -1) return true;
+
+    const rowDateStr = row[dateColumnIndex];
+    if (!rowDateStr) return true;
+
+    const rowDate = this.parseDate(String(rowDateStr));
     if (!rowDate) return true;
 
     if (dateFrom) {
       const fromDate = this.parseDate(dateFrom);
-      if (fromDate && rowDate < fromDate) return false;
+      if (fromDate && rowDate < fromDate) {
+        return false;
+      }
     }
 
     if (dateTo) {
       const toDate = this.parseDate(dateTo);
-      if (toDate && rowDate > toDate) return false;
+      if (toDate && rowDate > toDate) {
+        return false;
+      }
     }
 
     return true;
   }
 
   /**
-   * Перевірка підрозділу
-   */
-  private matchesUnit(row: string[], headers: string[], unit: string): boolean {
-    const unitIndex = headers.findIndex(h => h.toLowerCase().includes('підрозділ'));
-    if (unitIndex === -1) return true;
-
-    const rowUnit = row[unitIndex]?.toLowerCase() || '';
-    return rowUnit.includes(unit.toLowerCase());
-  }
-
-  /**
-   * Перевірка пріоритету
+   * Перевірка відповідності пріоритету
    */
   private matchesPriority(row: string[], headers: string[], priority: string): boolean {
-    const priorityIndex = headers.findIndex(h => h.toLowerCase().includes('пріоритет'));
-    if (priorityIndex === -1) return true;
-
-    const rowPriority = row[priorityIndex]?.toLowerCase() || '';
-    return rowPriority.includes(priority.toLowerCase());
-  }
-
-  /**
-   * Перевірка відповідності значення в стовпці
-   */
-  private matchesColumnValue(row: string[], headers: string[], column: string, value: string): boolean {
-    // Find column index with more flexible matching
-    const columnIndex = headers.findIndex(h => 
-      h.toLowerCase().includes(column.toLowerCase()) || 
-      column.toLowerCase().includes(h.toLowerCase())
+    const priorityColumnIndex = headers.findIndex(header =>
+      header.toLowerCase().includes('пріоритет') ||
+      header.toLowerCase().includes('priority') ||
+      header.toLowerCase().includes('важливість')
     );
-    
-    if (columnIndex === -1) {
-      // If exact column name not found, try partial matching
-      const partialMatches = headers.filter(h => 
-        h.toLowerCase().includes(column.toLowerCase()) || 
-        column.toLowerCase().includes(h.toLowerCase())
-      );
-      
-      if (partialMatches.length === 0) return true;
-      
-      // Check all partial matches
-      for (const match of partialMatches) {
-        const idx = headers.indexOf(match);
-        if (idx !== -1) {
-          const cellValue = row[idx]?.toLowerCase() || '';
-          if (cellValue.includes(value.toLowerCase())) {
-            return true;
-          }
-        }
-      }
-      return false;
-    }
 
-    const cellValue = row[columnIndex]?.toLowerCase() || '';
-    
-    // Support for numeric comparisons
-    const numericValue = parseFloat(value);
-    const numericCell = parseFloat(cellValue);
-    
-    if (!isNaN(numericValue) && !isNaN(numericCell)) {
-      // Handle numeric comparisons (=, >, <, >=, <=)
-      if (value.startsWith('>=')) {
-        const threshold = parseFloat(value.substring(2));
-        return !isNaN(threshold) && numericCell >= threshold;
-      } else if (value.startsWith('<=')) {
-        const threshold = parseFloat(value.substring(2));
-        return !isNaN(threshold) && numericCell <= threshold;
-      } else if (value.startsWith('>')) {
-        const threshold = parseFloat(value.substring(1));
-        return !isNaN(threshold) && numericCell > threshold;
-      } else if (value.startsWith('<')) {
-        const threshold = parseFloat(value.substring(1));
-        return !isNaN(threshold) && numericCell < threshold;
-      } else if (value.startsWith('=')) {
-        const threshold = parseFloat(value.substring(1));
-        return !isNaN(threshold) && numericCell === threshold;
-      } else {
-        // Default numeric equality check
-        return numericCell === numericValue;
-      }
-    }
-    
-    // Default string contains check
-    return cellValue.includes(value.toLowerCase());
+    if (priorityColumnIndex === -1) return true;
+
+    const rowPriority = String(row[priorityColumnIndex] || '').toLowerCase();
+    const searchPriority = priority.toLowerCase();
+
+    // Маппинг пріоритетів
+    const priorityMap: Record<string, string[]> = {
+      critical: ['критичний', 'critical', 'негайний', 'urgent'],
+      high: ['високий', 'high', 'важливий'],
+      medium: ['середній', 'medium', 'звичайний'],
+      low: ['низький', 'low', 'не терміновий'],
+    };
+
+    const validPriorities = priorityMap[searchPriority] || [];
+    return validPriorities.some(p => rowPriority.includes(p));
   }
 
   /**
-   * Валідація дати
+   * Перевірка відповідності підрозділу
+   */
+  private matchesUnit(row: string[], headers: string[], unit: string): boolean {
+    const unitColumnIndex = headers.findIndex(header =>
+      header.toLowerCase().includes('підрозділ') ||
+      header.toLowerCase().includes('unit') ||
+      header.toLowerCase().includes('бригада') ||
+      header.toLowerCase().includes('рота')
+    );
+
+    if (unitColumnIndex === -1) return true;
+
+    const rowUnit = String(row[unitColumnIndex] || '').toLowerCase();
+    const searchUnit = unit.toLowerCase();
+
+    return rowUnit.includes(searchUnit);
+  }
+
+  /**
+   * Перевірка валідності дати
    */
   private isValidDate(dateString: string): boolean {
-    const parsed = this.parseDate(dateString);
-    return parsed !== null;
+    return this.parseDate(dateString) !== null;
   }
 
   /**
-   * Парсинг дати з покращеною обробкою помилок
+   * Парсинг дати з різних форматів
    */
-  private parseDate(dateString: string | undefined): Date | null {
-    if (!dateString || typeof dateString !== 'string') return null;
-
+  private parseDate(dateString: string): Date | null {
     try {
-      // Спробувати різні формати дати
+      // Очищення рядка дати
+      const cleaned = dateString.trim().replace(/[^\d.\-/]/g, '');
+
+      // Формати дати
       const formats = [
-        /(\d{1,2})\.(\d{1,2})\.(\d{4})/, // ДД.ММ.РРРР
-        /(\d{4})-(\d{1,2})-(\d{1,2})/, // РРРР-ММ-ДД
-        /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // ДД/ММ/РРРР
+        /^(\d{2})\.(\d{2})\.(\d{4})$/, // DD.MM.YYYY
+        /^(\d{2})\/(\d{2})\/(\d{4})$/, // DD/MM/YYYY
+        /^(\d{4})-(\d{2})-(\d{2})$/, // YYYY-MM-DD
       ];
 
       for (const format of formats) {
-        const match = dateString.match(format);
+        const match = cleaned.match(format);
         if (match) {
           const day = match[1];
           const month = match[2];
@@ -994,7 +877,56 @@ export class SearchCommand extends BaseCommand {
   }
 
   /**
-    return embed;
+   * Побудова сторінки пошуку з кращим форматуванням
+   */
+  private buildSearchPage(
+    results: SearchResult,
+    currentPage: number,
+    totalPages: number,
+    query: string
+  ): { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } {
+    const embed = new EmbedBuilder()
+      .setTitle('🔍 Результати пошуку')
+      .setDescription(`Запит: **${query}**\nЗнайдено: **${results.filteredCount}** результатів`)
+      .setColor('#0099ff')
+      .setTimestamp();
+
+    // Додаємо інформацію про фільтри, якщо вони є
+    if (results.filters) {
+      let filterInfo = '';
+      if (results.filters.documentType && results.filters.documentType !== 'all') {
+        filterInfo += `Тип документа: ${results.filters.documentType}\n`;
+      }
+      if (results.filters.column && results.filters.value) {
+        filterInfo += `Фільтр: ${results.filters.column} = ${results.filters.value}\n`;
+      }
+      if (results.filters.priority && results.filters.priority !== 'all') {
+        filterInfo += `Пріоритет: ${results.filters.priority}\n`;
+      }
+      if (results.filters.unit) {
+        filterInfo += `Підрозділ: ${results.filters.unit}\n`;
+      }
+      if (results.filters.dateFrom || results.filters.dateTo) {
+        filterInfo += `Період: ${results.filters.dateFrom || '......'} - ${results.filters.dateTo || '...'}`;
+      }
+      
+      if (filterInfo) {
+        embed.addFields({ name: 'Фільтри', value: filterInfo, inline: false });
+      }
+    }
+
+    // Додаємо інформацію про результати
+    embed.addFields({
+      name: `Сторінка ${currentPage} з ${totalPages}`,
+      value: `Показано результати з ${(currentPage - 1) * 10 + 1} по ${Math.min(currentPage * 10, results.filteredCount)}`,
+      inline: false
+    });
+
+    // Додаємо пагінацію
+    const sessionId = this.generateSessionId('search');
+    const components = this.createPaginationComponents(results, currentPage, sessionId);
+
+    return { embeds: [embed], components };
   }
 
   /**
@@ -1014,113 +946,80 @@ export class SearchCommand extends BaseCommand {
         changesOnly = session.changesOnly;
       }
     }
-    if (totalPages <= 1) return [] as any;
+    if (totalPages <= 1) return [];
 
     const sessionId = sid ?? 'search';
-    const legacyBuild = ({ sid, page, action }: { sid: string; page: number; action?: 'toggle' | 'reset' | 'close' | 'column' }) =>
-      `srch|sid=${sid}|p=${page}${action ? `|a=${action}` : ''}`;
-    const rows = buildSearchPaginationRows({
+    const components = buildSearchPaginationRows({
       sid: sessionId,
       safePage: Math.min(Math.max(1, currentPage), totalPages),
       totalPages,
       changesOnly,
       allowLink: false,
-      buildId: ({ sid, page, action }) =>
-        process.env['NODE_ENV'] === 'test'
-          ? (action != null ? legacyBuild({ sid, page, action }) : legacyBuild({ sid, page }))
-          : signComponentId({ kind: 'srch', sid, page, action }),
-    }) as unknown as ActionRowBuilder<ButtonBuilder>[];
-    return rows;
+      buildId: ({ sid, page, action }) => {
+        const ts = Math.floor(Date.now() / 1000);
+        return process.env['NODE_ENV'] === 'test'
+          ? `srch|sid=${sid}|p=${page}${action ? `|a=${action}` : ''}`
+          : signComponentId({ kind: 'srch', sid, page, action, ts });
+      },
+    });
+    
+    // Cast to the expected return type
+    return components as ActionRowBuilder<ButtonBuilder>[];
   }
 
   /**
-   * Створення сторінки пошуку з покращеним форматуванням та підтримкою стовпців
+   * Фіналізація відповіді з пагінацією
    */
-  private buildSearchPage(result: SearchResult, page: number, pageSize: number, _changesOnly: boolean): EmbedBuilder {
-    const { rows = [], filteredCount = 0, totalCount, cacheHit, headers = [] } = result;
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize;
-    const paginatedRows = (rows as unknown[][]).slice(start, end);
-
-    const embed = new EmbedBuilder()
-      .setTitle('🔍 Результати пошуку')
-      .setColor('#4CAF50')
-      .setFooter({
-        text: `Сторінка ${page} з ${Math.ceil(filteredCount / pageSize)} | Знайдено: ${filteredCount} з ${totalCount ?? '?'}`,
+  private async finalizeWithPagination(
+    interaction: ChatInputCommandInteraction,
+    results: SearchResult,
+    searchParams: SearchParams
+  ): Promise<void> {
+    try {
+      const { pageSize, totalPages } = computePagination({
+        filteredCount: results.filteredCount,
+        limit: searchParams.limit || SEARCH_CONFIG.DEFAULT_LIMIT
       });
 
-    if (cacheHit) {
-      embed.setDescription('⚡ Результати з кешу');
-    }
+      // Якщо результатів багато, використовуємо пагінацію
+      if (totalPages > 1) {
+        const paginationState: PaginationState = {
+          currentPage: 1,
+          totalPages,
+          results,
+          timestamp: Math.floor(Date.now() / 1000),
+          userId: interaction.user.id,
+          pageSize,
+          changesOnly: false
+        };
 
-    if (paginatedRows.length > 0) {
-      // Якщо є заголовки, використовуємо їх для кращого форматування
-      if (headers.length > 0) {
-        // Створюємо таблицю з кращим форматуванням
-        const headerRow = `**${headers.slice(0, 8).join(' | ')}**`;
-        const formattedRows = paginatedRows.map((row, index) => {
-          // Якщо в рядку багато стовпців, обмежуємо кількість для кращого відображення
-          const displayRow = row.length > 8 ? row.slice(0, 8) : row;
-          const formattedCells = displayRow.map(cell => {
-            // Обрізаємо довгі значення клітинок
-            const cellStr = String(cell ?? '');
-            return cellStr.length > 50 ? cellStr.substring(0, 47) + '...' : cellStr;
-          });
-          return `${start + index + 1}. ${formattedCells.join(' | ')}`;
-        });
+        const sessionId = this.generateSessionId('search');
+        setSession(sessionId, paginationState);
+
+        const { embeds, components } = this.buildSearchPage(results, 1, totalPages, searchParams.query || '');
         
-        // Додаємо заголовок і рядки до вбудовування
-        embed.addFields({
-          name: `📊 Результати пошуку (${headerRow})`,
-          value: formattedRows.join('\n') || 'Немає даних',
+        await replyWithPrivacy(interaction, {
+          embeds,
+          components
         });
       } else {
-        // Резервне форматування, якщо немає заголовків
-        const formattedRows = paginatedRows.map((row, index) => {
-          // Якщо в рядку багато стовпців, обмежуємо кількість для кращого відображення
-          const displayRow = row.length > 8 ? row.slice(0, 8) : row;
-          return `${start + index + 1}. ${displayRow.join(' | ')}`;
-        });
-        embed.addFields({
-          name: '📊 Результати',
-          value: formattedRows.join('\n') || 'Немає даних',
-        });
-      }
-      
-      // Додаємо інформацію про фільтри, якщо вони є
-      if (result.filters) {
-        const filterInfo = [];
-        if (result.filters.column && result.filters.value) {
-          filterInfo.push(`**Стовпець:** ${result.filters.column} = ${result.filters.value}`);
-        }
-        if (result.filters.documentType && result.filters.documentType !== 'all') {
-          filterInfo.push(`**Тип документа:** ${result.filters.documentType}`);
-        }
-        if (result.filters.priority && result.filters.priority !== 'all') {
-          filterInfo.push(`**Пріоритет:** ${result.filters.priority}`);
-        }
-        if (result.filters.unit) {
-          filterInfo.push(`**Підрозділ:** ${result.filters.unit}`);
-        }
-        if (result.filters.dateFrom || result.filters.dateTo) {
-          const dateFrom = result.filters.dateFrom || '—';
-          const dateTo = result.filters.dateTo || '—';
-          filterInfo.push(`**Дата:** ${dateFrom} - ${dateTo}`);
-        }
-        
-        if (filterInfo.length > 0) {
-          embed.addFields({
-            name: '🔍 Фільтри',
-            value: filterInfo.join('\n'),
-            inline: false
-          });
-        }
-      }
-    } else {
-      embed.setDescription('❌ Нічого не знайдено. Спробуйте змінити критерії пошуку.');
-    }
+        // Для однієї сторінки показуємо результати без пагінації
+        const embed = new EmbedBuilder()
+          .setTitle('🔍 Результати пошуку')
+          .setDescription(`Запит: **${searchParams.query || ''}**\nЗнайдено: **${results.filteredCount}** результатів`)
+          .setColor('#0099ff')
+          .setTimestamp();
 
-    return embed;
+        await replyWithPrivacy(interaction, {
+          embeds: [embed]
+        });
+      }
+    } catch (error) {
+      logger.error('Помилка фіналізації пошуку', { error });
+      await replyWithPrivacy(interaction, {
+        content: '❌ Виникла помилка при відображенні результатів пошуку'
+      });
+    }
   }
 
   /**
@@ -1136,7 +1035,6 @@ export class SearchCommand extends BaseCommand {
   }
 
   // Приватний cacheKey базового класу не перевизначаємо
-
 
   /**
    * Оновлення статистики пошуку
@@ -1185,139 +1083,64 @@ export class SearchCommand extends BaseCommand {
         await interaction.reply({ content, embeds: [errorEmbed], ephemeral: true });
       }
     } catch (replyError) {
-      logger.error('Помилка відправки повідомлення про помилку пошуку', {
+      logger.error('Помилка відправки повідомлення про помилку', {
+        type: 'command',
         component: 'SearchCommand',
-        error: replyError,
+        error: replyError instanceof Error ? replyError.message : String(replyError),
       });
     }
   }
 
   /**
-   * Отримання статистики пошуку
+   * Запис останніх результатів у робочий простір користувача
    */
-  public getSearchStats(): {
-    totalSearches: number;
-    successfulSearches: number;
-    totalSearchTime: number;
-    averageSearchTime: number;
-    cacheHits: number;
-    cacheMisses: number;
-    errors: number;
-    cacheSize: number;
-    paginationStates: number;
-  } {
-    return {
-      totalSearches: this.searchStats.totalSearches,
-      successfulSearches: this.searchStats.successfulSearches,
-      totalSearchTime: this.searchStats.totalSearchTime,
-      averageSearchTime: this.searchStats.averageSearchTime,
-      cacheHits: this.searchStats.cacheHits,
-      cacheMisses: this.searchStats.cacheMisses,
-      errors: this.searchStats.errors,
-      cacheSize: this.searchCache.size,
-      paginationStates: this.paginationStates.size,
-    };
-  }
-
-  /**
-   * Запис останніх результатів пошуку у workspace користувача
-   */
-  private async recordWorkspaceRecents(interaction: ChatInputCommandInteraction, searchResult: SearchResult): Promise<void> {
+  private async recordWorkspaceRecents(
+    interaction: ChatInputCommandInteraction,
+    searchResult: SearchResult
+  ): Promise<void> {
     try {
-      const workspace = (interaction.client as any)?.serviceContainer?.get?.('workspace');
-      if (workspace && typeof workspace.addRecent === 'function') {
-        const now = Date.now();
-        // Додаємо до 5 останніх результатів
-        const rows = searchResult.rows || [];
-        for (let i = 0; i < Math.min(5, rows.length); i++) {
-          const row = rows[i];
-          // Перевіряємо, чи row не є undefined
-          if (!row) continue;
-          
-          // Створюємо унікальний ідентифікатор для результату
-          const id = `search_result_${interaction.user.id}_${now}_${i}`;
-          // Створюємо назву з перших кількох стовпців
-          const name = row.slice(0, 3).join(' | ');
-          // Створюємо фрагмент тексту
-          const snippet = row.slice(0, 5).join(' | ');
-          
-          await workspace.addRecent(interaction.user.id, {
-            fileId: id,
-            name,
-            snippet,
-            openedAt: now,
+      // Отримуємо сервіс робочого простору
+      const workspaceService = (interaction.client as any)?.serviceContainer?.get?.('workspace');
+      if (!workspaceService) return;
+
+      // Створюємо записи для останніх результатів (до 5 елементів)
+      const recents = (searchResult.rows || [])
+        .slice(0, 5)
+        .map((row, index) => {
+          const headers = searchResult.headers || [];
+          const item: Record<string, unknown> = {};
+          headers.forEach((header, i) => {
+            item[header] = row[i];
+          });
+          return {
+            id: `search-${Date.now()}-${index}`,
+            type: 'search_result',
+            title: `Результат пошуку #${index + 1}`,
+            content: JSON.stringify(item),
+            timestamp: new Date().toISOString(),
+          };
+        });
+
+      // Зберігаємо в робочий простір користувача
+      for (const recent of recents) {
+        try {
+          await workspaceService.saveUserItem(interaction.user.id, recent);
+        } catch (saveError) {
+          logger.warn('Не вдалося зберегти елемент в робочий простір', {
+            type: 'command',
+            component: 'SearchCommand',
+            userId: interaction.user.id,
+            error: saveError instanceof Error ? saveError.message : String(saveError),
           });
         }
       }
     } catch (error) {
-      logger.warn('Не вдалося записати останні результати пошуку', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
-
-  /**
-   * Фіналізація пошуку з пагінацією
-   */
-  private async finalizeWithPagination(
-    interaction: ChatInputCommandInteraction,
-    searchResult: SearchResult,
-    searchParams: SearchParams,
-    startTime: number,
-    metrics: any,
-    guildId: string | undefined,
-    commandTimer: any
-  ): Promise<void> {
-    try {
-      const duration = performance.now() - startTime;
-      
-      // Створюємо сесію для пагінації
-      const sid = this.generateSessionId('search');
-      const { pageSize, totalPages } = computePagination({
-        filteredCount: searchResult.filteredCount,
-        limit: searchParams.limit
-      });
-      
-      const session: PaginationState = {
-        currentPage: 1,
-        totalPages,
-        results: searchResult,
-        timestamp: Math.floor(Date.now() / 1000),
+      logger.warn('Помилка запису останніх результатів', {
+        type: 'command',
+        component: 'SearchCommand',
         userId: interaction.user.id,
-        pageSize,
-        changesOnly: false
-      };
-      
-      setSession(sid, session);
-      
-      // Створюємо embed з результатами
-      const embed = this.buildSearchPage(searchResult, 1, pageSize, false);
-      const components = this.createPaginationComponents(searchResult, 1, sid);
-      
-      // Відправляємо результат
-      await interaction.editReply({ embeds: [embed], components });
-      
-      // Оновлюємо статистику
-      this.updateSearchStats(true, duration, searchResult.cacheHit || false);
-      commandTimer.end(true, { results: searchResult.filteredCount, cacheHit: searchResult.cacheHit }, t('search.log.success'));
-      
-      try {
-        if (metrics?.measureCommandDurationLabeled) {
-          metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
-        } else if (metrics?.measureCommandDuration) {
-          metrics.measureCommandDuration('пошук', duration);
-        }
-      } catch {}
-    } catch (error) {
-      const duration = performance.now() - startTime;
-      this.updateSearchStats(false, duration, false);
-      commandTimer.end(false, {
         error: error instanceof Error ? error.message : String(error),
-        durationMs: Math.round(duration),
-      }, t('search.log.error'));
-      throw error;
+      });
     }
   }
-
-  // Примітка: керування очищенням/завершенням виконується базовим класом
 }
