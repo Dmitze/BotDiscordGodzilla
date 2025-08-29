@@ -10,7 +10,7 @@ import type { MetricsService } from './MetricsService';
 import { createHash } from 'crypto';
 // Parsers
 import { createDefaultParserRouter } from '@/parsers';
-import type { BotConfig, HealthStatus, ServiceStats, SheetData, BatchSheetData } from '@/types';
+import type { BotConfig, HealthStatus, ServiceStats, SheetData } from '@/types';
 import type { DriveListQuery, DriveListResult, DriveFile } from '@/types/drive';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
@@ -19,6 +19,7 @@ import { DocsService } from './google/DocsService';
 import { SheetsService } from './google/SheetsService';
 import { sanitizeTextForChat, normalizeText } from '@/utils/fileProcessor';
 import { validateInput } from '@/utils/security';
+
 
 interface GoogleServiceStats extends ServiceStats {
   requests: number;
@@ -63,6 +64,29 @@ export class GoogleService extends BaseServiceClass {
   // Token-bucket per apiType (drive|sheets|docs)
   private rlTokens = new Map<string, number>();
   private rlLastRefill = new Map<string, number>();
+
+  /**
+   * Оновлення статистики
+   */
+  private updateStats(success: boolean, duration: number): void {
+    this.stats.requests++;
+    if (!success) {
+      this.stats.errors++;
+    }
+
+    // Оновлення середнього часу відповіді
+    const totalTime = this.stats.averageResponseTime * (this.stats.requests - 1) + duration;
+    this.stats.averageResponseTime = totalTime / this.stats.requests;
+
+    // Оновлення використання connection pool
+    let inUseConnections = 0;
+    for (const connection of this.connectionPool.values()) {
+      if (connection.inUse) {
+        inUseConnections++;
+      }
+    }
+    this.stats.connectionPoolUsage = (inUseConnections / this.connectionPool.size) * 100;
+  }
 
   constructor(config: BotConfig) {
     super('GoogleService', config);
@@ -1157,6 +1181,9 @@ export class GoogleService extends BaseServiceClass {
 
         // Створення connection pool
         this.initializeConnectionPool();
+        
+        // Перевірка підключення до Google Drive
+        await this.testDriveConnection();
       }
 
       logger.info('✅ Google Service ініціалізовано', {
@@ -1186,6 +1213,122 @@ export class GoogleService extends BaseServiceClass {
       }
       throw error;
     }
+  }
+
+  /**
+   * Завершення роботи Google сервісів
+   */
+  protected async onShutdown(): Promise<void> {
+    try {
+      logger.info('🛑 Завершення роботи Google Service...', {
+        type: 'system',
+        event: 'google_service_shutdown',
+        component: 'GoogleService',
+      });
+
+      // Зупинка кешу
+      await this.cacheService.shutdown();
+
+      logger.info('✅ Google Service зупинено', {
+        type: 'system',
+        event: 'google_service_shutdown_success',
+        component: 'GoogleService',
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error('❌ Помилка зупинки Google Service', {
+          type: 'system',
+          event: 'google_service_shutdown_failed',
+          component: 'GoogleService',
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+        });
+      } else {
+        logger.error('❌ Помилка зупинки Google Service', {
+          type: 'system',
+          event: 'google_service_shutdown_failed',
+          component: 'GoogleService',
+          errorMessage: String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Тестове підключення до Google Drive для перевірки працездатності
+   */
+  private async testDriveConnection(): Promise<void> {
+    try {
+      if (!this.drive) {
+        throw new Error('Drive API не ініціалізовано');
+      }
+      
+      // Простий тестовий запит до Drive API
+      await this.drive.about.get({ fields: 'kind' });
+      logger.info('✅ Підключення до Google Drive успішне', {
+        type: 'system',
+        event: 'drive_connection_test_success',
+        component: 'GoogleService',
+      });
+    } catch (error) {
+      logger.error('❌ Помилка підключення до Google Drive', {
+        type: 'system',
+        event: 'drive_connection_test_failed',
+        component: 'GoogleService',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new Error(`Не вдалося підключитися до Google Drive: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Перевірка здоров'я Google сервісів
+   */
+  protected async onHealthCheck(): Promise<HealthStatus> {
+    try {
+      // Перевірка автентифікації
+      if (!this.auth) {
+        return {
+          healthy: false,
+          service: this.name,
+          error: 'Сервіс не ініціалізовано',
+        };
+      }
+
+      // Перевірка API клієнтів
+      if (!this.sheets || !this.drive || !this.docs) {
+        return {
+          healthy: false,
+          service: this.name,
+          error: 'API клієнти не ініціалізовано',
+        };
+      }
+
+      // Перевірка підключення до Google Drive
+      if (this.drive) {
+        await this.drive.about.get({ fields: 'kind' });
+      }
+
+      return {
+        healthy: true,
+        service: this.name,
+      };
+    } catch (error) {
+      return {
+        healthy: false,
+        service: this.name,
+        error: error instanceof Error ? error.message : 'Невідома помилка',
+      };
+    }
+  }
+
+  /**
+   * Отримання статистики Google сервісів
+   */
+  protected onGetStats(): Partial<ServiceStats> {
+    return this.stats;
   }
 
   /**
@@ -1970,5 +2113,69 @@ export class GoogleService extends BaseServiceClass {
       this.metrics?.observeTextSizeBytes('parser', Buffer.byteLength(text, 'utf8'));
     } catch {}
     return text;
+  }
+
+  /**
+   * Отримання даних Google Sheets з пагінацією
+   */
+  public async getSheetDataWithPagination(
+    spreadsheetId: string,
+    range: string,
+    page: number,
+    pageSize: number
+  ): Promise<{
+    headers: string[];
+    rows: string[][];
+    currentPage: number;
+    totalPages: number;
+    totalRows: number;
+  }> {
+    try {
+      // Отримуємо всі дані з таблиці
+      const sheetData = await this.getSheetData(spreadsheetId, range);
+      
+      if (!sheetData || !sheetData.values || sheetData.values.length === 0) {
+        return {
+          headers: [],
+          rows: [],
+          currentPage: 1,
+          totalPages: 1,
+          totalRows: 0
+        };
+      }
+
+      const values = sheetData.values;
+      const headers = values[0] as string[] || [];
+      const allRows = values.slice(1);
+      
+      // Розраховуємо пагінацію
+      const totalRows = allRows.length;
+      const totalPages = Math.ceil(totalRows / pageSize);
+      const currentPage = Math.max(1, Math.min(page, totalPages));
+      
+      // Визначаємо які рядки показувати на поточній сторінці
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalRows);
+      const pageRows = allRows.slice(startIndex, endIndex);
+      
+      return {
+        headers,
+        rows: pageRows,
+        currentPage,
+        totalPages,
+        totalRows
+      };
+    } catch (error) {
+      logger.error('Помилка отримання даних таблиці з пагінацією', {
+        component: 'GoogleService',
+        method: 'getSheetDataWithPagination',
+        spreadsheetId,
+        range,
+        page,
+        pageSize,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
   }
 }
