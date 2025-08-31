@@ -18,7 +18,7 @@ interface TestResult {
   testName: string;
   success: boolean;
   duration: number;
-  error?: string;
+  error?: string | undefined;
   details?: any;
 }
 
@@ -150,7 +150,7 @@ class NewServicesIntegrationTest {
       const channelId = 'test_channel_123';
       
       const queryId1 = (contextMemory as any).addQuery(userId, channelId, 'Test query 1', 'ai');
-      const queryId2 = (contextMemory as any).addQuery(userId, channelId, 'Test query 2', 'search');
+      (contextMemory as any).addQuery(userId, channelId, 'Test query 2', 'search');
       
       // Test updating response
       (contextMemory as any).updateQueryResponse(queryId1, 'Test response 1', { 
@@ -295,7 +295,7 @@ class NewServicesIntegrationTest {
         { type: 'manual', createdBy: 'test_user' }
       );
 
-      const entryId2 = await (knowledgeBase as any).addEntry(
+      await (knowledgeBase as any).addEntry(
         'Test Administrative Document',
         'This is a test administrative document about procedures.',
         'administrative',

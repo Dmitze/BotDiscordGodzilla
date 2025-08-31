@@ -5,9 +5,9 @@
 
 import { RagService } from './RagService';
 import { GoogleService } from './GoogleService';
-import { DriveIndexerService } from './DriveIndexerService';
+// import { DriveIndexerService } from './DriveIndexerService';
 import { ResponseCacheService } from './ResponseCacheService';
-import SchedulerService from './SchedulerService';
+// import SchedulerService from './SchedulerService';
 import type { SearchIndex } from '@/search/SearchIndex';
 import type { AIService } from './AIService';
 import logger from '@/utils/logger';
@@ -52,15 +52,15 @@ export class EnhancedRagService extends RagService {
   private autoIndexConfig: AutoIndexConfig;
   private indexingStats: IndexingStats;
   private indexingInProgress = false;
-  private scheduledTaskId?: string;
+  private scheduledTaskId?: string | undefined;
 
   constructor(
     searchIndex: SearchIndex,
     ai: AIService,
     private readonly googleService: GoogleService,
-    private readonly driveIndexer: DriveIndexerService,
+    // private readonly driveIndexer: DriveIndexerService,
     private readonly responseCache: ResponseCacheService,
-    private readonly scheduler: SchedulerService,
+    // private readonly scheduler: SchedulerService,
     embeddings?: { embed: (text: string) => Promise<number[]> },
     autoIndexConfig?: Partial<AutoIndexConfig>
   ) {
@@ -291,7 +291,7 @@ export class EnhancedRagService extends RagService {
   /**
    * 🔍 Check if file needs indexing
    */
-  private async needsIndexing(fileId: string, modifiedTime: Date): Promise<boolean> {
+  private async needsIndexing(_fileId: string, _modifiedTime: Date): Promise<boolean> {
     try {
       // Check if file is already in the search index
       // For now, assume all files need indexing (simplification)

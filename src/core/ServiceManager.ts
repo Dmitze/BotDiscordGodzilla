@@ -402,7 +402,6 @@ class ServiceManager {
       const responseCacheSvc = this.services.get('responseCache');
       if (googleSvc && aiSvc && ragSvc && responseCacheSvc) {
         const knowledgeBase = new KnowledgeBaseService(
-          googleSvc as any,
           aiSvc as any,
           ragSvc as any,
           responseCacheSvc as any
@@ -430,19 +429,15 @@ class ServiceManager {
       const searchIndexSvc = this.services.get('searchIndex');
       const aiSvc = this.services.get('ai');
       const googleSvc = this.services.get('google');
-      const driveIndexerSvc = this.services.get('driveIndexer');
       const responseCacheSvc = this.services.get('responseCache');
-      const schedulerSvc = this.services.get('scheduler');
       const embSvc = this.services.get('embeddings');
       
-      if (searchIndexSvc && aiSvc && googleSvc && driveIndexerSvc && responseCacheSvc && schedulerSvc) {
+      if (searchIndexSvc && aiSvc && googleSvc && responseCacheSvc) {
         const enhancedRag = new EnhancedRagService(
           searchIndexSvc as any,
           aiSvc as any,
           googleSvc as any,
-          driveIndexerSvc as any,
           responseCacheSvc as any,
-          schedulerSvc as any,
           embSvc as unknown as { embed: (t: string) => Promise<number[]> } | undefined,
           { enabled: true, interval: '0 */2 * * *' } // Every 2 hours auto-indexing
         );

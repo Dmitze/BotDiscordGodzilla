@@ -3,7 +3,7 @@
  * Comprehensive knowledge management with semantic search, categorization, and AI-powered insights
  */
 
-import { GoogleService } from './GoogleService';
+// import { GoogleService } from './GoogleService';
 import { AIService } from './AIService';
 import { RagService } from './RagService';
 import { ResponseCacheService } from './ResponseCacheService';
@@ -69,7 +69,7 @@ export class KnowledgeBaseService {
   private keywordIndex: Map<string, Set<string>> = new Map();
 
   constructor(
-    private readonly googleService: GoogleService,
+    // private readonly googleService: GoogleService,
     private readonly aiService: AIService,
     private readonly ragService: RagService,
     private readonly cacheService: ResponseCacheService
@@ -611,7 +611,7 @@ ${summaries}
   /**
    * 🔢 Generate embeddings for semantic search
    */
-  private async generateEmbeddings(content: string): Promise<number[]> {
+  private async generateEmbeddings(_content: string): Promise<number[]> {
     try {
       // This would typically use the embeddings service
       // For now, return empty array as placeholder
