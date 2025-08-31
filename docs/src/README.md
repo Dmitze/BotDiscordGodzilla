@@ -1,4 +1,4 @@
-﻿# 📁 Вихідний код (src)
+﻿﻿# 📁 Вихідний код (src)
 
 Цей каталог містить вихідний код бота, розділений за логічними модулями.
 
@@ -18,7 +18,7 @@
 
 ### 📂 /services
 - **AIService.ts** - AI функціональність (OpenAI, Ollama)
-- **GoogleService.ts** - робота з Google API
+- **GoogleSheetsService.ts** - робота з Google Sheets API (покращена інтеграція з google-spreadsheet)
 - **CacheService.ts** - кешування даних
 - **MetricsService.ts** - метрики та моніторинг
 - **SchedulerService.ts** - планувальник завдань

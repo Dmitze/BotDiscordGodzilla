@@ -44,6 +44,10 @@
 - `DEPLOYMENT_REPORT.md` - Звіт розгортання
 - `CHAT_SUMMARY.md` - Підсумок чату
 
+### **🛠️ services/** - Документація сервісів
+
+- `GoogleSheetsService.md` - Документація GoogleSheetsService
+
 ## 🎯 Призначення
 
 Ця документація призначена для:
@@ -60,6 +64,7 @@
 3. **Для розробки** - дивіться `architecture/ARCHITECTURE.md`
 4. **Для API** - дивіться `api/API_DOCUMENTATION.md`
 5. **Для аналізу** - дивіться `reports/`
+6. **Для сервісів** - дивіться `services/GoogleSheetsService.md`
 
 ## 🔄 Оновлення документації
 
@@ -115,7 +120,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 ### **🏗️ Архітектура та розробка**
 
-- **[�����������](ARCHITECTURE.md)** - технічна архітектура
+- **[�����������](ARCHITECTURE.md)** - технічна архітектура
 - **[🎯 Нова архітектура команд](architecture/NEW_COMMANDS_ARCHITECTURE.md)** - архітектура команд
 - **[🗺️ План розвитку](architecture/ROADMAP.md)** - майбутні оновлення
 
@@ -199,7 +204,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 ### **📁 Структура проекту**
 
-```text
+```
 src/
 ├── commands/          # Команди бота
 ├── services/          # Бізнес-логіка

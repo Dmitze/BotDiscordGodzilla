@@ -80,5 +80,6 @@
 
 - [Повний довідник команд](api/COMMANDS_REFERENCE.md)
 - [Детальна API документація](api/API_DOCUMENTATION.md)
+- [Google Sheets API документація](api/GOOGLE_SHEETS_API.md)
 - [Гайд розробника](DEVELOPER_GUIDE.md)
 - [Архітектура системи](ARCHITECTURE.md)

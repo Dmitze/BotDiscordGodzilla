@@ -37,7 +37,7 @@ graph TB
         end
         
         subgraph "Services"
-            SV1[GoogleService]
+            SV1[GoogleSheetsService]
             SV2[EmbeddingsService]
             SV3[RagService]
             SV4[CacheService]
@@ -90,7 +90,7 @@ graph TB
    - `FileManagerCommand.ts` - управління файлами
 
 3. **Сервіси (`src/services/`)**
-   - `GoogleService.ts` - робота з Google API
+   - `GoogleSheetsService.ts` - робота з Google Sheets API (покращена інтеграція з google-spreadsheet)
    - `EmbeddingsService.ts` - генерація та робота з ембедінгами
    - `RagService.ts` - RAG пайплайн
    - `CacheService.ts` - кешування даних
@@ -111,7 +111,7 @@ graph TB
 
 ### Індексація документів
 
-```mermaid
+``mermaid
 flowchart LR
     A[Джерело даних] -->|PDF/DOCX/TXT/Sheets| B[Парсери]
     B --> C[Нормалізація тексту]
@@ -123,7 +123,7 @@ flowchart LR
 
 ### Обробка запиту
 
-```mermaid
+```
 sequenceDiagram
     participant U as Користувач
     participant D as Discord
@@ -166,7 +166,7 @@ sequenceDiagram
 
 Основні параметри конфігурації (`.env`):
 
-```env
+```
 # Discord
 DISCORD_TOKEN=your_token_here
 DISCORD_CLIENT_ID=your_client_id

@@ -1,5 +1,114 @@
 # 📝 Журнал змін - Discord Bot з AI
 
+## 🆕 Версія 2.2.0 - Покращення GoogleSheetsService
+
+### ✨ Нові функції
+
+#### 📈 Покращений GoogleSheetsService
+- **Повна інтеграція з google-spreadsheet** - Використання офіційної бібліотеки для роботи з Google Sheets
+- **Розширені методи роботи з таблицями**:
+  - `listSheets()` - Отримання списку всіх аркушів
+  - `getSheetData()` - Читання даних з певного діапазону
+  - `writeSheetData()` - Запис даних до таблиці
+  - `readRange()` - Читання нормалізованих даних з діапазону
+  - `findSheetByName()` - Пошук аркуша за назвою
+  - `searchData()` - Пошук даних в таблицях
+- **Покращена робота з Google Drive**:
+  - `getDriveFileMetadata()` - Отримання метаданих файлів
+  - `downloadDriveFile()` - Завантаження бінарних файлів
+  - `exportDriveFile()` - Експорт файлів у різних форматах
+- **Покращене витягнення тексту** - `extractTextForChat()` з валідацією та санітизацією
+
+#### 🛠️ Технічні покращення
+- **Кешування** - Вбудоване кешування для всіх операцій
+- **Обробка помилок** - Покращена обробка помилок з детальним логуванням
+- **Типізація** - Повна підтримка TypeScript з перевіркою типів
+- **Зворотна сумісність** - Підтримка існуючого інтерфейсу GoogleService
+
+### 🔧 Технічні зміни
+
+#### Нові файли
+- `GoogleSheetsService.ts` - Покращена реалізація сервісу Google Sheets
+- `docs/services/GoogleSheetsService.md` - Документація сервісу
+- `docs/api/GOOGLE_SHEETS_API.md` - Детальна API документація
+- `examples/google-sheets-service-example.ts` - Приклади використання
+
+#### Оновлені файли
+- `docs/src/README.md` - Оновлена документація джерельного коду
+- `docs/README.md` - Оновлено посилання на нову документацію
+- `docs/ARCHITECTURE.md` - Оновлено архітектурну діаграму
+- `docs/API_OVERVIEW.md` - Додано посилання на Google Sheets API
+- `src/commands/SearchCommand.ts` - Виправлено метод getDocumentTypeName
+
+#### Нові залежності
+- `google-spreadsheet` - Офіційна бібліотека для роботи з Google Sheets
+
+### 🎯 Приклади використання
+
+#### Робота з таблицями:
+```
+// Отримання списку аркушів
+const sheets = await googleSheetsService.listSheets('spreadsheet-id');
+
+// Читання даних
+const data = await googleSheetsService.getSheetData('spreadsheet-id', 'Sheet1!A1:D10');
+
+// Запис даних
+const values = [['Name', 'Age'], ['John', '30']];
+await googleSheetsService.writeSheetData('spreadsheet-id', 'Sheet1!A1:B2', values);
+
+// Пошук даних
+const results = await googleSheetsService.searchData('search term', 20);
+```
+
+#### Робота з файлами:
+```
+// Отримання метаданих
+const metadata = await googleSheetsService.getDriveFileMetadata('file-id');
+
+// Завантаження файлу
+const buffer = await googleSheetsService.downloadDriveFile('file-id');
+
+// Експорт файлу
+const csvBuffer = await googleSheetsService.exportDriveFile('file-id', 'text/csv');
+```
+
+### 🔑 Налаштування
+
+#### Змінні середовища (без змін):
+```env
+# Google API Configuration
+GOOGLE_SHEETS_ID=your_google_sheet_id
+GOOGLE_CREDENTIALS_JSON=your_google_credentials_json
+```
+
+### 🧪 Тестування
+
+#### Нові тести:
+```
+# Тести GoogleSheetsService
+npm test src/services/__tests__/GoogleSheetsService.test.ts
+
+# Інтеграційні тести
+npm test src/services/__tests__/GoogleSheetsService.integration.test.ts
+```
+
+### 📈 Покращення продуктивності
+
+- Оптимізовані операції з Google Sheets
+- Покращене кешування результатів
+- Ефективне управління з'єднаннями
+- Автоматична обробка рейт-лімітів
+
+### 🔒 Безпека
+
+- Покращене логування помилок без викриття конфіденційної інформації
+- Валідація всіх вхідних даних
+- Санітизація тексту для чату
+- Безпечна обробка облікових даних
+
+---
+
 ## 🆕 Версія 2.1.0 - Статистика та покращення
 
 ### ✨ Нові функції
@@ -181,7 +290,7 @@ node deploy-commands.js
 ### 🔑 Налаштування
 
 #### Необхідні змінні середовища
-```env
+```
 # Існуючі
 BOT_TOKEN=your_discord_bot_token
 SHEET_ID=your_google_sheet_id
