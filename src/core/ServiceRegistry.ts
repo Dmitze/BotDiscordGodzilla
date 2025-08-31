@@ -20,6 +20,7 @@ import type { ContextMemoryService } from '@/services/ContextMemoryService';
 import type { ResponseCacheService } from '@/services/ResponseCacheService';
 import type { KnowledgeBaseService } from '@/services/KnowledgeBaseService';
 import type { EnhancedRagService } from '@/services/EnhancedRagService';
+import type { MarkdownRenderService } from '@/services/MarkdownRenderService';
 
 // Union of all service keys managed by ServiceManager
 export type ServiceKey =
@@ -43,7 +44,8 @@ export type ServiceKey =
   | 'contextMemory'
   | 'responseCache'
   | 'knowledgeBase'
-  | 'enhancedRag';
+  | 'enhancedRag'
+  | 'markdownRender';
 
 // Registry types mapping keys to concrete instances
 export interface ServiceRegistry {
@@ -68,6 +70,7 @@ export interface ServiceRegistry {
   responseCache?: ResponseCacheService; // optional caching service
   knowledgeBase?: KnowledgeBaseService; // optional if dependencies missing
   enhancedRag?: EnhancedRagService; // enhanced RAG with auto-indexing
+  markdownRender: MarkdownRenderService; // markdown rendering service
 }
 
 // Helper for DI resolve generics

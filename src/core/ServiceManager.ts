@@ -32,6 +32,7 @@ import { ContextMemoryService } from '@/services/ContextMemoryService';
 import { ResponseCacheService } from '@/services/ResponseCacheService';
 import { KnowledgeBaseService } from '@/services/KnowledgeBaseService';
 import { EnhancedRagService } from '@/services/EnhancedRagService';
+import { MarkdownRenderService } from '@/services/MarkdownRenderService';
 
 interface Bot {
   config: BotConfig;
@@ -400,13 +401,9 @@ class ServiceManager {
       const googleSvc = this.services.get('google');
       const aiSvc = this.services.get('ai');
       const ragSvc = this.services.get('rag');
-      const responseCacheSvc = this.services.get('responseCache');
-      if (googleSvc && aiSvc && ragSvc && responseCacheSvc) {
-        const knowledgeBase = new KnowledgeBaseService(
-          aiSvc as any,
-          ragSvc as any,
-          responseCacheSvc as any
-        );
+      const responseCache = this.services.get('responseCache');
+      if (googleSvc && aiSvc && ragSvc && responseCache) {
+        const knowledgeBase = new KnowledgeBaseService(googleSvc as any, aiSvc as any, ragSvc as any, responseCache as any);
         this.services.set('knowledgeBase', knowledgeBase as unknown as NonNullable<ServiceRegistry['knowledgeBase']>);
         logger.info('📚 KnowledgeBaseService зареєстровано', {
           type: 'service_manager',
@@ -425,23 +422,14 @@ class ServiceManager {
       });
     }
 
-    // Enhanced RAG Service (replaces standard RAG with auto-indexing)
+    // Enhanced RAG Service (depends on AI + Google + RAG services)
     try {
-      const searchIndexSvc = this.services.get('searchIndex');
       const aiSvc = this.services.get('ai');
       const googleSvc = this.services.get('google');
-      const responseCacheSvc = this.services.get('responseCache');
-      const embSvc = this.services.get('embeddings');
-      
-      if (searchIndexSvc && aiSvc && googleSvc && responseCacheSvc) {
-        const enhancedRag = new EnhancedRagService(
-          searchIndexSvc as any,
-          aiSvc as any,
-          googleSvc as any,
-          responseCacheSvc as any,
-          embSvc as unknown as { embed: (t: string) => Promise<number[]> } | undefined,
-          { enabled: true, interval: '0 */2 * * *' } // Every 2 hours auto-indexing
-        );
+      const ragSvc = this.services.get('rag');
+      const searchIndex = this.services.get('searchIndex');
+      if (aiSvc && googleSvc && ragSvc && searchIndex) {
+        const enhancedRag = new EnhancedRagService(aiSvc as any, googleSvc as any, ragSvc as any, searchIndex as any);
         this.services.set('enhancedRag', enhancedRag as unknown as NonNullable<ServiceRegistry['enhancedRag']>);
         logger.info('🚀 EnhancedRagService зареєстровано', {
           type: 'service_manager',
@@ -449,7 +437,7 @@ class ServiceManager {
           component: 'ServiceManager',
         });
       } else {
-        logger.warn('EnhancedRagService не зареєстровано: недостатньо залежностей');
+        logger.warn('EnhancedRagService не зареєстровано: AI, Google, RAG або SearchIndex service недоступний');
       }
     } catch (er) {
       logger.error('❌ Не вдалося створити EnhancedRagService', {
@@ -460,29 +448,22 @@ class ServiceManager {
       });
     }
 
-    // Зв'язуємо MetricsService з GoogleService (якщо обидва доступні)
+    // Markdown Render Service (standalone service)
     try {
-      const google = this.services.get('google');
-      const metrics = this.services.get('metrics');
-      const searchIndex = this.services.get('searchIndex');
-      const embeddings = this.services.get('embeddings');
-      
-      (google as any)?.setMetricsService?.(metrics);
-      
-      // Встановлюємо індекс пошуку та сервіс ембеддінгів для GoogleDocsService
-      if (google && searchIndex) {
-        (google as any)?.setSearchIndex?.(searchIndex);
-      }
-      
-      if (google && embeddings) {
-        (google as any)?.setEmbeddingsService?.(embeddings);
-      }
-      
-      if (google && metrics) {
-        logger.debug('🔗 Підключено MetricsService до GoogleService');
-      }
-    } catch (e) {
-      logger.warn('Не вдалося підключити MetricsService до GoogleService', { error: (e as Error).message });
+      const markdownRender = new MarkdownRenderService();
+      this.services.set('markdownRender', markdownRender as unknown as NonNullable<ServiceRegistry['markdownRender']>);
+      logger.info('📝 MarkdownRenderService зареєстровано', {
+        type: 'service_manager',
+        event: 'markdown_render_registered',
+        component: 'ServiceManager',
+      });
+    } catch (er) {
+      logger.error('❌ Не вдалося створити MarkdownRenderService', {
+        type: 'service_manager',
+        event: 'markdown_render_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
     }
   }
 
@@ -490,19 +471,28 @@ class ServiceManager {
    * Ініціалізація сервісів
    */
   private async initializeServices(): Promise<void> {
+    // Запуск ініціалізації для всіх сервісів, які мають метод initialize()
     const initPromises = Array.from(this.services.entries()).map(async ([name, service]) => {
       try {
-        if ((service as any)?.initialize) {
-          await (service as any).initialize();
-          logger.debug('✅ Сервіс ініціалізовано', {
+        if (typeof (service as any).initialize === 'function') {
+          logger.info(`🔄 Ініціалізація сервісу: ${name}`, {
             type: 'service_manager',
-            event: 'service_initialized',
+            event: 'service_init_start',
+            component: 'ServiceManager',
+            service: name,
+          });
+
+          await (service as any).initialize();
+
+          logger.info(`✅ Сервіс ${name} ініціалізовано`, {
+            type: 'service_manager',
+            event: 'service_init_success',
             component: 'ServiceManager',
             service: name,
           });
         }
       } catch (error) {
-        logger.error('❌ Помилка ініціалізації сервісу', {
+        logger.error(`❌ Помилка ініціалізації сервісу ${name}`, {
           type: 'service_manager',
           event: 'service_init_failed',
           component: 'ServiceManager',

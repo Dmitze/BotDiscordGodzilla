@@ -38,6 +38,22 @@
     },
     "files": {
       "name": "files"
+    },
+    "render": {
+      "name": "render",
+      "description": "Renders markdown to image",
+      "opt": {
+        "text": {
+          "description": "Text to render"
+        },
+        "theme": {
+          "description": "Rendering theme"
+        }
+      },
+      "reply": {
+        "success": "Here is your rendered image:",
+        "error": "Failed to render image. Please check your input."
+      }
     }
   },
   "ai": {

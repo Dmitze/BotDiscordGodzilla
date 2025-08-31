@@ -50,6 +50,22 @@
     "doc-summary": {
       "name": "doc-summary",
       "description": "Згенерувати резюме Google Docs документа"
+    },
+    "render": {
+      "name": "render",
+      "description": "Рендерить markdown в зображення",
+      "opt": {
+        "markdown": {
+          "description": "Markdown текст для рендерингу"
+        },
+        "theme": {
+          "description": "Тема рендерингу"
+        }
+      },
+      "reply": {
+        "success": "Ось ваш відрендерений markdown:",
+        "error": "Не вдалося відобразити markdown. Будь ласка, перевірте ваш ввід."
+      }
     }
   },
   "ai": {
