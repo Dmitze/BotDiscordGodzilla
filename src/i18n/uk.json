@@ -55,8 +55,8 @@
       "name": "render",
       "description": "Рендерить markdown в зображення",
       "opt": {
-        "markdown": {
-          "description": "Markdown текст для рендерингу"
+        "text": {
+          "description": "Текст для рендерингу"
         },
         "theme": {
           "description": "Тема рендерингу"

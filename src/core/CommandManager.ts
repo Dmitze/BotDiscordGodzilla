@@ -45,6 +45,7 @@ import { WorkflowCommand } from '@/commands/WorkflowCommand';
 import { DocLoadCommand } from '@/commands/DocLoadCommand';
 import { DocSearchCommand } from '@/commands/DocSearchCommand';
 import { DocSummaryCommand } from '@/commands/DocSummaryCommand';
+import { RenderCommand } from '@/commands/RenderCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -330,6 +331,8 @@ export class CommandManager {
         new DocLoadCommand(this.config),
         new DocSearchCommand(this.config),
         new DocSummaryCommand(this.config),
+        // Додавання команди для рендерингу markdown
+        new RenderCommand(this.config),
       ];
 
       // Реєструємо команди
