@@ -17,6 +17,7 @@ import { CacheService } from './CacheService';
 import logger from '@/utils/logger';
 import { DocsService } from './google/DocsService';
 import { SheetsService } from './google/SheetsService';
+import { GoogleDocsService } from './GoogleDocsService';
 import { sanitizeTextForChat, normalizeText } from '@/utils/fileProcessor';
 import { validateInput } from '@/utils/security';
 
@@ -60,6 +61,7 @@ export class GoogleService extends BaseServiceClass {
   private metrics?: MetricsService;
   private docsService?: DocsService;
   private sheetsService?: SheetsService;
+  private googleDocsService?: GoogleDocsService;
   // Token-bucket per apiType (drive|sheets|docs)
   private rlTokens = new Map<string, number>();
   private rlLastRefill = new Map<string, number>();
@@ -264,12 +266,47 @@ export class GoogleService extends BaseServiceClass {
     // Лениво инициализируем под-сервисы, чтобы они могли писать метрики
     this.docsService = new DocsService(this.metrics);
     this.sheetsService = new SheetsService(this.metrics);
+    // Initialize GoogleDocsService with auth and metrics
+    if (this.auth) {
+      this.googleDocsService = new GoogleDocsService(this.config, this.auth, this.metrics);
+    }
+  }
+
+  /**
+   * Встановити сервіс індексації
+   * @param searchIndex Сервіс індексації
+   */
+  public setSearchIndex(searchIndex: any): void {
+    if (this.googleDocsService) {
+      this.googleDocsService.setSearchIndex(searchIndex);
+    }
+  }
+
+  /**
+   * Встановити сервіс ембеддінгів
+   * @param embeddingsService Сервіс ембеддінгів
+   */
+  public setEmbeddingsService(embeddingsService: any): void {
+    if (this.googleDocsService) {
+      this.googleDocsService.setEmbeddingsService(embeddingsService);
+    }
   }
 
   /** Получить сервис Google Docs parser (без сетевых вызовов) */
   public getDocsService(): DocsService {
     if (!this.docsService) this.docsService = new DocsService(this.metrics);
     return this.docsService;
+  }
+
+  /** Получить сервис Google Docs (с сетевыми вызовами) */
+  public getGoogleDocsService(): GoogleDocsService {
+    if (!this.googleDocsService && this.auth) {
+      this.googleDocsService = new GoogleDocsService(this.config, this.auth, this.metrics);
+    }
+    if (!this.googleDocsService) {
+      throw new Error('GoogleDocsService не инициализировано. Проверьте конфигурацию Google Auth.');
+    }
+    return this.googleDocsService;
   }
 
   /** Получить сервис Google Sheets helper (без сетевых вызовов) */

@@ -10,6 +10,7 @@ import type { ContextChunk } from '@/rag/types';
 
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
+import { PromptTemplatesService } from './PromptTemplatesService';
 import logger from '@/utils/logger';
 
 // Константи для AI сервісу
@@ -61,11 +62,13 @@ export class AIService extends BaseServiceClass {
   private memoryCleanupInterval: NodeJS.Timeout | null = null;
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private cacheService: CacheService;
+  private promptTemplates: PromptTemplatesService;
 
   constructor(config: BotConfig) {
     super('AIService', config);
     this.currentProvider = config.ai.provider;
     this.cacheService = new CacheService(config);
+    this.promptTemplates = new PromptTemplatesService(config);
     this.stats = {
       service: 'AIService',
       uptime: 0,
@@ -84,12 +87,20 @@ export class AIService extends BaseServiceClass {
   }
 
   /**
+   * Отримати сервіс шаблонів промптів
+   * @returns Сервіс шаблонів промптів
+   */
+  public getPromptTemplatesService(): PromptTemplatesService {
+    return this.promptTemplates;
+  }
+
+  /**
    * Згенерувати відповідь з явно наданим RAG-контекстом.
    * Повертає структурований результат із цитуваннями.
    */
   public async generateWithContext(args: {
     prompt: string;
-    contextChunks: ContextChunk[];
+    contextChunks?: ContextChunk[];
     citations?: boolean;
     locale?: string;
     model?: string;

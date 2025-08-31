@@ -1,6 +1,6 @@
 import type { SearchIndex } from '@/search/SearchIndex';
 import type { AIService } from '@/services/AIService';
-import { Retriever } from './Retriever';
+import { HybridRetriever } from './HybridRetriever';
 import { Augmenter } from './Augmenter';
 import type { RetrieverOptions, AugmentOptions, ContextChunk, GenerateWithContextOptions } from './types';
 import logger from '@/utils/logger';
@@ -15,7 +15,7 @@ export interface RagAnswer {
 }
 
 export class RagPipeline {
-  private readonly retriever: Retriever;
+  private readonly retriever: HybridRetriever;
   private readonly augmenter: Augmenter;
 
   constructor(
@@ -23,7 +23,7 @@ export class RagPipeline {
     private readonly ai: AIService,
     embeddings?: { embed: (text: string) => Promise<number[]> }
   ) {
-    this.retriever = new Retriever(search, embeddings);
+    this.retriever = new HybridRetriever(search, embeddings);
     this.augmenter = new Augmenter();
   }
 

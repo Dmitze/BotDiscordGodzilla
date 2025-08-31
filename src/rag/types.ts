@@ -14,6 +14,17 @@ export interface RetrievedDoc extends SearchHit {
   fusedScore?: number;
   // embedding score if available (cosine similarity 0..1)
   embedScore?: number;
+  // rerank metadata
+  rerankMetadata?: {
+    tokenOverlap: number;
+    lengthScore: number;
+    weights: {
+      cosine: number;
+      fts: number;
+      overlap: number;
+      length: number;
+    };
+  };
 }
 
 export interface ContextChunk {
