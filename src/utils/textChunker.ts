@@ -18,7 +18,6 @@ export interface TextChunk {
  */
 export function chunkTextByTokens(
   text: string,
-  targetTokens: number = 1000,
   minTokens: number = 800,
   maxTokens: number = 1200,
   overlapTokens: number = 100

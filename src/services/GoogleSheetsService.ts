@@ -1041,7 +1041,7 @@ export class GoogleSheetsService extends BaseServiceClass {
       'default': 'Документ'
     };
     
-    return typeMap[sheetName] || typeMap['default'];
+    return typeMap[sheetName] ?? typeMap['default'];
   }
 
   /**

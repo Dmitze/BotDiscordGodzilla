@@ -27,8 +27,14 @@ describe('textChunker', () => {
       const result = chunkTextByTokens(text, 500, 400, 600, 50);
 
       expect(result.length).toBeGreaterThan(1);
-      expect(result[0].tokenCount).toBe(500);
-      expect(result[1].tokenCount).toBe(600);
+      expect(result[0]).toBeDefined();
+      if (result[0]) {
+        expect(result[0].tokenCount).toBe(500);
+      }
+      expect(result[1]).toBeDefined();
+      if (result[1]) {
+        expect(result[1].tokenCount).toBe(600);
+      }
     });
 
     it('should respect token limits', () => {
@@ -41,9 +47,15 @@ describe('textChunker', () => {
       const result = chunkTextByTokens(text, 1000, 800, 1200, 100);
 
       expect(result.length).toBeGreaterThan(1);
-      expect(result[0].tokenCount).toBeGreaterThanOrEqual(800);
-      expect(result[0].tokenCount).toBeLessThanOrEqual(1200);
-      expect(result[1].tokenCount).toBeLessThanOrEqual(1200);
+      expect(result[0]).toBeDefined();
+      if (result[0]) {
+        expect(result[0].tokenCount).toBeGreaterThanOrEqual(800);
+        expect(result[0].tokenCount).toBeLessThanOrEqual(1200);
+      }
+      expect(result[1]).toBeDefined();
+      if (result[1]) {
+        expect(result[1].tokenCount).toBeLessThanOrEqual(1200);
+      }
     });
   });
 

@@ -122,8 +122,8 @@ export class AIService extends BaseServiceClass {
 
     // Формуємо джерела з контексту
     const sources = args.contextChunks
-      .map((c, i) => `(${i + 1}) ${c.name} [${c.fileId}]\n${c.snippet}`)
-      .join('\n\n');
+      ? args.contextChunks.map((c, i) => `(${i + 1}) ${c.name} [${c.fileId}]\n${c.snippet}`).join('\n\n')
+      : '';
 
     const fullPrompt = `${system}\n\nПитання:\n${args.prompt}\n\nКонтекст (релевантні уривки):\n${sources}\n\nВідповідь: наведи коротку відповідь та в кінці перелік джерел у форматі [1], [2], ... з короткими назвами.`;
 
@@ -134,7 +134,7 @@ export class AIService extends BaseServiceClass {
 
     const resp = await this.generateResponse(fullPrompt, req);
     type Citation = { index: number; fileId: string; name: string; url?: string };
-    const citations: Citation[] = args.citations === false
+    const citations: Citation[] = args.citations === false || !args.contextChunks
       ? []
       : args.contextChunks.map((c, i) => {
           const base: { index: number; fileId: string; name: string } & Partial<{ url: string }> = {

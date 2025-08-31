@@ -132,8 +132,8 @@ export class GoogleDocsService {
         id: file.id || '',
         name: file.name || '',
         mimeType: file.mimeType || '',
-        modifiedTime: file.modifiedTime,
-        owners: file.owners,
+        modifiedTime: file.modifiedTime || undefined,
+        owners: file.owners || undefined,
       }));
 
       // Кешування результату
@@ -257,7 +257,7 @@ export class GoogleDocsService {
         title,
         content,
         blocks,
-        modifiedTime: document.suggestionsViewMode as string || undefined, // This is a workaround, actual modifiedTime should come from Drive metadata
+        modifiedTime: (document.suggestionsViewMode as string) || undefined, // This is a workaround, actual modifiedTime should come from Drive metadata
       };
 
       // Кешування результату
@@ -352,7 +352,6 @@ export class GoogleDocsService {
         // Розбиття тексту на частини згідно з планом (800-1200 токенів з перекриттям 100 токенів)
         const chunks = chunkTextByTokens(
           docContent.content,
-          1000, // target tokens
           800,  // min tokens
           1200, // max tokens
           100   // overlap tokens
@@ -369,6 +368,11 @@ export class GoogleDocsService {
         // Індексація кожної частини
         for (let i = 0; i < chunks.length; i++) {
           const chunk = chunks[i];
+          
+          // Guard against undefined chunks
+          if (!chunk) {
+            continue;
+          }
           
           // Створення унікального ID для частини
           const chunkId = `${documentId}_chunk_${i}`;

@@ -7,6 +7,7 @@ import {
   ButtonStyle,
 } from 'discord.js';
 import { BaseCommand } from './BaseCommand';
+import type { BotConfig } from '@/types';
 import { t, tUser } from '@/i18n';
 import logger from '@/utils/logger';
 import { signComponentId } from '@/security/componentId';
@@ -16,11 +17,18 @@ import { signComponentId } from '@/security/componentId';
  * Дозволяє користувачам завантажувати документи для подальшого пошуку та аналізу
  */
 export class DocLoadCommand extends BaseCommand {
-  public readonly name = 'doc-load';
-  public readonly description = 'Завантажити та проіндексувати Google Docs документ';
-  public readonly category = 'documents';
+  constructor(config: BotConfig) {
+    super('doc-load', 'Завантажити та проіндексувати Google Docs документ', config, {
+      category: 'documents',
+    });
+  }
 
-  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+  public override readonly name = 'doc-load';
+  public override readonly description = 'Завантажити та проіндексувати Google Docs документ';
+  public override readonly category = 'documents';
+
+  protected override async onExecute(options: { interaction: ChatInputCommandInteraction }): Promise<void> {
+    const interaction = options.interaction;
     try {
       // Відкладена відповідь, оскільки операція може бути тривалою
       await interaction.deferReply({ ephemeral: true });
@@ -34,7 +42,7 @@ export class DocLoadCommand extends BaseCommand {
         event: 'doc_load_start',
         component: 'DocLoadCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? undefined,
         documentUrl,
         folderId,
       });
@@ -50,7 +58,7 @@ export class DocLoadCommand extends BaseCommand {
       }
 
       // Отримання сервісу Google Docs
-      const googleService = this.container.get('google');
+      const googleService = (this as any).container.get('google');
       if (!googleService) {
         throw new Error('Сервіс Google не доступний');
       }
@@ -184,7 +192,7 @@ export class DocLoadCommand extends BaseCommand {
         event: 'doc_load_success',
         component: 'DocLoadCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? undefined,
         documentId,
         wordCount: indexResult.wordCount,
         duration: Date.now() - interaction.createdTimestamp,
@@ -195,7 +203,7 @@ export class DocLoadCommand extends BaseCommand {
         event: 'doc_load_failed',
         component: 'DocLoadCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? undefined,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
@@ -261,13 +269,13 @@ export class DocLoadCommand extends BaseCommand {
   /**
    * Реєстрація слеш-команди
    */
-  public register(): Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'> {
+  public override register(): Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'> {
     return new SlashCommandBuilder()
       .setName(this.name)
       .setDescription(this.description)
       .setDescriptionLocalizations({
         uk: 'Завантажити та проіндексувати Google Docs документ',
-        en: 'Load and index Google Docs document',
+        'en-US': 'Load and index Google Docs document',
       })
       .addStringOption(option =>
         option
@@ -275,7 +283,7 @@ export class DocLoadCommand extends BaseCommand {
           .setDescription('URL Google Docs документа')
           .setDescriptionLocalizations({
             uk: 'URL Google Docs документа',
-            en: 'Google Docs document URL',
+            'en-US': 'Google Docs document URL',
           })
           .setRequired(true)
       )
@@ -285,7 +293,7 @@ export class DocLoadCommand extends BaseCommand {
           .setDescription('ID папки Google Drive (опціонально)')
           .setDescriptionLocalizations({
             uk: 'ID папки Google Drive (опціонально)',
-            en: 'Google Drive folder ID (optional)',
+            'en-US': 'Google Drive folder ID (optional)',
           })
           .setRequired(false)
       )
