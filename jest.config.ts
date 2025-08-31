@@ -18,7 +18,13 @@ const config: Config.InitialOptions = {
         diagnostics: false,
       },
     ],
+    // Handle ES modules in node_modules
+    'node_modules/.*/dist/.*\\.js$': 'babel-jest',
   },
+  transformIgnorePatterns: [
+    // Allow node-google-spreadsheet and ky to be transformed
+    'node_modules/(?!google-spreadsheet|ky)/'
+  ],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
@@ -56,4 +62,4 @@ const config: Config.InitialOptions = {
   ],
 };
 
-export default config; 
+export default config;
