@@ -38,6 +38,18 @@
     },
     "files": {
       "name": "файли"
+    },
+    "doc-load": {
+      "name": "doc-load",
+      "description": "Завантажити та проіндексувати Google Docs документ"
+    },
+    "doc-search": {
+      "name": "doc-search",
+      "description": "Пошук в завантажених Google Docs документах"
+    },
+    "doc-summary": {
+      "name": "doc-summary",
+      "description": "Згенерувати резюме Google Docs документа"
     }
   },
   "ai": {
@@ -626,5 +638,71 @@
       "listTitle": "🔍 Збережені пошуки:",
       "removed": "🗑️ Видалено"
     }
+  },
+  "doc-load": {
+    "invalid_url": "❌ Недійсна URL-адреса документа: {{url}}. Вкажіть коректну URL-адресу Google Docs.",
+    "service_unavailable": "❌ Сервіс Google Docs недоступний. Зверніться до адміністратора.",
+    "metadata_failed": "❌ Не вдалося отримати метадані документа з ID: {{documentId}}",
+    "not_google_doc": "❌ Файл з MIME-типом {{mimeType}} не є Google Docs документом.",
+    "index_failed": "❌ Не вдалося проіндексувати документ з ID: {{documentId}}",
+    "success": {
+      "title": "✅ Документ успішно завантажено",
+      "description": "Документ \"{{documentName}}\" успішно проіндексовано для подальшого пошуку та аналізу.",
+      "message": "✅ Документ \"{{documentName}}\" успішно завантажено та проіндексовано!",
+      "fields": {
+        "document_id": "ID документа",
+        "indexed_at": "Проіндексовано",
+        "content_hash": "Хеш вмісту"
+      }
+    },
+    "buttons": {
+      "search": "Пошук",
+      "summary": "Резюме",
+      "info": "Інформація"
+    },
+    "error": "❌ Помилка завантаження документа. Спробуйте ще раз або зверніться до адміністратора."
+  },
+  "doc-search": {
+    "service_unavailable": "❌ Сервіс Google Docs недоступний. Зверніться до адміністратора.",
+    "metadata_failed": "❌ Не вдалося отримати метадані документа з ID: {{documentId}}",
+    "no_results": "❌ За запитом \"{{query}}\" у документі \"{{documentName}}\" нічого не знайдено.",
+    "global_search_not_implemented": "❌ Глобальний пошук по всіх документах ще не реалізовано. Вкажіть конкретний ID документа.",
+    "results": {
+      "title": "🔍 Результати пошуку",
+      "description": "За запитом \"{{query}}\" у документі \"{{documentName}}\" знайдено {{resultsCount}} результатів (з {{totalResults}} доступних)."
+    },
+    "result_item": {
+      "title": "Результат #{{index}}",
+      "type": "Тип блоку",
+      "relevance": "Релевантність"
+    },
+    "more_results": {
+      "title": "📖 Інші результати",
+      "description": "І ще {{count}} результатів..."
+    },
+    "buttons": {
+      "refine": "Уточнити пошук",
+      "summary": "Резюме документа"
+    },
+    "error": "❌ Помилка пошуку в документі. Спробуйте ще раз або зверніться до адміністратора."
+  },
+  "doc-summary": {
+    "service_unavailable": "❌ Сервіс Google Docs недоступний. Зверніться до адміністратора.",
+    "metadata_failed": "❌ Не вдалося отримати метадані документа з ID: {{documentId}}",
+    "not_google_doc": "❌ Файл з MIME-типом {{mimeType}} не є Google Docs документом.",
+    "title": "📝 Резюме документа: {{documentName}}",
+    "no_summary": "Резюме недоступне.",
+    "fields": {
+      "word_count": "Кількість слів",
+      "reading_time": "Час читання",
+      "key_points": "Ключові моменти"
+    },
+    "reading_time_value": "приблизно {{minutes}} хв.",
+    "buttons": {
+      "search": "Пошук у документі",
+      "details": "Деталі",
+      "export": "Експорт"
+    },
+    "error": "❌ Помилка генерації резюме документа. Спробуйте ще раз або зверніться до адміністратора."
   }
 }
