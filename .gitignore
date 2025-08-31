@@ -4,6 +4,7 @@
 node_modules/
 .pnp
 .pnp.js
+node_modules/.bin/
 
 # =========================
 # 🏗 Збірка та артефакти
@@ -13,6 +14,9 @@ build/
 tmp/
 temp/
 .cache/
+*.js.map
+*.d.ts
+!src/**/*.d.ts
 
 # =========================
 # 🔐 Конфігурація та секрети
@@ -80,15 +84,10 @@ data/*.db-wal
 # =========================
 # 🚫 Файли для видалення
 # =========================
-/.eslintrc.cjs
-/.eslintrc.ts
-/.lintstagedrc.js
-/.lintstagedrc.ts
-/BotDiscordGodzilla.git
-/BotDiscordGodzilla.gitignore
+backup_src/
 
 # =========================
-# 📚 Документація (тимчасова папка для збірки)
+# 📚 Документація
 # =========================
 docs/_site/
 
@@ -111,53 +110,3 @@ docs/_site/
 # =========================
 .parcel-cache/
 .eslintcache
-
-# =========================
-# 🎨 Додаткові ігноровані файли
-# =========================
-*.code-workspace
-.project
-.classpath
-.settings/
-.idea_modules/
-*.iml
-*.iws
-*.ipr
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/dictionaries
-.idea/vcs.xml
-.idea/jsLibraryMappings.xml
-.idea/datasources.xml
-.idea/dataSources.ids
-.idea/sqlDataSources.xml
-.idea/dynamic.xml
-.idea/uiDesigner.xml
-.idea/deployment.xml
-.idea/markdown-exported-files.xml
-.idea/markdown-navigator.xml
-.idea/markdown-navigator/
-.idea/httpRequests/
-.idea/compiler.xml
-.idea/encodings.xml
-.idea/shelf/
-.idea/libraries/
-.idea/scopes/
-.idea/webServers.xml
-.idea/runConfigurations/
-.idea/runConfigurations/
-.idea/inspectionProfiles/
-.idea/codeStyles/
-.idea/artifacts/
-.idea/caches/
-.idea/compiler.xml
-.idea/jarRepositories.xml
-.idea/jsLinters/
-.idea/markdown.xml
-.idea/misc.xml
-.idea/modules.xml
-.idea/sonarlint/
-.idea/vcs.xml
-.idea/watcherTasks.xml
-.idea/workspace.xml
-.idea/
