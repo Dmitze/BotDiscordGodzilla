@@ -9,6 +9,7 @@ import type { ServiceKey, ServiceRegistry } from '@/core/ServiceRegistry';
 
 import { AIService } from '../services/AIService';
 import { GoogleService } from '../services/GoogleService';
+import { GoogleSheetsService } from '../services/GoogleSheetsService';
 import { CacheService } from '../services/CacheService';
 import { MemoryCacheService } from '@/services/MemoryCacheService';
 import { MetricsService } from '../services/MetricsService';
@@ -108,7 +109,7 @@ class ServiceManager {
     // AI Service
     this.services.set('ai', new AIService(this.bot.config));
 
-    // Google Service
+    // Google Service - using the new GoogleService
     this.services.set('google', new GoogleService(this.bot.config));
 
     // Cache Service: завжди доступний у контейнері
@@ -463,7 +464,20 @@ class ServiceManager {
     try {
       const google = this.services.get('google');
       const metrics = this.services.get('metrics');
+      const searchIndex = this.services.get('searchIndex');
+      const embeddings = this.services.get('embeddings');
+      
       (google as any)?.setMetricsService?.(metrics);
+      
+      // Встановлюємо індекс пошуку та сервіс ембеддінгів для GoogleDocsService
+      if (google && searchIndex) {
+        (google as any)?.setSearchIndex?.(searchIndex);
+      }
+      
+      if (google && embeddings) {
+        (google as any)?.setEmbeddingsService?.(embeddings);
+      }
+      
       if (google && metrics) {
         logger.debug('🔗 Підключено MetricsService до GoogleService');
       }

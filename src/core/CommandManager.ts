@@ -41,6 +41,11 @@ import { AdvancedAnalysisCommand } from '@/commands/AdvancedAnalysisCommand';
 import { SmartSearchCommand } from '@/commands/SmartSearchCommand';
 import { WorkflowCommand } from '@/commands/WorkflowCommand';
 
+// Додавання імпортів нових команд
+import { DocLoadCommand } from '@/commands/DocLoadCommand';
+import { DocSearchCommand } from '@/commands/DocSearchCommand';
+import { DocSummaryCommand } from '@/commands/DocSummaryCommand';
+
 interface CommandStats {
   totalCommands: number;
   categories: number;
@@ -321,6 +326,10 @@ export class CommandManager {
         new AdvancedAnalysisCommand(this.config, documentAnalyzer, workflowOrchestrator, googleService),
         new SmartSearchCommand(this.config, smartSearch),
         ...(workflowEngine ? [new WorkflowCommand(this.config, workflowEngine)] : []),
+        // Додавання нових команд для роботи з Google Docs
+        new DocLoadCommand(this.config),
+        new DocSearchCommand(this.config),
+        new DocSummaryCommand(this.config),
       ];
 
       // Реєструємо команди
