@@ -1,18 +1,6 @@
 const prometheus = require('prom-client');
 const express = require('express');
-const os = require('os');
-
-// Lightweight local logger wrapper to avoid direct console usage
-const log = {
-  info: (msg, meta) => console.log(msg, meta ? JSON.stringify({ component: 'Metrics', ...meta }) : ''),
-  warn: (msg, meta) => console.warn(msg, meta ? JSON.stringify({ component: 'Metrics', ...meta }) : ''),
-  error: (msg, meta) => console.error(msg, meta ? JSON.stringify({ component: 'Metrics', ...meta }) : ''),
-};
-
-// Read config from env to avoid TS import in JS
-const METRICS_ENABLED = process.env.METRICS_ENABLED !== 'false';
-const METRICS_PORT = parseInt(process.env.METRICS_PORT || '9091', 10);
-const METRICS_PATH = process.env.METRICS_PATH || '/metrics';
+const config = require('../../src/config/Config');
 
 class MetricsCollector {
   constructor() {
@@ -139,38 +127,6 @@ class MetricsCollector {
       labelNames: ['format', 'size_range'],
       registers: [this.registry]
     });
-  }
-
-  initializeSystemGauges() {
-    this.cpuUsage = new prometheus.Gauge({
-      name: 'discord_bot_cpu_usage_microseconds',
-      help: 'CPU usage user/system in microseconds',
-      labelNames: ['type'],
-      registers: [this.registry]
-    });
-    this.diskSpace = new prometheus.Gauge({
-      name: 'discord_bot_disk_space_bytes',
-      help: 'Disk space info',
-      labelNames: ['type'],
-      registers: [this.registry]
-    });
-  }
-
-  /**
-   * Оновлення CPU та пам'яті (для тестів і ручного виклику)
-   */
-  updateCpuAndDisk() {
-    try {
-      const { user, system } = process.cpuUsage();
-      this.cpuUsage.set({ type: 'user' }, user);
-      this.cpuUsage.set({ type: 'system' }, system);
-      const free = os.freemem();
-      const total = os.totalmem();
-      this.diskSpace.set({ type: 'mem_free' }, free);
-      this.diskSpace.set({ type: 'mem_total' }, total);
-    } catch (error) {
-      log.warn('⚠️ Помилка updateCpuAndDisk', { type: 'metrics', event: 'update_cpu_disk_failed', error: String(error) });
-    }
   }
 
   /**
@@ -307,8 +263,8 @@ class MetricsCollector {
    * Запуск HTTP сервера для метрик
    */
   startMetricsServer() {
-    if (!METRICS_ENABLED) {
-      log.info('📊 Метрики вимкнені (ENV)', { type: 'metrics', event: 'disabled_env' });
+    if (!config.isMetricsEnabled()) {
+      console.log('📊 Метрики вимкнені в конфігурації');
       return;
     }
 
@@ -319,54 +275,16 @@ class MetricsCollector {
     }
 
     const app = express();
-    const port = METRICS_PORT;
-    const path = METRICS_PATH;
-
-    // простейший rate-limit
-    const windowMs = 10_000; // 10s
-    const max = 5; // запросов
-    const hits = this._rateLimitHits || new Map();
-    this._rateLimitHits = hits;
-
-    // Периодичне оновлення системних метрик (поза хендлером)
-    if (!this._systemInterval) {
-      this._systemInterval = setInterval(() => {
-        try {
-          const { user, system } = process.cpuUsage();
-          this.cpuUsage.set({ type: 'user' }, user);
-          this.cpuUsage.set({ type: 'system' }, system);
-          const free = os.freemem();
-          const total = os.totalmem();
-          this.diskSpace.set({ type: 'mem_free' }, free);
-          this.diskSpace.set({ type: 'mem_total' }, total);
-        } catch (error) {
-          log.warn('⚠️ Помилка оновлення системних метрик', { type: 'metrics', event: 'system_metrics_update_failed', error: String(error) });
-        }
-      }, 5000);
-    }
+    const port = config.metrics.port;
 
     // Ендпоінт для метрик
-    app.get(path, async (req, res) => {
-      const ip = req.ip;
-      const now = Date.now();
-
-      const arr = hits.get(ip) || [];
-      const pruned = arr.filter((t) => now - t < windowMs);
-      pruned.push(now);
-      hits.set(ip, pruned);
-      if (pruned.length > max) {
-        return res.status(429).end('Rate limited');
-      }
+    app.get(config.metrics.path, async (req, res) => {
       try {
         res.set('Content-Type', this.registry.contentType);
         res.end(await this.registry.metrics());
       } catch (error) {
-        log.error('Помилка отримання метрик', { type: 'metrics', event: 'render_failed', error: String(error) });
-        return res.status(500).end('Помилка отримання метрик');
-      }
-      // Cleanup idle IP entries to prevent unbounded growth
-      if (pruned.length === 0) {
-        hits.delete(ip);
+        console.error('Помилка отримання метрик:', error);
+        res.status(500).end('Помилка отримання метрик');
       }
     });
 
@@ -380,9 +298,9 @@ class MetricsCollector {
     });
 
     // Запуск сервера
-    const server = app.listen(port, () => {
-      log.info(`📊 Метрики доступні на http://localhost:${port}${path}`, { type: 'metrics', event: 'server_started', port, path });
-      log.info(`🏥 Health check доступний на http://localhost:${port}/health`, { type: 'metrics', event: 'health_endpoint_ready', port });
+    app.listen(port, () => {
+      console.log(`📊 Метрики доступні на http://localhost:${port}${config.metrics.path}`);
+      console.log(`🏥 Health check доступний на http://localhost:${port}/health`);
     });
 
     // Save server reference for stop

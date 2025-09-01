@@ -1,0 +1,630 @@
+{
+  "key": "",
+  "common": {
+    "error": {
+      "unexpected": "❌ Несподівана помилка. Спробуйте ще раз або зверніться до адміністратора."
+    }
+  },
+  "security": {
+    "component": {
+      "expired": "⏳ Дія недійсна: час дії кнопки минув. Спробуйте знову.",
+      "invalid": "🚫 Недійсна дія. Будь ласка, повторіть команду.",
+      "expiredId": "⏳ Дія недійсна: час дії кнопки минув. Спробуйте знову.",
+      "invalidId": "🚫 Недійсна дія. Будь ласка, повторіть команду."
+    }
+  },
+  "commands": {
+    "search": {
+      "name": "пошук",
+      "description": "🔍 Гнучкий пошук по документах"
+    },
+    "ai": {
+      "name": "асистент"
+    },
+    "ocr": {
+      "name": "ocr"
+    },
+    "doc": {
+      "name": "док"
+    },
+    "sheets": {
+      "name": "таблиці"
+    },
+    "ws": {
+      "name": "ws"
+    },
+    "lang": {
+      "name": "мова"
+    },
+    "files": {
+      "name": "файли"
+    }
+  },
+  "ai": {
+    "command": {
+      "description": "🤖 AI-асистент для роботи з Google Sheets"
+    },
+    "opt": {
+      "query": {
+        "description": "Що ви хочете зробити? (наприклад: \"знайди товари iPhone\", \"проаналізуй залишки\")"
+      },
+      "context": {
+        "description": "Додатковий контекст для AI"
+      }
+    },
+    "validation": {
+      "failed": "❌ Помилка валідації:\n{{errors}}"
+    },
+    "reply": {
+      "title": "AI-асистент",
+      "lowConfidence": "⚠️ **Низька впевненість** ({{pct}}%)",
+      "query": "**Ваш запит:** {{query}}",
+      "answer": "**Відповідь:**\n{{answer}}",
+      "context": "**Контекст:** {{context}}",
+      "action": "**Дія:** {{action}}",
+      "format": "(формат: {{format}})"
+    },
+    "error": {
+      "process": "❌ Помилка при обробці AI-запиту. Спробуйте ще раз або зверніться до адміністратора.",
+      "accessDenied": "🚫 Доступ заборонено: {{reason}}",
+      "permissionCheck": "❌ Помилка перевірки прав доступу",
+      "googleUnavailable": "Сервіс Google не ініціалізовано. Перевірте конфігурацію сервісів.",
+      "missingDriveFolderId": "Не налаштовано GOOGLE_DRIVE_FOLDER_ID. Додайте ID папки у .env."
+    },
+    "ocr": {
+      "noImages": "Не знайдено відповідних зображень у папці.",
+      "result": "Файл: {{name}} (id: {{id}})\n\n{{preview}}",
+      "cannotRead": "Не вдалося прочитати текст на зображеннях."
+    },
+    "analytics": {
+      "noTables": "Не знайдено таблиць для аналітики."
+    },
+    "helpers": {
+      "metricsDetected": "Виявлено метричні колонки: {{list}}",
+      "trend": {
+        "grow": "Спостерігається зростання показника '{{name}}'",
+        "drop": "Спостерігається зниження показника '{{name}}'",
+        "stable": "Суттєвих змін у '{{name}}' не виявлено",
+        "notEnough": "Даних недостатньо для виявлення тренду"
+      }
+    }
+  },
+  "ocr": {
+    "command": {
+      "description": "Розпізнати текст на зображенні (офлайн Tesseract або Google Vision)"
+    },
+    "opt": {
+      "image": { "description": "Завантажте зображення для OCR" },
+      "drive_id": { "description": "ID файлу зображення в Google Drive" }
+    },
+    "error": {
+      "needInput": "Будь ласка, вкажіть вкладення image або drive_id.",
+      "serviceUnavailable": "Сервіс Google недоступний. Зверніться до адміністратора.",
+      "downloadFail": "Не вдалося завантажити зображення: {{status}} {{statusText}}",
+      "process": "❌ Помилка при розпізнаванні. Спробуйте інше зображення."
+    },
+    "result": {
+      "provider": "Провайдер: {{provider}}",
+      "empty": "[порожньо]"
+    }
+  },
+  "search": {
+    "command": {
+      "description": "🔍 Гнучкий пошук по документах",
+      "usage": "/пошук запит:текст [опції]"
+    },
+    "opt": {
+      "query": { "description": "Що шукати? (наприклад: \"особовий склад\", \"техніка\", \"зброя\")" },
+      "type": { "description": "Тип документа для пошуку" },
+      "dateFrom": { "description": "Дата від (формат: ДД.ММ.РРРР)" },
+      "dateTo": { "description": "Дата до (формат: ДД.ММ.РРРР)" },
+      "unit": { "description": "Підрозділ для пошуку" },
+      "priority": { "description": "Пріоритет документа" },
+      "limit": { "description": "Кількість результатів (макс. {{max}})" }
+    },
+    "choices": {
+      "type": {
+        "all": "Всі документи",
+        "orders": "Накази",
+        "reports": "Доповіді",
+        "statistics": "Звіти",
+        "plans": "Плани",
+        "instructions": "Інструкції",
+        "protocols": "Протоколи",
+        "cards": "Картки",
+        "journals": "Журнали"
+      },
+      "priority": {
+        "all": "Всі",
+        "critical": "Критичний",
+        "high": "Високий",
+        "medium": "Середній",
+        "low": "Низький"
+      }
+    },
+    "error": {
+      "invalidQuery": "Некоректний запит: {{errors}}",
+      "invalidDateFrom": "Некоректний формат дати \"від\" (використовуйте ДД.ММ.РРРР)",
+      "invalidDateTo": "Некоректний формат дати \"до\" (використовуйте ДД.ММ.РРРР)",
+      "dateRange": "Дата \"до\" не може бути раніше дати \"від\"",
+      "invalidUnit": "Некоректний підрозділ: {{errors}}",
+      "noService": "Google сервіс не налаштовано",
+      "noData": "Немає даних для пошуку",
+      "noSpreadsheet": "Не вказано spreadsheetId в конфігурації",
+      "searchFailed": "Помилка виконання пошуку"
+    },
+    "log": {
+      "start": "Початок пошуку",
+      "success": "Пошук успішно завершено",
+      "error": "Помилка пошуку",
+      "cacheHit": "Результат знайдено в кеші"
+    }
+  },
+  "doc": {
+    "command": {
+      "description": "Робота з Google Docs"
+    },
+    "sub": {
+      "blocks": {
+        "description": "Показати структуровані блоки Google Docs"
+      }
+    },
+    "opt": {
+      "documentid": {
+        "description": "ID або посилання на документ Google Docs"
+      },
+      "limit": {
+        "description": "Скільки блоків показати (1-25)"
+      },
+      "format": {
+        "description": "Формат виводу: short | full | headings"
+      }
+    },
+    "unknownSub": "Невідома підкоманда",
+    "id": {
+      "invalid": "Не вдалося розпізнати ID документа. Вкажіть чистий ID або посилання формату:\n- https://docs.google.com/document/d/<ID>/edit\nДе <ID> — рядок між \"/d/\" та \"/edit\"."
+    },
+    "google": {
+      "unavailable": "GoogleService недоступний. Зверніться до адміністратора."
+    },
+    "error": {
+      "fetchBlocks": "❌ Помилка отримання блоків документа. Перевірте ID та доступ.",
+      "updatePage": "❌ Помилка оновлення сторінки"
+    },
+    "sessionExpired": "⏳ Сесію перегляду завершено. Запустіть команду знову.",
+    "embed": {
+      "title": "Структура документа Google Docs",
+      "desc": "documentId: {{documentId}}\nВсього блоків: {{total}}\nСторінка: {{page}}/{{totalPages}} (по {{pageSize}})\nФормат: {{format}}"
+    },
+    "kinds": {
+      "empty": "[порожньо]",
+      "heading": "заголовок h{{level}}",
+      "listItem": "елемент списку",
+      "paragraph": "параграф",
+      "table": "таблиця {{rows}}x{{cols}}",
+      "emptyTable": "[порожня таблиця]",
+      "footnote": "виноска {{id}}"
+    }
+  },
+  "files": {
+    "command": {
+      "description": "📁 Робота з файлами в Google Drive"
+    },
+    "sub": {
+      "search": { "title": "Пошук", "description": "Пошук файлів у Google Drive" },
+      "read": { "title": "Читання", "description": "Читати вміст файлу" },
+      "analyze": { "title": "Аналіз", "description": "AI-аналіз вмісту файлу" },
+      "report": { "description": "Створити звіт на основі файлу" }
+    },
+    "buttons": {
+      "open": "Відкрити",
+      "download": "Завантажити",
+      "summary": "Зведення",
+      "source": "Джерело",
+      "question": "Питання"
+    },
+    "card": {
+      "owner": "Власник",
+      "modified": "Змінено"
+    },
+    "common": {
+      "file": "файл",
+      "folder": "папка"
+    },
+    "opt": {
+      "query": { "description": "Назва файлу для пошуку" },
+      "folder": { "description": "ID папки для пошуку (опціонально)" },
+      "id": { "description": "ID файлу в Google Drive" },
+      "type": { "description": "Тип аналізу" },
+      "format": { "description": "Формат звіту" }
+    },
+    "choices": {
+      "analysis": {
+        "summary": "Короткий зміст",
+        "detailed": "Детальний аналіз",
+        "key_points": "Ключові моменти"
+      },
+      "reportFormat": {
+        "txt": "Текст",
+        "pdf": "PDF",
+        "docx": "Word"
+      }
+    },
+    "validation": {
+      "failed": "❌ Помилка валідації:\n{{errors}}",
+      "queryTooShort": "Запит повинен містити мінімум 2 символи",
+      "fileIdTooShort": "ID файлу повинен містити мінімум 10 символів",
+      "invalidFileId": "❌ Невірний ідентифікатор файлу."
+    },
+    "error": {
+      "serviceUnavailable": "❌ GoogleService недоступний",
+      "unauthorized": "🚫 Неавторизовано",
+      "forbidden": "🚫 Доступ заборонено",
+      "notFound": "❌ Не знайдено",
+      "conflict": "⚠️ Конфлікт",
+      "badRequest": "⚠️ Некоректний запит",
+      "rateLimited": "⏳ Перевищено ліміт запитів",
+      "server": "❌ Помилка сервера",
+      "unavailable": "❌ Сервіс тимчасово недоступний",
+      "unknownSubcommand": "❌ Невідома підкоманда",
+      "noText": "❌ Не вдалося отримати текст із файлу",
+      "missingFolderId": "❌ Не вказано ID папки. Додайте параметр \"папка\" або налаштуйте driveFolderId у конфігурації.",
+      "metadata": "❌ Неможливо отримати метадані файлу",
+      "process": "❌ Помилка при роботі з файлами. Спробуйте ще раз або зверніться до адміністратора."
+    },
+    "policy": {
+      "disallowedMime": "🚫 Доступ заборонено: тип файлу не дозволений політикою безпеки",
+      "deniedOwner": "🚫 Доступ заборонено: власник файлу не входить до списку дозволених"
+    },
+    "result": {
+      "searchEmpty": "🔍 Пошук: \"{{query}}\"\nПапка: {{folderId}}\n\nНічого не знайдено.",
+      "searchList": "🔍 **Результати пошуку**\nЗапит: {{query}}\nПапка: {{folderId}}\nЗнайдено: {{count}}\n\n{{lines}}{{more}}",
+      "fileDownloaded": "📄 **Файл завантажено**\n\nНазва: {{name}}\nТип: {{mimeType}}",
+      "more": "\n…та ще {{rest}}"
+    },
+    "read": {
+      "downloadedSheet": "📥 Лист завантажено: {{title}} ({{sheetName}})"
+    },
+    "report": {
+      "generated": "📝 Звіт згенеровано",
+      "fallbackTxt": "[текстовий звіт]",
+      "noContent": "Немає вмісту для звіту"
+    },
+    
+    "search": {
+      "largeMark": "великий",
+      "filteredByPolicy": "⚠️ Деякі елементи ({{count}}) приховано політиками доступу",
+      "changesSummary": "Зміни з моменту останнього запиту: +{{added}}, -{{removed}}, ~{{modified}}",
+      "buttons": {
+        "first": "⏮",
+        "prev": "◀",
+        "next": "▶",
+        "last": "⏭",
+        "showChangesOnly": "Лише зміни",
+        "resetBaseline": "Скинути базову",
+        "close": "Закрити"
+      }
+    },
+    "summary": {
+      "largeFile": "📦 Великий файл: {{name}} ({{mimeType}}), ~{{size}} МБ. Для безпеки та продуктивності надаємо лише коротке зведення.",
+      "link": "Посилання"
+    },
+    "embed": {
+      "search": {
+        "personnel": "Тимчасова відповідь: Знайдено 0 осіб"
+      }
+    }
+  },
+  "sheets": {
+    "command": {
+      "description": "📁 Вибір Google таблиці та листа для контексту пошуку"
+    },
+    "opt": {
+      "mode": { "description": "Дія: встановити, показати або очистити" },
+      "spreadsheet": { "description": "Назва таблиці (у папці) або ID" },
+      "sheet": { "description": "Назва листа в таблиці" }
+    },
+    "choices": {
+      "mode": {
+        "set": "встановити",
+        "show": "показати",
+        "clear": "очистити"
+      }
+    },
+    "ui": {
+      "selectPlaceholder": "Оберіть лист",
+      "chooseSheet": "Будь ласка, оберіть лист зі списку"
+    },
+    "reply": {
+      "cleared": "✅ Контекст очищено",
+      "noContext": "ℹ️ Немає збереженого контексту",
+      "current": "📄 Поточний контекст:\nSpreadsheet: {{spreadsheetId}}\nSheet: {{sheetName}}",
+      "set": "✅ Контекст встановлено:\nSpreadsheet: {{spreadsheetId}}\nSheet: {{sheetName}}"
+    },
+    "error": {
+      "serviceUnavailable": "GoogleService недоступний",
+      "missingFolderId": "Не вказано GOOGLE_DRIVE_FOLDER_ID в конфігурації",
+      "notFoundByName": "Таблицю за ім'ям \"{{name}}\" не знайдено у папці",
+      "missingSpreadsheet": "Не вказано таблицю. Задайте параметр \"таблиця\" (назва або ID).",
+      "sheetNotFound": "Лист \"{{sheet}}\" не знайдено у вибраній таблиці",
+      "noSheets": "У таблиці немає доступних листів",
+      "sheetNotSelected": "Будь ласка, оберіть лист",
+      "failed": "❌ Помилка: {{message}}"
+    },
+    "log": {
+      "multiMatchWarn": "SelectSheet: знайдено кілька відповідників, обираємо перший"
+    }
+  }
+  ,
+  "ws": {
+    "command": { "description": "Особистий workspace: збережені документи та запити" },
+    "sub": {
+      "add": { "description": "Додати файл або пошуковий запит до workspace" },
+      "list": { "description": "Показати workspace" },
+      "remove": { "description": "Видалити елемент з workspace" },
+      "run": { "description": "Виконати елемент workspace (для query) або показати файл" }
+    },
+    "opt": {
+      "type": { "description": "Тип елемента: file | query" },
+      "title": { "description": "Назва елемента" },
+      "fileid": { "description": "ID файлу (для type=file)" },
+      "query": { "description": "Пошуковий запит (для type=query)" }
+    },
+    "choices": {
+      "file": "file",
+      "query": "query"
+    },
+    "reply": {
+      "unknownSub": "❌ Невідома підкоманда",
+      "addSuccess": "✅ Додано до workspace: {{title}} (id: {{id}})",
+      "listEmpty": "ℹ️ Workspace порожній",
+      "listTitle": "🗂️ Ваш workspace:",
+      "removed": "🗑️ Видалено",
+      "notFound": "⚠️ Не знайдено",
+      "runQuery": "🔎 Виконання запиту: {{query}}",
+      "runFile": "📄 Обрано файл: {{fileId}}"
+    },
+    "error": {
+      "exec": "❌ Помилка виконання команди",
+      "missingFileId": "⚠️ Вкажіть fileid для type=file",
+      "missingQuery": "⚠️ Вкажіть query для type=query",
+      "unsupportedType": "⚠️ Непідтримуваний тип",
+      "disabled": "🚫 Функція workspace вимкнена адміністратором"
+    },
+    "format": {
+      "listLine": "• [{{type}}] {{title}} — id: {{id}}",
+      "defaultTitleFile": "Файл {{fileId}}",
+      "defaultTitleQuery": "Запит: {{query}}"
+    }
+  }
+  ,
+  "lang": {
+    "command": { "description": "Налаштування мови" },
+    "sub": {
+      "set": { "description": "Встановити бажану мову" },
+      "show": { "description": "Показати поточну мову" }
+    },
+    "opt": {
+      "locale": { "description": "Обрана мова" }
+    },
+    "reply": {
+      "setOk": "✅ Мову оновлено: {{locale}}",
+      "current": "🌐 Поточна мова: {{locale}}",
+      "unknownSub": "❌ Невідома підкоманда"
+    }
+  }
+  ,
+  "chat": {
+    "help": "Я асистент. Можу: 1) аналізувати таблиці Google Sheets; 2) аналізувати файли Google Drive; 3) відповідати на питання. Приклади: \"проаналізуй таблицю \"Особовий склад\"\", \"скільки записів у \"Звіт_липень\"\", \"що у файлі з id ...\"",
+    "errors": {
+      "generic": "❌ Помилка обробки повідомлення. Спробуйте уточнити запит."
+    },
+    "search": {
+      "noQuery": "Вкажіть запит для пошуку. Приклад: \"пошук договір поставки\"",
+      "serviceUnavailable": "Пошук наразі недоступний. Сервіс індексації не активний.",
+      "none": "Нічого не знайдено за вашим запитом. Спробуйте інші ключові слова.",
+      "error": "❌ Сталася помилка під час пошуку. Спробуйте пізніше."
+    },
+    "analyzeSheet": {
+      "prompt": "Прийнято: аналіз таблиці. Уточніть назву листа/таблиці у лапках або ID. Функція буде активована найближчим часом."
+    },
+    "analyzeFile": {
+      "prompt": "Прийнято: аналіз файлу/документа. Уточніть ID файлу. Функція буде активована найближчим часом."
+    },
+    "qna": {
+      "unavailable": "Прийнято. Генератор відповідей ІІ наразі недоступний. Спробуйте /ai",
+      "error": "❌ Помилка генерації відповіді. Спробуйте ще раз пізніше."
+    },
+    "unknown": "Не зрозумів запит. Приклади: \"проаналізуй таблицю \"Зведення\"\", \"скільки записів у \"Звіт\"\", \"що у файлі з id ...\""
+  }
+  ,
+  "operations": {
+    "error": {
+      "unknownSubcommand": "❌ Невідома підкоманда",
+      "general": "❌ Помилка оперативного управління",
+      "getSituation": "❌ Помилка отримання ситуації",
+      "unknownAction": "❌ Невідома дія",
+      "coordination": { "error": "❌ Помилка координації" },
+      "intelligence": { "error": "❌ Помилка розвідки" }
+    },
+    "common": {
+      "active": "✅ Активна",
+      "primary": "Основний",
+      "operational": "✅ Працює",
+      "ready": "✅ Готовий",
+      "high": "Висока",
+      "confirmed": "Підтверджено",
+      "status": "Статус",
+      "taskCreated": "✅ Завдання створено",
+      "statusUpdated": "✅ Статус оновлено",
+      "taskCompleted": "✅ Завдання завершено",
+      "messageSent": "✅ Повідомлення передано",
+      "allUnits": "Всі підрозділи",
+      "allAreas": "Всі райони",
+      "notSpecified": "Не вказано",
+      "time2hAgo": "2 години тому"
+    },
+    "coordination": {
+      "title": "🔄 Координація між підрозділами",
+      "desc": "**{{typeName}}**\n\nПідрозділ: {{unit}}",
+      "fields": {
+        "status": "Статус координації",
+        "participants": "Учасники",
+        "channel": "Канал зв'язку"
+      }
+    },
+    "situation": {
+      "title": "📊 Оперативна ситуація",
+      "descAll": "**Загальна оперативна ситуація**",
+      "descSector": "**Оперативна ситуація в секторі {{sector}}**",
+      "fields": {
+        "sectorA": "Сектор А",
+        "sectorB": "Сектор Б",
+        "sectorC": "Сектор В",
+        "sectorD": "Сектор Г",
+        "stable": "✅ Стабільна ситуація",
+        "active": "⚠️ Активні дії",
+        "controlled": "✅ Контрольована ситуація",
+        "attention": "🟡 Потребує уваги",
+        "status": "Статус",
+        "activeTasks": "Активні завдання",
+        "units": "Підрозділи"
+      }
+    },
+    "intelligence": {
+      "title": "🔍 Розвідувальні дані",
+      "desc": "**{{typeName}}**\n\nРайон: {{area}}",
+      "fields": {
+        "lastData": "Останні дані",
+        "reliability": "Достовірність",
+        "source": "Джерело"
+      }
+    },
+    "communications": {
+      "title": "📡 Управління зв'язком",
+      "action": {
+        "status": "**Статус зв'язку**",
+        "channels": "**Налаштування каналів**",
+        "message": "**Передача повідомлення**\n\nКанал: {{channel}}\nПовідомлення: {{message}}",
+        "quality": "**Перевірка якості зв'язку**",
+        "backup": "**Резервні канали**"
+      },
+      "fields": {
+        "primaryChannel": "Основний канал",
+        "backupChannel": "Резервний канал",
+        "signalQuality": "Якість сигналу",
+        "activeChannels": "Активні канали",
+        "backupChannels": "Резервні канали",
+        "latency": "Затримка",
+        "stability": "Стабільність",
+        "channel1": "Канал 1",
+        "channel2": "Канал 2"
+      }
+    },
+    "tasks": {
+      "title": "🎯 Управління завданнями",
+      "none": "Завдань не знайдено",
+      "error": "❌ Помилка отримання завдань",
+      "current": "**Поточні завдання**",
+      "new": {
+        "desc": "**Нове завдання**\n\nДані: {{data}}"
+      },
+      "update": {
+        "desc": "**Оновлення статусу**\n\nДані: {{data}}"
+      },
+      "complete": {
+        "desc": "**Завершення завдання**\n\nДані: {{data}}"
+      },
+      "archive": {
+        "title": "**Архів завдань**"
+      },
+      "fields": {
+        "active": "Активні завдання",
+        "inProgress": "В процесі",
+        "pending": "Очікують",
+        "completed": "Завершені",
+        "archived": "Архівовані"
+      }
+    }
+  },
+  "parsers": {
+    "fallback": {
+      "used": "Використано запасний парсер"
+    },
+    "unsupportedMime": "Непідтримуваний MIME: {{mime}}",
+    "parseError": "Помилка парсингу"
+  }
+  ,
+  "changes": {
+    "notify": {
+      "title": "🛎️ Оновлення Google Drive",
+      "line": "• {{type}}: {{name}} — {{owners}} ({{time}})",
+      "created": "створено",
+      "modified": "змінено",
+      "removed": "видалено",
+      "button": {
+        "source": "Джерело"
+      },
+      "noChannel": "Канал для сповіщень не налаштований"
+    }
+  }
+  ,
+  "analytics": {
+    "keywords": {
+      "title": "Ключові слова",
+      "line": "{{word}} — {{count}}"
+    },
+    "topics": {
+      "title": "Теми",
+      "line": "{{topic}} — {{weight}}"
+    },
+    "tables": {
+      "byStatus": "Розподіл за статусом",
+      "byMonth": "Розподіл за місяцями",
+      "byOwner": "Розподіл за власниками"
+    }
+  }
+  ,
+  "workspace": {
+    "common": {
+      "unknownSub": "❌ Невідома підкоманда",
+      "execError": "❌ Помилка виконання команди",
+      "notFound": "⚠️ Не знайдено"
+    },
+    "fav": {
+      "command": { "description": "Обране: керування списком файлів" },
+      "sub": {
+        "add": "Додати файл до обраного",
+        "list": "Показати обране",
+        "remove": "Видалити файл з обраного"
+      },
+      "added": "✅ Додано до обраного",
+      "exists": "ℹ️ Вже в обраному",
+      "removed": "🗑️ Видалено з обраного",
+      "empty": "ℹ️ Список обраного порожній",
+      "listTitle": "⭐ Обране:"
+    },
+    "search": {
+      "command": { "description": "Збережені пошуки" },
+      "sub": {
+        "save": "Зберегти пошук",
+        "run": "Виконати збережений пошук",
+        "list": "Показати збережені пошуки",
+        "remove": "Видалити збережений пошук"
+      },
+      "opt": {
+        "name": "Назва пошуку",
+        "query": "Рядок пошуку (name contains)",
+        "folder": "ID папки",
+        "mime": "MIME фільтр",
+        "owner": "Власник",
+        "limit": "Ліміт на сторінку"
+      },
+      "saved": "✅ Пошук збережено: {{name}}",
+      "runNotFound": "⚠️ Збережений пошук не знайдено",
+      "listEmpty": "ℹ️ Немає збережених пошуків",
+      "listTitle": "🔍 Збережені пошуки:",
+      "removed": "🗑️ Видалено"
+    }
+  }
+}
