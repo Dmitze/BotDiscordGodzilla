@@ -18,7 +18,7 @@ export interface PromptTemplate {
 export class PromptTemplatesService {
   private templates: Map<string, PromptTemplate[]>;
   
-  constructor(private readonly config: BotConfig) {
+  constructor(_config: BotConfig) {
     this.templates = new Map();
     this.initializeDefaultTemplates();
   }
@@ -105,7 +105,7 @@ export class PromptTemplatesService {
    * @param template The prompt template to register
    */
   public registerTemplate(template: PromptTemplate): void {
-    const key = this.getTemplateKey(template.id, template.locale);
+    const key = this.getTemplateKey(template.id, template.locale ?? 'uk');
     if (!this.templates.has(key)) {
       this.templates.set(key, []);
     }
