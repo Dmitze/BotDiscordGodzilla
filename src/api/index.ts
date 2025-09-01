@@ -1,13 +1,14 @@
-import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import type { BotConfig } from '@/types';
-import logger from '@/utils/logger';
-import { DocumentAccessAuditService } from '@/services/DocumentAccessAuditService';
-import { DataLossPreventionService } from '@/services/DataLossPreventionService';
-import { ComplianceReportingService } from '@/services/ComplianceReportingService';
-import { DriveIndexerService } from '@/services/DriveIndexerService';
+import express = require('express');
+import { Request, Response, NextFunction } from 'express';
+import cors = require('cors');
+import helmet = require('helmet');
+import rateLimit = require('express-rate-limit');
+import type { BotConfig } from '@/types/index';
+import logger from '@/utils/logger/index';
+import { DocumentAccessAuditService } from '@/services/DocumentAccessAuditService/index';
+import { DataLossPreventionService } from '@/services/DataLossPreventionService/index';
+import { ComplianceReportingService } from '@/services/ComplianceReportingService/index';
+import { DriveIndexerService } from '@/services/DriveIndexerService/index';
 
 // Define the API service interface
 interface ApiService {
@@ -57,7 +58,7 @@ function authenticateToken(req: Request, res: Response, next: NextFunction): voi
   
   // In a real implementation, you would verify the token
   // For now, we'll just check if it exists
-  if (token !== process.env.API_ACCESS_TOKEN) {
+  if (token !== (process.env['API_ACCESS_TOKEN'] || '')) {
     res.status(403).json({ error: 'Invalid access token' });
     return;
   }
@@ -77,14 +78,14 @@ function errorHandler(err: Error, req: Request, res: Response, next: NextFunctio
   
   res.status(500).json({
     error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'An error occurred'
+    message: (process.env['NODE_ENV'] || '') === 'development' ? err.message : 'An error occurred'
   });
 }
 
 // Routes
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -93,7 +94,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Enhanced health check endpoint
-app.get('/health/detailed', async (req: Request, res: Response) => {
+app.get('/health/detailed', async (_req: Request, res: Response) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -122,7 +123,7 @@ app.get('/health/detailed', async (req: Request, res: Response) => {
 });
 
 // AI Service health check
-app.get('/health/ai', async (req: Request, res: Response) => {
+app.get('/health/ai', async (_req: Request, res: Response) => {
   try {
     // This would integrate with the actual AI service
     res.json({
@@ -140,7 +141,7 @@ app.get('/health/ai', async (req: Request, res: Response) => {
 });
 
 // Google Service health check
-app.get('/health/google', async (req: Request, res: Response) => {
+app.get('/health/google', async (_req: Request, res: Response) => {
   try {
     // This would integrate with the actual Google service
     res.json({
@@ -158,7 +159,7 @@ app.get('/health/google', async (req: Request, res: Response) => {
 });
 
 // Get audit records
-app.get('/audit/records', authenticateToken, async (req: Request, res: Response) => {
+app.get('/audit/records', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -168,10 +169,10 @@ app.get('/audit/records', authenticateToken, async (req: Request, res: Response)
     const { page, limit, userId, fileId, action } = req.query;
     
     const records = apiServices.auditService.getAuditRecords({
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
-      userId: userId as string,
-      fileId: fileId as string,
+      page: page ? parseInt(page as string) : 1,
+      limit: limit ? parseInt(limit as string) : 10,
+      userId: userId as string || '',
+      fileId: fileId as string || '',
       action: action as any
     });
     
@@ -182,7 +183,7 @@ app.get('/audit/records', authenticateToken, async (req: Request, res: Response)
 });
 
 // Get audit summary
-app.get('/audit/summary', authenticateToken, async (req: Request, res: Response) => {
+app.get('/audit/summary', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -192,10 +193,10 @@ app.get('/audit/summary', authenticateToken, async (req: Request, res: Response)
     const { startDate, endDate, userId, fileId } = req.query;
     
     const summary = apiServices.auditService.generateAccessSummary({
-      startDate: startDate ? new Date(startDate as string) : undefined,
-      endDate: endDate ? new Date(endDate as string) : undefined,
-      userId: userId as string,
-      fileId: fileId as string
+      startDate: startDate ? new Date(startDate as string) : new Date(0),
+      endDate: endDate ? new Date(endDate as string) : new Date(),
+      userId: userId as string || '',
+      fileId: fileId as string || ''
     });
     
     res.json(summary);
@@ -205,7 +206,7 @@ app.get('/audit/summary', authenticateToken, async (req: Request, res: Response)
 });
 
 // Scan document for sensitive data
-app.post('/dlp/scan', authenticateToken, async (req: Request, res: Response) => {
+app.post('/dlp/scan', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -228,7 +229,7 @@ app.post('/dlp/scan', authenticateToken, async (req: Request, res: Response) => 
 });
 
 // Get DLP scan result
-app.get('/dlp/result/:fileId', authenticateToken, async (req: Request, res: Response) => {
+app.get('/dlp/result/:fileId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -252,7 +253,7 @@ app.get('/dlp/result/:fileId', authenticateToken, async (req: Request, res: Resp
 });
 
 // Generate compliance report
-app.post('/compliance/report', authenticateToken, async (req: Request, res: Response) => {
+app.post('/compliance/report', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -282,7 +283,7 @@ app.post('/compliance/report', authenticateToken, async (req: Request, res: Resp
 });
 
 // Get compliance report
-app.get('/compliance/report/:reportId', authenticateToken, async (req: Request, res: Response) => {
+app.get('/compliance/report/:reportId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -304,7 +305,7 @@ app.get('/compliance/report/:reportId', authenticateToken, async (req: Request, 
 });
 
 // Export compliance report
-app.get('/compliance/report/:reportId/export', authenticateToken, async (req: Request, res: Response) => {
+app.get('/compliance/report/:reportId/export', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -337,7 +338,7 @@ app.get('/compliance/report/:reportId/export', authenticateToken, async (req: Re
 });
 
 // Get service statistics
-app.get('/stats', authenticateToken, async (req: Request, res: Response) => {
+app.get('/stats', authenticateToken, async (_req: Request, res: Response) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -358,7 +359,7 @@ app.get('/stats', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // Search documents
-app.get('/search', authenticateToken, async (req: Request, res: Response) => {
+app.get('/search', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -386,8 +387,83 @@ app.get('/search', authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
+// Webhook endpoint for n8n integration - receives file updates from Google Drive
+app.post('/webhook/n8n/drive', async (req: Request, res: Response) => {
+  try {
+    logger.info('Received n8n webhook for Google Drive file update', {
+      component: 'ApiService',
+      event: 'n8n_webhook_received',
+      body: req.body
+    });
+
+    if (!apiServices) {
+      logger.error('API services not initialized for n8n webhook', {
+        component: 'ApiService',
+        event: 'n8n_webhook_error'
+      });
+      res.status(503).json({ error: 'API services not initialized' });
+      return;
+    }
+
+    const { fileId, fileName, fileContent, mimeType, chunks, embeddings } = req.body;
+
+    // Validate required fields
+    if (!fileId || !fileName) {
+      logger.warn('Missing required fields in n8n webhook', {
+        component: 'ApiService',
+        event: 'n8n_webhook_invalid',
+        missingFields: [!fileId ? 'fileId' : null, !fileName ? 'fileName' : null].filter(Boolean)
+      });
+      res.status(400).json({ error: 'Missing required fields: fileId and fileName are required' });
+      return;
+    }
+
+    // Process the file update
+    logger.info('Processing Google Drive file update', {
+      component: 'ApiService',
+      event: 'file_update_processing',
+      fileId,
+      fileName,
+      mimeType
+    });
+
+    // If we have chunks and embeddings, process them for RAG
+    if (chunks && embeddings && Array.isArray(chunks) && Array.isArray(embeddings)) {
+      logger.info('Processing document chunks for RAG', {
+        component: 'ApiService',
+        event: 'rag_processing',
+        fileId,
+        chunkCount: chunks.length
+      });
+
+      // In a real implementation, this would:
+      // 1. Store the chunks and embeddings in the vector database
+      // 2. Update the search index
+      // 3. Notify relevant Discord channels
+    }
+
+    // Acknowledge the webhook
+    res.status(200).json({
+      success: true,
+      message: 'File update received and queued for processing',
+      fileId,
+      fileName
+    });
+  } catch (error) {
+    logger.error('Error processing n8n webhook', {
+      component: 'ApiService',
+      event: 'n8n_webhook_error',
+      error: error instanceof Error ? error.message : String(error)
+    });
+    res.status(500).json({
+      error: 'Internal server error processing webhook',
+      message: process.env['NODE_ENV'] === 'development' ? error instanceof Error ? error.message : String(error) : 'An error occurred'
+    });
+  }
+});
+
 // Add custom DLP pattern
-app.post('/dlp/patterns', authenticateToken, async (req: Request, res: Response) => {
+app.post('/dlp/patterns', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -410,7 +486,7 @@ app.post('/dlp/patterns', authenticateToken, async (req: Request, res: Response)
 });
 
 // Add custom compliance requirement
-app.post('/compliance/requirements', authenticateToken, async (req: Request, res: Response) => {
+app.post('/compliance/requirements', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
@@ -436,7 +512,7 @@ app.post('/compliance/requirements', authenticateToken, async (req: Request, res
 app.use(errorHandler);
 
 // Handle 404 errors
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
@@ -448,7 +524,7 @@ export function startApiServer(config: BotConfig, services: ApiService): Promise
       initializeApiServices(services);
       
       // Get port from config or default to 3000
-      const port = config.api?.port || process.env.API_PORT || 3000;
+      const port = (config as any).api?.port || (process.env['API_PORT'] || '3000');
       
       // Start server
       const server = app.listen(port, () => {
@@ -457,7 +533,7 @@ export function startApiServer(config: BotConfig, services: ApiService): Promise
       });
       
       // Handle server errors
-      server.on('error', (error) => {
+      server.on('error', (error: Error) => {
         logger.error('API server error', { component: 'ApiService', error });
         reject(error);
       });
