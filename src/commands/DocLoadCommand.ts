@@ -294,6 +294,6 @@ export class DocLoadCommand extends BaseCommand {
           } as any)
           .setRequired(false)
       )
-      .setDMPermission(false) as Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'>;
+      .setDMPermission(false) as unknown as Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'>;
   }
 }
