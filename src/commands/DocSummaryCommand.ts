@@ -232,7 +232,7 @@ export class DocSummaryCommand extends BaseCommand {
    * Реєстрація слеш-команди
    */
   public register(): Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'> {
-    const builder = new SlashCommandBuilder()
+    return new SlashCommandBuilder()
       .setName(this.name)
       .setDescription(this.description)
       .setDescriptionLocalizations({
@@ -250,21 +250,5 @@ export class DocSummaryCommand extends BaseCommand {
           .setRequired(true)
       )
       .setDMPermission(false);
-    
-    // Create a new builder with the same properties to ensure correct type
-    const result = new SlashCommandBuilder()
-      .setName(builder.name)
-      .setDescription(builder.description)
-      .setDescriptionLocalizations(builder.description_localizations ?? {})
-      .setDMPermission(builder.dm_permission ?? false);
-    
-    // Copy options
-    if (builder.options) {
-      for (const option of builder.options) {
-        (result as any).options.push(option);
-      }
-    }
-    
-    return result;
   }
 }
