@@ -1,0 +1,199 @@
+{
+  "name": "Document Processing Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "event": "newFile",
+        "folderId": "={{ $parameter['folderId'] }}",
+        "triggerOn": "fileCreated",
+        "options": {}
+      },
+      "id": "2",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json['id'] }}",
+        "options": {}
+      },
+      "id": "3",
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractText",
+        "binaryPropertyName": "data",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "split",
+        "text": "={{ $json['text'] }}",
+        "options": {
+          "chunkSize": 1000,
+          "chunkOverlap": 100
+        }
+      },
+      "id": "5",
+      "name": "Split Text",
+      "type": "n8n-nodes-base.text",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-ada-002",
+        "input": "={{ $json['chunk'] }}",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Create Embeddings",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $parameter['webhookUrl'] }}",
+        "method": "POST",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "options": {},
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fileId",
+              "value": "={{ $json['id'] }}"
+            },
+            {
+              "name": "fileName",
+              "value": "={{ $json['name'] }}"
+            },
+            {
+              "name": "chunks",
+              "value": "={{ $json['chunks'] }}"
+            },
+            {
+              "name": "embeddings",
+              "value": "={{ $json['embeddings'] }}"
+            },
+            {
+              "name": "mimeType",
+              "value": "={{ $json['mimeType'] }}"
+            }
+          ]
+        }
+      },
+      "id": "7",
+      "name": "Send to Discord Bot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Split Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Text": {
+      "main": [
+        [
+          {
+            "node": "Create Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Send to Discord Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0"
+}

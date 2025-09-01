@@ -1,0 +1,114 @@
+{
+  "name": "Google Drive Document Monitor",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "event": "newFile",
+        "folderId": "={{ $parameter['folderId'] }}",
+        "triggerOn": "fileCreated",
+        "options": {}
+      },
+      "id": "2",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json['id'] }}",
+        "options": {}
+      },
+      "id": "3",
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $parameter['webhookUrl'] }}",
+        "method": "POST",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "options": {},
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fileId",
+              "value": "={{ $json['id'] }}"
+            },
+            {
+              "name": "fileName",
+              "value": "={{ $json['name'] }}"
+            },
+            {
+              "name": "fileContent",
+              "value": "={{ $json['binary']['data']['data'] }}"
+            },
+            {
+              "name": "mimeType",
+              "value": "={{ $json['mimeType'] }}"
+            }
+          ]
+        }
+      },
+      "id": "4",
+      "name": "Send to Discord Bot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Send to Discord Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0"
+}
