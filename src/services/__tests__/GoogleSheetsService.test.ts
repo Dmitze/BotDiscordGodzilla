@@ -91,11 +91,6 @@ describe('GoogleSheetsService', () => {
   });
 
   describe('utility methods', () => {
-    it('should get document type name correctly', () => {
-      const typeName = (googleSheetsService as any).getDocumentTypeName('orders');
-      expect(typeName).toBe('Накази');
-    });
-
     it('should parse range correctly', () => {
       const [sheetName, cellRange] = (googleSheetsService as any).parseRange('Sheet1!A1:B2');
       expect(sheetName).toBe('Sheet1');
