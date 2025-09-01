@@ -249,6 +249,6 @@ export class DocSummaryCommand extends BaseCommand {
           } as any)
           .setRequired(true)
       )
-      .setDMPermission(false);
+      .setDMPermission(false) as unknown as Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'>;
   }
 }
