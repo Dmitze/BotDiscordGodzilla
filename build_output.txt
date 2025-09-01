@@ -1,0 +1,35 @@
+
+> discord-google-bot@2.3.0 prebuild
+> npm run clean
+
+
+> discord-google-bot@2.3.0 clean
+> node -e "try{require('fs').rmSync('dist',{recursive:true,force:true})}catch(e){}"
+
+
+> discord-google-bot@2.3.0 build
+> tsc
+
+src/commands/DocLoadCommand.ts(270,5): error TS2375: Type 'SlashCommandOptionsOnlyBuilder' is not assignable to type 'Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  The types returned by 'setNSFW(...)' are incompatible between these types.
+    Type 'SlashCommandOptionsOnlyBuilder' is missing the following properties from type 'SlashCommandBuilder': addSubcommandGroup, addSubcommand
+src/commands/DocSearchCommand.ts(288,5): error TS2375: Type 'SlashCommandOptionsOnlyBuilder' is not assignable to type 'Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+src/commands/DocSummaryCommand.ts(235,5): error TS2375: Type 'SlashCommandOptionsOnlyBuilder' is not assignable to type 'Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+src/services/GoogleDocsService.ts(30,5): error TS2412: Type 'MetricsService | undefined' is not assignable to type 'MetricsService' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+  Type 'undefined' is not assignable to type 'MetricsService'.
+src/services/GoogleDocsService.ts(46,10): error TS2551: Property 'embeddingsService' does not exist on type 'GoogleDocsService'. Did you mean 'setEmbeddingsService'?
+src/services/GoogleDocsService.ts(92,13): error TS6133: 'docs' is declared but its value is never read.
+src/services/GoogleDocsService.ts(175,7): error TS2322: Type '{ id: string; name: string; mimeType: string; modifiedTime: string | undefined; owners: Schema$User[] | undefined; }[]' is not assignable to type '{ id: string; name: string; mimeType: string; modifiedTime?: string; owners?: { displayName?: string; emailAddress?: string; }[]; }[]'.
+  Type '{ id: string; name: string; mimeType: string; modifiedTime: string | undefined; owners: drive_v3.Schema$User[] | undefined; }' is not assignable to type '{ id: string; name: string; mimeType: string; modifiedTime?: string; owners?: { displayName?: string; emailAddress?: string; }[]; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'modifiedTime' are incompatible.
+      Type 'string | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+src/services/GoogleDocsService.ts(299,7): error TS2375: Type '{ title: string; content: string; blocks: DocBlock[]; modifiedTime: string | undefined; }' is not assignable to type '{ title: string; content: string; blocks: any[]; modifiedTime?: string; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'modifiedTime' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/GoogleSheetsService.ts(15,1): error TS6133: 'GoogleSpreadsheet' is declared but its value is never read.
+src/services/GoogleSheetsService.ts(841,11): error TS6133: 'normalizeWriteValues' is declared but its value is never read.
+src/services/GoogleSheetsService.ts(906,13): error TS6133: 'valueInputOption' is declared but its value is never read.
+src/services/PromptTemplatesService.ts(181,15): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
