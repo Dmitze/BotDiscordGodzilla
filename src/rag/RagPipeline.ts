@@ -2,6 +2,7 @@ import type { SearchIndex } from '@/search/SearchIndex';
 import type { AIService } from '@/services/AIService';
 import { Retriever } from './Retriever';
 import { Augmenter } from './Augmenter';
+import { Reranker } from './Reranker';
 import type { RetrieverOptions, AugmentOptions, ContextChunk, GenerateWithContextOptions } from './types';
 import logger from '@/utils/logger';
 
@@ -17,6 +18,7 @@ export interface RagAnswer {
 export class RagPipeline {
   private readonly retriever: Retriever;
   private readonly augmenter: Augmenter;
+  private readonly reranker: Reranker;
 
   constructor(
     search: SearchIndex,
@@ -25,6 +27,7 @@ export class RagPipeline {
   ) {
     this.retriever = new Retriever(search, embeddings);
     this.augmenter = new Augmenter();
+    this.reranker = new Reranker(ai);
   }
 
   async answer(
@@ -34,7 +37,21 @@ export class RagPipeline {
     genOpts: GenerateWithContextOptions = {}
   ): Promise<RagAnswer> {
     const t0 = Date.now();
-    const docs = await this.retriever.retrieve(query, retrieverOpts);
+    let docs = await this.retriever.retrieve(query, retrieverOpts);
+    
+    // Apply reranking if enabled
+    const useReranking = process.env['RERANKING_ENABLE'] === 'true';
+    if (useReranking && docs.length > 1) {
+      logger.info('Applying reranking to retrieved documents', {
+        component: 'RagPipeline',
+        documentCount: docs.length
+      });
+      docs = await this.reranker.rerank(query, docs, {
+        model: genOpts.model,
+        temperature: genOpts.temperature
+      });
+    }
+    
     const chunks = this.augmenter.buildContext(docs, augmentOpts);
     logger.info('RAG retrieve+augment complete', {
       service: 'RagPipeline',
