@@ -17,7 +17,6 @@
 - `FAQ_SUPPORT.md` - Часті питання та підтримка
 - `INTERACTIVE_LEARNING_GUIDE.md` - Інтерактивний гід навчання
 - `VIDEO_TUTORIAL_GUIDE.md` - Відео туторіали
-- `CURSOR_CUSTOM_INSTRUCTIONS.md` - Кастомні інструкції для Cursor
 
 ### **🔌 api/** - API документація
 
@@ -106,8 +105,6 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 - **[🧠 RAG та пошук](guides/rag.md)** - гібридний пошук, embeddings, ENV
 - **[🎓 Інтерактивне навчання](guides/INTERACTIVE_LEARNING_GUIDE.md)** - інтерактивний гід
 - **[🎥 Відео туторіали](guides/VIDEO_TUTORIAL_GUIDE.md)** - відео інструкції
-- **[🔧 Налаштування Cursor](guides/CURSOR_SETUP_GUIDE.md)** - налаштування розробки
-- **[📝 Кастомні інструкції](guides/CURSOR_CUSTOM_INSTRUCTIONS.md)** - для розробників
 - **[📊 Статистика](guides/STATISTICS_COMMAND_GUIDE.md)** - робота зі статистикою
 - **[🧪 Тестування](guides/TESTING_GUIDE.md)** - гід по тестуванню
 - **[🔄 Оновлення](guides/UPGRADE_GUIDE.md)** - як оновити бота
