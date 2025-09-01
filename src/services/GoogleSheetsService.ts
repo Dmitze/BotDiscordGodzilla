@@ -12,7 +12,6 @@ import { CacheService } from './CacheService';
 import logger from '@/utils/logger';
 import { sanitizeTextForChat, normalizeText } from '@/utils/fileProcessor';
 import { validateInput } from '@/utils/security';
-import type { GoogleSpreadsheet } from 'google-spreadsheet';
 import type { MetricsService } from './MetricsService';
 
 interface GoogleServiceStats {
@@ -836,13 +835,6 @@ export class GoogleSheetsService extends BaseServiceClass {
   }
 
   /**
-   * Нормалізація значень для запису: undefined -> null, об'єкти -> JSON, boolean -> 'TRUE'/'FALSE'
-   */
-  private normalizeWriteValues(_values: Array<Array<unknown>>): (string | number | null)[][] {
-    return [];
-  }
-
-  /**
    * Пошук листа за назвою (регістронезалежно)
    */
   public async findSheetByName(fileId: string, name: string): Promise<{ title: string; index: number } | null> {
@@ -903,7 +895,7 @@ export class GoogleSheetsService extends BaseServiceClass {
     values: string[][],
     options: GoogleServiceOptions = {}
   ): Promise<void> {
-    const { valueInputOption = 'RAW', clearCache = true } = options;
+    const { clearCache = true } = options;
 
     try {
       const normRange = this.normalizeRange(range);
