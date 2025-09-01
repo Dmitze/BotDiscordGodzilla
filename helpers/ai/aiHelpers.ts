@@ -9,6 +9,27 @@ import OpenAI from 'openai';
 function isAIEnabled(): boolean {
   return Boolean(process.env['OPENAI_API_KEY']) && process.env['AI_PROVIDER'] !== 'disabled';
 }
+<<<<<<< HEAD
+=======
+
+// Лінива ініціалізація OpenAI при першому зверненні
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] as string });
+  }
+  return _openai;
+}
+
+// Утиліти
+function extractJson(text: string): any | null {
+  const fenced = text.match(/```json\s*([\s\S]*?)```/i);
+  const raw = fenced?.[1] || text.match(/\{[\s\S]*\}/)?.[0];
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+>>>>>>> 1e192943 (ai: offline-by-default, lazy OpenAI init, robust extractJson; add offline jest tests)
 
 // Лінива ініціалізація OpenAI при першому зверненні
 let _openai: OpenAI | null = null;
