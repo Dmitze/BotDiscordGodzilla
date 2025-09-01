@@ -1,5 +1,6 @@
 import { Bot } from '@/core/Bot';
 import type { BotConfig } from '@/types';
+import { GoogleService } from '@/services/GoogleService';
 
 describe('GoogleSheetsService Integration', () => {
   let bot: Bot;
@@ -85,11 +86,11 @@ describe('GoogleSheetsService Integration', () => {
   });
 
   describe('Service Registration', () => {
-    it('should register GoogleSheetsService', async () => {
+    it('should register GoogleService', async () => {
       await bot.initialize();
       const googleService = bot.getService('google');
       expect(googleService).toBeDefined();
-      expect((googleService as any).constructor.name).toBe('GoogleSheetsService');
+      expect(googleService).toBeInstanceOf(GoogleService);
     });
 
     it('should have required methods', async () => {
