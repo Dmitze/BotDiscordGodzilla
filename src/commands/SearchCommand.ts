@@ -1240,21 +1240,7 @@ export class SearchCommand extends BaseCommand {
     };
   }
 
-  /**
-   * Get document type name by sheet name
-   */
-  private getDocumentTypeName(sheetName: string): string {
-    const typeMap: Record<string, string> = {
-      'orders': 'Накази',
-      'reports': 'Звіти',
-      'documents': 'Документи',
-      'analytics': 'Аналітика',
-      'statistics': 'Статистика',
-      'default': 'Документ'
-    };
-    
-    return typeMap[sheetName] || typeMap['default'];
-  }
+
 
   // Примітка: керування очищенням/завершенням виконується базовим класом
 }
