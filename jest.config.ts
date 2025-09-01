@@ -18,7 +18,13 @@ const config: Config.InitialOptions = {
         diagnostics: false,
       },
     ],
+    // Handle ES modules in node_modules
+    'node_modules/.*/dist/.*\\.js$': 'babel-jest',
   },
+  transformIgnorePatterns: [
+    // Allow node-google-spreadsheet and ky to be transformed
+    'node_modules/(?!google-spreadsheet|ky)/'
+  ],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
@@ -46,6 +52,7 @@ const config: Config.InitialOptions = {
   verbose: true,
   clearMocks: true,
   restoreMocks: true,
+
   // Allow capping Jest workers via env to reduce load locally/CI
   // Example: $env:JEST_MAX_WORKERS="50%"; npm test
   maxWorkers: process.env['JEST_MAX_WORKERS'] || '50%',
@@ -56,4 +63,4 @@ const config: Config.InitialOptions = {
   ],
 };
 
-export default config; 
+export default config;
