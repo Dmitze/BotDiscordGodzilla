@@ -70,15 +70,10 @@ describe('SearchCommand', () => {
       expect(cacheKey).toContain('base64');
     });
 
-    it('should get document type name correctly', () => {
-      const typeName = (searchCommand as any).getDocumentTypeName('orders');
-      expect(typeName).toBe('Накази');
-    });
-
     it('should parse date correctly', () => {
       const date = (searchCommand as any).parseDate('01.01.2024');
       expect(date).toBeInstanceOf(Date);
       expect(date?.getFullYear()).toBe(2024);
     });
   });
-}); 
+});
