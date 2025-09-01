@@ -22,7 +22,7 @@ import { buildSearchPaginationRows } from '@/ui/components';
 import type { SearchQuery } from '@/search/SearchIndex';
 import { replyWithPrivacy } from '@/ui/reply';
 import { signComponentId } from '@/security/componentId';
-// Deleted module shims: inline local equivalents for types/helpers
+
 interface SearchResult {
   headers?: string[];
   rows?: unknown[][];
@@ -46,7 +46,6 @@ type PaginationState = {
 };
 type PerformSearchWithCache = (params: SearchParams, userId: string) => Promise<SearchResult>;
 
-// --- Local helper implementations replacing deleted modules ---
 type IndexChoice = {
   mode: 'sqlite' | 'legacy';
   services: {
@@ -65,7 +64,6 @@ function parseOptions(
 
 function chooseIndexMode(interaction: any): IndexChoice {
   const container = interaction?.client?.serviceContainer;
-  // Important: call order matches unit tests (google -> cache -> searchIndex)
   const google = container?.get?.('google');
   const cache = container?.get?.('cache');
   const searchIndex = container?.get?.('searchIndex');
@@ -94,7 +92,6 @@ function computePagination(args: { filteredCount: number; limit: number }) {
 // Lightweight session store
 const __searchSessions = new Map<string, { state: PaginationState; createdAt: number }>();
 function bindSessionMap(_map: Map<string, PaginationState>) {
-  // Migrate existing into local store (best-effort)
   for (const [k, v] of _map.entries()) __searchSessions.set(k, { state: v, createdAt: Date.now() });
 }
 function setSession(id: string, state: PaginationState) {
@@ -110,11 +107,10 @@ function cleanupExpired(ttlSec: number) {
   }
 }
 
-// Minimal render function for SQLite hits
 function renderSqliteEmbed(
   interaction: ChatInputCommandInteraction,
   query: string | undefined,
-  _hits: unknown[] | undefined, // Prefix with _ to indicate unused parameter
+  _hits: unknown[] | undefined,
   total: number | undefined,
   limit: number | undefined
 ) {
@@ -137,7 +133,6 @@ function renderSqliteEmbed(
   };
 }
 
-// Cached search wrapper
 function createPerformSearchWithCache(cfg: {
   generateKey: (p: SearchParams) => string;
   cache: Map<string, { result: SearchResult; timestamp: number }>;
@@ -168,7 +163,6 @@ function createPerformSearchWithCache(cfg: {
   };
 }
 
-// Константи для конфігурації пошуку
 const SEARCH_CONFIG = {
   MAX_RESULTS: 50,
   DEFAULT_LIMIT: 20,
@@ -209,7 +203,6 @@ export class SearchCommand extends BaseCommand {
   constructor(config: BotConfig, googleService?: GoogleService) {
     super(
       'пошук',
-      // Опис узгоджено з unit-тестом
       '🔍 Гнучкий пошук по документах',
       config,
       {
