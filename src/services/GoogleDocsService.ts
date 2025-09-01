@@ -27,7 +27,7 @@ export class GoogleDocsService {
   ) {
     this.docsService = new DocsService(metrics);
     this.cacheService = new CacheService(config);
-    this.metrics = metrics ?? undefined;
+    this.metrics = metrics;
   }
 
   /**
@@ -131,7 +131,7 @@ export class GoogleDocsService {
         id: file.id || '',
         name: file.name || '',
         mimeType: file.mimeType || '',
-        modifiedTime: file.modifiedTime,
+        modifiedTime: file.modifiedTime ?? undefined,
         owners: file.owners,
       }));
 
