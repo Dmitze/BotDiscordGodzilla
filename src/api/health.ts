@@ -3,9 +3,9 @@
  * Provides monitoring endpoints for bot services
  */
 
-import type { Bot } from '@/core/ServiceManager';
-import type { HealthStatus } from '@/types';
-import logger from '@/utils/logger';
+import type { Bot } from '@/core/Bot';
+import type { HealthStatus } from '@/types/index';
+import logger from '@/utils/logger/index';
 
 interface HealthCheckResponse {
   status: 'ok' | 'error';
