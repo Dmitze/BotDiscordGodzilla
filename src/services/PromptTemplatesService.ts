@@ -178,7 +178,9 @@ export class PromptTemplatesService {
     const ids = new Set<string>();
     for (const key of this.templates.keys()) {
       const id = key.split(':')[0];
-      ids.add(id);
+      if (id !== undefined) {
+        ids.add(id);
+      }
     }
     return Array.from(ids);
   }
