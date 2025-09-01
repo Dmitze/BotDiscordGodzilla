@@ -1,4 +1,4 @@
-import { google, type docs_v1 } from 'googleapis';
+import { google } from 'googleapis';
 import type { BotConfig } from '@/types';
 import type { MetricsService } from './MetricsService';
 import { DocsService } from './google/DocsService';
@@ -19,7 +19,6 @@ export class GoogleDocsService {
   private cacheService: CacheService;
   private metrics?: MetricsService;
   private searchIndex?: SearchIndex;
-  private embeddingsService?: EmbeddingsProvider;
 
   constructor(
     private readonly config: BotConfig,
@@ -28,7 +27,7 @@ export class GoogleDocsService {
   ) {
     this.docsService = new DocsService(metrics);
     this.cacheService = new CacheService(config);
-    this.metrics = metrics;
+    this.metrics = metrics ?? undefined;
   }
 
   /**
