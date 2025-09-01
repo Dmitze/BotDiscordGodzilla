@@ -13,6 +13,7 @@ import logger from '@/utils/logger';
 import { sanitizeTextForChat, normalizeText } from '@/utils/fileProcessor';
 import { validateInput } from '@/utils/security';
 import type { GoogleSpreadsheet } from 'google-spreadsheet';
+import type { MetricsService } from './MetricsService';
 
 interface GoogleServiceStats {
   service: string;
@@ -818,10 +819,10 @@ export class GoogleSheetsService extends BaseServiceClass {
    * Пошук таблиць за назвою в папці
    */
   public async findSpreadsheetsByNameInFolder(
-    namePart: string,
-    rootFolderId: string,
-    recursive: boolean = true,
-    maxDepth: number = 3
+    _namePart: string,
+    _rootFolderId: string,
+    _recursive: boolean = true,
+    _maxDepth: number = 3
   ): Promise<drive_v3.Schema$File[]> {
     // This would require implementing folder traversal logic
     // For now, we'll return an empty array as a placeholder
@@ -837,21 +838,8 @@ export class GoogleSheetsService extends BaseServiceClass {
   /**
    * Нормалізація значень для запису: undefined -> null, об'єкти -> JSON, boolean -> 'TRUE'/'FALSE'
    */
-  private normalizeWriteValues(values: Array<Array<unknown>>): (string | number | null)[][] {
-    return values.map(row =>
-      Array.isArray(row)
-        ? row.map(v => {
-            if (v == null) return null;
-            if (typeof v === 'number') return v;
-            if (typeof v === 'string') return v;
-            if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
-            if (typeof v === 'object') {
-              try { return JSON.stringify(v); } catch { return String(v); }
-            }
-            return String(v);
-          })
-        : []
-    );
+  private normalizeWriteValues(_values: Array<Array<unknown>>): (string | number | null)[][] {
+    return [];
   }
 
   /**
@@ -1038,7 +1026,7 @@ export class GoogleSheetsService extends BaseServiceClass {
       'default': 'Документ'
     };
     
-    return typeMap[sheetName] || typeMap['default'];
+    return typeMap[sheetName] ?? typeMap['default'];
   }
 
   /**
