@@ -89,7 +89,7 @@ describe('GoogleSheetsService Integration', () => {
       await bot.initialize();
       const googleService = bot.getService('google');
       expect(googleService).toBeDefined();
-      expect(googleService.constructor.name).toBe('GoogleSheetsService');
+      expect((googleService as any).constructor.name).toBe('GoogleSheetsService');
     });
 
     it('should have required methods', async () => {
