@@ -2,7 +2,7 @@ import { GoogleDocsService } from '../../services/GoogleDocsService';
 import { SqliteSearchIndex } from '../../search/sqlite/SqliteSearchIndex';
 import { HybridRetriever } from '../../rag/HybridRetriever';
 import { PromptTemplatesService } from '../../services/PromptTemplatesService';
-import { mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
