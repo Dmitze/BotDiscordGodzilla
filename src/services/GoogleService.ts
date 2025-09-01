@@ -110,6 +110,136 @@ export class GoogleService extends BaseServiceClass {
   }
 
   /**
+   * Отримання даних з Google Sheets
+   */
+  public async getSheetData(
+    spreadsheetId: string,
+    range: string,
+    options: GoogleServiceOptions = {}
+  ): Promise<SheetData> {
+    const { useCache = true, cacheTTL = 300, forceRefresh = false } = options;
+
+    try {
+      const normRange = this.getSheetsService().normalizeRange(range);
+      // Перевірка кешу
+      if (useCache && !forceRefresh) {
+        const cacheKey = `sheets:${spreadsheetId}:${normRange}`;
+        try {
+          const cached = await this.cacheService.get<SheetData>(cacheKey);
+          if (cached) {
+            this.stats.cacheHits++;
+            logger.debug('✅ Використано кешовані дані Sheets', {
+              type: 'system',
+              event: 'cache_hit',
+              component: 'GoogleService',
+              spreadsheetId: spreadsheetId.substring(0, 10) + '...',
+              range: normRange,
+              rowsCount: cached.values.length,
+            });
+            return cached;
+          } else {
+            this.stats.cacheMisses++;
+          }
+        } catch (cacheError) {
+          if (cacheError instanceof Error) {
+            logger.warn('⚠️ Помилка читання з кешу Sheets', {
+              type: 'system',
+              event: 'cache_read_failed',
+              component: 'CacheService',
+              errorName: cacheError.name,
+              errorMessage: cacheError.message,
+              stack: cacheError.stack,
+            });
+          } else {
+            logger.warn('⚠️ Помилка читання з кешу Sheets', {
+              type: 'system',
+              event: 'cache_read_failed',
+              component: 'CacheService',
+              errorMessage: String(cacheError),
+            });
+          }
+          this.stats.cacheMisses++;
+        }
+      }
+
+      const result = await this.executeWithRetry(async () => {
+        if (!this.sheets) throw new Error('Sheets API не ініціалізовано');
+
+        const response = await this.sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: normRange,
+        });
+
+        // Унифицированная нормализация через SheetsService
+        return this.getSheetsService().toSheetDataFromGet(response.data, normRange);
+      }, 'sheets', undefined, 'sheets.spreadsheets.values.get');
+
+      // Збереження в кеш
+      if (useCache) {
+        const cacheKey = `sheets:${spreadsheetId}:${normRange}`;
+        try {
+          // CacheService expects TTL in seconds; do not convert to ms
+          await this.cacheService.set(cacheKey, result, cacheTTL);
+          logger.debug('💾 Дані Sheets збережено в кеш', {
+            type: 'system',
+            event: 'cache_write',
+            component: 'GoogleService',
+            spreadsheetId: spreadsheetId.substring(0, 10) + '...',
+            range: normRange,
+            rowsCount: result.values.length,
+            ttl: `${cacheTTL}s`,
+          });
+        } catch (cacheError) {
+          if (cacheError instanceof Error) {
+            logger.warn('⚠️ Помилка збереження в кеш Sheets', {
+              type: 'system',
+              event: 'cache_write_failed',
+              component: 'CacheService',
+              errorName: cacheError.name,
+              errorMessage: cacheError.message,
+              stack: cacheError.stack,
+            });
+          } else {
+            logger.warn('⚠️ Помилка збереження в кеш Sheets', {
+              type: 'system',
+              event: 'cache_write_failed',
+              component: 'CacheService',
+              errorMessage: String(cacheError),
+            });
+          }
+        }
+      }
+
+      return result;
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error('❌ Помилка отримання даних з Sheets', {
+          type: 'api_error',
+          event: 'sheets_get_failed',
+          component: 'GoogleService',
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+          service: 'sheets',
+          spreadsheetId,
+          range,
+        });
+      } else {
+        logger.error('❌ Помилка отримання даних з Sheets', {
+          type: 'api_error',
+          event: 'sheets_get_failed',
+          component: 'GoogleService',
+          service: 'sheets',
+          spreadsheetId,
+          range,
+          errorMessage: String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Универсальная конвертация ответа Google API (stream/arraybuffer/Buffer) в Buffer
    */
   private async dataToBuffer(data: unknown): Promise<Buffer> {
@@ -1846,16 +1976,6 @@ export class GoogleService extends BaseServiceClass {
       return false;
     }
   }
-          type: 'system',
-          event: 'connection_pool_init_failed',
-          component: 'GoogleService',
-          service: 'google',
-          errorMessage: String(error),
-        });
-      }
-      throw error;
-    }
-  }
 
   /**
    * Виконання запиту з повторною спробою
@@ -1936,14 +2056,6 @@ export class GoogleService extends BaseServiceClass {
 
     while (apiInfo.inUse) {
       await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-          event: 'connection_pool_init_failed',
-          component: 'GoogleService',
-          errorMessage: String(error),
-        });
-      }
-      throw error;
     }
   }
 
