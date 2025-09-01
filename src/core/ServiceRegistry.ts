@@ -1,77 +1,74 @@
 import type { AIService } from '@/services/AIService';
 import type { GoogleService } from '@/services/GoogleService';
 import type { CacheService } from '@/services/CacheService';
-import type { MemoryCacheService } from '@/services/MemoryCacheService';
 import type { MetricsService } from '@/services/MetricsService';
-import type SchedulerService from '@/services/SchedulerService';
-import type { SheetsContextService } from '@/services/SheetsContextService';
-import type { DriveIndexerService } from '@/services/DriveIndexerService';
-import type { DriveChangesService } from '@/services/DriveChangesService';
-import type { WorkspaceDbService } from '@/services/WorkspaceDbService';
-import type { RagService } from '@/services/RagService';
-import type { EmbeddingsService } from '@/services/EmbeddingsService';
+import type { SchedulerService } from '@/services/SchedulerService';
 import type { SearchIndex } from '@/search/SearchIndex';
+import type { RagService } from '@/services/RagService';
+import type { DriveIndexerService } from '@/services/DriveIndexerService';
+import type { EmbeddingsService } from '@/services/EmbeddingsService';
+import type { ResponseCacheService } from '@/services/ResponseCacheService';
+import type { DocumentAnalysisService } from '@/services/DocumentAnalysisService';
 import type { AdvancedDocumentAnalyzer } from '@/services/AdvancedDocumentAnalyzer';
 import type { IntelligentWorkflowOrchestrator } from '@/services/IntelligentWorkflowOrchestrator';
 import type { SmartSearchEngine } from '@/services/SmartSearchEngine';
-import type { WorkflowAutomationEngine } from '@/services/WorkflowAutomationEngine';
 import type { EnhancedDocumentService } from '@/services/EnhancedDocumentService';
+import type { WorkflowAutomationEngine } from '@/services/WorkflowAutomationEngine';
 import type { ContextMemoryService } from '@/services/ContextMemoryService';
-import type { ResponseCacheService } from '@/services/ResponseCacheService';
 import type { KnowledgeBaseService } from '@/services/KnowledgeBaseService';
 import type { EnhancedRagService } from '@/services/EnhancedRagService';
-import type { DocumentAnalysisService } from '@/services/DocumentAnalysisService';
+import type { MultimodalRagService } from '@/services/MultimodalRagService';
+import type { HybridSearchService } from '@/services/HybridSearchService';
 
-// Union of all service keys managed by ServiceManager
+/**
+ * Union type of all valid service keys
+ */
 export type ServiceKey =
   | 'ai'
   | 'google'
   | 'cache'
   | 'metrics'
   | 'scheduler'
-  | 'sheetsContext'
-  | 'driveChanges'
-  | 'driveIndexer'
-  | 'workspace'
   | 'searchIndex'
-  | 'embeddings'
   | 'rag'
+  | 'driveIndexer'
+  | 'embeddings'
+  | 'responseCache'
+  | 'documentAnalysis'
   | 'documentAnalyzer'
   | 'workflowOrchestrator'
   | 'smartSearch'
-  | 'workflowEngine'
   | 'enhancedDocumentService'
+  | 'workflowEngine'
   | 'contextMemory'
-  | 'responseCache'
   | 'knowledgeBase'
   | 'enhancedRag'
-  | 'documentAnalysis';
+  | 'multimodalRag'
+  | 'hybridSearch';
 
-// Registry types mapping keys to concrete instances
+/**
+ * Registry mapping service keys to their respective types
+ */
 export interface ServiceRegistry {
   ai: AIService;
   google: GoogleService;
-  cache: CacheService | MemoryCacheService;
-  metrics?: MetricsService; // optional based on config
+  cache: CacheService;
+  metrics: MetricsService;
   scheduler: SchedulerService;
-  sheetsContext: SheetsContextService;
-  driveChanges: DriveChangesService;
-  driveIndexer: DriveIndexerService;
-  workspace?: WorkspaceDbService; // optional if initialization failed
   searchIndex: SearchIndex;
-  embeddings?: EmbeddingsService; // optional
-  rag?: RagService; // optional if AI missing
-  documentAnalyzer?: AdvancedDocumentAnalyzer; // optional if AI or Google missing
-  workflowOrchestrator?: IntelligentWorkflowOrchestrator; // optional if dependencies missing
-  smartSearch?: SmartSearchEngine; // optional if dependencies missing
-  workflowEngine?: WorkflowAutomationEngine; // optional if dependencies missing
-  enhancedDocumentService?: EnhancedDocumentService; // optional if dependencies missing
-  contextMemory?: ContextMemoryService; // optional service for user context
-  responseCache?: ResponseCacheService; // optional caching service
-  knowledgeBase?: KnowledgeBaseService; // optional if dependencies missing
-  enhancedRag?: EnhancedRagService; // enhanced RAG with auto-indexing
-  documentAnalysis?: DocumentAnalysisService; // document analysis service
+  rag: RagService;
+  driveIndexer: DriveIndexerService;
+  embeddings: EmbeddingsService;
+  responseCache: ResponseCacheService;
+  documentAnalysis: DocumentAnalysisService;
+  documentAnalyzer: AdvancedDocumentAnalyzer;
+  workflowOrchestrator: IntelligentWorkflowOrchestrator;
+  smartSearch: SmartSearchEngine;
+  enhancedDocumentService: EnhancedDocumentService;
+  workflowEngine: WorkflowAutomationEngine;
+  contextMemory: ContextMemoryService;
+  knowledgeBase: KnowledgeBaseService;
+  enhancedRag: EnhancedRagService;
+  multimodalRag: MultimodalRagService;
+  hybridSearch: HybridSearchService;
 }
-
-// Helper for DI resolve generics
-export type ResolveService = <K extends ServiceKey>(name: K) => ServiceRegistry[K] | undefined;
