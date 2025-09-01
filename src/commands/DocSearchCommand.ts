@@ -324,6 +324,6 @@ export class DocSearchCommand extends BaseCommand {
           .setMaxValue(20)
           .setRequired(false)
       )
-      .setDMPermission(false);
+      .setDMPermission(false) as unknown as Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'>;
   }
 }
