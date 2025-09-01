@@ -333,10 +333,5 @@ OPENAI_API_KEY=your_openai_api_key
 
 **© 2025 Dmitry Shivachov (Dmitze). Всі права захищені.** 
 
-```
 
-```
 
-```
-
-```

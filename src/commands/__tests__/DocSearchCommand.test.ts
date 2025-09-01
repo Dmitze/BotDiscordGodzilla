@@ -1,5 +1,6 @@
 import { DocSearchCommand } from '../DocSearchCommand';
-import { CommandInteraction, Client, ChatInputCommandInteraction } from 'discord.js';
+// Remove unused imports
+// import { CommandInteraction, Client, ChatInputCommandInteraction } from 'discord.js';
 
 // Моки для Discord.js
 jest.mock('discord.js', () => {
@@ -60,13 +61,13 @@ describe('DocSearchCommand', () => {
 
   describe('getName', () => {
     it('should return the correct command name', () => {
-      expect(docSearchCommand.name).toBe('doc-search');
+      expect(docSearchCommand.getName()).toBe('doc-search');
     });
   });
 
   describe('getDescription', () => {
     it('should return the correct command description', () => {
-      expect(docSearchCommand.description).toBe('Пошук в завантажених Google Docs документах');
+      expect(docSearchCommand.getDescription()).toBe('Пошук в завантажених Google Docs документах');
     });
   });
 

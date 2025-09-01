@@ -1,13 +1,12 @@
 import {
   SlashCommandBuilder,
-  ChatInputCommandInteraction,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
 } from 'discord.js';
-import { BaseCommand } from './BaseCommand';
-import { t, tUser } from '@/i18n';
+import { BaseCommand, CommandExecuteOptions } from './BaseCommand';
+import { tUser } from '@/i18n';
 import logger from '@/utils/logger';
 import { signComponentId } from '@/security/componentId';
 
@@ -16,11 +15,17 @@ import { signComponentId } from '@/security/componentId';
  * Дозволяє користувачам завантажувати документи для подальшого пошуку та аналізу
  */
 export class DocLoadCommand extends BaseCommand {
-  public readonly name = 'doc-load';
-  public readonly description = 'Завантажити та проіндексувати Google Docs документ';
-  public readonly category = 'documents';
+  constructor(config: any) {
+    super(
+      'doc-load',
+      'Завантажити та проіндексувати Google Docs документ',
+      config,
+      { category: 'documents' }
+    );
+  }
 
-  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+  protected override async onExecute(options: CommandExecuteOptions): Promise<void> {
+    const interaction = options.interaction;
     try {
       // Відкладена відповідь, оскільки операція може бути тривалою
       await interaction.deferReply({ ephemeral: true });
@@ -34,7 +39,7 @@ export class DocLoadCommand extends BaseCommand {
         event: 'doc_load_start',
         component: 'DocLoadCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? 'unknown',
         documentUrl,
         folderId,
       });
@@ -50,7 +55,7 @@ export class DocLoadCommand extends BaseCommand {
       }
 
       // Отримання сервісу Google Docs
-      const googleService = this.container.get('google');
+      const googleService = (this as any).container.get('google');
       if (!googleService) {
         throw new Error('Сервіс Google не доступний');
       }
@@ -184,7 +189,7 @@ export class DocLoadCommand extends BaseCommand {
         event: 'doc_load_success',
         component: 'DocLoadCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? 'unknown',
         documentId,
         wordCount: indexResult.wordCount,
         duration: Date.now() - interaction.createdTimestamp,
@@ -195,7 +200,7 @@ export class DocLoadCommand extends BaseCommand {
         event: 'doc_load_failed',
         component: 'DocLoadCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? 'unknown',
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
@@ -262,21 +267,21 @@ export class DocLoadCommand extends BaseCommand {
    * Реєстрація слеш-команди
    */
   public register(): Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'> {
-    return new SlashCommandBuilder()
+    const builder = new SlashCommandBuilder()
       .setName(this.name)
       .setDescription(this.description)
       .setDescriptionLocalizations({
         uk: 'Завантажити та проіндексувати Google Docs документ',
-        en: 'Load and index Google Docs document',
-      })
+        'en-US': 'Load and index Google Docs document',
+      } as any)
       .addStringOption(option =>
         option
           .setName('document_url')
           .setDescription('URL Google Docs документа')
           .setDescriptionLocalizations({
             uk: 'URL Google Docs документа',
-            en: 'Google Docs document URL',
-          })
+            'en-US': 'Google Docs document URL',
+          } as any)
           .setRequired(true)
       )
       .addStringOption(option =>
@@ -285,10 +290,12 @@ export class DocLoadCommand extends BaseCommand {
           .setDescription('ID папки Google Drive (опціонально)')
           .setDescriptionLocalizations({
             uk: 'ID папки Google Drive (опціонально)',
-            en: 'Google Drive folder ID (optional)',
-          })
+            'en-US': 'Google Drive folder ID (optional)',
+          } as any)
           .setRequired(false)
       )
       .setDMPermission(false);
+    
+    return builder as Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'>;
   }
 }

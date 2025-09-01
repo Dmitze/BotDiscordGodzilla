@@ -1,13 +1,12 @@
 import {
   SlashCommandBuilder,
-  ChatInputCommandInteraction,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
 } from 'discord.js';
-import { BaseCommand } from './BaseCommand';
-import { t, tUser } from '@/i18n';
+import { BaseCommand, CommandExecuteOptions } from './BaseCommand';
+import { tUser } from '@/i18n';
 import logger from '@/utils/logger';
 import { signComponentId } from '@/security/componentId';
 
@@ -16,11 +15,17 @@ import { signComponentId } from '@/security/componentId';
  * Дозволяє користувачам шукати інформацію в завантажених документах
  */
 export class DocSearchCommand extends BaseCommand {
-  public readonly name = 'doc-search';
-  public readonly description = 'Пошук в завантажених Google Docs документах';
-  public readonly category = 'documents';
+  constructor(config: any) {
+    super(
+      'doc-search',
+      'Пошук в завантажених Google Docs документах',
+      config,
+      { category: 'documents' }
+    );
+  }
 
-  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+  protected override async onExecute(options: CommandExecuteOptions): Promise<void> {
+    const interaction = options.interaction;
     try {
       // Відкладена відповідь, оскільки операція може бути тривалою
       await interaction.deferReply();
@@ -35,14 +40,14 @@ export class DocSearchCommand extends BaseCommand {
         event: 'doc_search_start',
         component: 'DocSearchCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? 'unknown',
         query,
         documentId,
         limit,
       });
 
       // Отримання сервісу Google Docs
-      const googleService = this.container.get('google');
+      const googleService = (this as any).container.get('google');
       if (!googleService) {
         throw new Error('Сервіс Google не доступний');
       }
@@ -82,7 +87,7 @@ export class DocSearchCommand extends BaseCommand {
         event: 'doc_search_failed',
         component: 'DocSearchCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? 'unknown',
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
@@ -113,7 +118,7 @@ export class DocSearchCommand extends BaseCommand {
    * Пошук в конкретному документі
    */
   private async searchInSpecificDocument(
-    interaction: ChatInputCommandInteraction,
+    interaction: any,
     googleDocsService: any,
     documentId: string,
     query: string,
@@ -121,7 +126,7 @@ export class DocSearchCommand extends BaseCommand {
   ): Promise<void> {
     try {
       // Отримання метаданих документа для відображення
-      const googleService = this.container.get('google');
+      const googleService = (this as any).container.get('google');
       let docMetadata;
       try {
         docMetadata = await googleService.getDriveFileMetadata(documentId);
@@ -244,7 +249,7 @@ export class DocSearchCommand extends BaseCommand {
         event: 'doc_search_success',
         component: 'DocSearchCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? 'unknown',
         documentId,
         query,
         resultsCount: limitedResults.length,
@@ -285,16 +290,16 @@ export class DocSearchCommand extends BaseCommand {
       .setDescription(this.description)
       .setDescriptionLocalizations({
         uk: 'Пошук в завантажених Google Docs документах',
-        en: 'Search in loaded Google Docs documents',
-      })
+        'en-US': 'Search in loaded Google Docs documents',
+      } as any)
       .addStringOption(option =>
         option
           .setName('query')
           .setDescription('Пошуковий запит')
           .setDescriptionLocalizations({
             uk: 'Пошуковий запит',
-            en: 'Search query',
-          })
+            'en-US': 'Search query',
+          } as any)
           .setRequired(true)
       )
       .addStringOption(option =>
@@ -303,8 +308,8 @@ export class DocSearchCommand extends BaseCommand {
           .setDescription('ID документа (опціонально, для пошуку в конкретному документі)')
           .setDescriptionLocalizations({
             uk: 'ID документа (опціонально, для пошуку в конкретному документі)',
-            en: 'Document ID (optional, for search in specific document)',
-          })
+            'en-US': 'Document ID (optional, for search in specific document)',
+          } as any)
           .setRequired(false)
       )
       .addIntegerOption(option =>
@@ -313,8 +318,8 @@ export class DocSearchCommand extends BaseCommand {
           .setDescription('Максимальна кількість результатів (за замовчуванням: 5)')
           .setDescriptionLocalizations({
             uk: 'Максимальна кількість результатів (за замовчуванням: 5)',
-            en: 'Maximum number of results (default: 5)',
-          })
+            'en-US': 'Maximum number of results (default: 5)',
+          } as any)
           .setMinValue(1)
           .setMaxValue(20)
           .setRequired(false)

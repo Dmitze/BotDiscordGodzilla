@@ -1,13 +1,12 @@
 import {
   SlashCommandBuilder,
-  ChatInputCommandInteraction,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
 } from 'discord.js';
-import { BaseCommand } from './BaseCommand';
-import { t, tUser } from '@/i18n';
+import { BaseCommand, CommandExecuteOptions } from './BaseCommand';
+import { tUser } from '@/i18n';
 import logger from '@/utils/logger';
 import { signComponentId } from '@/security/componentId';
 
@@ -16,11 +15,17 @@ import { signComponentId } from '@/security/componentId';
  * Дозволяє користувачам отримати коротке резюме документа
  */
 export class DocSummaryCommand extends BaseCommand {
-  public readonly name = 'doc-summary';
-  public readonly description = 'Згенерувати резюме Google Docs документа';
-  public readonly category = 'documents';
+  constructor(config: any) {
+    super(
+      'doc-summary',
+      'Згенерувати резюме Google Docs документа',
+      config,
+      { category: 'documents' }
+    );
+  }
 
-  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+  protected override async onExecute(options: CommandExecuteOptions): Promise<void> {
+    const interaction = options.interaction;
     try {
       // Відкладена відповідь, оскільки операція може бути тривалою
       await interaction.deferReply();
@@ -33,12 +38,12 @@ export class DocSummaryCommand extends BaseCommand {
         event: 'doc_summary_start',
         component: 'DocSummaryCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? 'unknown',
         documentId,
       });
 
       // Отримання сервісу Google Docs
-      const googleService = this.container.get('google');
+      const googleService = (this as any).container.get('google');
       if (!googleService) {
         throw new Error('Сервіс Google не доступний');
       }
@@ -120,7 +125,7 @@ export class DocSummaryCommand extends BaseCommand {
       if (summaryResult.keyPoints.length > 0) {
         const keyPointsText = summaryResult.keyPoints
           .slice(0, 10) // Обмежуємо 10 ключовими точками
-          .map((point, index) => `${index + 1}. ${this.truncateText(point, 100)}`)
+          .map((point: string, index: number) => `${index + 1}. ${this.truncateText(point, 100)}`)
           .join('\n');
         
         mainEmbed.addFields({
@@ -171,7 +176,7 @@ export class DocSummaryCommand extends BaseCommand {
         event: 'doc_summary_success',
         component: 'DocSummaryCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? 'unknown',
         documentId,
         wordCount: summaryResult.wordCount,
         readingTime: summaryResult.readingTimeMinutes,
@@ -184,7 +189,7 @@ export class DocSummaryCommand extends BaseCommand {
         event: 'doc_summary_failed',
         component: 'DocSummaryCommand',
         userId: interaction.user.id,
-        guildId: interaction.guildId,
+        guildId: interaction.guildId ?? 'unknown',
         documentId: interaction.options.getString('document_id'),
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -232,16 +237,16 @@ export class DocSummaryCommand extends BaseCommand {
       .setDescription(this.description)
       .setDescriptionLocalizations({
         uk: 'Згенерувати резюме Google Docs документа',
-        en: 'Generate summary of Google Docs document',
-      })
+        'en-US': 'Generate summary of Google Docs document',
+      } as any)
       .addStringOption(option =>
         option
           .setName('document_id')
           .setDescription('ID Google Docs документа')
           .setDescriptionLocalizations({
             uk: 'ID Google Docs документа',
-            en: 'Google Docs document ID',
-          })
+            'en-US': 'Google Docs document ID',
+          } as any)
           .setRequired(true)
       )
       .setDMPermission(false);

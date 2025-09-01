@@ -378,15 +378,15 @@ export class GoogleDocsService {
             fileId: chunkId,
             name: `${docContent.title} (частина ${i + 1})`,
             mimeType: 'application/vnd.google-apps.document.chunk',
-            text: chunk.text,
+            text: chunk?.text ?? '',
             tags: ['google-docs', 'chunk'],
             meta: {
               originalDocumentId: documentId,
               originalDocumentName: docContent.title,
               chunkIndex: i,
-              chunkStart: chunk.start,
-              chunkEnd: chunk.end,
-              chunkTokenCount: chunk.tokenCount,
+              chunkStart: chunk?.start ?? 0,
+              chunkEnd: chunk?.end ?? 0,
+              chunkTokenCount: chunk?.tokenCount ?? 0,
             },
             language: 'uk', // Оскільки це український бот
           };
@@ -528,8 +528,8 @@ export class GoogleDocsService {
           blockType = 'list-item';
         } else if (block.kind === 'table') {
           // Для таблиць об'єднуємо вміст всіх комірок
-          content = block.rows.map(row => 
-            row.cells.map(cell => cell.text).join(' ')
+          content = block.rows.map((row: any) =>
+            row.cells.map((cell: any) => cell.text).join(' ')
           ).join(' ');
           blockType = 'table';
         } else if (block.kind === 'footnote') {

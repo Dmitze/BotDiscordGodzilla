@@ -1,5 +1,4 @@
 import { DocLoadCommand } from '../DocLoadCommand';
-import { CommandInteraction, Client, ChatInputCommandInteraction } from 'discord.js';
 
 // Моки для Discord.js
 jest.mock('discord.js', () => {

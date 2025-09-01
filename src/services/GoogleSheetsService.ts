@@ -4,12 +4,9 @@
  */
 
 import { google } from 'googleapis';
-import type { drive_v3, sheets_v4 } from 'googleapis';
-import type { DocBlock } from '@/types/docs';
-import type { MetricsService } from './MetricsService';
+import type { drive_v3 } from 'googleapis';
+import type { BotConfig, SheetData } from '@/types';
 import { createHash } from 'crypto';
-import type { BotConfig, SheetData, BatchSheetData } from '@/types';
-import type { DriveListQuery, DriveListResult, DriveFile } from '@/types/drive';
 import { BaseService as BaseServiceClass } from '@/core/BaseService';
 import { CacheService } from './CacheService';
 import logger from '@/utils/logger';
@@ -615,7 +612,7 @@ export class GoogleSheetsService extends BaseServiceClass {
       await doc.loadInfo();
       
       // Parse range to get sheet name and cell range
-      const [sheetName, cellRange] = this.parseRange(normRange);
+      const [sheetName] = this.parseRange(normRange);
       const sheet = doc.sheetsByTitle[sheetName] || (doc.sheetsByIndex.length > 0 ? doc.sheetsByIndex[0] : null);
       
       if (!sheet) {
