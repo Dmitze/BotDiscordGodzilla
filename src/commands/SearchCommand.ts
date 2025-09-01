@@ -9,7 +9,6 @@ import type {
   ActionRowBuilder,
   ButtonBuilder,
   ChatInputCommandInteraction,
-  MessageActionRowComponentBuilder
 } from 'discord.js';
 import {
   EmbedBuilder
@@ -18,12 +17,13 @@ import type { BotConfig, SheetData, SearchParams } from '@/types';
 import { BaseCommand, type CommandExecuteOptions } from './BaseCommand';
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
-import type { GoogleService } from '@/services/GoogleService';
+import { GoogleService } from '@/services/GoogleService/index';
 import { t, tUser } from '@/i18n';
 import { buildSearchPaginationRows } from '@/ui/components';
 import type { SearchQuery } from '@/search/SearchIndex';
 import { replyWithPrivacy } from '@/ui/reply';
 import { signComponentId } from '@/security/componentId';
+import CommandMetricsCollector from './modules/CommandMetrics';
 
 interface SearchResult {
   headers?: string[];
@@ -64,13 +64,6 @@ type IndexChoice = {
   };
 };
 
-function parseOptions(
-  interaction: ChatInputCommandInteraction,
-  extractor: (i: ChatInputCommandInteraction) => Promise<SearchParams>
-): Promise<SearchParams> {
-  return extractor(interaction);
-}
-
 function chooseIndexMode(interaction: any): IndexChoice {
   const container = interaction?.client?.serviceContainer;
   // Important: call order matches unit tests (google -> cache -> searchIndex)
@@ -81,16 +74,6 @@ function chooseIndexMode(interaction: any): IndexChoice {
     return { mode: 'sqlite', services: { searchIndex, cache } };
   }
   return { mode: 'legacy', services: { google, cache } };
-}
-
-async function runSearchSqlite(args: { searchIndex: { search: (q: SearchQuery) => Promise<any> }; params: SearchParams }) {
-  const { searchIndex, params } = args;
-  const q: SearchQuery = {
-    text: String(params.query ?? ''),
-    limit: Math.max(1, Math.min(params.limit ?? 10, 100)),
-    filters: (params as any).filters ?? {},
-  } as any;
-  return searchIndex.search(q);
 }
 
 function computePagination(args: { filteredCount: number; limit: number }) {
@@ -116,33 +99,6 @@ function cleanupExpired(ttlSec: number) {
   for (const [k, v] of __searchSessions.entries()) {
     if (now - v.createdAt > ttlSec * 1000) __searchSessions.delete(k);
   }
-}
-
-// Minimal render function for SQLite hits
-function renderSqliteEmbed(
-  interaction: ChatInputCommandInteraction,
-  query: string | undefined,
-  _hits: unknown[] | undefined, // Prefix with _ to indicate unused parameter
-  total: number | undefined,
-  limit: number | undefined
-) {
-  const safeTotal = total ?? 0;
-  const safeLimit = Math.max(1, limit ?? 10);
-  const totalPages = Math.max(1, Math.ceil(safeTotal / safeLimit));
-  
-  return {
-    embeds: [
-      new EmbedBuilder()
-        .setTitle(tUser('search.sqlite.title', interaction, { total: safeTotal }))
-        .setDescription(tUser('search.sqlite.desc', interaction, { query: query ?? '' }))
-        .setFooter({ 
-          text: tUser('search.pagination.footer', interaction, { 
-            page: 1, 
-            pages: totalPages 
-          }) 
-        })
-    ]
-  };
 }
 
 // Cached search wrapper
@@ -192,10 +148,10 @@ const SEARCH_CONFIG = {
 export class SearchCommand extends BaseCommand {
   private static sessions: Map<string, PaginationState> = new Map();
   private static readonly SESSION_TTL_SEC = 10 * 60; // 10 хвилин
-  private paginationStates = new Map<string, PaginationState>();
   private searchCache = new Map<string, { result: SearchResult; timestamp: number }>();
   private readonly googleService: GoogleService | undefined;
   private performSearchWithCacheFn: PerformSearchWithCache;
+  private metrics: CommandMetricsCollector;
   private searchStats: {
     totalSearches: number;
     cacheHits: number;
@@ -317,6 +273,9 @@ export class SearchCommand extends BaseCommand {
     );
     if (googleService) this.googleService = googleService;
 
+    // Initialize metrics collector
+    this.metrics = new CommandMetricsCollector();
+
     // Ensure background cleanup for stale sessions
     const self = SearchCommand as unknown as { _cleanup?: NodeJS.Timer };
     if (!self._cleanup) {
@@ -405,8 +364,8 @@ export class SearchCommand extends BaseCommand {
       guildId,
       channelId: interaction.channelId,
     };
-    const commandTimer = logger.startTimer();
-    commandTimer.log(t('search.log.start'), baseMeta);
+    const commandTimer = logger.startStructuredTimer('search_command', baseMeta);
+    logger.info(t('search.log.start'), baseMeta);
 
     try {
       // Перевіряємо стан інтеракції перед defer
@@ -447,8 +406,7 @@ export class SearchCommand extends BaseCommand {
       }, t('search.log.success'));
 
       try {
-        if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
-        else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
+        this.metrics.recordExecution('пошук', interaction.user.id, duration, true, {});
       } catch {}
 
       await this.finalizeWithPagination(interaction, searchResult, searchParams);
@@ -462,8 +420,7 @@ export class SearchCommand extends BaseCommand {
         durationMs: Math.round(duration),
       }, t('search.log.error'));
       try {
-        if (metrics?.measureCommandDurationLabeled) metrics.measureCommandDurationLabeled('пошук', guildId ?? null, duration);
-        else if (metrics?.measureCommandDuration) metrics.measureCommandDuration('пошук', duration);
+        this.metrics.recordExecution('пошук', interaction.user.id, duration, false, { error: error instanceof Error ? error.message : String(error) });
       } catch {}
 
       await this.handleSearchError(interaction, error);
@@ -545,13 +502,14 @@ export class SearchCommand extends BaseCommand {
 
       googleService.getSheetData(
         this.config.google.spreadsheetId,
-        `${this.config.google.sheetName}!A1:Z1000`
+        `${this.config.google.sheetName}!A1:Z1000`,
+        { useCache: true, cacheTTL: 300 }
       )
-        .then(result => {
+        .then((result: SheetData) => {
           clearTimeout(timeout);
           resolve(result);
         })
-        .catch(error => {
+        .catch((error: unknown) => {
           clearTimeout(timeout);
           reject(error);
         });
@@ -1142,5 +1100,12 @@ export class SearchCommand extends BaseCommand {
         error: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  /**
+   * Логування подій безпеки
+   */
+  private logSecurityEvent(event: string, details: Record<string, unknown>): void {
+    logger.security(event, (details as any).userId || 'unknown', details);
   }
 }
