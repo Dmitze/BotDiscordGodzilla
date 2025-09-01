@@ -1,7 +1,7 @@
 import { GoogleDocsService } from '../GoogleDocsService';
 import type { BotConfig } from '@/types';
 import { SqliteSearchIndex } from '@/search/sqlite/SqliteSearchIndex';
-import { mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
