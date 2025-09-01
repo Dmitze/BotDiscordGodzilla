@@ -485,6 +485,74 @@ class ServiceManager {
         errorMessage: er instanceof Error ? er.message : String(er),
       });
     }
+
+    // Multimodal RAG Service (depends on AI + Google + RAG + Embeddings services)
+    try {
+      const aiSvc = this.services.get('ai');
+      const googleSvc = this.services.get('google');
+      const ragSvc = this.services.get('rag');
+      const embeddingsSvc = this.services.get('embeddings');
+      const searchIndex = this.services.get('searchIndex');
+      if (aiSvc && googleSvc && ragSvc && embeddingsSvc && searchIndex) {
+        const { MultimodalRagService } = await import('@/services/MultimodalRagService');
+        const multimodalRag = new MultimodalRagService(
+          searchIndex as any,
+          aiSvc as any,
+          {
+            enableOcr: true,
+            ocrProvider: 'vision',
+            enableImageSearch: true,
+            maxImageFileSize: 10 * 1024 * 1024 // 10MB
+          },
+          embeddingsSvc as any
+        );
+        this.services.set('multimodalRag', multimodalRag as unknown as NonNullable<ServiceRegistry['multimodalRag']>);
+        logger.info('🖼️ MultimodalRagService зареєстровано', {
+          type: 'service_manager',
+          event: 'multimodal_rag_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('MultimodalRagService не зареєстровано: AI, Google, RAG або Embeddings service недоступний');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити MultimodalRagService', {
+        type: 'service_manager',
+        event: 'multimodal_rag_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Hybrid Search Service (depends on SearchIndex + AI + (optional) Embeddings services)
+    try {
+      const searchIndex = this.services.get('searchIndex');
+      const aiSvc = this.services.get('ai');
+      const embeddingsSvc = this.services.get('embeddings');
+      if (searchIndex && aiSvc) {
+        const { HybridSearchService } = await import('@/services/HybridSearchService');
+        const hybridSearch = new HybridSearchService(
+          searchIndex as any,
+          aiSvc as any,
+          embeddingsSvc as any
+        );
+        this.services.set('hybridSearch', hybridSearch as unknown as NonNullable<ServiceRegistry['hybridSearch']>);
+        logger.info('🔍 HybridSearchService зареєстровано', {
+          type: 'service_manager',
+          event: 'hybrid_search_registered',
+          component: 'ServiceManager',
+        });
+      } else {
+        logger.warn('HybridSearchService не зареєстровано: SearchIndex або AI service недоступний');
+      }
+    } catch (er) {
+      logger.error('❌ Не вдалося створити HybridSearchService', {
+        type: 'service_manager',
+        event: 'hybrid_search_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
   }
 
   /**
@@ -562,6 +630,11 @@ class ServiceManager {
           const embeddingsService = this.services.get('embeddings');
           if (aiService && googleService && ragService && embeddingsService && (service as any).initializeServices) {
             (service as any).initializeServices(aiService, googleService, ragService, embeddingsService);
+          }
+        } else if (name === 'multimodalRag') {
+          const googleService = this.services.get('google');
+          if (googleService && (service as any).setGoogleService) {
+            (service as any).setGoogleService(googleService);
           }
         }
 
