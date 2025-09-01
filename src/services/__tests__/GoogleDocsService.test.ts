@@ -1,5 +1,4 @@
 import { GoogleDocsService } from '../GoogleDocsService';
-import { DocsService } from '../google/DocsService';
 import { google } from 'googleapis';
 
 // Моки для залежностей
@@ -28,7 +27,7 @@ describe('GoogleDocsService', () => {
     };
 
     mockAuth = {
-      // Порожній об'єкт для мокування JWT авторизації
+      // Порожній об'єкт для мокування JWT авторизаціі
     };
 
     mockMetrics = {
@@ -169,13 +168,11 @@ describe('GoogleDocsService', () => {
         },
       });
 
-      // Мок для DocsService
-      (DocsService as jest.Mock).mockImplementation(() => {
-        return {
-          extractTextFromDoc: jest.fn().mockReturnValue('Test content'),
-          extractBlocksFromDoc: jest.fn().mockReturnValue([{ kind: 'paragraph', text: 'Test content' }]),
-        };
-      });
+      // Мок для DocsService instance
+      (googleDocsService as any).docsService = {
+        extractTextFromDoc: jest.fn().mockReturnValue('Test content'),
+        extractBlocksFromDoc: jest.fn().mockReturnValue([{ kind: 'paragraph', text: 'Test content' }]),
+      };
 
       const result = await googleDocsService.getDocContent(documentId);
       
@@ -203,6 +200,14 @@ describe('GoogleDocsService', () => {
         blocks: [],
       });
 
+      // Мок для searchIndex
+      const mockSearchIndex = {
+        upsert: jest.fn().mockResolvedValue(undefined),
+      };
+
+      // Встановлення моку searchIndex
+      googleDocsService.setSearchIndex(mockSearchIndex as any);
+
       const result = await googleDocsService.indexDoc(documentId);
       
       expect(result).toEqual({
@@ -210,7 +215,7 @@ describe('GoogleDocsService', () => {
         documentId,
         indexedAt: expect.any(String),
         contentHash: expect.any(String),
-        wordCount: 7, // "This is a test document with some content" = 7 words
+        wordCount: 8, // "This is a test document with some content" = 8 words
       });
       
       // Перевірка, що getDocContent був викликаний
@@ -236,18 +241,19 @@ describe('GoogleDocsService', () => {
       const result = await googleDocsService.searchDoc(documentId, query);
       
       expect(result).toHaveLength(2);
+      // The heading should come first because it has a higher relevance score (match at position 0)
       expect(result[0]).toEqual({
-        blockIndex: 0,
-        blockType: 'paragraph',
-        content: 'This is a test document with some content',
-        matchPosition: 10, // Position of "test" in the string
-        relevanceScore: expect.any(Number),
-      });
-      expect(result[1]).toEqual({
         blockIndex: 1,
         blockType: 'heading-1',
         content: 'Test Heading',
         matchPosition: 0, // Position of "Test" in the string
+        relevanceScore: expect.any(Number),
+      });
+      expect(result[1]).toEqual({
+        blockIndex: 0,
+        blockType: 'paragraph',
+        content: 'This is a test document with some content',
+        matchPosition: 10, // Position of "test" in the string
         relevanceScore: expect.any(Number),
       });
       
