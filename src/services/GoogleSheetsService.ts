@@ -1014,22 +1014,6 @@ export class GoogleSheetsService extends BaseServiceClass {
   }
 
   /**
-   * Get document type name by sheet name
-   */
-  public getDocumentTypeName(sheetName: string): string {
-    const typeMap: Record<string, string> = {
-      'orders': 'Накази',
-      'reports': 'Звіти',
-      'documents': 'Документи',
-      'analytics': 'Аналітика',
-      'statistics': 'Статистика',
-      'default': 'Документ'
-    };
-    
-    return typeMap[sheetName] ?? typeMap['default'];
-  }
-
-  /**
    * Проста і швидка вибірка даних для тестів/легаси шляху пошуку.
    * У тестовому режимі повертає детермінований результат без мережевих викликів.
    */
