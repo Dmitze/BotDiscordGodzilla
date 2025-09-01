@@ -9,7 +9,6 @@ import type { ServiceKey, ServiceRegistry } from '@/core/ServiceRegistry';
 
 import { AIService } from '../services/AIService';
 import { GoogleService } from '../services/GoogleService';
-import { GoogleSheetsService } from '../services/GoogleSheetsService';
 import { CacheService } from '../services/CacheService';
 import { MemoryCacheService } from '@/services/MemoryCacheService';
 import { MetricsService } from '../services/MetricsService';
@@ -402,8 +401,8 @@ class ServiceManager {
       const aiSvc = this.services.get('ai');
       const ragSvc = this.services.get('rag');
       const responseCache = this.services.get('responseCache');
-      if (googleSvc && aiSvc && ragSvc && responseCache) {
-        const knowledgeBase = new KnowledgeBaseService(googleSvc as any, aiSvc as any, ragSvc as any, responseCache as any);
+      if (aiSvc && ragSvc && responseCache) {
+        const knowledgeBase = new KnowledgeBaseService(aiSvc as any, ragSvc as any, responseCache as any);
         this.services.set('knowledgeBase', knowledgeBase as unknown as NonNullable<ServiceRegistry['knowledgeBase']>);
         logger.info('📚 KnowledgeBaseService зареєстровано', {
           type: 'service_manager',
@@ -411,7 +410,7 @@ class ServiceManager {
           component: 'ServiceManager',
         });
       } else {
-        logger.warn('KnowledgeBaseService не зареєстровано: Google, AI, RAG або ResponseCache service недоступний');
+        logger.warn('KnowledgeBaseService не зареєстровано: AI, RAG або ResponseCache service недоступний');
       }
     } catch (er) {
       logger.error('❌ Не вдалося створити KnowledgeBaseService', {
