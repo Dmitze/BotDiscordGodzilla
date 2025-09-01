@@ -397,7 +397,6 @@ class ServiceManager {
 
     // Knowledge Base Service (depends on Google + AI + RAG + ResponseCache services)
     try {
-      const googleSvc = this.services.get('google');
       const aiSvc = this.services.get('ai');
       const ragSvc = this.services.get('rag');
       const responseCache = this.services.get('responseCache');
