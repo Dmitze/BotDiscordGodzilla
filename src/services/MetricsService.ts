@@ -7,7 +7,7 @@ import { Registry, Counter, Gauge, Histogram } from 'prom-client';
 import * as PromClient from 'prom-client';
 import type { BotConfig, ServiceStats, CacheStats, QueueStats, HealthStatus } from '@/types';
 
-import { BaseService as BaseServiceClass } from '@/core/BaseService';
+import { BaseService } from '@/core/BaseService';
 import logger from '@/utils/logger';
 
 // Стандартизований проектный логгер используется вместо console
@@ -48,7 +48,7 @@ interface MetricsCollection {
   fileOperationsLabeled: Counter<string>;
 }
 
-export class MetricsService extends BaseServiceClass {
+export class MetricsService extends BaseService {
   private registry: Registry | null = null;
   private metrics: MetricsCollection | null = null;
   private server: any = null;
