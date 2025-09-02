@@ -47,8 +47,8 @@ export class RagPipeline {
         documentCount: docs.length
       });
       docs = await this.reranker.rerank(query, docs, {
-        model: genOpts.model,
-        temperature: genOpts.temperature
+        model: genOpts.model ?? undefined,
+        temperature: genOpts.temperature ?? undefined
       });
     }
     
