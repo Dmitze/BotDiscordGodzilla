@@ -4,11 +4,11 @@ import cors = require('cors');
 import helmet = require('helmet');
 import rateLimit = require('express-rate-limit');
 import type { BotConfig } from '@/types/index';
-import logger from '@/utils/logger/index';
-import { DocumentAccessAuditService } from '@/services/DocumentAccessAuditService/index';
-import { DataLossPreventionService } from '@/services/DataLossPreventionService/index';
-import { ComplianceReportingService } from '@/services/ComplianceReportingService/index';
-import { DriveIndexerService } from '@/services/DriveIndexerService/index';
+import logger from '@/utils/logger';
+import { DocumentAccessAuditService } from '@/services/DocumentAccessAuditService';
+import { DataLossPreventionService } from '@/services/DataLossPreventionService';
+import { ComplianceReportingService } from '@/services/ComplianceReportingService';
+import { DriveIndexerService } from '@/services/DriveIndexerService';
 
 // Define the API service interface
 interface ApiService {
@@ -31,9 +31,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Parse URL-enc
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-  message: {
-    error: 'Too many requests, please try again later.'
-  }
+  message: 'Too many requests, please try again later.'
 });
 app.use(limiter);
 
@@ -405,7 +403,7 @@ app.post('/webhook/n8n/drive', async (req: Request, res: Response) => {
       return;
     }
 
-    const { fileId, fileName, fileContent, mimeType, chunks, embeddings } = req.body;
+    const { fileId, fileName, mimeType, chunks, embeddings } = req.body;
 
     // Validate required fields
     if (!fileId || !fileName) {
@@ -524,7 +522,7 @@ export function startApiServer(config: BotConfig, services: ApiService): Promise
       initializeApiServices(services);
       
       // Get port from config or default to 3000
-      const port = (config as any).api?.port || (process.env['API_PORT'] || '3000');
+      const port = (config as any).api?.port ?? (process.env['API_PORT'] ? parseInt(process.env['API_PORT'], 10) : 3000);
       
       // Start server
       const server = app.listen(port, () => {
