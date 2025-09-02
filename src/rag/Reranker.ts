@@ -17,7 +17,7 @@ export class Reranker {
    */
   async rerank(query: string, docs: RetrievedDoc[], options: RerankerOptions = {}): Promise<RetrievedDoc[]> {
     try {
-      const limit = options.limit || docs.length;
+      const limit = options.limit ?? docs.length;
       
       // If we have no documents or only one, no need to rerank
       if (docs.length <= 1) {
@@ -67,7 +67,7 @@ export class Reranker {
       }));
 
       // Sort by rerank score (higher is better)
-      scoredDocs.sort((a, b) => (b.rerankScore || 0) - (a.rerankScore || 0));
+      scoredDocs.sort((a, b) => (b.rerankScore ?? 0) - (a.rerankScore ?? 0));
 
       logger.info('Document reranking completed', {
         component: 'Reranker',
