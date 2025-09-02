@@ -5,7 +5,7 @@
 
 import type { Bot } from '@/core/Bot';
 import type { HealthStatus } from '@/types/index';
-import logger from '@/utils/logger/index';
+import logger from '@/utils/logger';
 
 interface HealthCheckResponse {
   status: 'ok' | 'error';
