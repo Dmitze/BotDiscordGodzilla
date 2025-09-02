@@ -6,7 +6,7 @@
 import { createClient } from 'redis';
 import type { BotConfig, HealthStatus, ServiceStats, CacheStats, CacheOptions } from '@/types';
 
-import { BaseService as BaseServiceClass } from '@/core/BaseService';
+import { BaseService } from '@/core/BaseService';
 import logger from '@/utils/logger';
 
 // logger: використовуємо стандартний alias-імпорт із '@/utils/logger'
@@ -26,7 +26,7 @@ interface CacheServiceOptions extends CacheOptions {
   serialize?: boolean;
 }
 
-export class CacheService extends BaseServiceClass {
+export class CacheService extends BaseService {
   private client: ReturnType<typeof createClient> | null = null;
   private isConnected = false;
   private stats: CacheServiceStats;
