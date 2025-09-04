@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": "../",
+    "paths": {
+      "@/*": ["*"],
+      "@/types/*": ["types/*"],
+      "@/core/*": ["core/*"],
+      "@/services/*": ["services/*"],
+      "@/commands/*": ["commands/*"],
+      "@/utils/*": ["utils/*"],
+      "@/config/*": ["config/*"]
+    }
+  },
+  "include": [
+    "./*.ts"
+  ]
+}
