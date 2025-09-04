@@ -205,7 +205,7 @@ export class AIAssistantCommand extends BaseCommand {
     const hasContextReference = contextReferences.some(regex => regex.test(currentQuery));
     
     if (hasContextReference) {
-      contextText += '\n⚠️ ВАЖЛИВО: Користувач посилається на попередній контекст. Переконайся, що ти враховуєш попередні запити та відповіді.\n';
+      contextText += '\n⚠️ ВАЖЛИВО: Користувач посилається на попередній контекст. Переконайтесь, що ти враховуєш попередні запити та відповіді.\n';
     }
     
     return contextText;
@@ -286,8 +286,7 @@ export class AIAssistantCommand extends BaseCommand {
       const result = await this.processAIQuery(
         interaction.user.id,
         commandOptions.query || '',
-        commandOptions.context ?? undefined,
-        interaction
+        commandOptions.context ?? undefined
       );
 
       // Формування відповіді
@@ -409,18 +408,18 @@ export class AIAssistantCommand extends BaseCommand {
   /**
    * Побудова запиту до AI з кращим контекстом
    */
-  private buildDefaultAIQueryResult(
+  private async buildDefaultAIQueryResult(
     query: string,
-    contextText: string,
-    userId: string
-  ): string {
+    context: string
+    // Removed unused options parameter that caused TS6133 and TS2304 errors
+  ): Promise<string> {
     // Створюємо більш структурований промпт для Ollama
     return `Ви є експертом з аналізу документів та надання повної інформації.
     
 Користувач запитує: "${query}"
 
 Додатковий контекст:
-${contextText}
+${context}
 
 ВАЖЛИВІ ІНСТРУКЦІЇ:
 1. Надайте ПОВНУ та ДЕТАЛЬНУ відповідь
@@ -561,16 +560,19 @@ ${contextText}
    * Обробка AI запиту: визначення наміру та виконання дій
    */
   private async processAIQuery(
-    userId: string,
+    userId: string, // Added missing userId parameter
     query: string,
-    _context?: string,
-    interaction?: ChatInputCommandInteraction
+    context?: string // Made context optional to match usage
+    // Removed unused options parameter that caused TS6133 and TS2304 errors
   ): Promise<AIQueryResult> {
     // Очищуємо старі сесії перед обробкою
     AIAssistantCommand.cleanupOldSessions();
     
     // Отримуємо контекст користувача
     const contextText = AIAssistantCommand.getContextForPrompt(userId, query);
+    
+    // Use the context parameter if provided
+    const fullContext = context ? `${contextText}\n\nКонтекст користувача: ${context}` : contextText;
     
     const handlers = this.getQueryHandlers(query);
     const normalized = this.normalizeQuery(query);
@@ -580,7 +582,13 @@ ${contextText}
     if (handled) {
       result = handled;
     } else {
-      result = await this.buildDefaultAIQueryResult(query, interaction, contextText);
+      const responseText = await this.buildDefaultAIQueryResult(query, fullContext);
+      result = {
+        response: responseText,
+        confidence: 0.5,
+        action: 'default',
+        actionData: { type: 'analyze', format: 'text' }
+      };
     }
     
     // Зберігаємо контекст після обробки

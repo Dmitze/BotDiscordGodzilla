@@ -190,28 +190,28 @@ export class DocumentCardBuilder {
 
       // Кнопка аналізу
       const analyzeButton = new ButtonBuilder()
-        .setCustomId(signComponentId(`doc-analyze-${this.file.id}-${sessionId}`))
+        .setCustomId(signComponentId({ kind: 'doc-analyze', fileId: this.file.id, sid: sessionId }))
         .setLabel('Аналіз')
         .setStyle(ButtonStyle.Primary)
         .setEmoji('🧠');
 
       // Кнопка експорту
       const exportButton = new ButtonBuilder()
-        .setCustomId(signComponentId(`doc-export-${this.file.id}-${sessionId}`))
+        .setCustomId(signComponentId({ kind: 'doc-export', fileId: this.file.id, sid: sessionId }))
         .setLabel('Експорт')
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('📤');
 
       // Кнопка тегування
       const tagButton = new ButtonBuilder()
-        .setCustomId(signComponentId(`doc-tag-${this.file.id}-${sessionId}`))
+        .setCustomId(signComponentId({ kind: 'doc-tag', fileId: this.file.id, sid: sessionId }))
         .setLabel('Теги')
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('🏷️');
 
       // Кнопка історії
       const historyButton = new ButtonBuilder()
-        .setCustomId(signComponentId(`doc-history-${this.file.id}-${sessionId}`))
+        .setCustomId(signComponentId({ kind: 'doc-history', fileId: this.file.id, sid: sessionId }))
         .setLabel('Історія')
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('🕒');
@@ -229,7 +229,7 @@ export class DocumentCardBuilder {
       
       for (const action of actionsToAdd) {
         const button = new ButtonBuilder()
-          .setCustomId(signComponentId(`doc-quick-${action.action}-${this.file.id}-${sessionId}`))
+          .setCustomId(signComponentId({ kind: 'doc-quick', action: action.action, fileId: this.file.id, sid: sessionId }))
           .setLabel(action.label)
           .setStyle(ButtonStyle.Success)
           .setEmoji(action.emoji);

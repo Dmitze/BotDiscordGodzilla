@@ -13,10 +13,10 @@ import type {
   AIConfig,
   RedisConfig,
   MetricsConfig,
-} from '@/types';
-import type { FeaturesConfig } from '@/types';
-import type { DriveConfig } from '@/types/drive';
-import logger from '@/utils/logger';
+} from '../types/index';
+import type { FeaturesConfig } from '../types/index';
+import type { DriveConfig } from '../types/drive';
+import logger from '../utils/logger';
 
 // Константи для конфігурації
 const CONFIG_CONSTANTS = {

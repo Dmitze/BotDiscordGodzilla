@@ -38,7 +38,7 @@ export class RagPipeline {
   ): Promise<RagAnswer> {
     const t0 = Date.now();
     let docs = await this.retriever.retrieve(query, retrieverOpts);
-    
+
     // Apply reranking if enabled
     const useReranking = process.env['RERANKING_ENABLE'] === 'true';
     if (useReranking && docs.length > 1) {
@@ -47,11 +47,12 @@ export class RagPipeline {
         documentCount: docs.length
       });
       docs = await this.reranker.rerank(query, docs, {
-        model: genOpts.model ?? undefined,
-        temperature: genOpts.temperature ?? undefined
+        model: genOpts.model || 'default',
+        limit: docs.length,
+        temperature: genOpts.temperature || 0.1
       });
     }
-    
+
     const chunks = this.augmenter.buildContext(docs, augmentOpts);
     logger.info('RAG retrieve+augment complete', {
       service: 'RagPipeline',

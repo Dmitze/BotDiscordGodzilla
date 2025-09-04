@@ -1,5 +1,5 @@
 import { BaseService } from '@/core/BaseService';
-import type { BotConfig } from '@/types';
+import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
 import type { DriveFile } from '@/types/drive';
 import logger from '@/utils/logger';
 import { DocumentAccessAuditService } from './DocumentAccessAuditService';
@@ -60,6 +60,72 @@ export class ComplianceReportingService extends BaseService {
   constructor(config: BotConfig) {
     super('ComplianceReportingService', config);
     this.initializeDefaultRequirements();
+  }
+
+  /**
+   * Initialize service
+   */
+  protected async onInitialize(): Promise<void> {
+    // Implementation for initialization if needed
+    logger.info('ComplianceReportingService initialized', {
+      component: 'ComplianceReportingService'
+    });
+  }
+
+  /**
+   * Shutdown service
+   */
+  protected async onShutdown(): Promise<void> {
+    // Implementation for shutdown if needed
+    logger.info('ComplianceReportingService shutdown', {
+      component: 'ComplianceReportingService'
+    });
+  }
+
+  /**
+   * Health check
+   */
+  protected async onHealthCheck(): Promise<HealthStatus> {
+    return {
+      services: {
+        ComplianceReportingService: {
+          isActive: true,
+          hasStats: true
+        }
+      },
+      overall: 'healthy'
+    };
+  }
+
+  /**
+   * Get service stats
+   */
+  protected onGetStats(): Partial<ServiceStats> {
+    return {
+      totalRequirements: this.requirements.length,
+      cachedReports: this.reports.size,
+      lastReportGenerated: this.getLastReportDate()
+    };
+  }
+
+  /**
+   * Get the date of the last generated report
+   */
+  private getLastReportDate(): Date | null {
+    if (this.reports.size === 0) {
+      return null;
+    }
+    
+    const dates = Array.from(this.reports.values())
+      .map(report => report.generatedAt.getTime())
+      .sort((a, b) => b - a);
+    
+    // Check if dates array has elements and first element is not undefined
+    if (dates.length > 0 && dates[0] !== undefined) {
+      return new Date(dates[0]);
+    }
+    
+    return null;
   }
 
   /**
@@ -666,11 +732,7 @@ export class ComplianceReportingService extends BaseService {
   /**
    * Get service statistics
    */
-  getStats(): {
-    totalRequirements: number;
-    cachedReports: number;
-    lastReportGenerated: Date | null;
-  } {
+  public override getStats(): ServiceStats {
     let lastReportGenerated: Date | null = null;
     
     if (this.reports.size > 0) {
@@ -678,7 +740,11 @@ export class ComplianceReportingService extends BaseService {
       lastReportGenerated = new Date(Math.max(...reports.map(r => r.generatedAt.getTime())));
     }
     
+    // Get base stats from parent class
+    const baseStats = super.getStats();
+    
     return {
+      ...baseStats,
       totalRequirements: this.requirements.length,
       cachedReports: this.reports.size,
       lastReportGenerated

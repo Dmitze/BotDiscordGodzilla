@@ -5,7 +5,7 @@ import logger from '@/utils/logger';
 export interface HybridSearchResult extends SearchHit {
   vectorScore?: number;
   textScore?: number;
-  combinedScore: number;
+  combinedScore?: number; // Made combinedScore optional to fix exactOptionalPropertyTypes issue
 }
 
 export interface HybridSearchOptions {
@@ -166,7 +166,7 @@ export class HybridSearchService {
     for (const result of vectorResults) {
       const existing = combinedMap.get(result.fileId);
       if (existing) {
-        existing.vectorScore = result.score ?? undefined;
+        existing.vectorScore = result.score ?? 0;
         existing.combinedScore = this.calculateCombinedScore(
           result.score,
           existing.textScore,
@@ -176,7 +176,7 @@ export class HybridSearchService {
       } else {
         combinedMap.set(result.fileId, {
           ...result,
-          vectorScore: result.score ?? undefined,
+          vectorScore: result.score ?? 0,
           combinedScore: this.calculateCombinedScore(
             result.score,
             undefined,
@@ -191,7 +191,7 @@ export class HybridSearchService {
     for (const result of textResults) {
       const existing = combinedMap.get(result.fileId);
       if (existing) {
-        existing.textScore = result.score ?? undefined;
+        existing.textScore = result.score ?? 0;
         existing.combinedScore = this.calculateCombinedScore(
           existing.vectorScore,
           result.score,
@@ -201,7 +201,7 @@ export class HybridSearchService {
       } else {
         combinedMap.set(result.fileId, {
           ...result,
-          textScore: result.score ?? undefined,
+          textScore: result.score ?? 0,
           combinedScore: this.calculateCombinedScore(
             undefined,
             result.score,

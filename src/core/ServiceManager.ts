@@ -117,9 +117,9 @@ class ServiceManager {
     // - Інакше або у тестах — легкий MemoryCacheService
     const useRedis = Boolean((this.bot.config as any).redis?.enabled);
     if (useRedis) {
-      this.services.set('cache', new CacheService(this.bot.config));
+      this.services.set('cache', new CacheService(this.bot.config) as unknown as NonNullable<ServiceRegistry['cache']>);
     } else {
-      this.services.set('cache', new MemoryCacheService(this.bot.config));
+      this.services.set('cache', new MemoryCacheService(this.bot.config) as unknown as NonNullable<ServiceRegistry['cache']>);
     }
 
     // Metrics Service (якщо метрики увімкнені)
@@ -572,11 +572,6 @@ class ServiceManager {
           if (googleService && (service as any).initializeServices) {
             (service as any).initializeServices(googleService, cacheService, searchIndex, metricsService);
           }
-        } else if (name === 'sheetsContext') {
-          const googleService = this.services.get('google');
-          if (googleService && (service as any).initializeServices) {
-            (service as any).initializeServices(googleService);
-          }
         } else if (name === 'documentAnalyzer') {
           const aiService = this.services.get('ai');
           const googleService = this.services.get('google');
@@ -733,13 +728,6 @@ class ServiceManager {
   }
 
   /**
-   * Отримання сервісу за назвою
-   */
-  // getService(name: string): Service | undefined { // removed duplicate; prefer generic variant above
-  //   return this.services.get(name);
-  // }
-
-  /**
    * Перевірка наявності сервісу
    */
   hasService(name: ServiceKey): boolean {
@@ -752,13 +740,6 @@ class ServiceManager {
   getAllServices(): Array<NonNullable<ServiceRegistry[ServiceKey]>> {
     return Array.from(this.services.values());
   }
-
-  /**
-   * Отримання назв всіх сервісів
-   */
-  // getServiceNames(): string[] { // removed duplicate; prefer public generic variant above
-  //   return Array.from(this.services.keys());
-  // }
 
   /**
    * Виконання методу на всіх сервісах

@@ -49,21 +49,21 @@ describe('Reranker', () => {
         }
       ];
 
-      const rerankedDocs = await reranker.rerank(query, docs, { limit: 3 });
+      const rerankedDocs = await reranker.rerank(query, docs, { model: 'test-model', limit: 3, temperature: 0.1 });
 
       expect(rerankedDocs).toHaveLength(3);
       // We're calling the AI service 3 times
       expect(mockAIService.generateResponse).toHaveBeenCalledTimes(3);
       
       // Documents should be sorted by rerank score (highest first)
-      expect(rerankedDocs[0].fileId).toBe('1'); // Score 0.9
-      expect(rerankedDocs[1].fileId).toBe('3'); // Score 0.7
-      expect(rerankedDocs[2].fileId).toBe('2'); // Score 0.3
+      expect(rerankedDocs[0]?.fileId).toBe('1'); // Score 0.9
+      expect(rerankedDocs[1]?.fileId).toBe('3'); // Score 0.7
+      expect(rerankedDocs[2]?.fileId).toBe('2'); // Score 0.3
       
       // Each document should have a rerankScore
-      expect(rerankedDocs[0].rerankScore).toBe(0.9);
-      expect(rerankedDocs[1].rerankScore).toBe(0.7);
-      expect(rerankedDocs[2].rerankScore).toBe(0.3);
+      expect((rerankedDocs[0] as any).rerankScore).toBe(0.9);
+      expect((rerankedDocs[1] as any).rerankScore).toBe(0.7);
+      expect((rerankedDocs[2] as any).rerankScore).toBe(0.3);
     });
 
     it('should handle documents without snippets', async () => {
@@ -89,12 +89,12 @@ describe('Reranker', () => {
         }
       ];
 
-      const rerankedDocs = await reranker.rerank(query, docs);
+      const rerankedDocs = await reranker.rerank(query, docs, { model: 'default', limit: 10, temperature: 0.1 });
 
       expect(rerankedDocs).toHaveLength(2);
       // We should call the AI service for each document
       expect(mockAIService.generateResponse).toHaveBeenCalledTimes(2);
-      expect(rerankedDocs[0].rerankScore).toBe(0.5);
+      expect((rerankedDocs[0] as any).rerankScore).toBe(0.5);
     });
 
     it('should limit the number of returned documents', async () => {
@@ -131,7 +131,7 @@ describe('Reranker', () => {
         }
       ];
 
-      const rerankedDocs = await reranker.rerank(query, docs, { limit: 2 });
+      const rerankedDocs = await reranker.rerank(query, docs, { model: 'default', limit: 2, temperature: 0.1 });
 
       expect(rerankedDocs).toHaveLength(2);
     });
@@ -159,12 +159,12 @@ describe('Reranker', () => {
         }
       ];
 
-      const rerankedDocs = await reranker.rerank(query, docs);
+      const rerankedDocs = await reranker.rerank(query, docs, { model: 'default', limit: 10, temperature: 0.1 });
 
       // Should return original documents with neutral score due to error handling
       expect(rerankedDocs).toHaveLength(2);
-      expect(rerankedDocs[0].rerankScore).toBe(0.5);
-      expect(rerankedDocs[1].rerankScore).toBe(0.5);
+      expect((rerankedDocs[0] as any).rerankScore).toBe(0.5);
+      expect((rerankedDocs[1] as any).rerankScore).toBe(0.5);
     });
 
     it('should handle invalid AI scores', async () => {
@@ -190,12 +190,12 @@ describe('Reranker', () => {
         }
       ];
 
-      const rerankedDocs = await reranker.rerank(query, docs);
+      const rerankedDocs = await reranker.rerank(query, docs, { model: 'default', limit: 10, temperature: 0.1 });
 
       // Should return original documents with neutral score
       expect(rerankedDocs).toHaveLength(2);
-      expect(rerankedDocs[0].rerankScore).toBe(0.5);
-      expect(rerankedDocs[1].rerankScore).toBe(0.5);
+      expect((rerankedDocs[0] as any).rerankScore).toBe(0.5);
+      expect((rerankedDocs[1] as any).rerankScore).toBe(0.5);
     });
 
     it('should return original documents if reranking fails completely', async () => {
@@ -221,20 +221,20 @@ describe('Reranker', () => {
         }
       ];
 
-      const rerankedDocs = await reranker.rerank(query, docs);
+      const rerankedDocs = await reranker.rerank(query, docs, { model: 'default', limit: 10, temperature: 0.1 });
 
       // Should return original documents
       expect(rerankedDocs).toHaveLength(2);
       // Should have rerankScore due to error handling
-      expect(rerankedDocs[0].rerankScore).toBe(0.5);
-      expect(rerankedDocs[1].rerankScore).toBe(0.5);
+      expect((rerankedDocs[0] as any).rerankScore).toBe(0.5);
+      expect((rerankedDocs[1] as any).rerankScore).toBe(0.5);
     });
 
     it('should not rerank if there are no documents', async () => {
       const query = 'test query';
       const docs: any[] = [];
 
-      const rerankedDocs = await reranker.rerank(query, docs);
+      const rerankedDocs = await reranker.rerank(query, docs, { model: 'default', limit: 10, temperature: 0.1 });
 
       expect(rerankedDocs).toHaveLength(0);
       expect(mockAIService.generateResponse).toHaveBeenCalledTimes(0);
@@ -253,13 +253,13 @@ describe('Reranker', () => {
         }
       ];
 
-      const rerankedDocs = await reranker.rerank(query, docs);
+      const rerankedDocs = await reranker.rerank(query, docs, { model: 'default', limit: 10, temperature: 0.1 });
 
       expect(rerankedDocs).toHaveLength(1);
       // With only one document, we return early without calling AI
       expect(mockAIService.generateResponse).toHaveBeenCalledTimes(0);
       // No rerankScore since we didn't call AI
-      expect(rerankedDocs[0].rerankScore).toBeUndefined();
+      expect((rerankedDocs[0] as any).rerankScore).toBeUndefined();
     });
   });
 

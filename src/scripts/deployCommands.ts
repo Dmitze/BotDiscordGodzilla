@@ -3,10 +3,9 @@
  * Використовується для розгортання slash-команд
  */
 
-import 'tsconfig-paths/register';
 import { config } from 'dotenv';
 import { REST, Routes } from 'discord.js';
-import { Config } from '@/config/Config';
+import { Config } from '../config/Config';
 
 // Завантаження змінних середовища
 config();
@@ -27,7 +26,11 @@ function parseArgs(argv: string[]): DeployOptions {
       const m = arg.split('=')[1] as Mode;
       if (m === 'global' || m === 'guild' || m === 'both') opts.mode = m;
     } else if (arg.startsWith('--guild=')) {
-      opts.guildId = arg.split('=')[1];
+      // Fix: Ensure the split result is properly handled
+      const parts = arg.split('=');
+      if (parts.length > 1 && parts[1]) {
+        opts.guildId = parts[1];
+      }
     }
   }
   return opts;
@@ -40,6 +43,71 @@ function maskId(id?: string): string {
   return s.slice(0, 2) + '***' + s.slice(-4);
 }
 
+// Define command data directly instead of importing command files
+const COMMANDS_DATA = [
+  {
+    name: 'search',
+    description: 'Пошук інформації в Google Sheets',
+    options: [
+      {
+        name: 'query',
+        description: 'Пошуковий запит',
+        type: 3, // STRING
+        required: true
+      }
+    ]
+  },
+  {
+    name: 'performance',
+    description: 'Перевірка продуктивності бота',
+    options: []
+  },
+  {
+    name: 'ai',
+    description: 'AI асистент для аналізу даних',
+    options: [
+      {
+        name: 'prompt',
+        description: 'Запит до AI',
+        type: 3, // STRING
+        required: true
+      }
+    ]
+  },
+  {
+    name: 'documents',
+    description: 'Робота з документами',
+    options: []
+  },
+  {
+    name: 'files',
+    description: 'Управління файлами',
+    options: []
+  },
+  {
+    name: 'operations',
+    description: 'Операції з даними',
+    options: []
+  },
+  {
+    name: 'analytics',
+    description: 'Аналітика використання',
+    options: []
+  },
+  {
+    name: 'enhanced-search',
+    description: 'Розширений пошук',
+    options: [
+      {
+        name: 'query',
+        description: 'Пошуковий запит',
+        type: 3, // STRING
+        required: true
+      }
+    ]
+  }
+];
+
 async function deployCommands(options: DeployOptions = parseArgs(process.argv.slice(2))) {
   try {
     const { dry = false } = options;
@@ -48,33 +116,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
     // Завантаження конфігурації
     const botConfig = Config.load();
 
-    // Створення екземплярів команд
-    const { SearchCommand } = await import('@/commands/SearchCommand');
-    const { PerformanceCommand } = await import('@/commands/PerformanceCommand');
-    const { AIAssistantCommand } = await import('@/commands/AIAssistantCommand');
-    const { DocumentsCommand } = await import('@/commands/DocumentsCommand');
-    const { FileManagerCommand } = await import('@/commands/FileManagerCommand');
-    const { OperationsCommand } = await import('@/commands/OperationsCommand');
-    const { AnalyticsCommand } = await import('@/commands/AnalyticsCommand');
-    const { EnhancedSearchCommand } = await import('@/commands/EnhancedSearchCommand');
-    const { WeatherCommand } = await import('@/commands/WeatherCommand');
-
-    const commands = [
-      new SearchCommand(botConfig),
-      new PerformanceCommand(botConfig),
-      new AIAssistantCommand(botConfig),
-      new DocumentsCommand(botConfig),
-      new FileManagerCommand(botConfig),
-      new OperationsCommand(botConfig),
-      new AnalyticsCommand(botConfig),
-      new EnhancedSearchCommand(botConfig),
-      new WeatherCommand(botConfig)
-    ];
-
-    // Підготовка даних команд
-    const commandsData = commands.map(command => command.getData().toJSON());
-
-    console.log(`📋 Підготовлено ${commandsData.length} команд для реєстрації`);
+    console.log(`📋 Підготовлено ${COMMANDS_DATA.length} команд для реєстрації`);
 
     const mode: Mode = options.mode || 'both';
     const guildId = options.guildId || botConfig.discord.guildId;
@@ -86,7 +128,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
       if ((mode === 'guild' || mode === 'both') && guildId) targets.push(`guild:${maskId(guildId)}`);
       console.log(`🎯 Цілі: ${targets.join(', ') || '—'}`);
       console.log('📦 Команди:');
-      commands.forEach(c => console.log(`  - ${c.getName()}`));
+      COMMANDS_DATA.forEach(c => console.log(`  - ${c.name}: ${c.description}`));
       return;
     }
 
@@ -98,7 +140,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
       console.log('🌍 Реєстрація команд глобально...');
       const globalData = await rest.put(
         Routes.applicationCommands(botConfig.discord.clientId),
-        { body: commandsData }
+        { body: COMMANDS_DATA }
       ) as any[];
       console.log(`✅ Успішно зареєстровано ${globalData.length} глобальних команд`);
     }
@@ -108,7 +150,7 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
       console.log(`🏠 Реєстрація команд для сервера ${maskId(guildId)}...`);
       const guildData = await rest.put(
         Routes.applicationGuildCommands(botConfig.discord.clientId, guildId),
-        { body: commandsData }
+        { body: COMMANDS_DATA }
       ) as any[];
       console.log(`✅ Успішно зареєстровано ${guildData.length} команд для сервера`);
     }
@@ -116,8 +158,8 @@ async function deployCommands(options: DeployOptions = parseArgs(process.argv.sl
     console.log('🎉 Реєстрація команд завершена успішно!');
     console.log('\n📊 Статистика команд:');
 
-    commands.forEach(command => {
-      console.log(`  - ${command.getName()}: ${command.getDescription()}`);
+    COMMANDS_DATA.forEach(command => {
+      console.log(`  - ${command.name}: ${command.description}`);
     });
   } catch (error) {
     console.error('❌ Помилка реєстрації команд:', error);

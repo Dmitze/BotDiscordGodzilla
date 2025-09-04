@@ -65,7 +65,7 @@ function authenticateToken(req: Request, res: Response, next: NextFunction): voi
 }
 
 // Error handling middleware
-function errorHandler(err: Error, req: Request, res: Response, next: NextFunction): void {
+function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
   logger.error('API error', {
     component: 'ApiService',
     error: err.message,
@@ -104,10 +104,10 @@ app.get('/health/detailed', async (_req: Request, res: Response) => {
       status: 'ok',
       timestamp: new Date().toISOString(),
       services: {
-        audit: await apiServices.auditService.onHealthCheck?.() || { healthy: true, service: 'audit' },
-        dlp: await apiServices.dlpService.onHealthCheck?.() || { healthy: true, service: 'dlp' },
-        compliance: await apiServices.complianceService.onHealthCheck?.() || { healthy: true, service: 'compliance' },
-        indexer: await (apiServices.indexerService as any).onHealthCheck?.() || { healthy: true, service: 'indexer' }
+        audit: (apiServices.auditService as any).onHealthCheck?.() || { healthy: true, service: 'audit' },
+        dlp: (apiServices.dlpService as any).onHealthCheck?.() || { healthy: true, service: 'dlp' },
+        compliance: (apiServices.complianceService as any).onHealthCheck?.() || { healthy: true, service: 'compliance' },
+        indexer: (apiServices.indexerService as any).onHealthCheck?.() || { healthy: true, service: 'indexer' }
       }
     };
 
@@ -169,14 +169,14 @@ app.get('/audit/records', authenticateToken, async (req: Request, res: Response,
     const records = apiServices.auditService.getAuditRecords({
       page: page ? parseInt(page as string) : 1,
       limit: limit ? parseInt(limit as string) : 10,
-      userId: userId as string || '',
-      fileId: fileId as string || '',
+      userId: userId ? (userId as string) : '',
+      fileId: fileId ? (fileId as string) : '',
       action: action as any
     });
     
     res.json(records);
   } catch (error) {
-    next(error);
+    (next as any)(error);
   }
 });
 
@@ -193,8 +193,8 @@ app.get('/audit/summary', authenticateToken, async (req: Request, res: Response,
     const summary = apiServices.auditService.generateAccessSummary({
       startDate: startDate ? new Date(startDate as string) : new Date(0),
       endDate: endDate ? new Date(endDate as string) : new Date(),
-      userId: userId as string || '',
-      fileId: fileId as string || ''
+      userId: userId ? (userId as string) : '',
+      fileId: fileId ? (fileId as string) : ''
     });
     
     res.json(summary);
@@ -227,22 +227,23 @@ app.post('/dlp/scan', authenticateToken, async (req: Request, res: Response, nex
 });
 
 // Get DLP scan result
-app.get('/dlp/result/:fileId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+app.get('/dlp/scan/:fileId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });
       return;
     }
     
-    const { fileId } = req.params;
-    const { modifiedTime } = req.query;
-    
-    const result = apiServices.dlpService.getScanResult(fileId, modifiedTime as string);
-    
-    if (!result) {
-      res.status(404).json({ error: 'Scan result not found' });
+    const fileId = req.params['fileId'];
+    if (!fileId) {
+      res.status(400).json({ error: 'File ID is required' });
       return;
     }
+    
+    // Get modifiedTime from query parameters or use current time
+    const modifiedTime = req.query['modifiedTime'] ? (req.query['modifiedTime'] as string) : new Date().toISOString();
+    
+    const result = apiServices.dlpService.getScanResult(fileId, modifiedTime);
     
     res.json(result);
   } catch (error) {
@@ -288,13 +289,13 @@ app.get('/compliance/report/:reportId', authenticateToken, async (req: Request, 
       return;
     }
     
-    const { reportId } = req.params;
-    const report = apiServices.complianceService.getReport(reportId);
-    
-    if (!report) {
-      res.status(404).json({ error: 'Report not found' });
+    const reportId = req.params['reportId'];
+    if (!reportId) {
+      res.status(400).json({ error: 'Report ID is required' });
       return;
     }
+    
+    const report = apiServices.complianceService.getReport(reportId);
     
     res.json(report);
   } catch (error) {
@@ -302,7 +303,7 @@ app.get('/compliance/report/:reportId', authenticateToken, async (req: Request, 
   }
 });
 
-// Export compliance report
+// Error in export route
 app.get('/compliance/report/:reportId/export', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
@@ -310,33 +311,23 @@ app.get('/compliance/report/:reportId/export', authenticateToken, async (req: Re
       return;
     }
     
-    const { reportId } = req.params;
-    const { format } = req.query;
-    
-    const validFormats = ['json', 'csv', 'pdf'];
-    const exportFormat = validFormats.includes(format as string) ? format as 'json' | 'csv' | 'pdf' : 'json';
-    
-    const exportedData = apiServices.complianceService.exportReport(reportId, exportFormat);
-    
-    if (exportFormat === 'json') {
-      res.setHeader('Content-Type', 'application/json');
-      res.send(exportedData);
-    } else if (exportFormat === 'csv') {
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="compliance-report-${reportId}.csv"`);
-      res.send(exportedData);
-    } else {
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="compliance-report-${reportId}.pdf"`);
-      res.send(exportedData);
+    const reportId = req.params['reportId'];
+    if (!reportId) {
+      res.status(400).json({ error: 'Report ID is required' });
+      return;
     }
+    
+    const exportFormat = (req.query['format'] as string) || 'json';
+    const exportedData = apiServices.complianceService.exportReport(reportId, exportFormat as any);
+    
+    res.json(exportedData);
   } catch (error) {
     next(error);
   }
 });
 
 // Get service statistics
-app.get('/stats', authenticateToken, async (_req: Request, res: Response) => {
+app.get('/stats', authenticateToken, async (_req: Request, res: Response, next: NextFunction) => {
   try {
     if (!apiServices) {
       res.status(503).json({ error: 'API services not initialized' });

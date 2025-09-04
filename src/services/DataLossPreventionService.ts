@@ -1,5 +1,5 @@
 import { BaseService } from '@/core/BaseService';
-import type { BotConfig } from '@/types';
+import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
 import type { DriveFile } from '@/types/drive';
 import logger from '@/utils/logger';
 
@@ -56,6 +56,47 @@ export class DataLossPreventionService extends BaseService {
     super('DataLossPreventionService', config);
     this.initializeDefaultPatterns();
     this.initializeDefaultPolicies();
+  }
+
+  /**
+   * Initialize service
+   */
+  protected async onInitialize(): Promise<void> {
+    // Implementation for initialization if needed
+    logger.info('DataLossPreventionService initialized', {
+      component: 'DataLossPreventionService'
+    });
+  }
+
+  /**
+   * Shutdown service
+   */
+  protected async onShutdown(): Promise<void> {
+    // Implementation for shutdown if needed
+    logger.info('DataLossPreventionService shutdown', {
+      component: 'DataLossPreventionService'
+    });
+  }
+
+  /**
+   * Health check
+   */
+  protected async onHealthCheck(): Promise<HealthStatus> {
+    return {
+      healthy: true,
+      service: 'DataLossPreventionService'
+    };
+  }
+
+  /**
+   * Get service stats
+   */
+  protected onGetStats(): Partial<ServiceStats> {
+    return {
+      totalPatterns: this.patterns.length,
+      activePolicies: this.policies.filter(p => p.enabled).length,
+      cachedResults: this.scanResults.size
+    };
   }
 
   /**
@@ -358,17 +399,21 @@ export class DataLossPreventionService extends BaseService {
     let isEven = false;
     
     for (let i = cleaned.length - 1; i >= 0; i--) {
-      let digit = parseInt(cleaned[i], 10);
-      
-      if (isEven) {
-        digit *= 2;
-        if (digit > 9) {
-          digit -= 9;
+      // Check if the character exists before parsing
+      const char = cleaned[i];
+      if (char !== undefined) {
+        let digit = parseInt(char, 10);
+        
+        if (isEven) {
+          digit *= 2;
+          if (digit > 9) {
+            digit -= 9;
+          }
         }
+        
+        sum += digit;
+        isEven = !isEven;
       }
-      
-      sum += digit;
-      isEven = !isEven;
     }
     
     return sum % 10 === 0;
@@ -589,12 +634,10 @@ export class DataLossPreventionService extends BaseService {
   /**
    * Get service statistics
    */
-  getStats(): {
-    totalPatterns: number;
-    activePolicies: number;
-    cachedResults: number;
-    averageRiskScore: number;
-  } {
+  public override getStats(): ServiceStats {
+    // Get base stats from parent class
+    const baseStats = super.getStats();
+    
     const activePolicies = this.policies.filter(policy => policy.enabled).length;
     
     const results = Array.from(this.scanResults.values());
@@ -602,6 +645,7 @@ export class DataLossPreventionService extends BaseService {
     const averageRiskScore = results.length > 0 ? Math.round(totalRiskScore / results.length) : 0;
     
     return {
+      ...baseStats,
       totalPatterns: this.patterns.length,
       activePolicies,
       cachedResults: this.scanResults.size,

@@ -8,6 +8,11 @@ export interface RerankerOptions {
   temperature?: number;
 }
 
+// Extend RetrievedDoc interface to include rerankScore
+interface RerankedDoc extends RetrievedDoc {
+  rerankScore?: number;
+}
+
 export class Reranker {
   constructor(private readonly ai: AIService) {}
 
@@ -15,7 +20,7 @@ export class Reranker {
    * Rerank documents based on their relevance to the query
    * Uses AI to evaluate semantic similarity between query and documents
    */
-  async rerank(query: string, docs: RetrievedDoc[], options: RerankerOptions = {}): Promise<RetrievedDoc[]> {
+  async rerank(query: string, docs: RetrievedDoc[], options: RerankerOptions = { model: 'default', limit: 10, temperature: 0.1 }): Promise<RetrievedDoc[]> {
     try {
       const limit = options.limit ?? docs.length;
       
@@ -60,11 +65,25 @@ export class Reranker {
       );
 
       // Apply scores to documents
-      const scoredDocs = scores.map(({ index, score }) => ({
-        ...docs[index],
-        rerankScore: score,
-        fusedScore: this.combineScores(docs[index].fusedScore, score)
-      }));
+      const scoredDocs = scores.map(({ index, score }) => {
+        const doc = docs[index];
+        if (!doc) {
+          // This shouldn't happen, but let's be safe
+          return {
+            fileId: '',
+            name: '',
+            contentHash: '',
+            textLen: 0,
+            snippet: '',
+            fusedScore: score
+          } as RetrievedDoc;
+        }
+        return {
+          ...doc,
+          rerankScore: score,
+          fusedScore: this.combineScores(doc.fusedScore, score)
+        };
+      }) as RerankedDoc[];
 
       // Sort by rerank score (higher is better)
       scoredDocs.sort((a, b) => (b.rerankScore ?? 0) - (a.rerankScore ?? 0));
@@ -82,6 +101,7 @@ export class Reranker {
         stack: error instanceof Error ? error.stack : undefined
       });
       // If reranking fails, return original documents
+      const limit = options.limit ?? docs.length;
       return docs.slice(0, limit);
     }
   }
@@ -127,7 +147,7 @@ export class Reranker {
     try {
       // Use AI service to generate a relevance score
       const response = await this.ai.generateResponse(prompt, {
-        model: options.model,
+        model: options.model || 'default',  // Provide default value
         maxTokens: 10,
         temperature: options.temperature || 0.1, // Low temperature for consistent scoring
         useCache: false // Don't cache reranking scores
@@ -162,7 +182,7 @@ export class Reranker {
    */
   private combineScores(originalScore: number | undefined, rerankScore: number): number {
     // If we don't have an original score, use the rerank score
-    if (originalScore === undefined) {
+    if (originalScore === undefined || originalScore === null) {
       return rerankScore;
     }
     

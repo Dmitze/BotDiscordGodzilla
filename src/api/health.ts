@@ -29,18 +29,18 @@ export function createHealthEndpoints(bot: Bot) {
       try {
         // Check AI Service
         try {
-          const aiService = bot.getService('ai');
+          const aiService = bot.getService('ai') as { onHealthCheck?: () => Promise<HealthStatus> } | undefined;
           if (aiService && typeof aiService.onHealthCheck === 'function') {
-            services.ai = await aiService.onHealthCheck();
+            services['ai'] = await aiService.onHealthCheck();
           } else {
-            services.ai = {
+            services['ai'] = {
               healthy: false,
               service: 'ai',
               error: 'AI service not available',
             };
           }
         } catch (error) {
-          services.ai = {
+          services['ai'] = {
             healthy: false,
             service: 'ai',
             error: error instanceof Error ? error.message : String(error),
@@ -49,18 +49,18 @@ export function createHealthEndpoints(bot: Bot) {
 
         // Check Google Service
         try {
-          const googleService = bot.getService('google');
+          const googleService = bot.getService('google') as { onHealthCheck?: () => Promise<HealthStatus> } | undefined;
           if (googleService && typeof googleService.onHealthCheck === 'function') {
-            services.google = await googleService.onHealthCheck();
+            services['google'] = await googleService.onHealthCheck();
           } else {
-            services.google = {
+            services['google'] = {
               healthy: false,
               service: 'google',
               error: 'Google service not available',
             };
           }
         } catch (error) {
-          services.google = {
+          services['google'] = {
             healthy: false,
             service: 'google',
             error: error instanceof Error ? error.message : String(error),
@@ -69,18 +69,18 @@ export function createHealthEndpoints(bot: Bot) {
 
         // Check Cache Service
         try {
-          const cacheService = bot.getService('cache');
+          const cacheService = bot.getService('cache') as { onHealthCheck?: () => Promise<HealthStatus> } | undefined;
           if (cacheService && typeof cacheService.onHealthCheck === 'function') {
-            services.cache = await cacheService.onHealthCheck();
+            services['cache'] = await cacheService.onHealthCheck();
           } else {
-            services.cache = {
+            services['cache'] = {
               healthy: true,
               service: 'cache',
-              message: 'Cache service not initialized or not health-checkable',
+              details: { message: 'Cache service initialized or not health-checkable' }, // Using proper Record<string, unknown> type
             };
           }
         } catch (error) {
-          services.cache = {
+          services['cache'] = {
             healthy: false,
             service: 'cache',
             error: error instanceof Error ? error.message : String(error),
@@ -99,7 +99,7 @@ export function createHealthEndpoints(bot: Bot) {
           uptime,
         };
       } catch (error) {
-        logger.error('Health check failed:', error);
+        logger.error('Health check failed:', { error: error instanceof Error ? error.message : String(error) });
         return {
           status: 'error',
           timestamp: new Date().toISOString(),
@@ -120,7 +120,7 @@ export function createHealthEndpoints(bot: Bot) {
      */
     async aiHealth(): Promise<HealthStatus> {
       try {
-        const aiService = bot.getService('ai');
+        const aiService = bot.getService('ai') as { onHealthCheck?: () => Promise<HealthStatus> } | undefined;
         if (aiService && typeof aiService.onHealthCheck === 'function') {
           return await aiService.onHealthCheck();
         }
@@ -143,7 +143,7 @@ export function createHealthEndpoints(bot: Bot) {
      */
     async googleHealth(): Promise<HealthStatus> {
       try {
-        const googleService = bot.getService('google');
+        const googleService = bot.getService('google') as { onHealthCheck?: () => Promise<HealthStatus> } | undefined;
         if (googleService && typeof googleService.onHealthCheck === 'function') {
           return await googleService.onHealthCheck();
         }
@@ -170,7 +170,7 @@ export function createHealthEndpoints(bot: Bot) {
       try {
         // AI Service detailed status
         try {
-          const aiService = bot.getService('ai');
+          const aiService = bot.getService('ai') as { getDetailedStatus?: () => Promise<any> } | undefined;
           if (aiService && typeof aiService.getDetailedStatus === 'function') {
             status.ai = await aiService.getDetailedStatus();
           }
@@ -180,7 +180,7 @@ export function createHealthEndpoints(bot: Bot) {
 
         // Google Service detailed status
         try {
-          const googleService = bot.getService('google');
+          const googleService = bot.getService('google') as { getDetailedStatus?: () => Promise<any> } | undefined;
           if (googleService && typeof googleService.getDetailedStatus === 'function') {
             status.google = await googleService.getDetailedStatus();
           }
@@ -190,7 +190,7 @@ export function createHealthEndpoints(bot: Bot) {
 
         return status;
       } catch (error) {
-        logger.error('Detailed status check failed:', error);
+        logger.error('Detailed status check failed:', { error: error instanceof Error ? error.message : String(error) });
         return {
           error: error instanceof Error ? error.message : String(error),
         };

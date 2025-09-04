@@ -1,5 +1,5 @@
 import { BaseService } from '@/core/BaseService';
-import type { BotConfig } from '@/types';
+import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
 import logger from '@/utils/logger';
 
 export interface DatabaseStats {
@@ -68,6 +68,47 @@ export class DatabaseOptimizationService extends BaseService {
   }
 
   /**
+   * Initialize service
+   */
+  protected async onInitialize(): Promise<void> {
+    // Implementation for initialization if needed
+    logger.info('DatabaseOptimizationService initialized', {
+      component: 'DatabaseOptimizationService'
+    });
+  }
+
+  /**
+   * Shutdown service
+   */
+  protected async onShutdown(): Promise<void> {
+    // Implementation for shutdown if needed
+    logger.info('DatabaseOptimizationService shutdown', {
+      component: 'DatabaseOptimizationService'
+    });
+  }
+
+  /**
+   * Health check
+   */
+  protected async onHealthCheck(): Promise<HealthStatus> {
+    return {
+      healthy: true,
+      service: 'DatabaseOptimizationService'
+    };
+  }
+
+  /**
+   * Get service stats
+   */
+  protected onGetStats(): Partial<ServiceStats> {
+    return {
+      connectionCount: this.stats.connectionCount,
+      slowQueries: this.stats.queryPerformance.slowQueries,
+      cachedQueries: this.stats.queryPerformance.cachedQueries
+    };
+  }
+
+  /**
    * Analyze database performance and generate recommendations
    */
   async analyzeDatabase(): Promise<OptimizationRecommendation[]> {
@@ -104,7 +145,8 @@ export class DatabaseOptimizationService extends BaseService {
     // Simulate collecting database statistics
     // In a real implementation, this would query the actual database
     
-    this.stats = {
+    // Create a new stats object with proper typing
+    const newStats: DatabaseStats = {
       connectionCount: Math.floor(Math.random() * 50) + 10, // 10-60 connections
       queryPerformance: {
         averageQueryTime: Math.random() * 100, // 0-100ms
@@ -124,7 +166,10 @@ export class DatabaseOptimizationService extends BaseService {
     };
     
     // Calculate free size
-    this.stats.storage.freeSize = this.stats.storage.totalSize - this.stats.storage.usedSize;
+    newStats.storage.freeSize = newStats.storage.totalSize - newStats.storage.usedSize;
+    
+    // Update the stats
+    this.stats = newStats;
     
     // Generate some mock performance metrics
     this.generateMockPerformanceMetrics();
@@ -146,7 +191,7 @@ export class DatabaseOptimizationService extends BaseService {
     this.performanceMetrics = [];
     
     for (let i = 0; i < 50; i++) {
-      const query = queries[Math.floor(Math.random() * queries.length)];
+      const query = queries[Math.floor(Math.random() * queries.length)] || 'SELECT * FROM documents';
       const executionTime = Math.random() * 200; // 0-200ms
       const frequency = Math.floor(Math.random() * 1000) + 1; // 1-1000 executions
       const cacheHit = Math.random() > 0.7; // 30% cache hit rate
@@ -263,8 +308,23 @@ export class DatabaseOptimizationService extends BaseService {
   /**
    * Get database statistics
    */
-  getStats(): DatabaseStats {
+  getDatabaseStats(): DatabaseStats {
     return { ...this.stats };
+  }
+
+  /**
+   * Get service statistics
+   */
+  public override getStats(): ServiceStats {
+    // Get base stats from parent class
+    const baseStats = super.getStats();
+    
+    return {
+      ...baseStats,
+      connectionCount: this.stats.connectionCount,
+      slowQueries: this.stats.queryPerformance.slowQueries,
+      cachedQueries: this.stats.queryPerformance.cachedQueries
+    };
   }
 
   /**
@@ -400,7 +460,7 @@ export class DatabaseOptimizationService extends BaseService {
     const lowPriorityIssues = this.recommendations.filter(rec => rec.priority === 'low').length;
     
     return {
-      stats: this.getStats(),
+      stats: this.getDatabaseStats(),
       recommendations: [...this.recommendations],
       performanceMetrics: this.getPerformanceMetrics({ limit: 20 }),
       summary: {

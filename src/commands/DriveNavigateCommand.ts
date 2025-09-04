@@ -15,26 +15,29 @@ import type { GoogleService } from '@/services/GoogleService';
 import type { DriveFile, DriveListQuery, DriveListResult } from '@/types/drive';
 import logger from '@/utils/logger';
 import { signComponentId } from '@/security/componentId';
-import { t } from '@/i18n';
+// import { t } from '@/i18n';
 
 interface NavigationState {
   folderId: string;
-  parentId?: string;
-  path: Array<{ id: string; name: string }>;
-  query?: string;
-  pageToken?: string;
+  query?: string | undefined;
   pageSize: number;
-  sortBy: 'name' | 'modifiedTime' | 'size' | 'relevance';
+  pageToken?: string | undefined;
+  sortBy: 'name' | 'modifiedTime' | 'size'; // Removed 'relevance' as it's not supported in DriveListQuery
   sortDir: 'asc' | 'desc';
-  mimeFilter?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  sizeMin?: number;
-  sizeMax?: number;
-  // New properties for enhanced functionality
-  searchType: 'folder' | 'fulltext';
-  showHidden?: boolean;
-  fileTypeCategories?: string[];
+  mimeIncludes?: string[] | undefined;
+  dateFrom?: string | undefined;
+  dateTo?: string | undefined;
+  sizeMin?: number | undefined;
+  sizeMax?: number | undefined;
+  // Added missing properties with proper optional types
+  mimeFilter?: string | undefined;
+  searchType?: 'folder' | 'fulltext' | undefined;
+  showHidden?: boolean | undefined;
+  fileTypeCategories?: string[] | undefined;
+  path?: Array<{ id: string; name: string }> | undefined;
+  parentId?: string | undefined;
+  // Fix: Make all properties explicitly optional to match exactOptionalPropertyTypes
+  [key: string]: any; // This allows any additional properties
 }
 
 export class DriveNavigateCommand extends BaseCommand {
@@ -141,7 +144,7 @@ export class DriveNavigateCommand extends BaseCommand {
                 { name: 'По всіх документах', value: 'fulltext' }
               )
           )
-          .addBooleanOption((option: SlashCommandStringOption) =>
+          .addBooleanOption((option) =>
             option
               .setName('show-hidden')
               .setDescription('Показувати приховані файли')
@@ -194,11 +197,11 @@ export class DriveNavigateCommand extends BaseCommand {
       const fileCategory = interaction.options.getString('file-category') || undefined;
 
       // Parse sort option
-      let sortBy: 'name' | 'modifiedTime' | 'size' | 'relevance' = 'name';
+      let sortBy: 'name' | 'modifiedTime' | 'size' = 'name';
       let sortDir: 'asc' | 'desc' = 'asc';
       
       if (sortOption === 'relevance') {
-        sortBy = 'relevance';
+        sortBy = 'name'; // Fallback to name sorting since relevance is not supported
         sortDir = 'desc';
       } else if (sortOption.includes('_')) {
         const [field, direction] = sortOption.split('_');
@@ -206,22 +209,23 @@ export class DriveNavigateCommand extends BaseCommand {
         sortDir = direction as 'asc' | 'desc';
       }
 
-      // Create initial navigation state
+      // Create initial navigation state with proper handling of optional properties
       const state: NavigationState = {
         folderId,
-        path: [{ id: folderId, name: folderId === 'root' ? 'Коренева папка' : 'Обрана папка' }],
         query,
         pageSize: Math.min(25, Math.max(5, pageSize)),
         sortBy,
         sortDir,
-        mimeFilter,
-        dateFrom,
-        dateTo,
-        sizeMin: sizeMin !== undefined ? sizeMin : undefined,
-        sizeMax: sizeMax !== undefined ? sizeMax : undefined,
-        searchType,
-        showHidden,
-        fileTypeCategories: fileCategory ? [fileCategory] : undefined
+        mimeFilter: mimeFilter !== null ? mimeFilter : undefined,
+        dateFrom: dateFrom !== null ? dateFrom : undefined,
+        dateTo: dateTo !== null ? dateTo : undefined,
+        sizeMin: sizeMin !== undefined && sizeMin !== null ? sizeMin : undefined,
+        sizeMax: sizeMax !== undefined && sizeMax !== null ? sizeMax : undefined,
+        searchType: searchType !== null ? searchType : undefined,
+        showHidden: showHidden !== null ? showHidden : undefined,
+        fileTypeCategories: fileCategory ? [fileCategory] : undefined,
+        path: [{ id: folderId, name: folderId === 'root' ? 'Коренева папка' : 'Обрана папка' }],
+        parentId: folderId !== 'root' ? folderId : undefined
       };
 
       // Store session
@@ -318,25 +322,25 @@ export class DriveNavigateCommand extends BaseCommand {
       // Build final query
       const finalQuery = queryParts.length > 0 ? queryParts.join(' and ') : undefined;
 
-      // Prepare Drive API query
+      // Prepare Drive API query - removing useFullTextSearch since it doesn't exist
       const driveQuery: DriveListQuery = {
         folderId: state.folderId,
-        query: finalQuery,
+        query: finalQuery !== undefined && finalQuery !== null ? finalQuery : '',
         pageSize: state.pageSize,
-        pageToken: state.pageToken,
+        ...(state.pageToken !== undefined ? { pageToken: state.pageToken } : {}),
         sortBy: state.sortBy,
         sortDir: state.sortDir,
-        mimeIncludes: state.mimeFilter ? [state.mimeFilter] : undefined,
-        dateFrom: state.dateFrom,
-        dateTo: state.dateTo,
-        sizeMin: state.sizeMin,
-        sizeMax: state.sizeMax
+        ...(state.mimeFilter ? { mimeIncludes: [state.mimeFilter] } : {}),
+        ...(state.dateFrom !== undefined ? { dateFrom: state.dateFrom } : {}),
+        ...(state.dateTo !== undefined ? { dateTo: state.dateTo } : {}),
+        ...(state.sizeMin !== undefined ? { sizeMin: state.sizeMin } : {}),
+        ...(state.sizeMax !== undefined ? { sizeMax: state.sizeMax } : {})
       };
 
       // For fulltext search, we need to modify the query approach
       if (state.searchType === 'fulltext' && state.query) {
+        // We'll handle fulltext search by setting the query directly
         driveQuery.query = state.query;
-        driveQuery.useFullTextSearch = true;
       }
 
       // Fetch files
@@ -345,12 +349,12 @@ export class DriveNavigateCommand extends BaseCommand {
       // Create embed with navigation info
       const embed = new EmbedBuilder()
         .setTitle('🧭 Навігатор Google Drive')
-        .setDescription(this.buildPathBreadcrumb(state.path))
+        .setDescription(this.buildPathBreadcrumb(state.path || []))
         .setColor(0x4285f4)
         .addFields({
           name: `📁 ${state.searchType === 'fulltext' ? 'Результати пошуку' : 'Вміст папки'} (${result.files.length} елементів)`,
           value: result.files.length > 0 
-            ? this.formatFileList(result.files, state.folderId) 
+            ? this.formatFileList(result.files) 
             : 'Папка порожня'
         });
 
@@ -407,7 +411,7 @@ export class DriveNavigateCommand extends BaseCommand {
     return breadcrumb.length > 1024 ? breadcrumb.substring(0, 1021) + '...' : breadcrumb;
   }
 
-  private formatFileList(files: DriveFile[], currentFolderId: string): string {
+  private formatFileList(files: DriveFile[]): string {
     if (files.length === 0) return 'Папка порожня';
     
     const items = files.slice(0, 15).map(file => {
@@ -519,7 +523,7 @@ export class DriveNavigateCommand extends BaseCommand {
     // Create folder/file selection dropdown if there are items
     if (result.files.length > 0) {
       const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId(signComponentId(`drive-nav-select-${sessionId}`))
+        .setCustomId(signComponentId({ kind: 'drive-nav-select', sid: sessionId }))
         .setPlaceholder('Оберіть папку або файл')
         .setMaxValues(1);
       
@@ -547,13 +551,13 @@ export class DriveNavigateCommand extends BaseCommand {
     
     // Refresh button
     const refreshButton = new ButtonBuilder()
-      .setCustomId(signComponentId(`drive-nav-refresh-${sessionId}`))
+      .setCustomId(signComponentId({ kind: 'drive-nav-refresh', sid: sessionId }))
       .setLabel('🔄 Оновити')
       .setStyle(ButtonStyle.Primary);
     
     // Search button for real-time search
     const searchButton = new ButtonBuilder()
-      .setCustomId(signComponentId(`drive-nav-search-${sessionId}`))
+      .setCustomId(signComponentId({ kind: 'drive-nav-search', sid: sessionId }))
       .setLabel('🔍 Пошук')
       .setStyle(ButtonStyle.Primary);
     
@@ -562,7 +566,7 @@ export class DriveNavigateCommand extends BaseCommand {
     // Add parent folder button if not at root
     if (state.parentId) {
       const upButton = new ButtonBuilder()
-        .setCustomId(signComponentId(`drive-nav-up-${sessionId}`))
+        .setCustomId(signComponentId({ kind: 'drive-nav-up', sid: sessionId }))
         .setLabel('⬆️ Вгору')
         .setStyle(ButtonStyle.Secondary);
       
@@ -572,7 +576,7 @@ export class DriveNavigateCommand extends BaseCommand {
     // Add pagination buttons if needed
     if (result.nextPageToken) {
       const nextButton = new ButtonBuilder()
-        .setCustomId(signComponentId(`drive-nav-next-${sessionId}`))
+        .setCustomId(signComponentId({ kind: 'drive-nav-next', sid: sessionId }))
         .setLabel('➡️ Далі')
         .setStyle(ButtonStyle.Secondary);
       

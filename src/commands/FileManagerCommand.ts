@@ -21,12 +21,26 @@ import logger from '@/utils/logger';
 
 import type { GoogleService } from '@/services/GoogleService';
 import { t } from '@/i18n';
-import { sanitizeTextForChat, buildPaginatedChunks, summarizeTlDr } from '@/utils/fileProcessor';
 import { signComponentId } from '@/security/componentId';
 import { buildSearchPage as buildSearchPageUI } from '@/commands/modules/fileManager/ui';
 import { handleAnalyze as analyzeModule } from '@/commands/modules/fileManager/analyzers';
-import { handleReadTextFlow as readTextFlowModule } from '@/commands/modules/fileManager/readers';
-import { handleDriveAction as handleDriveActionExt, handleTextAction as handleTextActionExt, handleSearchAction as handleSearchActionExt } from '@/commands/modules/fileManager/handlers';
+import { chunkTextForDiscord } from '@/ui/simpleComponents';
+
+// Add these helper functions
+function buildPaginatedChunks(text: string, options: { maxChunkLen: number }): string[] {
+  return chunkTextForDiscord(text, options.maxChunkLen);
+}
+
+function summarizeTlDr(text: string, options: { budget: number; minSentLen: number }): string {
+  // Simple implementation - take first few sentences up to budget
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length >= options.minSentLen);
+  let result = '';
+  for (const sentence of sentences) {
+    if (result.length + sentence.length + 1 > options.budget) break;
+    result += sentence.trim() + '. ';
+  }
+  return result.trim() || text.substring(0, options.budget);
+}
 
 interface FileSearchOptions {
   query: string;
@@ -616,49 +630,49 @@ export class FileManagerCommand extends BaseCommand {
     return res;
   }
 
-  private buildTextPage(args: { sid: string; page: number; fileName: string; chunks: string[]; link?: string }): { embed: EmbedBuilder; components: ActionRowBuilder<MessageActionRowComponentBuilder>[] } {
-    const { sid, page, fileName, chunks, link } = args;
-    const totalPages = Math.max(1, chunks.length);
-    const safePage = Math.min(Math.max(1, page), totalPages);
-    // ts is not embedded in signed IDs; rely on token exp
-    const embed = new EmbedBuilder()
-      .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
-      .setDescription(chunks[safePage - 1] || '')
-      .setColor(0x22c55e)
-      .setTimestamp()
-      .setFooter({ text: `Сторінка ${safePage}/${totalPages}` });
+  // private buildTextPage(args: { sid: string; page: number; fileName: string; chunks: string[]; link?: string }): { embed: EmbedBuilder; components: ActionRowBuilder<MessageActionRowComponentBuilder>[] } {
+  //   const { sid, page, fileName, chunks, link } = args;
+  //   const totalPages = Math.max(1, chunks.length);
+  //   const safePage = Math.min(Math.max(1, page), totalPages);
+  //   // ts is not embedded in signed IDs; rely on token exp
+  //   const embed = new EmbedBuilder()
+  //     .setTitle(`📄 ${this.getSubcommandTitle('читати')}: ${fileName}`)
+  //     .setDescription(chunks[safePage - 1] ?? '')
+  //     .setColor(0x22c55e)
+  //     .setTimestamp()
+  //     .setFooter({ text: `Сторінка ${safePage}/${totalPages}` });
+  //
+  //   const prevBtn = new ButtonBuilder()
+  //     .setCustomId(this.buildTextCustomId({ sid, page: Math.max(1, safePage - 1) }))
+  //     .setLabel(t('files.search.buttons.prev'))
+  //     .setStyle(ButtonStyle.Secondary)
+  //     .setDisabled(safePage === 1);
+  //   const nextBtn = new ButtonBuilder()
+  //     .setCustomId(this.buildTextCustomId({ sid, page: Math.min(totalPages, safePage + 1) }))
+  //     .setLabel(t('files.search.buttons.next'))
+  //     .setStyle(ButtonStyle.Secondary)
+  //     .setDisabled(safePage === totalPages);
+  //   const closeBtn = new ButtonBuilder()
+  //     .setCustomId(this.buildTextCustomId({ sid, page: safePage, action: 'close' }))
+  //     .setLabel(t('files.search.buttons.close'))
+  //     .setStyle(ButtonStyle.Danger);
+  //
+  //   const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(prevBtn, nextBtn, closeBtn);
+  //   const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [row];
+  //   if (link) {
+  //     const linkBtn = new ButtonBuilder()
+  //       .setLabel('Джерело')
+  //       .setStyle(ButtonStyle.Link)
+  //       .setURL(link);
+  //     const rowLink = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn);
+  //     rows.push(rowLink);
+  //   }
+  //   return { embed, components: rows };
+  // }
 
-    const prevBtn = new ButtonBuilder()
-      .setCustomId(this.buildTextCustomId({ sid, page: Math.max(1, safePage - 1) }))
-      .setLabel(t('files.search.buttons.prev'))
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(safePage === 1);
-    const nextBtn = new ButtonBuilder()
-      .setCustomId(this.buildTextCustomId({ sid, page: Math.min(totalPages, safePage + 1) }))
-      .setLabel(t('files.search.buttons.next'))
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(safePage === totalPages);
-    const closeBtn = new ButtonBuilder()
-      .setCustomId(this.buildTextCustomId({ sid, page: safePage, action: 'close' }))
-      .setLabel(t('files.search.buttons.close'))
-      .setStyle(ButtonStyle.Danger);
-
-    const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(prevBtn, nextBtn, closeBtn);
-    const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [row];
-    if (link) {
-      const linkBtn = new ButtonBuilder()
-        .setLabel('Джерело')
-        .setStyle(ButtonStyle.Link)
-        .setURL(link);
-      const rowLink = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(linkBtn);
-      rows.push(rowLink);
-    }
-    return { embed, components: rows };
-  }
-
-  private generateSessionId(prefix: string): string {
-    return `${prefix}_${Math.random().toString(36).slice(2, 8)}_${Date.now().toString(36)}`;
-  }
+  // private generateSessionId(prefix: string): string {
+  //   return `${prefix}_${Math.random().toString(36).slice(2, 8)}_${Date.now().toString(36)}`;
+  // }
 
   protected override async onComponent(options: import('@/commands/BaseCommand').CommandComponentOptions): Promise<void> {
     const interaction = options.interaction as any;
@@ -708,7 +722,7 @@ export class FileManagerCommand extends BaseCommand {
         const text = session.chunks[page - 1];
         const embed = new EmbedBuilder()
           .setTitle(`📄 ${session.fileName}`)
-          .setDescription(text)
+          .setDescription(text ?? '')
           .setColor(0x22c55e)
           .setTimestamp()
           .setFooter({ text: `Сторінка ${page} з ${session.chunks.length}` });
@@ -840,8 +854,8 @@ export class FileManagerCommand extends BaseCommand {
 
       // Якщо це Google Sheets, використовуємо спеціальну обробку з пагінацією
       if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
-        // Отримуємо першу сторінку даних з пагінацією
-        const sheetData = await googleSvc.getSheetDataWithPagination(options.fileId, 'A:Z', 1, 20);
+        // Отримуємо дані таблиці
+        const sheetData = await googleSvc.getSheetData(options.fileId, 'A:Z');
         
         // Створюємо сесію для пагінації
         const sid = Math.random().toString(36).slice(2, 10);
@@ -860,34 +874,34 @@ export class FileManagerCommand extends BaseCommand {
           .setTimestamp();
 
         // Додаємо заголовки
-        if (sheetData.headers.length > 0) {
-          const headerText = sheetData.headers.slice(0, 10).join(' | '); // Обмежуємо кількість стовпців
+        if (sheetData.values.length > 0 && sheetData.values[0]) {
+          const headerText = sheetData.values[0].slice(0, 10).join(' | '); // Обмежуємо кількість стовпців
           embed.addFields({ name: 'Заголовки', value: headerText });
         }
 
         // Додаємо перші рядки даних
-        if (sheetData.rows.length > 0) {
-          const rowsText = sheetData.rows
-            .slice(0, 10) // Показуємо більше рядків
+        if (sheetData.values.length > 1) {
+          const rowsText = sheetData.values
+            .slice(1, 11) // Показуємо більше рядків (1-10)
             .map((row, index) => `${index + 1}. ${row.slice(0, 8).join(' | ')}`) // Більше стовпців
             .join('\n');
-          embed.addFields({ name: `Дані (сторінка ${sheetData.currentPage})`, value: rowsText });
+          embed.addFields({ name: `Дані (сторінка 1)`, value: rowsText });
         }
 
-        // Додаємо інформацію про пагінацію
+        // Додаємо інформацію про кількість рядків
         embed.setFooter({ 
-          text: `Сторінка ${sheetData.currentPage} з ${sheetData.totalPages} | Всього рядків: ${sheetData.totalRows}` 
+          text: `Всього рядків: ${sheetData.values.length}` 
         });
 
-        // Створюємо кнопки пагінації
-        const components = this.createSheetPaginationComponents(sid, sheetData.currentPage, sheetData.totalPages);
+        // Створюємо кнопки (без пагінації)
+        const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
 
         await interaction.editReply({ embeds: [embed], components });
         return { success: true, message: 'ok' };
       }
 
       // Для інших типів файлів використовуємо стандартну обробку
-      const { text, source } = await googleSvc.extractTextForChat(options.fileId);
+      const { text } = await googleSvc.extractTextForChat(options.fileId);
       const safeText = String(text || '').trim();
 
       if (!safeText) {
@@ -909,7 +923,7 @@ export class FileManagerCommand extends BaseCommand {
       if (chunks.length <= 1) {
         const embed = new EmbedBuilder()
           .setTitle(`📄 ${meta.name || options.fileId}`)
-          .setDescription(safeText.slice(0, 1800))
+          .setDescription(safeText.slice(0, 1800) !== undefined ? safeText.slice(0, 1800) : '')
           .setColor(0x22c55e)
           .setTimestamp();
         
@@ -1005,75 +1019,75 @@ export class FileManagerCommand extends BaseCommand {
   /**
    * Створення кнопок пагінації для Google Sheets
    */
-  private createSheetPaginationComponents(
-    sid: string,
-    currentPage: number,
-    totalPages: number
-  ): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
-    if (totalPages <= 1) return [];
-
-    const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
-    const row = new ActionRowBuilder<MessageActionRowComponentBuilder>();
-
-    // Кнопка "Назад"
-    if (currentPage > 1) {
-      const backId = this.buildTextCustomId({ sid, page: currentPage - 1 });
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(backId)
-          .setLabel('⬅️ Назад')
-          .setStyle(ButtonStyle.Primary)
-      );
-    }
-
-    // Кнопка номера сторінки
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId('page_info')
-        .setLabel(`Сторінка ${currentPage}/${totalPages}`)
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(true)
-    );
-
-    // Кнопка "Вперед"
-    if (currentPage < totalPages) {
-      const nextId = this.buildTextCustomId({ sid, page: currentPage + 1 });
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(nextId)
-          .setLabel('Вперед ➡️')
-          .setStyle(ButtonStyle.Primary)
-      );
-    }
-
-    // Кнопка "Закрити"
-    const closeId = this.buildTextCustomId({ sid, page: currentPage, action: 'close' });
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId(closeId)
-        .setLabel('Закрити')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    rows.push(row);
-    return rows;
-  }
+  // private createSheetPaginationComponents(
+  //   sid: string,
+  //   currentPage: number,
+  //   totalPages: number
+  // ): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
+  //   if (totalPages <= 1) return [];
+  //
+  //   const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
+  //   const row = new ActionRowBuilder<MessageActionRowComponentBuilder>();
+  //
+  //   // Кнопка "Назад"
+  //   if (currentPage > 1) {
+  //     const backId = this.buildTextCustomId({ sid, page: currentPage - 1 });
+  //     row.addComponents(
+  //       new ButtonBuilder()
+  //         .setCustomId(backId)
+  //         .setLabel('⬅️ Назад')
+  //         .setStyle(ButtonStyle.Primary)
+  //     );
+  //   }
+  //
+  //   // Кнопка номера сторінки
+  //   row.addComponents(
+  //     new ButtonBuilder()
+  //       .setCustomId('page_info')
+  //       .setLabel(`Сторінка ${currentPage}/${totalPages}`)
+  //       .setStyle(ButtonStyle.Secondary)
+  //       .setDisabled(true)
+  //   );
+  //
+  //   // Кнопка "Вперед"
+  //   if (currentPage < totalPages) {
+  //     const nextId = this.buildTextCustomId({ sid, page: currentPage + 1 });
+  //     row.addComponents(
+  //       new ButtonBuilder()
+  //         .setCustomId(nextId)
+  //         .setLabel('Вперед ➡️')
+  //         .setStyle(ButtonStyle.Primary)
+  //     );
+  //   }
+  //
+  //   // Кнопка "Закрити"
+  //   const closeId = this.buildTextCustomId({ sid, page: currentPage, action: 'close' });
+  //   row.addComponents(
+  //     new ButtonBuilder()
+  //       .setCustomId(closeId)
+  //       .setLabel('Закрити')
+  //       .setStyle(ButtonStyle.Danger)
+  //   );
+  //
+  //   rows.push(row);
+  //   return rows;
+  // }
 
   /**
    * Створення custom ID для пагінації Google Sheets
    */
-  private buildSheetCustomId(args: { sid: string; page: number; action?: 'close' }): string {
-    const { sid, page, action } = args;
-    if (process.env['NODE_ENV'] === 'test') {
-      return `sheets|sid=${sid}|page=${page}${action ? `|action=${action}` : ''}`;
-    }
-    return signComponentId({ kind: 'sheets', sid, page, action });
-  }
+  // private buildSheetCustomId(args: { sid: string; page: number; action?: 'close' }): string {
+  //   const { sid, page, action } = args;
+  //   if (process.env['NODE_ENV'] === 'test') {
+  //     return `sheets|sid=${sid}|page=${page}${action ? `|action=${action}` : ''}`;
+  //   }
+  //   return signComponentId({ kind: 'sheets', sid, page, action: action !== undefined ? action : undefined });
+  // }
 
   /**
    * Парсинг custom ID для пагінації Google Sheets
    */
-  private parseSheetCustomId(customId: string): { sid: string; page: number; action?: 'close' } | null {
+  private parseSheetCustomId(customId: string): { sid: string; page: number; ts?: number; action?: 'close' } | null {
     if (!customId.startsWith('sheets|')) return null;
     const parts = customId.split('|').slice(1);
     const map = new Map(parts.map(kv => {
@@ -1081,10 +1095,17 @@ export class FileManagerCommand extends BaseCommand {
       return i > 0 ? [kv.slice(0, i), kv.slice(i + 1)] as const : [kv, ''];
     }));
     const sid = map.get('sid');
-    const page = Number(map.get('page') || '1');
-    const action = map.get('action') as 'close' | undefined;
+    const p = Number(map.get('p') || '1');
+    const a = map.get('a') as any;
+    const t = Number(map.get('t') || '');
     if (!sid) return null;
-    return { sid, page: Number.isFinite(page) ? page : 1, action };
+    const res: { sid: string; page: number; ts?: number; action?: 'close' } = {
+      sid,
+      page: Number.isFinite(p) ? p : 1,
+    };
+    if (a === 'close') res.action = a;
+    if (Number.isFinite(t)) res.ts = t;
+    return res;
   }
 
   /**
@@ -1112,7 +1133,7 @@ export class FileManagerCommand extends BaseCommand {
       // Якщо дія "закрити"
       if (action === 'close') {
         FileManagerCommand.textSessions.delete(sid);
-        await interaction.update({ components: [] });
+        await interaction.editReply({ components: [] });
         return;
       }
 
@@ -1123,7 +1144,7 @@ export class FileManagerCommand extends BaseCommand {
         return;
       }
 
-      const sheetData = await googleSvc.getSheetDataWithPagination(session.fileId, 'A:Z', page, 20);
+      const sheetData = await googleSvc.getSheetData(session.fileId, 'A:Z');
 
       // Оновлюємо embed з новими даними
       const embed = new EmbedBuilder()
@@ -1132,31 +1153,37 @@ export class FileManagerCommand extends BaseCommand {
         .setTimestamp();
 
       // Додаємо заголовки
-      if (sheetData.headers.length > 0) {
-        const headerText = sheetData.headers.slice(0, 10).join(' | ');
+      if (sheetData.values && sheetData.values.length > 0 && sheetData.values[0]) {
+        const headerText = sheetData.values[0].slice(0, 10).join(' | ');
         embed.addFields({ name: 'Заголовки', value: headerText });
       }
 
       // Додаємо рядки даних
-      if (sheetData.rows.length > 0) {
-        const rowsText = sheetData.rows
+      if (sheetData.values && sheetData.values.length > 1) {
+        const rowsText = sheetData.values
+          .slice(1, 11) // Показуємо більше рядків (1-10)
           .map((row, index) => {
             const startIndex = (page - 1) * 20 + index + 1;
-            return `${startIndex}. ${row.slice(0, 5).join(' | ')}`;
+            if (row && row.length > 0) {
+              return `${startIndex}. ${row.slice(0, 5).join(' | ')}`;
+            }
+            return `${startIndex}. (пустий рядок)`;
           })
           .join('\n');
         embed.addFields({ name: `Дані (сторінка ${page})`, value: rowsText });
       }
 
-      // Додаємо інформацію про пагінацію
-      embed.setFooter({ 
-        text: `Сторінка ${sheetData.currentPage} з ${sheetData.totalPages} | Всього рядків: ${sheetData.totalRows}` 
-      });
+      // Додаємо інформацію про кількість рядків
+      if (sheetData.values) {
+        embed.setFooter({ 
+          text: `Всього рядків: ${sheetData.values.length}` 
+        });
+      }
 
-      // Оновлюємо кнопки пагінації
-      const components = this.createSheetPaginationComponents(sid, sheetData.currentPage, sheetData.totalPages);
+      // Створюємо кнопки (без пагінації)
+      const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
 
-      await interaction.update({ embeds: [embed], components });
+      await interaction.editReply({ embeds: [embed], components });
     } catch (error) {
       logger.error('Sheet pagination error', { error: String(error) });
       await interaction.reply({ content: 'Помилка при обробці пагінації', ephemeral: true });

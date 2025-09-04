@@ -1,5 +1,5 @@
 import { BaseService } from '@/core/BaseService';
-import type { BotConfig } from '@/types';
+import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
 import logger from '@/utils/logger';
 
 export interface DashboardWidget {
@@ -68,6 +68,58 @@ export class CustomizableDashboardService extends BaseService {
 
   constructor(config: BotConfig) {
     super('CustomizableDashboardService', config);
+  }
+
+  /**
+   * Initialize service
+   */
+  protected async onInitialize(): Promise<void> {
+    // Implementation for initialization if needed
+    logger.info('CustomizableDashboardService initialized', {
+      component: 'CustomizableDashboardService'
+    });
+  }
+
+  /**
+   * Shutdown service
+   */
+  protected async onShutdown(): Promise<void> {
+    // Implementation for shutdown if needed
+    logger.info('CustomizableDashboardService shutdown', {
+      component: 'CustomizableDashboardService'
+    });
+  }
+
+  /**
+   * Health check
+   */
+  protected async onHealthCheck(): Promise<HealthStatus> {
+    return {
+      healthy: true,
+      service: 'CustomizableDashboardService'
+    };
+  }
+
+  /**
+   * Get service stats
+   */
+  protected onGetStats(): Partial<ServiceStats> {
+    return {
+      userDashboards: this.userDashboards.size
+    };
+  }
+
+  /**
+   * Get service statistics
+   */
+  public getStats(): ServiceStats {
+    // Get base stats from parent class
+    const baseStats = super.getStats();
+    
+    return {
+      ...baseStats,
+      userDashboards: this.userDashboards.size
+    };
   }
 
   /**
@@ -180,11 +232,21 @@ export class CustomizableDashboardService extends BaseService {
       return null;
     }
     
-    // Update widget
-    dashboard.widgets[widgetIndex] = {
-      ...dashboard.widgets[widgetIndex],
-      ...updates,
+    // Get the existing widget with non-null assertion since we know it exists
+    const existingWidget = dashboard.widgets[widgetIndex]!;
+    
+    // Create updated widget with proper handling of optional properties
+    const updatedWidget: DashboardWidget = {
+      id: existingWidget.id,
+      type: updates.type !== undefined ? updates.type : existingWidget.type,
+      title: updates.title !== undefined ? updates.title : existingWidget.title,
+      position: updates.position !== undefined ? updates.position : existingWidget.position,
+      config: updates.config !== undefined ? updates.config : existingWidget.config,
+      visible: updates.visible !== undefined ? updates.visible : existingWidget.visible
     };
+    
+    // Update widget
+    dashboard.widgets[widgetIndex] = updatedWidget;
     
     dashboard.updatedAt = new Date();
     this.userDashboards.set(userId, dashboard);
@@ -195,7 +257,7 @@ export class CustomizableDashboardService extends BaseService {
       widgetId,
     });
     
-    return dashboard.widgets[widgetIndex];
+    return updatedWidget;
   }
 
   /**

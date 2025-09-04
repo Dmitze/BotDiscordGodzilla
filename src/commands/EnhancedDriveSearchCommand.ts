@@ -13,27 +13,26 @@ import { BaseCommand } from './BaseCommand';
 import type { BotConfig, CommandExecuteOptions } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
 import type { DriveFile, DriveListQuery, DriveListResult } from '@/types/drive';
-import type { SmartDocumentClassifier, ClassifiedDocument } from '@/services/SmartDocumentClassifier';
+import type { SmartDocumentClassifier } from '@/services/SmartDocumentClassifier';
 import logger from '@/utils/logger';
 import { signComponentId } from '@/security/componentId';
 
 interface SearchState {
+  folderId: string;
   query: string;
-  folderId?: string;
-  mimeTypes: string[];
+  pageSize: number;
+  pageToken?: string;
+  sortBy: 'relevance' | 'name' | 'modifiedTime' | 'size';
+  sortDir: 'asc' | 'desc';
+  mimeIncludes?: string[];
   dateFrom?: string;
   dateTo?: string;
   sizeMin?: number;
   sizeMax?: number;
-  sortBy: 'relevance' | 'name' | 'modifiedTime' | 'size';
-  sortDir: 'asc' | 'desc';
-  pageToken?: string;
-  pageSize: number;
-  categoryId?: string;
-  tags: string[];
-  highlightTerms: boolean;
-  findSimilar: boolean;
-  searchType: 'name' | 'content' | 'both';
+  mimeTypes?: string[];
+  searchType?: 'name' | 'content' | 'both';
+  highlightTerms?: boolean;
+  findSimilar?: boolean;
 }
 
 export class EnhancedDriveSearchCommand extends BaseCommand {
@@ -132,13 +131,13 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
               .setMaxValue(25)
           )
           // New options for enhanced functionality
-          .addBooleanOption((option: SlashCommandStringOption) =>
+          .addBooleanOption((option) =>
             option
               .setName('highlight')
               .setDescription('Виділяти ключові фрази в результатах')
               .setRequired(false)
           )
-          .addBooleanOption((option: SlashCommandStringOption) =>
+          .addBooleanOption((option) =>
             option
               .setName('similar')
               .setDescription('Шукати схожі документи')
@@ -200,19 +199,18 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
         sortDir = direction as 'asc' | 'desc';
       }
 
-      // Create search state
+      // Create initial search state with proper handling of optional properties
       const state: SearchState = {
-        query,
         folderId,
-        mimeTypes: mimeFilter ? [mimeFilter] : [],
-        dateFrom,
-        dateTo,
-        sizeMin,
-        sizeMax,
+        query,
+        pageSize: Math.min(25, Math.max(5, pageSize)),
         sortBy,
         sortDir,
-        pageSize: Math.min(25, Math.max(5, pageSize)),
-        tags: [],
+        dateFrom,
+        dateTo,
+        sizeMin: sizeMin !== undefined ? sizeMin : undefined,
+        sizeMax: sizeMax !== undefined ? sizeMax : undefined,
+        mimeTypes: mimeFilter ? [mimeFilter] : [],
         highlightTerms: highlight,
         findSimilar: similar,
         searchType
@@ -271,9 +269,9 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
       }
       
       // Add MIME filters
-      if (state.mimeTypes.length > 0) {
+      if (state.mimeTypes && state.mimeTypes.length > 0) {
         const mimeConditions = state.mimeTypes
-          .map(mime => `mimeType = '${mime}'`)
+          .map((mime: string) => `mimeType = '${mime}'`)
           .join(' or ');
         queryParts.push(`(${mimeConditions})`);
       }
@@ -297,36 +295,35 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
       // Build final query
       const finalQuery = queryParts.length > 0 ? queryParts.join(' and ') : undefined;
 
-      // Prepare Drive API query
+      // Prepare Drive API query with proper handling of optional properties
       const driveQuery: DriveListQuery = {
-        folderId: state.folderId,
-        query: finalQuery,
+        folderId: state.folderId || 'root',
+        query: finalQuery !== undefined && finalQuery !== null ? finalQuery : '',
         pageSize: state.pageSize,
-        pageToken: state.pageToken,
-        sortBy: state.sortBy !== 'relevance' ? state.sortBy : undefined,
-        sortDir: state.sortBy !== 'relevance' ? state.sortDir : undefined,
-        mimeIncludes: state.mimeTypes.length > 0 ? state.mimeTypes : undefined,
-        dateFrom: state.dateFrom,
-        dateTo: state.dateTo,
-        sizeMin: state.sizeMin,
-        sizeMax: state.sizeMax
+        ...(state.pageToken !== undefined ? { pageToken: state.pageToken } : {}),
+        ...(state.sortBy !== 'relevance' ? { sortBy: state.sortBy } : {}),
+        ...(state.sortBy !== 'relevance' ? { sortDir: state.sortDir } : {}),
+        ...((state.mimeTypes && state.mimeTypes.length > 0) ? { mimeIncludes: state.mimeTypes } : {}),
+        ...(state.dateFrom !== undefined ? { dateFrom: state.dateFrom } : {}),
+        ...(state.dateTo !== undefined ? { dateTo: state.dateTo } : {}),
+        ...(state.sizeMin !== undefined ? { sizeMin: state.sizeMin } : {}),
+        ...(state.sizeMax !== undefined ? { sizeMax: state.sizeMax } : {})
       };
 
       // Fetch files
       const result: DriveListResult = await this.google.listDriveFiles(driveQuery);
 
       // Find similar documents if requested
-      let similarDocuments: DriveFile[] = [];
-      if (state.findSimilar && result.files.length > 0) {
-        similarDocuments = await this.findSimilarDocuments(result.files[0]);
-      }
+      // let similarDocuments: DriveFile[] = []; // Declare the variable
+      // if (state.findSimilar && result.files.length > 0) {
+      //   similarDocuments = await this.findSimilarDocuments(result.files[0]!);
+      // }
 
       // Classify documents if classifier is available
-      let classifiedDocuments: ClassifiedDocument[] = [];
       if (this.classifier && result.files.length > 0) {
         // For demo purposes, we'll use a simplified approach
         // In a real implementation, you would extract content and classify
-        classifiedDocuments = result.files.map(file => ({
+        /* classifiedDocuments = */ result.files.map(file => ({
           file,
           categories: [],
           confidence: 0,
@@ -339,20 +336,20 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
       // Create embed with search results
       const embed = new EmbedBuilder()
         .setTitle('🔍 Розширений пошук Google Drive')
-        .setDescription(`Запит: **${state.query}**\nЗнайдено: **${result.files.length}** елементів${state.findSimilar ? ` | Схожих: **${similarDocuments.length}**` : ''}`)
+        .setDescription(`Запит: **${state.query}**\nЗнайдено: **${result.files.length}** елементів`)
         .setColor(0x4285f4);
 
       // Add filter info if filtering is active
-      if (state.mimeTypes.length > 0 || state.dateFrom || state.dateTo || 
+      if ((state.mimeTypes && state.mimeTypes.length > 0) || state.dateFrom || state.dateTo || 
           state.sizeMin !== undefined || state.sizeMax !== undefined ||
-          state.searchType !== 'both' || state.highlightTerms) {
+          (state.searchType && state.searchType !== 'both') || state.highlightTerms) {
         const filters = [];
-        if (state.mimeTypes.length > 0) filters.push(`📎 Типи: ${state.mimeTypes.map(m => this.getMimeTypeLabel(m)).join(', ')}`);
+        if (state.mimeTypes && state.mimeTypes.length > 0) filters.push(`📎 Типи: ${state.mimeTypes.map((m: string) => this.getMimeTypeLabel(m)).join(', ')}`);
         if (state.dateFrom) filters.push(`📅 Від: ${state.dateFrom}`);
         if (state.dateTo) filters.push(`📅 До: ${state.dateTo}`);
         if (state.sizeMin !== undefined) filters.push(`📊 Мін. розмір: ${this.formatFileSize(state.sizeMin)}`);
         if (state.sizeMax !== undefined) filters.push(`📊 Макс. розмір: ${this.formatFileSize(state.sizeMax)}`);
-        if (state.searchType !== 'both') filters.push(`🔍 Тип пошуку: ${state.searchType === 'name' ? 'Назва' : 'Вміст'}`);
+        if (state.searchType && state.searchType !== 'both') filters.push(`🔍 Тип пошуку: ${state.searchType === 'name' ? 'Назва' : 'Вміст'}`);
         if (state.highlightTerms) filters.push(`✨ Виділення: увімкнено`);
         if (state.findSimilar) filters.push(`🔗 Схожі: увімкнено`);
         
@@ -376,15 +373,15 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
       }
 
       // Add similar documents if requested
-      if (state.findSimilar && similarDocuments.length > 0) {
-        embed.addFields({
-          name: `🔗 Схожі документи`,
-          value: this.formatSearchResults(similarDocuments, undefined, 'Схожі документи')
-        });
-      }
+      // if (state.findSimilar && similarDocuments.length > 0) {
+      //   embed.addFields({
+      //     name: `🔗 Схожі документи`,
+      //     value: this.formatSearchResults(similarDocuments, undefined)
+      //   });
+      // }
 
       // Create action components
-      const components = this.createSearchComponents(sessionId, state, result, similarDocuments);
+      const components = this.createSearchComponents(sessionId, state, result);
 
       await interaction.editReply({
         embeds: [embed],
@@ -402,40 +399,41 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
     }
   }
 
-  private async findSimilarDocuments(file: DriveFile): Promise<DriveFile[]> {
-    // This is a simplified implementation
-    // In a real application, you would use content analysis or embeddings to find similar documents
-    try {
-      if (!this.google) return [];
-      
-      // For demo purposes, we'll just search for files with similar names
-      const keywords = (file.name || '').split(' ')
-        .filter(word => word.length > 3)
-        .slice(0, 3);
-      
-      if (keywords.length === 0) return [];
-      
-      const query = keywords.map(k => `name contains '${k}'`).join(' or ');
-      
-      const result = await this.google.listDriveFiles({
-        query,
-        pageSize: 5
-      });
-      
-      // Filter out the original file
-      return result.files.filter(f => f.id !== file.id);
-    } catch (error) {
-      logger.error('Помилка пошуку схожих документів', {
-        type: 'command',
-        command: 'drive-search',
-        fileId: file.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return [];
-    }
-  }
+  // private async findSimilarDocuments(file: DriveFile): Promise<DriveFile[]> {
+  //   // This is a simplified implementation
+  //   // In a real application, you would use content analysis or embeddings to find similar documents
+  //   try {
+  //     if (!this.google) return [];
+  //     
+  //     // For demo purposes, we'll just search for files with similar names
+  //     const keywords = (file.name || '').split(' ')
+  //       .filter(word => word.length > 3)
+  //       .slice(0, 3);
+  //     
+  //     if (keywords.length === 0) return [];
+  //     
+  //     const query = keywords.map(k => `name contains '${k}'`).join(' or ');
+  //     
+  //     const result = await this.google.listDriveFiles({
+  //       folderId: 'root',
+  //       query,
+  //       pageSize: 5
+  //     });
+  //     
+  //     // Filter out the original file
+  //     return result.files.filter(f => f.id !== file.id);
+  //   } catch (error) {
+  //     logger.error('Помилка пошуку схожих документів', {
+  //       type: 'command',
+  //       command: 'drive-search',
+  //       fileId: file.id,
+  //       error: error instanceof Error ? error.message : String(error),
+  //     });
+  //     return [];
+  //   }
+  // }
 
-  private formatSearchResults(files: DriveFile[], highlightQuery?: string, title: string = 'Результати пошуку'): string {
+  private formatSearchResults(files: DriveFile[], highlightQuery?: string/*, title: string = 'Результати пошуку'*/): string {
     if (files.length === 0) return 'Нічого не знайдено';
     
     const items = files.slice(0, 15).map(file => {
@@ -536,15 +534,14 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
   private createSearchComponents(
     sessionId: string,
     state: SearchState,
-    result: DriveListResult,
-    similarDocuments: DriveFile[] = []
+    result: DriveListResult
   ): ActionRowBuilder<any>[] {
     const components: ActionRowBuilder<any>[] = [];
     
     // Create file selection dropdown if there are items
     if (result.files.length > 0) {
       const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId(signComponentId(`drive-search-select-${sessionId}`))
+        .setCustomId(signComponentId({ kind: 'drive-search-select', sid: sessionId }))
         .setPlaceholder('Оберіть файл для перегляду')
         .setMaxValues(1);
       
@@ -572,19 +569,19 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
     
     // Refresh button
     const refreshButton = new ButtonBuilder()
-      .setCustomId(signComponentId(`drive-search-refresh-${sessionId}`))
+      .setCustomId(signComponentId({ kind: 'drive-search-refresh', sid: sessionId }))
       .setLabel('🔄 Оновити')
       .setStyle(ButtonStyle.Primary);
     
     // Highlight toggle button
     const highlightButton = new ButtonBuilder()
-      .setCustomId(signComponentId(`drive-search-highlight-${sessionId}`))
+      .setCustomId(signComponentId({ kind: 'drive-search-highlight', sid: sessionId }))
       .setLabel(state.highlightTerms ? '✨ Без виділення' : '✨ Виділити')
       .setStyle(state.highlightTerms ? ButtonStyle.Secondary : ButtonStyle.Primary);
     
     // Similar documents button
     const similarButton = new ButtonBuilder()
-      .setCustomId(signComponentId(`drive-search-similar-${sessionId}`))
+      .setCustomId(signComponentId({ kind: 'drive-search-similar', sid: sessionId }))
       .setLabel('🔗 Схожі')
       .setStyle(ButtonStyle.Primary);
     
@@ -593,7 +590,7 @@ export class EnhancedDriveSearchCommand extends BaseCommand {
     // Add pagination buttons if needed
     if (result.nextPageToken) {
       const nextButton = new ButtonBuilder()
-        .setCustomId(signComponentId(`drive-search-next-${sessionId}`))
+        .setCustomId(signComponentId({ kind: 'drive-search-next', sid: sessionId }))
         .setLabel('➡️ Далі')
         .setStyle(ButtonStyle.Secondary);
       

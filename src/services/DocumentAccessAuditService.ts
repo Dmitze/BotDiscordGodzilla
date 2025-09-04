@@ -152,6 +152,46 @@ export class DocumentAccessAuditService extends BaseService {
   }
 
   /**
+   * Initialize service
+   */
+  protected async onInitialize(): Promise<void> {
+    // Implementation for initialization if needed
+    logger.info('DocumentAccessAuditService initialized', {
+      component: 'DocumentAccessAuditService'
+    });
+  }
+
+  /**
+   * Shutdown service
+   */
+  protected async onShutdown(): Promise<void> {
+    // Implementation for shutdown if needed
+    logger.info('DocumentAccessAuditService shutdown', {
+      component: 'DocumentAccessAuditService'
+    });
+  }
+
+  /**
+   * Health check
+   */
+  protected async onHealthCheck(): Promise<HealthStatus> {
+    return {
+      healthy: true,
+      service: 'DocumentAccessAuditService'
+    };
+  }
+
+  /**
+   * Get service stats
+   */
+  protected onGetStats(): Partial<ServiceStats> {
+    return {
+      totalRecords: this.auditRecords.length,
+      securityIncidents: this.securityIncidents.length
+    };
+  }
+
+  /**
    * Log a comprehensive document interaction event
    */
   logDocumentInteraction(args: {
@@ -170,6 +210,7 @@ export class DocumentAccessAuditService extends BaseService {
     metadata?: Record<string, any>;
   }): void {
     try {
+      // Create base record with required fields
       const record: DocumentAccessAuditRecord = {
         id: this.generateId(),
         fileId: args.file.id,
@@ -178,16 +219,41 @@ export class DocumentAccessAuditService extends BaseService {
         userName: args.userName,
         action: args.action,
         timestamp: new Date(),
-        ipAddress: args.ipAddress,
-        userAgent: args.userAgent,
-        sessionId: args.sessionId,
-        contentAccessPattern: args.contentAccessPattern,
-        modificationDetails: args.modificationDetails,
-        documentContext: args.documentContext,
-        securityContext: args.securityContext,
-        performanceMetrics: args.performanceMetrics,
-        metadata: args.metadata
+        sessionId: args.sessionId
       };
+
+      // Conditionally add optional fields to satisfy exactOptionalPropertyTypes
+      if (args.ipAddress !== undefined) {
+        record.ipAddress = args.ipAddress;
+      }
+      
+      if (args.userAgent !== undefined) {
+        record.userAgent = args.userAgent;
+      }
+      
+      if (args.contentAccessPattern !== undefined) {
+        record.contentAccessPattern = args.contentAccessPattern;
+      }
+      
+      if (args.modificationDetails !== undefined) {
+        record.modificationDetails = args.modificationDetails;
+      }
+      
+      if (args.documentContext !== undefined) {
+        record.documentContext = args.documentContext;
+      }
+      
+      if (args.securityContext !== undefined) {
+        record.securityContext = args.securityContext;
+      }
+      
+      if (args.performanceMetrics !== undefined) {
+        record.performanceMetrics = args.performanceMetrics;
+      }
+      
+      if (args.metadata !== undefined) {
+        record.metadata = args.metadata;
+      }
 
       // Add record to audit log
       this.auditRecords.push(record);

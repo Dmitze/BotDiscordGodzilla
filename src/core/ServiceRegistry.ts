@@ -2,7 +2,10 @@ import type { AIService } from '@/services/AIService';
 import type { GoogleService } from '@/services/GoogleService';
 import type { CacheService } from '@/services/CacheService';
 import type { MetricsService } from '@/services/MetricsService';
-import type { SchedulerService } from '@/services/SchedulerService';
+import type SchedulerService from '@/services/SchedulerService';
+import type { SheetsContextService } from '@/services/SheetsContextService';
+import type { DriveChangesService } from '@/services/DriveChangesService';
+import type { WorkspaceDbService } from '@/services/WorkspaceDbService';
 import type { SearchIndex } from '@/search/SearchIndex';
 import type { RagService } from '@/services/RagService';
 import type { DriveIndexerService } from '@/services/DriveIndexerService';
@@ -29,6 +32,9 @@ export type ServiceKey =
   | 'cache'
   | 'metrics'
   | 'scheduler'
+  | 'sheetsContext'
+  | 'driveChanges'
+  | 'workspace'
   | 'searchIndex'
   | 'rag'
   | 'driveIndexer'
@@ -55,6 +61,9 @@ export interface ServiceRegistry {
   cache: CacheService;
   metrics: MetricsService;
   scheduler: SchedulerService;
+  sheetsContext: SheetsContextService;
+  driveChanges: DriveChangesService;
+  workspace: WorkspaceDbService;
   searchIndex: SearchIndex;
   rag: RagService;
   driveIndexer: DriveIndexerService;

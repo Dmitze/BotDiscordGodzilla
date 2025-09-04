@@ -68,7 +68,9 @@ export function buildSimplePaginationRow(params: {
   // Кнопка "Назад"
   row.addComponents(
     new ButtonBuilder()
-      .setCustomId(buildId({ action: baseAction, page: Math.max(1, currentPage - 1), fileId }))
+      .setCustomId(buildId(fileId !== undefined 
+        ? { action: baseAction, page: Math.max(1, currentPage - 1), fileId: fileId }
+        : { action: baseAction, page: Math.max(1, currentPage - 1) }))
       .setLabel('⬅️ Назад')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(currentPage === 1)
@@ -86,7 +88,9 @@ export function buildSimplePaginationRow(params: {
   // Кнопка "Далі"
   row.addComponents(
     new ButtonBuilder()
-      .setCustomId(buildId({ action: baseAction, page: Math.min(totalPages, currentPage + 1), fileId }))
+      .setCustomId(buildId(fileId !== undefined
+        ? { action: baseAction, page: Math.min(totalPages, currentPage + 1), fileId: fileId }
+        : { action: baseAction, page: Math.min(totalPages, currentPage + 1) }))
       .setLabel('Далі ➡️')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(currentPage === totalPages)
@@ -190,15 +194,18 @@ export function formatTableForDiscord(tableData: any[][], maxCellLength: number 
 
   // Визначаємо максимальну ширину для кожної колонки
   const columnWidths: number[] = [];
-  for (let i = 0; i < tableData[0].length; i++) {
-    let maxWidth = 0;
-    for (const row of tableData) {
-      if (i < row.length) {
-        const cellLength = String(row[i] || '').length;
-        maxWidth = Math.max(maxWidth, Math.min(cellLength, maxCellLength));
+  // Fix: Check if tableData[0] exists before accessing its length
+  if (tableData.length > 0 && tableData[0]) {
+    for (let i = 0; i < tableData[0].length; i++) {
+      let maxWidth = 0;
+      for (const row of tableData) {
+        if (i < row.length) {
+          const cellLength = String(row[i] || '').length;
+          maxWidth = Math.max(maxWidth, Math.min(cellLength, maxCellLength));
+        }
       }
+      columnWidths.push(Math.min(maxWidth, maxCellLength));
     }
-    columnWidths.push(Math.min(maxWidth, maxCellLength));
   }
 
   // Форматуємо таблицю
@@ -210,7 +217,9 @@ export function formatTableForDiscord(tableData: any[][], maxCellLength: number 
       // Обрізаємо довгі значення
       const truncatedCell = cell.length > maxCellLength ? cell.substring(0, maxCellLength - 3) + '...' : cell;
       // Вирівнюємо по лівому краю
-      formattedRow += ` ${truncatedCell.padEnd(columnWidths[i])} |`;
+      // Fix: Ensure columnWidths[i] is defined before using it
+      const width = columnWidths[i] || 0;
+      formattedRow += ` ${truncatedCell.padEnd(width)} |`;
     }
     formattedTable += formattedRow + '\n';
     
@@ -218,7 +227,8 @@ export function formatTableForDiscord(tableData: any[][], maxCellLength: number 
     if (row === tableData[0]) {
       let separator = '|';
       for (const width of columnWidths) {
-        separator += ` ${'-'.repeat(width)} |`;
+        // Fix: Ensure width is defined before using it
+        separator += ` ${'-'.repeat(width || 0)} |`;
       }
       formattedTable += separator + '\n';
     }

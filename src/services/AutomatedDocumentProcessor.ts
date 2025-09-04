@@ -2,7 +2,7 @@ import { BaseService } from '@/core/BaseService';
 import type { BotConfig } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
 import type { DriveFile } from '@/types/drive';
-import type { SchedulerService } from '@/services/SchedulerService';
+import type SchedulerService from '@/services/SchedulerService';
 import type { SmartDocumentClassifier } from '@/services/SmartDocumentClassifier';
 import type { DocumentAnalyticsService } from '@/services/DocumentAnalyticsService';
 import type { ClassifiedDocument } from '@/services/SmartDocumentClassifier';
@@ -154,10 +154,28 @@ export class AutomatedDocumentProcessor extends BaseService {
       return false;
     }
     
-    this.triggers[index] = {
-      ...this.triggers[index],
-      ...updates
+    // Get the existing trigger with non-null assertion since we know it exists
+    const existingTrigger = this.triggers[index]!;
+    
+    // For exactOptionalPropertyTypes, we need to handle the lastRun property correctly
+    // If lastRun is undefined, we should not include it in the object literal
+    const updatedTrigger: DocumentTrigger = {
+      id: existingTrigger.id,
+      folderId: updates.folderId !== undefined ? updates.folderId : existingTrigger.folderId,
+      folderName: updates.folderName !== undefined ? updates.folderName : existingTrigger.folderName,
+      channelId: updates.channelId !== undefined ? updates.channelId : existingTrigger.channelId,
+      enabled: updates.enabled !== undefined ? updates.enabled : existingTrigger.enabled,
+      conditions: updates.conditions !== undefined ? updates.conditions : existingTrigger.conditions,
+      actions: updates.actions !== undefined ? updates.actions : existingTrigger.actions,
+      usersToNotify: updates.usersToNotify !== undefined ? updates.usersToNotify : existingTrigger.usersToNotify,
+      createdAt: existingTrigger.createdAt,
+      // Handle optional properties
+      ...(updates.lastRun !== undefined && { lastRun: updates.lastRun }),
+      ...(updates.autoTaggingConfig !== undefined && { autoTaggingConfig: updates.autoTaggingConfig }),
+      ...(updates.notificationTemplate !== undefined && { notificationTemplate: updates.notificationTemplate })
     };
+    
+    this.triggers[index] = updatedTrigger;
     
     logger.info('Оновлено тригер автоматичної обробки', {
       component: 'AutomatedDocumentProcessor',
@@ -282,7 +300,8 @@ export class AutomatedDocumentProcessor extends BaseService {
           
         case 'createdDate':
         case 'modifiedDate':
-          const dateValue = condition.type === 'createdDate' ? file.createdTime : file.modifiedTime;
+          // Use modifiedTime for both createdDate and modifiedDate since DriveFile doesn't have createdTime
+          const dateValue = file.modifiedTime;
           if (dateValue) {
             const date = new Date(dateValue);
             matches = this.evaluateCondition(date, condition.operator, condition.value);
@@ -507,7 +526,7 @@ export class AutomatedDocumentProcessor extends BaseService {
    * Додає теги до документа
    */
   private async tagDocument(file: DriveFile, parameters?: Record<string, any>): Promise<any> {
-    const tags = parameters?.tags || ['auto-processed'];
+    const tags = parameters?.['tags'] || ['auto-processed'];
     
     // У реальній реалізації тут буде додавання тегів до документа
     logger.debug('Додавання тегів до документа', {
@@ -605,7 +624,6 @@ export class AutomatedDocumentProcessor extends BaseService {
       });
 
       const actionsTaken: string[] = [];
-      let results: any = {};
       let autoTags: string[] = [];
       let classification: ClassifiedDocument | null = null;
 
@@ -620,7 +638,6 @@ export class AutomatedDocumentProcessor extends BaseService {
         classification = await this.classifyDocument(file);
         if (classification) {
           actionsTaken.push('classify');
-          results.classification = classification;
         }
       }
 
@@ -630,9 +647,6 @@ export class AutomatedDocumentProcessor extends BaseService {
           const actionResult = await this.executeAction(file, action);
           actionsTaken.push(action.type);
           
-          if (actionResult) {
-            results[action.type] = actionResult;
-          }
         } catch (error) {
           logger.error('Помилка виконання дії', {
             component: 'AutomatedDocumentProcessor',
@@ -644,19 +658,27 @@ export class AutomatedDocumentProcessor extends BaseService {
       }
 
       // Зберігаємо інформацію про оброблений файл
-      this.recordProcessedFile({
+      const processedDocument: ProcessedDocument = {
         fileId: file.id,
         fileName: file.name || 'Без назви',
         actionsTaken,
-        timestamp: new Date(),
-        results,
-        autoTags,
-        classification: classification || undefined
-      });
+        timestamp: new Date()
+      };
+      
+      // Add optional properties only if they have values
+      if (autoTags.length > 0) {
+        processedDocument.autoTags = autoTags;
+      }
+      
+      if (classification) {
+        processedDocument.classification = classification;
+      }
+      
+      this.recordProcessedFile(processedDocument);
 
       // Надсилаємо сповіщення якщо потрібно
       if (trigger.actions.some(a => a.type === 'notify')) {
-        await this.sendNotification(file, trigger, actionsTaken, results, autoTags, classification || undefined);
+        await this.sendNotification(file, trigger, actionsTaken, {}, autoTags, classification || undefined);
       }
 
       logger.info('Файл оброблено успішно', {
@@ -712,7 +734,7 @@ export class AutomatedDocumentProcessor extends BaseService {
    * Експортує документ
    */
   private async exportDocument(file: DriveFile, parameters?: Record<string, any>): Promise<any> {
-    const format = parameters?.format || 'pdf';
+    const format = parameters?.['format'] || 'pdf';
     
     // У реальній реалізації тут буде експорт документа
     logger.debug('Експорт документа', {
@@ -732,7 +754,7 @@ export class AutomatedDocumentProcessor extends BaseService {
    * Переміщує документ
    */
   private async moveDocument(file: DriveFile, parameters?: Record<string, any>): Promise<any> {
-    const targetFolderId = parameters?.targetFolderId;
+    const targetFolderId = parameters?.['targetFolderId'];
     
     if (!targetFolderId) {
       logger.warn('Не вказано цільову папку для переміщення', {

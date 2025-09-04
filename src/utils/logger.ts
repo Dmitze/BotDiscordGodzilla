@@ -4,9 +4,9 @@
  * TypeScript версія 3.0.0 - Повністю рефакторовано
  */
 
-import winston from 'winston';
-import path from 'path';
-import fs from 'fs';
+import * as winston from 'winston';
+import * as path from 'path';
+import * as fs from 'fs';
 import { performance } from 'perf_hooks';
 
 // Константи для конфігурації логера

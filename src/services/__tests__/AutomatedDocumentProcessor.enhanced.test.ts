@@ -1,4 +1,4 @@
-import { AutomatedDocumentProcessor, DocumentTrigger, AutoTaggingConfig, NotificationTemplate } from '../AutomatedDocumentProcessor';
+import { AutomatedDocumentProcessor, AutoTaggingConfig, NotificationTemplate } from '../AutomatedDocumentProcessor';
 
 // Mock config for testing
 const mockConfig = {

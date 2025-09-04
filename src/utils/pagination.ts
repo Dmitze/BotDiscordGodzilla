@@ -6,7 +6,7 @@
 
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
-interface PaginationOptions {
+interface PaginationOptionsLegacy {
   itemsPerPage?: number;
   maxPages?: number;
   embedColor?: number;
@@ -40,7 +40,7 @@ class Pagination {
   private totalItems: number;
   private totalPages: number;
 
-  constructor(data: any[], options: PaginationOptions = {}) {
+  constructor(data: any[], options: PaginationOptionsLegacy = {}) {
     this.data = Array.isArray(data) ? data : [];
     this.currentPage = 0;
     this.itemsPerPage = options.itemsPerPage || 10;
@@ -352,7 +352,7 @@ class Pagination {
   static createWithFilter(
     data: any[],
     filterFn: (item: any) => boolean,
-    options: PaginationOptions = {}
+    options: PaginationOptionsLegacy = {}
   ): Pagination {
     const filteredData = data.filter(filterFn);
     return new Pagination(filteredData, options);
@@ -364,7 +364,7 @@ class Pagination {
   static createWithSort(
     data: any[],
     sortFn: (a: any, b: any) => number,
-    options: PaginationOptions = {}
+    options: PaginationOptionsLegacy = {}
   ): Pagination {
     const sortedData = [...data].sort(sortFn);
     return new Pagination(sortedData, options);
@@ -373,7 +373,7 @@ class Pagination {
   /**
    * Створення пагінації з лімітом
    */
-  static createWithLimit(data: any[], limit: number, options: PaginationOptions = {}): Pagination {
+  static createWithLimit(data: any[], limit: number, options: PaginationOptionsLegacy = {}): Pagination {
     const limitedData = data.slice(0, limit);
     return new Pagination(limitedData, options);
   }
@@ -385,7 +385,7 @@ class Pagination {
     data: any[],
     searchTerm: string,
     searchFields: string[] = [],
-    options: PaginationOptions = {}
+    options: PaginationOptionsLegacy = {}
   ): Pagination {
     if (!searchTerm) {
       return new Pagination(data, options);
@@ -522,7 +522,11 @@ export function paginate<T>(
   items: T[],
   options: PaginationOptions
 ): PaginationResult<T> {
-  const { page = 1, limit = 10, sortBy, sortOrder = 'asc', filters = {} } = options;
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 10;
+  const sortBy = options.sortBy;
+  const sortOrder = options.sortOrder ?? 'asc';
+  const filters = options.filters ?? {};
   
   // Apply filters if provided
   let filteredItems = items;
@@ -614,7 +618,7 @@ function parseCursor(cursor: string): { index: number; value: string } {
   try {
     const decoded = Buffer.from(cursor, 'base64').toString('utf-8');
     const [indexStr, value] = decoded.split(':', 2);
-    return { index: parseInt(indexStr, 10), value };
+    return { index: parseInt(indexStr ?? '0', 10), value: value ?? '' };
   } catch {
     return { index: 0, value: '' };
   }
@@ -683,8 +687,8 @@ export function paginateWithCursor<T>(
   const pageInfo = {
     hasNextPage: endIndex < sortedItems.length,
     hasPreviousPage: startIndex > 0,
-    startCursor: edges.length > 0 ? edges[0].cursor : null,
-    endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+    startCursor: edges.length > 0 ? edges[0]?.cursor ?? null : null,
+    endCursor: edges.length > 0 ? edges[edges.length - 1]?.cursor ?? null : null,
   };
   
   return {
