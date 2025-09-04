@@ -324,17 +324,24 @@ class Logger {
    * Отримання рівня логування
    */
   private getLogLevel(): string {
+<<<<<<< HEAD
     // У тестах за замовчуванням знижуємо рівень логів
     if (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID']) {
       return (process.env['LOG_LEVEL']?.toLowerCase()) || 'error';
     }
+=======
+>>>>>>> f7ab7841 (fix(logger): ensure cleanup in tests; minor cleanup sequencing to reduce write-after-end noise)
     const level = process.env['LOG_LEVEL']?.toLowerCase();
     const validLevels = ['error', 'warn', 'info', 'debug'];
 
     if (level && validLevels.includes(level)) {
       return level;
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> f7ab7841 (fix(logger): ensure cleanup in tests; minor cleanup sequencing to reduce write-after-end noise)
     return process.env['NODE_ENV'] === 'production' ? 'info' : 'debug';
   }
 
@@ -417,8 +424,27 @@ class Logger {
         memory: process.memoryUsage(),
       };
 
+<<<<<<< HEAD
       // Санитизация секретів і циклів
       const safeMeta = this.sanitizeMeta(enhancedMeta);
+=======
+      // Редакція чутливих полів перед будь-якими операціями
+      const redactMeta = (input: any): any => {
+        const SENSITIVE_KEY = /token|password|api[_-]?key|secret|authorization|client[_-]?secret|private[_-]?key/i;
+        const walk = (obj: any): any => {
+          if (!obj || typeof obj !== 'object') return obj;
+          if (Array.isArray(obj)) return obj.map(walk);
+          const out: any = {};
+          for (const k of Object.keys(obj)) {
+            const val = (obj as any)[k];
+            out[k] = SENSITIVE_KEY.test(k) ? '***' : walk(val);
+          }
+          return out;
+        };
+        return walk(input);
+      };
+      const safeMeta = redactMeta(enhancedMeta);
+>>>>>>> f7ab7841 (fix(logger): ensure cleanup in tests; minor cleanup sequencing to reduce write-after-end noise)
 
       // Оновлення статистики
       this.updateStats(level, message, safeMeta);
@@ -426,13 +452,22 @@ class Logger {
       // Додавання до буфера
       this.addToBuffer(level, message, safeMeta);
 
+<<<<<<< HEAD
       // Логування через winston (object signature)
       this.logger.log({ level, message, ...(safeMeta as Record<string, unknown>) });
+=======
+      // Логування через winston
+      this.logger.log(level, message, safeMeta);
+>>>>>>> f7ab7841 (fix(logger): ensure cleanup in tests; minor cleanup sequencing to reduce write-after-end noise)
 
       const duration = performance.now() - startTime;
       if (duration > 100) {
         console.warn(`⚠️ Повільне логування: ${duration.toFixed(2)}ms`);
       }
+<<<<<<< HEAD
+=======
+
+>>>>>>> f7ab7841 (fix(logger): ensure cleanup in tests; minor cleanup sequencing to reduce write-after-end noise)
     } catch (error) {
       console.error('❌ Помилка логування:', error);
       console.log(`[${level.toUpperCase()}]: ${message}`, meta);
@@ -461,7 +496,11 @@ class Logger {
         this.stats.debug++;
         break;
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> f7ab7841 (fix(logger): ensure cleanup in tests; minor cleanup sequencing to reduce write-after-end noise)
     if ((meta as any)['type'] === 'command') this.stats.commands++;
     if ((meta as any)['type'] === 'api_request') this.stats.apiRequests++;
     if ((meta as any)['type'] === 'performance') this.stats.performance++;
