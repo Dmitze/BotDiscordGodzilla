@@ -246,7 +246,7 @@ export class DocumentAnalyticsService extends BaseService {
         userId,
         timestamp: new Date(),
         resultsCount,
-        selectedResult
+        ...(selectedResult !== undefined && { selectedResult })
       };
 
       // Додаємо патерн
@@ -422,11 +422,22 @@ export class DocumentAnalyticsService extends BaseService {
         return false;
       }
       
-      this.personalizedCollections[index] = {
-        ...this.personalizedCollections[index],
-        ...updates,
+      // Get the existing collection with non-null assertion since we know it exists
+      const existingCollection = this.personalizedCollections[index]!;
+      
+      // Create updated collection with proper handling of optional properties
+      const updatedCollection: PersonalizedCollection = {
+        id: existingCollection.id,
+        userId: existingCollection.userId,
+        createdAt: existingCollection.createdAt,
+        name: updates.name !== undefined ? updates.name : existingCollection.name,
+        description: updates.description !== undefined ? updates.description : existingCollection.description,
+        fileIds: updates.fileIds !== undefined ? updates.fileIds : existingCollection.fileIds,
+        isPublic: updates.isPublic !== undefined ? updates.isPublic : existingCollection.isPublic,
         updatedAt: new Date()
       };
+      
+      this.personalizedCollections[index] = updatedCollection;
       
       logger.info('Оновлено персоналізовану колекцію', {
         component: 'DocumentAnalyticsService',
