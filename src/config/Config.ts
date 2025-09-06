@@ -80,88 +80,8 @@ export class Config {
 
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження конфігурації:', error as any);
-      throw new Error(
-        `Помилка конфігурації: ${error instanceof Error ? error.message : 'Невідома помилка'}`
-      );
-    }
-  }
-
-  /**
-   * Завантаження Drive конфігурації
-   */
-  private static loadDriveConfig(): DriveConfig {
-    try {
-      logger.debug('🗂️ Завантаження Drive конфігурації...');
-
-      const csv = (v: string) =>
-        v.trim() === ''
-          ? []
-          : v
-              .split(',')
-              .map(s => s.trim())
-              .filter(Boolean);
-
-      const allowedMimeRaw = this.getEnv('DRIVE_ALLOWED_MIME', '*');
-      const allowedMime = allowedMimeRaw === '*' ? ['*'] : csv(allowedMimeRaw);
-
-      const ownerAllowlist = csv(this.getEnv('DRIVE_OWNER_ALLOWLIST', ''));
-
-      const config: DriveConfig = {
-        folderId: this.getRequiredEnv('GOOGLE_DRIVE_FOLDER_ID'),
-        pageSize: this.validateNumber(this.getEnv('DRIVE_PAGE_SIZE', '25'), 25, 5, 100),
-        allowedMime,
-        fileMaxSizeMb: this.validateNumber(this.getEnv('FILE_MAX_SIZE_MB', '8'), 8, 1, 24),
-        enableTextIndex: this.getEnv('DRIVE_ENABLE_TEXT_INDEX', 'false').toLowerCase() === 'true',
-        indexCron: this.getEnv('DRIVE_INDEX_CRON', '*/30 * * * *'),
-        maxConcurrency: this.validateNumber(this.getEnv('DRIVE_MAX_CONCURRENCY', '3'), 3, 1, 10),
-        ttlListSec: this.validateNumber(this.getEnv('DRIVE_LIST_TTL_SEC', '60'), 60, 10, 3600),
-        ttlTextSec: this.validateNumber(this.getEnv('DRIVE_TEXT_TTL_SEC', '21600'), 21600, 60, 604800),
-        ownerAllowlist,
-        hideWebLink: this.getEnv('DRIVE_HIDE_WEBLINK', 'true').toLowerCase() === 'true',
-        rateQps: this.validateNumber(this.getEnv('DRIVE_QPS', '5'), 5, 1, 100),
-        rateBurst: this.validateNumber(this.getEnv('DRIVE_BURST', '10'), 10, 1, 200),
-      };
-
-      logger.debug('✅ Drive конфігурація завантажена');
-      return config;
-    } catch (error) {
-      logger.error('❌ Помилка завантаження Drive конфігурації:', error as any);
-      throw error;
-    }
-  }
-
-  /**
-   * Завантаження Features конфігурації
-   */
-  private static loadFeaturesConfig(): FeaturesConfig {
-    try {
-      const defaultLocaleEnv = this.getEnv('DEFAULT_LOCALE', 'uk');
-      const defaultLocale: FeaturesConfig['defaultLocale'] = defaultLocaleEnv === 'en' ? 'en' : 'uk';
-
-      const config: FeaturesConfig = {
-        defaultLocale,
-        enableUserWorkspace: this.getEnv('ENABLE_USER_WORKSPACE', 'true').toLowerCase() === 'true',
-        enableDisambiguation:
-          this.getEnv('ENABLE_DISAMBIGUATION', 'true').toLowerCase() === 'true',
-        // PII masking flags (defaults ON for safety)
-        enablePiiMasking: this.getEnv('ENABLE_PII_MASKING', 'true').toLowerCase() === 'true',
-        piiMaskEmail: this.getEnv('PII_MASK_EMAIL', 'true').toLowerCase() === 'true',
-        piiMaskPhone: this.getEnv('PII_MASK_PHONE', 'true').toLowerCase() === 'true',
-      };
-      logger.debug('✅ Features конфігурація завантажена');
-      return config;
-    } catch (error) {
-      logger.error('❌ Помилка завантаження Features конфігурації:', error as any);
-      // Безпечно повернути дефолти
-      return {
-        defaultLocale: 'uk',
-        enableUserWorkspace: true,
-        enableDisambiguation: true,
-        enablePiiMasking: true,
-        piiMaskEmail: true,
-        piiMaskPhone: true,
-      };
+      logger.error('❌ Помилка завантаження конфігурації:', error);
+      throw new Error(`Помилка конфігурації: ${error instanceof Error ? error.message : 'Невідома помилка'}`);
     }
   }
 
@@ -230,24 +150,19 @@ export class Config {
   private static parseIntents(intentsString: string): string[] {
     try {
       const intents = intentsString.split(',').map(intent => intent.trim());
-      const allowed = new Set<string>([
-        ...(CONFIG_CONSTANTS.DEFAULT_INTENTS as unknown as string[]),
-        'DirectMessages',
-        'GuildPresences',
-        'GuildVoiceStates',
-      ]);
-      const validIntents = intents.filter(intent => allowed.has(intent));
-
+      const validIntents = intents.filter(intent => 
+        CONFIG_CONSTANTS.DEFAULT_INTENTS.includes(intent) || 
+        ['DirectMessages', 'GuildPresences', 'GuildVoiceStates'].includes(intent)
+      );
+      
       if (validIntents.length !== intents.length) {
         logger.warn(
           '⚠️ Деякі Discord intents некоректні:',
           intents.filter(intent => !validIntents.includes(intent))
         );
       }
-
-      return validIntents.length > 0
-        ? validIntents
-        : ([...CONFIG_CONSTANTS.DEFAULT_INTENTS] as unknown as string[]);
+      
+      return validIntents.length > 0 ? validIntents : CONFIG_CONSTANTS.DEFAULT_INTENTS;
     } catch (error) {
       logger.error('❌ Помилка парсингу Discord intents:', error as any);
       return [...(CONFIG_CONSTANTS.DEFAULT_INTENTS as unknown as string[])];
@@ -362,10 +277,7 @@ export class Config {
       const config: AIConfig = {
         provider,
         openai: {
-          apiKey:
-            provider === 'openai'
-              ? this.getRequiredEnv('OPENAI_API_KEY')
-              : this.getEnv('OPENAI_API_KEY', ''),
+          apiKey: this.getRequiredEnv('OPENAI_API_KEY'),
           model: this.getEnv('OPENAI_MODEL', CONFIG_CONSTANTS.DEFAULT_OPENAI_MODEL),
           maxTokens: this.validateNumber(
             this.getEnv('OPENAI_MAX_TOKENS', CONFIG_CONSTANTS.DEFAULT_OPENAI_MAX_TOKENS.toString()),
@@ -426,10 +338,8 @@ export class Config {
           0,
           15
         ),
-        // У тестовому середовищі вимикаємо Redis за замовчуванням,
-        // але дозволяємо явне перевизначення через REDIS_ENABLED=true
-        enabled: this.getEnv('REDIS_ENABLED', isTestEnv ? 'false' : 'true').toLowerCase() === 'true',
-        url: this.getEnv('REDIS_URL', ''),
+        enabled: this.getEnv('REDIS_ENABLED', 'true').toLowerCase() === 'true',
+        url: this.getEnv('REDIS_URL'),
       };
 
       logger.debug('✅ Redis конфігурація завантажена');
@@ -486,14 +396,7 @@ export class Config {
       });
       return config;
     } catch (error) {
-      logger.error('❌ Помилка завантаження Metrics конфігурації:', {
-        component: 'Config',
-        type: 'config',
-        section: 'metrics',
-        event: 'load_failed',
-        errorName: error instanceof Error ? error.name : undefined,
-        errorMessage: error instanceof Error ? error.message : String(error),
-      });
+      logger.error('❌ Помилка завантаження Metrics конфігурації:', error);
       throw error;
     }
   }
