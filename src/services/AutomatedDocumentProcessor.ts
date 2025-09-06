@@ -2,9 +2,9 @@ import { BaseService } from '@/core/BaseService';
 import type { BotConfig } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
 import type { DriveFile } from '@/types/drive';
-import type SchedulerService from '@/services/SchedulerService';
+import SchedulerService from '@/services/SchedulerService';
 import type { SmartDocumentClassifier } from '@/services/SmartDocumentClassifier';
-import type { DocumentAnalyticsService } from '@/services/DocumentAnalyticsService';
+// import type { DocumentAnalyticsService } from '@/services/DocumentAnalyticsService';
 import type { ClassifiedDocument } from '@/services/SmartDocumentClassifier';
 import logger from '@/utils/logger';
 
@@ -68,7 +68,6 @@ export class AutomatedDocumentProcessor extends BaseService {
   private google: GoogleService | null = null;
   private scheduler: SchedulerService | null = null;
   private classifier: SmartDocumentClassifier | null = null;
-  private analytics: DocumentAnalyticsService | null = null;
   private triggers: DocumentTrigger[] = [];
   private processedDocuments: ProcessedDocument[] = [];
   private readonly MAX_PROCESSED_HISTORY = 1000;
@@ -99,12 +98,12 @@ export class AutomatedDocumentProcessor extends BaseService {
     google: GoogleService,
     scheduler: SchedulerService,
     classifier: SmartDocumentClassifier,
-    analytics: DocumentAnalyticsService
+    // analytics: DocumentAnalyticsService // Commenting out unused parameter
   ): void {
     this.google = google;
     this.scheduler = scheduler;
     this.classifier = classifier;
-    this.analytics = analytics;
+    // this.analytics = analytics; // Commenting out unused assignment
     
     // Налаштовуємо регулярну перевірку нових документів
     if (this.scheduler) {
@@ -548,9 +547,7 @@ export class AutomatedDocumentProcessor extends BaseService {
     file: DriveFile,
     trigger: DocumentTrigger,
     actionsTaken: string[],
-    results: any,
     autoTags?: string[],
-    classification?: ClassifiedDocument
   ): Promise<void> {
     // У реальній реалізації тут буде надсилання сповіщення в Discord
     logger.debug('Надсилання сповіщення про обробку документа', {
@@ -644,7 +641,7 @@ export class AutomatedDocumentProcessor extends BaseService {
       // Виконуємо всі дії тригера
       for (const action of trigger.actions) {
         try {
-          const actionResult = await this.executeAction(file, action);
+          await this.executeAction(file, action);
           actionsTaken.push(action.type);
           
         } catch (error) {
@@ -678,7 +675,7 @@ export class AutomatedDocumentProcessor extends BaseService {
 
       // Надсилаємо сповіщення якщо потрібно
       if (trigger.actions.some(a => a.type === 'notify')) {
-        await this.sendNotification(file, trigger, actionsTaken, {}, autoTags, classification || undefined);
+        await this.sendNotification(file, trigger, actionsTaken, autoTags);
       }
 
       logger.info('Файл оброблено успішно', {
