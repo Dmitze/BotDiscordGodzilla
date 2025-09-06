@@ -1,6 +1,5 @@
 import { BaseService } from '@/core/BaseService';
 import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
-import type { DriveFile } from '@/types/drive';
 import logger from '@/utils/logger';
 import { DocumentAccessAuditService } from './DocumentAccessAuditService';
 import { DataLossPreventionService } from './DataLossPreventionService';
@@ -87,13 +86,8 @@ export class ComplianceReportingService extends BaseService {
    */
   protected async onHealthCheck(): Promise<HealthStatus> {
     return {
-      services: {
-        ComplianceReportingService: {
-          isActive: true,
-          hasStats: true
-        }
-      },
-      overall: 'healthy'
+      healthy: true,
+      service: 'ComplianceReportingService'
     };
   }
 
@@ -447,7 +441,7 @@ export class ComplianceReportingService extends BaseService {
   /**
    * Check administrative safeguards (HIPAA)
    */
-  private checkAdministrativeSafeguards(data: any): ComplianceCheckResult {
+  private checkAdministrativeSafeguards(_data: any): ComplianceCheckResult {
     const findings: string[] = [];
     const recommendations: string[] = [];
     
@@ -481,7 +475,7 @@ export class ComplianceReportingService extends BaseService {
   /**
    * Check physical safeguards (HIPAA)
    */
-  private checkPhysicalSafeguards(data: any): ComplianceCheckResult {
+  private checkPhysicalSafeguards(_data: any): ComplianceCheckResult {
     const findings: string[] = [];
     const recommendations: string[] = [];
     
@@ -573,7 +567,7 @@ export class ComplianceReportingService extends BaseService {
   /**
    * Check data encryption implementation
    */
-  private checkDataEncryption(data: any): ComplianceCheckResult {
+  private checkDataEncryption(_data: any): ComplianceCheckResult {
     const findings: string[] = [];
     const recommendations: string[] = [];
     
