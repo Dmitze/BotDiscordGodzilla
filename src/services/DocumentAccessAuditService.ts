@@ -1,5 +1,5 @@
 import { BaseService } from '@/core/BaseService';
-import type { BotConfig } from '@/types';
+import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
 import type { DriveFile } from '@/types/drive';
 import logger from '@/utils/logger';
 
@@ -378,8 +378,8 @@ export class DocumentAccessAuditService extends BaseService {
         incidentId: incident.id,
         type: incident.type,
         severity: incident.severity,
-        userId: incident.userId,
-        fileId: incident.fileId,
+        ...(incident.userId !== undefined && { userId: incident.userId }),
+        ...(incident.fileId !== undefined && { fileId: incident.fileId }),
         description: incident.description
       });
     });
@@ -423,10 +423,12 @@ export class DocumentAccessAuditService extends BaseService {
       // Calculate popular documents
       const documentAccessCount: Record<string, { fileName: string; count: number }> = {};
       filteredRecords.forEach(record => {
-        if (!documentAccessCount[record.fileId]) {
-          documentAccessCount[record.fileId] = { fileName: record.fileName, count: 0 };
+        if (record.fileId) {
+          if (!documentAccessCount[record.fileId]) {
+            documentAccessCount[record.fileId] = { fileName: record.fileName || 'Unknown', count: 0 };
+          }
+          documentAccessCount[record.fileId].count++;
         }
-        documentAccessCount[record.fileId].count++;
       });
       
       const popularDocuments = Object.entries(documentAccessCount)
@@ -450,7 +452,9 @@ export class DocumentAccessAuditService extends BaseService {
       
       filteredRecords.forEach(record => {
         const date = record.timestamp.toISOString().split('T')[0]; // YYYY-MM-DD
-        dateCounts[date] = (dateCounts[date] || 0) + 1;
+        if (date) {
+          dateCounts[date] = (dateCounts[date] || 0) + 1;
+        }
       });
       
       Object.entries(dateCounts).forEach(([date, count]) => {
@@ -665,7 +669,7 @@ export class DocumentAccessAuditService extends BaseService {
       );
 
       // Generate access trends
-      const accessTrends = this.generateAccessTrends(filteredRecords, startDate, endDate);
+      const accessTrends = this.generateAccessTrends(filteredRecords);
 
       // Generate risk assessment
       const riskAssessment = this.generateRiskAssessment(filteredRecords, periodIncidents);
@@ -706,42 +710,49 @@ export class DocumentAccessAuditService extends BaseService {
   /**
    * Generate access trends for compliance reporting
    */
-  private generateAccessTrends(records: DocumentAccessAuditRecord[], startDate: Date, endDate: Date): AccessTrend[] {
+  private generateAccessTrends(
+    records: DocumentAccessAuditRecord[], 
+    // startDate: Date, // Commenting out unused parameter
+    // endDate: Date // Commenting out unused parameter
+  ): AccessTrend[] {
+    const trends: AccessTrend[] = [];
+    
     // Group records by month
     const monthlyData: Record<string, {
       totalAccesses: number;
       uniqueUsers: Set<string>;
       sensitiveAccesses: number;
-      flaggedActivities: number;
     }> = {};
     
     records.forEach(record => {
       const month = record.timestamp.toISOString().substring(0, 7); // YYYY-MM
+      
       if (!monthlyData[month]) {
         monthlyData[month] = {
           totalAccesses: 0,
           uniqueUsers: new Set(),
-          sensitiveAccesses: 0,
-          flaggedActivities: 0
+          sensitiveAccesses: 0
         };
       }
       
       monthlyData[month].totalAccesses++;
       monthlyData[month].uniqueUsers.add(record.userId);
       
-      if (this.isSensitiveDocument({ id: record.fileId, name: record.fileName } as DriveFile)) {
+      // Check if this is a sensitive document access
+      if (this.SENSITIVE_KEYWORDS.some(keyword => 
+        (record.fileName && record.fileName.toLowerCase().includes(keyword)) ||
+        (record.action && record.action.toLowerCase().includes(keyword))
+      )) {
         monthlyData[month].sensitiveAccesses++;
       }
     });
     
-    // Convert to AccessTrend objects
-    const trends: AccessTrend[] = [];
-    const months = Object.keys(monthlyData).sort();
-    
-    months.forEach((month, index) => {
-      const data = monthlyData[month];
-      const previousMonth = index > 0 ? months[index - 1] : null;
-      const previousData = previousMonth ? monthlyData[previousMonth] : null;
+    // Convert to trends array
+    Object.entries(monthlyData).forEach(([month, data]) => {
+      const previousMonth = new Date(month + '-01');
+      previousMonth.setMonth(previousMonth.getMonth() - 1);
+      const previousMonthKey = previousMonth.toISOString().substring(0, 7);
+      const previousData = monthlyData[previousMonthKey];
       
       let growthRate = 0;
       if (previousData) {
@@ -754,12 +765,12 @@ export class DocumentAccessAuditService extends BaseService {
         totalAccesses: data.totalAccesses,
         uniqueUsers: data.uniqueUsers.size,
         sensitiveDocumentAccesses: data.sensitiveAccesses,
-        flaggedActivities: data.flaggedActivities || 0,
+        flaggedActivities: 0, // This would be calculated based on security incidents
         growthRate
       });
     });
     
-    return trends;
+    return trends.sort((a, b) => a.period.localeCompare(b.period));
   }
 
   /**
@@ -981,45 +992,37 @@ export class DocumentAccessAuditService extends BaseService {
   /**
    * Get service statistics
    */
-  getStats(): {
-    totalRecords: number;
-    dateRange: { oldest: Date | null; newest: Date | null };
-    sensitiveDocumentAccesses: number;
-    securityIncidents: number;
-  } {
-    try {
-      const totalRecords = this.auditRecords.length;
-      
-      let oldest: Date | null = null;
-      let newest: Date | null = null;
-      
-      if (totalRecords > 0) {
-        oldest = new Date(Math.min(...this.auditRecords.map(r => r.timestamp.getTime())));
-        newest = new Date(Math.max(...this.auditRecords.map(r => r.timestamp.getTime())));
+  public override getStats(): ServiceStats {
+    // Get base stats from parent class
+    const baseStats = super.getStats();
+    
+    // Find oldest and newest records
+    let oldest: Date | null = null;
+    let newest: Date | null = null;
+    
+    this.auditRecords.forEach(record => {
+      if (!oldest || record.timestamp < oldest) {
+        oldest = record.timestamp;
       }
-      
-      const sensitiveDocumentAccesses = this.auditRecords.filter(record => 
-        this.isSensitiveDocument({ id: record.fileId, name: record.fileName } as DriveFile)
-      ).length;
-      
-      return {
-        totalRecords,
-        dateRange: { oldest, newest },
-        sensitiveDocumentAccesses,
-        securityIncidents: this.securityIncidents.length
-      };
-    } catch (error) {
-      logger.error('Error getting audit service stats', {
-        component: 'DocumentAccessAuditService',
-        error: error instanceof Error ? error.message : String(error)
-      });
-      
-      return {
-        totalRecords: 0,
-        dateRange: { oldest: null, newest: null },
-        sensitiveDocumentAccesses: 0,
-        securityIncidents: 0
-      };
-    }
+      if (!newest || record.timestamp > newest) {
+        newest = record.timestamp;
+      }
+    });
+    
+    return {
+      ...baseStats,
+      totalRecords: this.auditRecords.length,
+      dateRange: {
+        oldest,
+        newest
+      },
+      sensitiveDocumentAccesses: this.auditRecords.filter(record => 
+        this.SENSITIVE_KEYWORDS.some(keyword => 
+          (record.fileName && record.fileName.toLowerCase().includes(keyword)) ||
+          (record.action && record.action.toLowerCase().includes(keyword))
+        )
+      ).length,
+      securityIncidents: this.securityIncidents.length
+    };
   }
 }
