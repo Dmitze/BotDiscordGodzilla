@@ -119,8 +119,8 @@ export class DocumentMentionHandler extends BaseService {
         
         mentions.push({
           fileId: '', // Буде заповнено пізніше
-          fileName,
-          mimeType: this.guessMimeType(fileName),
+          fileName: fileName || '',
+          mimeType: this.guessMimeType(fileName || ''),
           match: fullMatch,
           position
         });
@@ -270,7 +270,9 @@ export class DocumentMentionHandler extends BaseService {
   /**
    * Зберігає файл у кеш
    */
-  private cacheFile(fileName: string, file: DriveFile): void {
+  private cacheFile(fileName: string, file: DriveFile | null): void {
+    if (!file) return;
+    
     // Додаємо час кешування
     const fileWithTimestamp = {
       ...file,
@@ -351,7 +353,7 @@ export class DocumentMentionHandler extends BaseService {
         userName,
         content,
         timestamp: new Date(),
-        position
+        ...(position !== undefined && { position })
       };
       
       // Отримуємо існуючі анотації для файлу
