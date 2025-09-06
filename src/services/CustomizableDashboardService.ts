@@ -112,7 +112,7 @@ export class CustomizableDashboardService extends BaseService {
   /**
    * Get service statistics
    */
-  public getStats(): ServiceStats {
+  public override getStats(): ServiceStats {
     // Get base stats from parent class
     const baseStats = super.getStats();
     
