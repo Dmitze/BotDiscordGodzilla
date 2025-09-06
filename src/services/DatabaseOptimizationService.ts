@@ -61,7 +61,7 @@ export class DatabaseOptimizationService extends BaseService {
   
   private performanceMetrics: QueryPerformanceMetrics[] = [];
   private recommendations: OptimizationRecommendation[] = [];
-  private readonly MAX_METRICS_HISTORY = 1000;
+  // private readonly MAX_METRICS_HISTORY = 1000; // Commenting out unused variable
   
   constructor(config: BotConfig) {
     super('DatabaseOptimizationService', config);
