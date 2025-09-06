@@ -402,17 +402,22 @@ export class DataLossPreventionService extends BaseService {
       // Check if the character exists before parsing
       const char = cleaned[i];
       if (char !== undefined) {
-        let digit = parseInt(char, 10);
+        const digit = parseInt(char, 10);
         
-        if (isEven) {
-          digit *= 2;
-          if (digit > 9) {
-            digit -= 9;
+        // Check if parsing was successful
+        if (!isNaN(digit)) {
+          let adjustedDigit = digit;
+          
+          if (isEven) {
+            adjustedDigit *= 2;
+            if (adjustedDigit > 9) {
+              adjustedDigit -= 9;
+            }
           }
+          
+          sum += adjustedDigit;
+          isEven = !isEven;
         }
-        
-        sum += digit;
-        isEven = !isEven;
       }
     }
     
