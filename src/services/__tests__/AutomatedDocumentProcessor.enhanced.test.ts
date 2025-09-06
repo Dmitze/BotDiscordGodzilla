@@ -9,13 +9,6 @@ const mockConfig = {
 } as any;
 
 // Mock DriveFile
-const mockDriveFile = {
-  id: 'test-file-id',
-  name: 'Test Document.pdf',
-  mimeType: 'application/pdf',
-  size: 1024,
-  modifiedTime: '2023-01-01T00:00:00Z'
-} as any;
 
 describe('AutomatedDocumentProcessor - Enhanced Features', () => {
   let processor: AutomatedDocumentProcessor;
