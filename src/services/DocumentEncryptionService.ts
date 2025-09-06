@@ -4,10 +4,10 @@
  * Version 1.0.0
  */
 
-import type { BotConfig } from '@/types';
+import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
 import { BaseService } from '@/core/BaseService';
 import logger from '@/utils/logger';
-import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 // Constants for encryption
 const ENCRYPTION_CONSTANTS = {
@@ -40,25 +40,91 @@ export interface DocumentEncryptionStats {
 }
 
 export class DocumentEncryptionService extends BaseService {
-  private stats: DocumentEncryptionStats;
-  private encryptionKey: Buffer;
-
+  private stats: DocumentEncryptionStats = {
+    totalDocumentsEncrypted: 0,
+    totalDocumentsDecrypted: 0,
+    failedEncryptions: 0,
+    failedDecryptions: 0,
+    averageEncryptionTime: 0,
+    averageDecryptionTime: 0,
+    totalEncryptionTime: 0,
+    totalDecryptionTime: 0
+  };
+  private encryptionKey: string;
+  
   constructor(config: BotConfig) {
     super('DocumentEncryptionService', config);
     
-    this.stats = {
-      totalDocumentsEncrypted: 0,
-      totalDocumentsDecrypted: 0,
-      failedEncryptions: 0,
-      failedDecryptions: 0,
-      averageEncryptionTime: 0,
-      averageDecryptionTime: 0,
-      totalEncryptionTime: 0,
-      totalDecryptionTime: 0,
-    };
+    // Use the document encryption key from security config, or generate a default one
+    this.encryptionKey = config.security?.documentEncryptionKey || 
+      this.generateDefaultKey();
+  }
 
-    // Generate or load encryption key from config
-    this.encryptionKey = this.initializeEncryptionKey();
+  /**
+   * Generate a default encryption key
+   */
+  private generateDefaultKey(): string {
+    return randomBytes(32).toString('base64');
+  }
+
+  /**
+   * Initialize service
+   */
+  protected async onInitialize(): Promise<void> {
+    // Implementation for initialization if needed
+    logger.info('DocumentEncryptionService initialized', {
+      component: 'DocumentEncryptionService'
+    });
+  }
+
+  /**
+   * Shutdown service
+   */
+  protected async onShutdown(): Promise<void> {
+    // Implementation for shutdown if needed
+    logger.info('DocumentEncryptionService shutdown', {
+      component: 'DocumentEncryptionService'
+    });
+  }
+
+  /**
+   * Health check
+   */
+  protected async onHealthCheck(): Promise<HealthStatus> {
+    return {
+      healthy: true,
+      service: 'DocumentEncryptionService'
+    };
+  }
+
+  /**
+   * Get service stats
+   */
+  protected onGetStats(): Partial<ServiceStats> {
+    return {
+      totalDocumentsEncrypted: this.stats.totalDocumentsEncrypted,
+      totalDocumentsDecrypted: this.stats.totalDocumentsDecrypted,
+      failedEncryptions: this.stats.failedEncryptions,
+      failedDecryptions: this.stats.failedDecryptions
+    };
+  }
+
+  /**
+   * Get service statistics
+   */
+  public override getStats(): ServiceStats {
+    // Get base stats from parent class
+    const baseStats = super.getStats();
+    
+    return {
+      ...baseStats,
+      totalDocumentsEncrypted: this.stats.totalDocumentsEncrypted,
+      totalDocumentsDecrypted: this.stats.totalDocumentsDecrypted,
+      failedEncryptions: this.stats.failedEncryptions,
+      failedDecryptions: this.stats.failedDecryptions,
+      averageEncryptionTime: this.stats.averageEncryptionTime,
+      averageDecryptionTime: this.stats.averageDecryptionTime
+    };
   }
 
   /**
@@ -284,18 +350,6 @@ export class DocumentEncryptionService extends BaseService {
       return this.encryptDocumentContent(content);
     }
     return null;
-  }
-
-  protected async onInitialize(): Promise<void> {
-    logger.info('🔐 Document Encryption Service initialized', {
-      component: 'DocumentEncryptionService'
-    });
-  }
-
-  protected async onCleanup(): Promise<void> {
-    logger.info('🧹 Document Encryption Service cleaned up', {
-      component: 'DocumentEncryptionService'
-    });
   }
 }
 
