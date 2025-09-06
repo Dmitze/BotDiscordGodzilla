@@ -136,7 +136,7 @@ export class DocumentVersionComparisonService extends BaseService {
         versions: sortedVersions.map(v => ({
           versionId: v.versionId,
           modifiedTime: v.modifiedTime,
-          author: v.author,
+          ...(v.author !== undefined && { author: v.author })
         })),
         changes,
         summary,
@@ -180,35 +180,38 @@ export class DocumentVersionComparisonService extends BaseService {
       const oldVersion = versions[0];
       const newVersion = versions[1];
       
-      // Simple line-by-line comparison
-      const oldLines = oldVersion.content.split('\n');
-      const newLines = newVersion.content.split('\n');
-      
-      // Find additions and removals
-      const oldSet = new Set(oldLines);
-      const newSet = new Set(newLines);
-      
-      // Find added lines
-      newLines.forEach((line, index) => {
-        if (!oldSet.has(line) && line.trim() !== '') {
-          changes.push({
-            type: 'addition',
-            content: line,
-            position: index,
-          });
-        }
-      });
-      
-      // Find removed lines
-      oldLines.forEach((line, index) => {
-        if (!newSet.has(line) && line.trim() !== '') {
-          changes.push({
-            type: 'removal',
-            content: line,
-            position: index,
-          });
-        }
-      });
+      // Check if versions are defined
+      if (oldVersion && newVersion) {
+        // Simple line-by-line comparison
+        const oldLines = oldVersion.content.split('\n');
+        const newLines = newVersion.content.split('\n');
+        
+        // Find additions and removals
+        const oldSet = new Set(oldLines);
+        const newSet = new Set(newLines);
+        
+        // Find added lines
+        newLines.forEach((line, index) => {
+          if (!oldSet.has(line) && line.trim() !== '') {
+            changes.push({
+              type: 'addition',
+              content: line,
+              position: index,
+            });
+          }
+        });
+        
+        // Find removed lines
+        oldLines.forEach((line, index) => {
+          if (!newSet.has(line) && line.trim() !== '') {
+            changes.push({
+              type: 'removal',
+              content: line,
+              position: index,
+            });
+          }
+        });
+      }
     }
     
     return changes;
