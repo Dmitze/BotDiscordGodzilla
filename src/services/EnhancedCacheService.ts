@@ -39,12 +39,17 @@ export class EnhancedCacheService {
   private async initializeRedis(): Promise<void> {
     try {
       if (this.config.redis?.enabled) {
-        this.redisClient = createClient({
-          host: this.config.redis.host,
-          port: this.config.redis.port,
+        // Fix: Use proper Redis client options with correct typing
+        const redisOptions: any = {
+          socket: {
+            host: this.config.redis.host,
+            port: this.config.redis.port,
+          },
           password: this.config.redis.password,
           database: this.config.redis.database,
-        }) as RedisClientType;
+        };
+
+        this.redisClient = createClient(redisOptions) as RedisClientType;
 
         await this.redisClient.connect();
         logger.info('Redis cache initialized successfully', {
@@ -120,7 +125,8 @@ export class EnhancedCacheService {
         // Store tags for invalidation
         if (tags.length > 0) {
           const tagKey = `tags:${key}`;
-          await this.redisClient.sAdd(tagKey, ...tags);
+          // Fix: Use proper sAdd method call with correct parameters
+          await this.redisClient.sAdd(tagKey, tags);
           // Set expiration for tag key
           await this.redisClient.expire(tagKey, ttl);
         }
