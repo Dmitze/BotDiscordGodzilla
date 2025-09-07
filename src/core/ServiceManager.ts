@@ -533,7 +533,6 @@ class ServiceManager {
         const { HybridSearchService } = await import('@/services/HybridSearchService');
         const hybridSearch = new HybridSearchService(
           searchIndex as any,
-          aiSvc as any,
           embeddingsSvc as any
         );
         this.services.set('hybridSearch', hybridSearch as unknown as NonNullable<ServiceRegistry['hybridSearch']>);
