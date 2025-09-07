@@ -2,7 +2,7 @@ import { BaseService } from '@/core/BaseService';
 import type { BotConfig } from '@/types';
 import type { GoogleService } from '@/services/GoogleService';
 import type { DriveFile } from '@/types/drive';
-import type { Message, TextChannel } from 'discord.js';
+import type { Message } from 'discord.js';
 import logger from '@/utils/logger';
 
 export interface DocumentMention {
@@ -229,9 +229,9 @@ export class DocumentMentionHandler extends BaseService {
         const file = result.files[0];
         
         // Зберігаємо у кеш
-        this.cacheFile(fileName, file);
+        this.cacheFile(fileName, file || null);
         
-        return file;
+        return file || null;
       }
       
       return null;
@@ -293,7 +293,7 @@ export class DocumentMentionHandler extends BaseService {
   /**
    * Надсилає інформацію про документ
    */
-  private async sendDocumentInfo(message: Message, file: DriveFile, mention: DocumentMention): Promise<void> {
+  private async sendDocumentInfo(message: Message, file: DriveFile, _mention: DocumentMention): Promise<void> {
     try {
       // Створюємо посилання на документ
       const link = file.webViewLink || `https://drive.google.com/file/d/${file.id}/view`;
