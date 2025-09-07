@@ -37,18 +37,21 @@ export class GoogleApiRateLimitService extends BaseService {
   private rateLimits: Map<string, RateLimitInfo> = new Map();
   private metrics: Map<string, ApiCallMetrics> = new Map();
   private buckets: Map<string, RateLimitBucket> = new Map();
-  private config: RateLimitConfig;
+  private rateLimitConfig: RateLimitConfig;
   private readonly DEFAULT_RATE_LIMIT_WINDOW = 100; // 100 requests per 100 seconds
   
   constructor(config: BotConfig) {
     super('GoogleApiRateLimitService', config);
     
-    this.config = {
-      maxRetries: config.google?.rateLimit?.maxRetries || 3,
-      initialDelay: config.google?.rateLimit?.initialDelay || 1000,
-      maxDelay: config.google?.rateLimit?.maxDelay || 60000,
-      backoffMultiplier: config.google?.rateLimit?.backoffMultiplier || 2,
-      jitter: config.google?.rateLimit?.jitter ?? true
+    // Extract rate limit config from the main config
+    const rateLimitSettings = (config as any).rateLimit || {};
+    
+    this.rateLimitConfig = {
+      maxRetries: rateLimitSettings.maxRetries || 3,
+      initialDelay: rateLimitSettings.initialDelay || 1000,
+      maxDelay: rateLimitSettings.maxDelay || 60000,
+      backoffMultiplier: rateLimitSettings.backoffMultiplier || 2,
+      jitter: rateLimitSettings.jitter ?? true
     };
   }
 
@@ -163,7 +166,7 @@ export class GoogleApiRateLimitService extends BaseService {
   ): Promise<T> {
     let lastError: Error | null = null;
     
-    for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
+    for (let attempt = 1; attempt <= this.rateLimitConfig.maxRetries; attempt++) {
       try {
         // Check rate limit before making the call
         if (!this.canMakeCall(endpoint)) {
@@ -196,7 +199,7 @@ export class GoogleApiRateLimitService extends BaseService {
         this.updateMetricsAfterCall(endpoint, 0, false);
         
         // If this is the last attempt, throw the error
-        if (attempt === this.config.maxRetries) {
+        if (attempt === this.rateLimitConfig.maxRetries) {
           logger.error('API call failed after max retries', {
             component: 'GoogleApiRateLimitService',
             endpoint,
@@ -214,7 +217,7 @@ export class GoogleApiRateLimitService extends BaseService {
           component: 'GoogleApiRateLimitService',
           endpoint,
           attempt,
-          maxRetries: this.config.maxRetries,
+          maxRetries: this.rateLimitConfig.maxRetries,
           delay: `${delay}ms`,
           error: error instanceof Error ? error.message : String(error)
         });
@@ -232,13 +235,13 @@ export class GoogleApiRateLimitService extends BaseService {
    * Calculate delay with exponential backoff and optional jitter
    */
   private calculateDelay(attempt: number): number {
-    let delay = this.config.initialDelay * Math.pow(this.config.backoffMultiplier, attempt - 1);
+    let delay = this.rateLimitConfig.initialDelay * Math.pow(this.rateLimitConfig.backoffMultiplier, attempt - 1);
     
     // Cap the delay at the maximum
-    delay = Math.min(delay, this.config.maxDelay);
+    delay = Math.min(delay, this.rateLimitConfig.maxDelay);
     
     // Add jitter if enabled
-    if (this.config.jitter) {
+    if (this.rateLimitConfig.jitter) {
       delay = delay * (0.5 + Math.random() * 0.5); // 50-100% of calculated delay
     }
     
@@ -336,12 +339,7 @@ export class GoogleApiRateLimitService extends BaseService {
   /**
    * Get service statistics
    */
-  getStats(): {
-    trackedEndpoints: number;
-    totalCalls: number;
-    totalErrors: number;
-    averageResponseTime: number;
-  } {
+  override getStats(): any {
     let totalCalls = 0;
     let totalErrors = 0;
     let totalResponseTime = 0;
@@ -488,5 +486,31 @@ export class GoogleApiRateLimitService extends BaseService {
         errorRate
       }
     };
+  }
+
+  // === BaseService required methods ===
+  
+  protected async onInitialize(): Promise<void> {
+    logger.info('GoogleApiRateLimitService initialized', {
+      component: 'GoogleApiRateLimitService'
+    });
+  }
+
+  protected async onShutdown(): Promise<void> {
+    logger.info('GoogleApiRateLimitService shutdown', {
+      component: 'GoogleApiRateLimitService'
+    });
+  }
+
+  protected async onHealthCheck(): Promise<any> {
+    return {
+      healthy: true,
+      service: this.name,
+      trackedEndpoints: this.rateLimits.size
+    };
+  }
+
+  protected onGetStats(): any {
+    return this.getStats();
   }
 }
