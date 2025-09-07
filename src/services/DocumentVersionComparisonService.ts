@@ -231,7 +231,6 @@ export class DocumentVersionComparisonService extends BaseService {
     }
 
     const language = options.language || 'Ukrainian';
-    const detailLevel = options.detailLevel || 'medium';
     
     // Create prompt for AI
     let prompt = `Compare the following versions of document "${file.name}" and provide a summary in ${language}.\n\n`;
@@ -405,6 +404,34 @@ export class DocumentVersionComparisonService extends BaseService {
       totalComparisons: comparisons.length,
       cacheSize: this.comparisons.size,
       averageChanges,
+    };
+  }
+
+  // === BaseService required methods ===
+  
+  protected async onInitialize(): Promise<void> {
+    logger.info('DocumentVersionComparisonService initialized', {
+      component: 'DocumentVersionComparisonService'
+    });
+  }
+
+  protected async onShutdown(): Promise<void> {
+    logger.info('DocumentVersionComparisonService shutdown', {
+      component: 'DocumentVersionComparisonService'
+    });
+  }
+
+  protected async onHealthCheck(): Promise<any> {
+    return {
+      healthy: true,
+      service: this.name,
+      cacheSize: this.comparisons.size
+    };
+  }
+
+  protected onGetStats(): any {
+    return {
+      cacheSize: this.comparisons.size
     };
   }
 }
