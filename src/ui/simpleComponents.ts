@@ -4,7 +4,6 @@ import {
   ButtonStyle,
   type MessageActionRowComponentBuilder,
 } from 'discord.js';
-import { t } from '@/i18n';
 
 export type SimpleBuildIdFn = (args: { action: 'ai' | 'search' | 'ocr' | 'close' | 'page'; page?: number; fileId?: string }) => string;
 
@@ -199,7 +198,8 @@ export function formatTableForDiscord(tableData: any[][], maxCellLength: number 
     for (let i = 0; i < tableData[0].length; i++) {
       let maxWidth = 0;
       for (const row of tableData) {
-        if (i < row.length) {
+        // Fix: Check if row exists and has enough elements
+        if (row && i < row.length) {
           const cellLength = String(row[i] || '').length;
           maxWidth = Math.max(maxWidth, Math.min(cellLength, maxCellLength));
         }
@@ -211,6 +211,9 @@ export function formatTableForDiscord(tableData: any[][], maxCellLength: number 
   // Форматуємо таблицю
   let formattedTable = '';
   for (const row of tableData) {
+    // Fix: Check if row exists before processing
+    if (!row) continue;
+    
     let formattedRow = '|';
     for (let i = 0; i < columnWidths.length; i++) {
       const cell = i < row.length ? String(row[i] || '') : '';
