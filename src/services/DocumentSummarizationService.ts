@@ -274,4 +274,32 @@ export class DocumentSummarizationService extends BaseService {
       averageWordCount,
     };
   }
+
+  // === BaseService required methods ===
+  
+  protected async onInitialize(): Promise<void> {
+    logger.info('DocumentSummarizationService initialized', {
+      component: 'DocumentSummarizationService'
+    });
+  }
+
+  protected async onShutdown(): Promise<void> {
+    logger.info('DocumentSummarizationService shutdown', {
+      component: 'DocumentSummarizationService'
+    });
+  }
+
+  protected async onHealthCheck(): Promise<any> {
+    return {
+      healthy: true,
+      service: this.name,
+      cacheSize: this.summaries.size
+    };
+  }
+
+  protected onGetStats(): any {
+    return {
+      cacheSize: this.summaries.size
+    };
+  }
 }
