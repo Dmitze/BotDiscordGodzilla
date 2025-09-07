@@ -23,7 +23,6 @@ describe('HybridSearchService', () => {
     jest.clearAllMocks();
     hybridSearchService = new HybridSearchService(
       mockSearchIndex as any,
-      mockAIService as any,
       mockEmbeddingsService as any
     );
   });
