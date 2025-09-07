@@ -7,7 +7,7 @@
 import type { BotConfig, HealthStatus, ServiceStats } from '@/types';
 import { BaseService } from '@/core/BaseService';
 import logger from '@/utils/logger';
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto';
 
 // Constants for encryption
 const ENCRYPTION_CONSTANTS = {
@@ -123,37 +123,10 @@ export class DocumentEncryptionService extends BaseService {
       failedEncryptions: this.stats.failedEncryptions,
       failedDecryptions: this.stats.failedDecryptions,
       averageEncryptionTime: this.stats.averageEncryptionTime,
-      averageDecryptionTime: this.stats.averageDecryptionTime
+      averageDecryptionTime: this.stats.averageDecryptionTime,
+      totalEncryptionTime: this.stats.totalEncryptionTime,
+      totalDecryptionTime: this.stats.totalDecryptionTime
     };
-  }
-
-  /**
-   * Initialize encryption key from config or generate a new one
-   */
-  private initializeEncryptionKey(): Buffer {
-    try {
-      // Try to get key from config
-      const configKey = this.config.security?.documentEncryptionKey;
-      
-      if (configKey) {
-        // If key is provided in config, use it
-        const keyBuffer = Buffer.from(configKey, 'base64');
-        if (keyBuffer.length !== ENCRYPTION_CONSTANTS.KEY_LENGTH) {
-          throw new Error(`Invalid key length. Expected ${ENCRYPTION_CONSTANTS.KEY_LENGTH} bytes, got ${keyBuffer.length}`);
-        }
-        return keyBuffer;
-      } else {
-        // Generate a new key if not provided
-        logger.warn('🔐 Document encryption key not found in config. Generating a new one.');
-        return randomBytes(ENCRYPTION_CONSTANTS.KEY_LENGTH);
-      }
-    } catch (error) {
-      logger.error('❌ Error initializing encryption key', {
-        component: 'DocumentEncryptionService',
-        error: error instanceof Error ? error.message : String(error)
-      });
-      throw error;
-    }
   }
 
   /**
@@ -167,10 +140,8 @@ export class DocumentEncryptionService extends BaseService {
       const salt = randomBytes(ENCRYPTION_CONSTANTS.SALT_LENGTH);
       const iv = randomBytes(ENCRYPTION_CONSTANTS.IV_LENGTH);
       
-      // Derive key from password or use default key
-      const key = password 
-        ? this.deriveKeyFromPassword(password, salt)
-        : this.encryptionKey;
+      // Get encryption key (32 bytes for AES-256-GCM)
+      const key = this.getEncryptionKey(password, salt);
       
       // Create cipher
       const cipher = createCipheriv(ENCRYPTION_CONSTANTS.ALGORITHM, key, iv);
@@ -231,10 +202,8 @@ export class DocumentEncryptionService extends BaseService {
       const authTag = Buffer.from(encryptedDocument.authTag, 'base64');
       const salt = Buffer.from(encryptedDocument.salt, 'base64');
       
-      // Derive key from password or use default key
-      const key = password 
-        ? this.deriveKeyFromPassword(password, salt)
-        : this.encryptionKey;
+      // Get encryption key (32 bytes for AES-256-GCM)
+      const key = this.getEncryptionKey(password, salt);
       
       // Create decipher
       const decipher = createDecipheriv(ENCRYPTION_CONSTANTS.ALGORITHM, key, iv);
@@ -244,9 +213,7 @@ export class DocumentEncryptionService extends BaseService {
       let decrypted = decipher.update(encryptedData);
       decrypted = Buffer.concat([decrypted, decipher.final()]);
       
-      const result = decrypted.toString('utf8');
-
-      // Update stats
+      // Update stats (isEncryption = false for decryption)
       const duration = Date.now() - startTime;
       this.updateEncryptionStats(false, duration, true);
 
@@ -255,8 +222,9 @@ export class DocumentEncryptionService extends BaseService {
         duration: `${duration}ms`
       });
 
-      return result;
+      return decrypted.toString('utf8');
     } catch (error) {
+      // Update stats for failure (isEncryption = false for decryption)
       this.updateEncryptionStats(false, Date.now() - startTime, false);
       
       logger.error('❌ Error decrypting document content', {
@@ -269,14 +237,28 @@ export class DocumentEncryptionService extends BaseService {
   }
 
   /**
-   * Derive encryption key from password using PBKDF2
+   * Derive a key from a password and salt
    */
   private deriveKeyFromPassword(password: string, salt: Buffer): Buffer {
-    return createHash('sha256')
-      .update(password)
-      .update(salt)
-      .digest()
-      .subarray(0, ENCRYPTION_CONSTANTS.KEY_LENGTH);
+    return createHash('sha256').update(password).digest();
+  }
+
+  /**
+   * Get or derive encryption key
+   */
+  private getEncryptionKey(password?: string, salt?: Buffer): Buffer {
+    if (password && salt) {
+      return this.deriveKeyFromPassword(password, salt);
+    }
+    
+    // Ensure the key is exactly 32 bytes for AES-256-GCM
+    const keyBuffer = Buffer.from(this.encryptionKey, 'base64');
+    if (keyBuffer.length === 32) {
+      return keyBuffer;
+    }
+    
+    // If the key is not 32 bytes, derive a 32-byte key from it
+    return createHash('sha256').update(keyBuffer).digest();
   }
 
   /**
@@ -313,13 +295,6 @@ export class DocumentEncryptionService extends BaseService {
         error: error instanceof Error ? error.message : String(error)
       });
     }
-  }
-
-  /**
-   * Get encryption service statistics
-   */
-  public getStats(): DocumentEncryptionStats {
-    return { ...this.stats };
   }
 
   /**
