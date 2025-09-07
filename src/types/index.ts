@@ -88,6 +88,7 @@ export interface SecurityConfig {
   rateLimitMax: number;
   adminRole: string;
   botUserRole: string;
+  documentEncryptionKey?: string;
 }
 
 export interface PerformanceConfig {
