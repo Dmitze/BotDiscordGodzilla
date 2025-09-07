@@ -164,7 +164,7 @@ export class SmartDocumentClassifier extends BaseService {
       const tags = this.generateTags(allKeywords, matchedCategories);
       
       // Обчислюємо загальну впевненість
-      const confidence = matchedCategories.length > 0 ? 
+      const confidence = matchedCategories.length > 0 && categoryScores[0] ? 
         categoryScores[0].score : 0;
       
       // Identify project themes for the document
@@ -218,11 +218,14 @@ export class SmartDocumentClassifier extends BaseService {
     for (const doc of documents) {
       if (doc.categories.length > 0) {
         // Використовуємо категорію з найвищим пріоритетом
-        const primaryCategory = doc.categories
-          .sort((a, b) => a.priority - b.priority)[0];
-        const group = groups.get(primaryCategory.id);
-        if (group) {
-          group.push(doc);
+        const sortedCategories = doc.categories.sort((a, b) => a.priority - b.priority);
+        const primaryCategory = sortedCategories.length > 0 ? sortedCategories[0] : null;
+        // Fix: Check if primaryCategory is not null before using it
+        if (primaryCategory) {
+          const group = groups.get(primaryCategory.id);
+          if (group) {
+            group.push(doc);
+          }
         }
       } else {
         const group = groups.get('uncategorized');
@@ -253,10 +256,13 @@ export class SmartDocumentClassifier extends BaseService {
     for (const doc of documents) {
       if (doc.projectThemes.length > 0) {
         // Використовуємо першу тему (найбільш вірогідну)
-        const primaryTheme = doc.projectThemes[0];
-        const group = groups.get(primaryTheme.id);
-        if (group) {
-          group.push(doc);
+        const primaryTheme = doc.projectThemes.length > 0 ? doc.projectThemes[0] : null;
+        // Fix: Check if primaryTheme is not null before using it
+        if (primaryTheme) {
+          const group = groups.get(primaryTheme.id);
+          if (group) {
+            group.push(doc);
+          }
         }
       } else {
         const group = groups.get('no-theme');
@@ -423,7 +429,7 @@ export class SmartDocumentClassifier extends BaseService {
   /**
    * Витягує згадки інших файлів з ключових слів
    */
-  private extractFileReferences(keywords: string[]): Array<{fileId: string, type: DocumentRelationship['relationshipType'], confidence: number}> {
+  private extractFileReferences(_keywords: string[]): Array<{fileId: string, type: DocumentRelationship['relationshipType'], confidence: number}> {
     // Це спрощена реалізація
     // У реальному застосунку тут би був аналіз посилань між документами
     return [];
