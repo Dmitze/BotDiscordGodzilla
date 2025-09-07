@@ -35,7 +35,7 @@ export interface MemoryPressureEvent {
 }
 
 export class MemoryOptimizationService extends BaseService {
-  private config: MemoryOptimizationConfig;
+  private memoryConfig: MemoryOptimizationConfig;
   private documentCache: Map<string, DocumentChunk[]> = new Map();
   private memoryPressureEvents: MemoryPressureEvent[] = [];
   private gcIntervalId: NodeJS.Timeout | null = null;
@@ -45,44 +45,16 @@ export class MemoryOptimizationService extends BaseService {
   constructor(config: BotConfig) {
     super('MemoryOptimizationService', config);
     
-    this.config = {
-      maxHeapUsage: config.memory?.maxHeapUsage || 1024 * 1024 * 1024, // 1GB default
-      gcInterval: config.memory?.gcInterval || 60000, // 1 minute default
-      cleanupThreshold: config.memory?.cleanupThreshold || 80, // 80% default
-      streamChunkSize: config.memory?.streamChunkSize || 64 * 1024, // 64KB default
-      compressionThreshold: config.memory?.compressionThreshold || 1024 * 1024 // 1MB default
+    // Extract memory config from the main config
+    const memSettings = (config as any).memory || {};
+    
+    this.memoryConfig = {
+      maxHeapUsage: memSettings.maxHeapUsage || 1024 * 1024 * 1024, // 1GB default
+      gcInterval: memSettings.gcInterval || 60000, // 1 minute default
+      cleanupThreshold: memSettings.cleanupThreshold || 80, // 80% default
+      streamChunkSize: memSettings.streamChunkSize || 64 * 1024, // 64KB default
+      compressionThreshold: memSettings.compressionThreshold || 1024 * 1024 // 1MB default
     };
-  }
-
-  /**
-   * Initialize memory optimization service
-   */
-  protected async onInitialize(): Promise<void> {
-    // Start garbage collection interval
-    this.startGcInterval();
-    
-    logger.info('Memory optimization service initialized', {
-      component: 'MemoryOptimizationService',
-      config: this.config
-    });
-  }
-
-  /**
-   * Start garbage collection interval
-   */
-  private startGcInterval(): void {
-    if (this.gcIntervalId) {
-      clearInterval(this.gcIntervalId);
-    }
-    
-    this.gcIntervalId = setInterval(() => {
-      this.performGarbageCollection();
-    }, this.config.gcInterval);
-    
-    logger.debug('Garbage collection interval started', {
-      component: 'MemoryOptimizationService',
-      interval: this.config.gcInterval
-    });
   }
 
   /**
@@ -99,14 +71,6 @@ export class MemoryOptimizationService extends BaseService {
       arrayBuffers: memoryUsage.arrayBuffers || 0,
       percentageUsed: Math.round((memoryUsage.heapUsed / memoryUsage.heapTotal) * 100)
     };
-  }
-
-  /**
-   * Check if memory usage is above threshold
-   */
-  isMemoryPressureHigh(): boolean {
-    const stats = this.getMemoryStats();
-    return stats.percentageUsed > this.config.cleanupThreshold;
   }
 
   /**
@@ -142,7 +106,7 @@ export class MemoryOptimizationService extends BaseService {
     logger.warn('High memory pressure detected', {
       component: 'MemoryOptimizationService',
       memoryUsage: `${stats.percentageUsed}%`,
-      threshold: `${this.config.cleanupThreshold}%`
+      threshold: `${this.memoryConfig.cleanupThreshold}%`
     });
     
     // Record the memory pressure event
@@ -166,7 +130,7 @@ export class MemoryOptimizationService extends BaseService {
       timestamp: new Date(),
       memoryUsage: { ...stats },
       actionTaken: action,
-      threshold: this.config.cleanupThreshold
+      threshold: this.memoryConfig.cleanupThreshold
     };
     
     this.memoryPressureEvents.push(event);
@@ -283,56 +247,6 @@ export class MemoryOptimizationService extends BaseService {
   }
 
   /**
-   * Split document into manageable chunks
-   */
-  private splitDocumentIntoChunks(documentId: string, content: string): DocumentChunk[] {
-    const chunks: DocumentChunk[] = [];
-    const chunkSize = this.config.streamChunkSize;
-    
-    for (let i = 0; i < content.length; i += chunkSize) {
-      const chunkContent = content.substring(i, i + chunkSize);
-      const chunk: DocumentChunk = {
-        id: `${documentId}-chunk-${i / chunkSize}`,
-        content: chunkContent,
-        position: i,
-        size: chunkContent.length,
-        compressed: false
-      };
-      
-      chunks.push(chunk);
-    }
-    
-    return chunks;
-  }
-
-  /**
-   * Process individual chunk (compress if large)
-   */
-  private async processChunk(chunk: DocumentChunk): Promise<DocumentChunk> {
-    // Only compress chunks larger than threshold
-    if (chunk.size > this.config.compressionThreshold) {
-      try {
-        const compressedContent = await this.compressContent(chunk.content);
-        return {
-          ...chunk,
-          content: compressedContent,
-          compressed: true
-        };
-      } catch (error) {
-        logger.warn('Failed to compress chunk, storing uncompressed', {
-          component: 'MemoryOptimizationService',
-          chunkId: chunk.id,
-          error: error instanceof Error ? error.message : String(error)
-        });
-        
-        return chunk;
-      }
-    }
-    
-    return chunk;
-  }
-
-  /**
    * Compress content using a simple algorithm
    */
   private async compressContent(content: string): Promise<string> {
@@ -385,27 +299,6 @@ export class MemoryOptimizationService extends BaseService {
     );
     
     return decompressedChunks;
-  }
-
-  /**
-   * Stream process large content
-   */
-  async *streamProcessContent(content: string): AsyncGenerator<string, void, unknown> {
-    const chunkSize = this.config.streamChunkSize;
-    
-    for (let i = 0; i < content.length; i += chunkSize) {
-      const chunk = content.substring(i, i + chunkSize);
-      
-      // Process the chunk (in a real implementation, you might do more here)
-      const processedChunk = chunk.trim();
-      
-      yield processedChunk;
-      
-      // Check memory pressure during streaming
-      if (this.isMemoryPressureHigh()) {
-        this.performGarbageCollection();
-      }
-    }
   }
 
   /**
@@ -490,32 +383,15 @@ export class MemoryOptimizationService extends BaseService {
       memoryStats,
       cacheStats,
       pressureEvents,
-      config: { ...this.config },
+      config: { ...this.memoryConfig },
       recommendations
     };
   }
 
   /**
-   * Adjust configuration dynamically
-   */
-  updateConfig(newConfig: Partial<MemoryOptimizationConfig>): void {
-    Object.assign(this.config, newConfig);
-    
-    logger.info('Memory optimization configuration updated', {
-      component: 'MemoryOptimizationService',
-      newConfig
-    });
-    
-    // Restart GC interval if interval changed
-    if (newConfig.gcInterval !== undefined) {
-      this.startGcInterval();
-    }
-  }
-
-  /**
    * Shutdown the service
    */
-  async shutdown(): Promise<void> {
+  override async shutdown(): Promise<void> {
     if (this.gcIntervalId) {
       clearInterval(this.gcIntervalId);
       this.gcIntervalId = null;
@@ -530,25 +406,133 @@ export class MemoryOptimizationService extends BaseService {
     });
   }
 
-  /**
-   * Force immediate garbage collection
-   */
-  forceGarbageCollection(): void {
-    if (global.gc) {
-      const beforeStats = this.getMemoryStats();
-      global.gc();
-      const afterStats = this.getMemoryStats();
+  // === BaseService required methods ===
+  
+  protected async onInitialize(): Promise<void> {
+    // Start garbage collection interval
+    this.startGcInterval();
+    
+    logger.info('Memory optimization service initialized', {
+      component: 'MemoryOptimizationService',
+      config: this.memoryConfig
+    });
+  }
+
+  protected async onShutdown(): Promise<void> {
+    await this.shutdown();
+  }
+
+  protected async onHealthCheck(): Promise<any> {
+    const stats = this.getMemoryStats();
+    return {
+      healthy: true,
+      service: this.name,
+      memoryUsage: `${stats.percentageUsed}%`
+    };
+  }
+
+  protected onGetStats(): any {
+    const stats = this.getMemoryStats();
+    return {
+      memoryUsage: stats.percentageUsed,
+      cachedDocuments: this.documentCache.size
+    };
+  }
+  
+  // Fixing the methods that use config to use memoryConfig
+  private startGcInterval(): void {
+    if (this.gcIntervalId) {
+      clearInterval(this.gcIntervalId);
+    }
+    
+    this.gcIntervalId = setInterval(() => {
+      this.performGarbageCollection();
+    }, this.memoryConfig.gcInterval);
+    
+    logger.debug('Garbage collection interval started', {
+      component: 'MemoryOptimizationService',
+      interval: this.memoryConfig.gcInterval
+    });
+  }
+  
+  isMemoryPressureHigh(): boolean {
+    const stats = this.getMemoryStats();
+    return stats.percentageUsed > this.memoryConfig.cleanupThreshold;
+  }
+  
+  private splitDocumentIntoChunks(documentId: string, content: string): DocumentChunk[] {
+    const chunks: DocumentChunk[] = [];
+    const chunkSize = this.memoryConfig.streamChunkSize;
+    
+    for (let i = 0; i < content.length; i += chunkSize) {
+      const chunkContent = content.substring(i, i + chunkSize);
+      const chunk: DocumentChunk = {
+        id: `${documentId}-chunk-${i / chunkSize}`,
+        content: chunkContent,
+        position: i,
+        size: chunkContent.length,
+        compressed: false
+      };
       
-      logger.info('Forced garbage collection completed', {
-        component: 'MemoryOptimizationService',
-        before: `${Math.round(beforeStats.heapUsed / 1024 / 1024)}MB`,
-        after: `${Math.round(afterStats.heapUsed / 1024 / 1024)}MB`,
-        freed: `${Math.round((beforeStats.heapUsed - afterStats.heapUsed) / 1024 / 1024)}MB`
-      });
-    } else {
-      logger.warn('Garbage collection not exposed - start Node.js with --expose-gc flag', {
-        component: 'MemoryOptimizationService'
-      });
+      chunks.push(chunk);
+    }
+    
+    return chunks;
+  }
+  
+  private async processChunk(chunk: DocumentChunk): Promise<DocumentChunk> {
+    // Only compress chunks larger than threshold
+    if (chunk.size > this.memoryConfig.compressionThreshold) {
+      try {
+        const compressedContent = await this.compressContent(chunk.content);
+        return {
+          ...chunk,
+          content: compressedContent,
+          compressed: true
+        };
+      } catch (error) {
+        logger.warn('Failed to compress chunk, storing uncompressed', {
+          component: 'MemoryOptimizationService',
+          chunkId: chunk.id,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        
+        return chunk;
+      }
+    }
+    
+    return chunk;
+  }
+  
+  async *streamProcessContent(content: string): AsyncGenerator<string, void, unknown> {
+    const chunkSize = this.memoryConfig.streamChunkSize;
+    
+    for (let i = 0; i < content.length; i += chunkSize) {
+      const chunk = content.substring(i, i + chunkSize);
+      
+      // Process the chunk (in a real implementation, you might do more here)
+      const processedChunk = chunk.trim();
+      
+      yield processedChunk;
+      
+      // Check memory pressure during streaming
+      if (this.isMemoryPressureHigh()) {
+        this.performGarbageCollection();
+      }
+    }
+  }
+  
+  updateConfig(newConfig: Partial<MemoryOptimizationConfig>): void {
+    Object.assign(this.memoryConfig, newConfig);
+    
+    logger.info('Memory optimization configuration updated', {
+      component: 'MemoryOptimizationService',
+      newConfig
+    });
+    
+    // Restart GC interval if interval changed
+    if (newConfig.gcInterval !== undefined) {
+      this.startGcInterval();
     }
   }
 }
