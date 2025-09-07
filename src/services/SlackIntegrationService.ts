@@ -6,7 +6,6 @@
 
 import type { BotConfig } from '@/types';
 import { BaseService } from '@/core/BaseService';
-import type { DriveFile } from '@/types/drive';
 import logger from '@/utils/logger';
 import { WebClient } from '@slack/web-api';
 
@@ -70,7 +69,7 @@ export class SlackIntegrationService extends BaseService {
    */
   private initializeSlackClient(): void {
     try {
-      const slackConfig = this.config.integrations?.slack;
+      const slackConfig = (this.config as any).integrations?.slack;
       
       if (slackConfig?.enabled && slackConfig.botToken) {
         this.slackClient = new WebClient(slackConfig.botToken);
@@ -95,7 +94,8 @@ export class SlackIntegrationService extends BaseService {
    */
   public async sendDocumentNotification(event: DocumentEvent, options?: SlackMessageOptions): Promise<boolean> {
     // If Slack is not configured, return early
-    if (!this.slackClient || !this.config.integrations?.slack?.enabled) {
+    const integrations = (this.config as any).integrations;
+    if (!this.slackClient || !integrations?.slack?.enabled) {
       logger.debug('⏭️ Slack notification skipped - integration not enabled', {
         component: 'SlackIntegrationService',
         fileId: event.fileId,
@@ -107,7 +107,7 @@ export class SlackIntegrationService extends BaseService {
     const startTime = Date.now();
     
     try {
-      const channelId = this.config.integrations.slack.channelId;
+      const channelId = integrations.slack.channelId;
       
       if (!channelId) {
         throw new Error('Slack channel ID not configured');
@@ -119,7 +119,8 @@ export class SlackIntegrationService extends BaseService {
       // Send message to Slack
       const response = await this.slackClient.chat.postMessage({
         channel: channelId,
-        ...message
+        ...message,
+        attachments: message.attachments || [] // Ensure attachments is always provided
       });
 
       // Update stats
@@ -153,6 +154,29 @@ export class SlackIntegrationService extends BaseService {
       
       return false;
     }
+  }
+
+  /**
+   * Send batch notifications to Slack
+   */
+  public async sendBatchNotifications(events: DocumentEvent[]): Promise<boolean[]> {
+    const results: boolean[] = [];
+    
+    for (const event of events) {
+      try {
+        const result = await this.sendDocumentNotification(event);
+        results.push(result);
+      } catch (error) {
+        logger.error('Error sending batch notification', {
+          component: 'SlackIntegrationService',
+          fileId: event.fileId,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        results.push(false);
+      }
+    }
+    
+    return results;
   }
 
   /**
@@ -285,10 +309,11 @@ export class SlackIntegrationService extends BaseService {
         this.stats.totalNotificationsFailed++;
       }
       
+      const integrations = (this.config as any).integrations;
       this.stats.lastNotification = {
         timestamp: new Date(),
         success,
-        channelId: this.config.integrations?.slack?.channelId || 'unknown'
+        channelId: integrations?.slack?.channelId || 'unknown'
       };
     } catch (error) {
       logger.warn('⚠️ Error updating Slack integration stats', {
@@ -301,33 +326,46 @@ export class SlackIntegrationService extends BaseService {
   /**
    * Get service statistics
    */
-  public getStats(): SlackIntegrationStats {
+  override getStats(): any {
     return { ...this.stats };
   }
 
-  /**
-   * Send batch notifications for multiple document events
-   */
-  public async sendBatchNotifications(events: DocumentEvent[]): Promise<boolean[]> {
-    const results: boolean[] = [];
-    
-    for (const event of events) {
-      const result = await this.sendDocumentNotification(event);
-      results.push(result);
-    }
-    
-    return results;
+  // === BaseService required methods ===
+  
+  protected async onInitialize(): Promise<void> {
+    logger.info('🔗 Slack Integration Service initialized', {
+      component: 'SlackIntegrationService',
+      configured: this.isConfigured()
+    });
   }
 
-  /**
-   * Send custom message to Slack channel
-   */
+  protected async onShutdown(): Promise<void> {
+    logger.info('🧹 Slack Integration Service shutdown', {
+      component: 'SlackIntegrationService'
+    });
+  }
+
+  protected async onHealthCheck(): Promise<any> {
+    return {
+      healthy: true,
+      service: this.name,
+      configured: this.isConfigured()
+    };
+  }
+
+  protected onGetStats(): any {
+    return this.getStats();
+  }
+  
+  // Fixing the methods that access config to use proper casting
+  
   public async sendCustomMessage(message: SlackMessageOptions, channelId?: string): Promise<boolean> {
-    if (!this.slackClient || !this.config.integrations?.slack?.enabled) {
+    const integrations = (this.config as any).integrations;
+    if (!this.slackClient || !integrations?.slack?.enabled) {
       return false;
     }
 
-    const targetChannel = channelId || this.config.integrations.slack.channelId;
+    const targetChannel = channelId || integrations.slack.channelId;
     
     if (!targetChannel) {
       throw new Error('Slack channel ID not configured');
@@ -336,7 +374,8 @@ export class SlackIntegrationService extends BaseService {
     try {
       const response = await this.slackClient.chat.postMessage({
         channel: targetChannel,
-        ...message
+        ...message,
+        attachments: message.attachments || [] // Ensure attachments is always provided
       });
 
       logger.info('✅ Custom message sent to Slack', {
@@ -355,28 +394,24 @@ export class SlackIntegrationService extends BaseService {
       return false;
     }
   }
-
-  /**
-   * Check if Slack integration is properly configured
-   */
+  
   public isConfigured(): boolean {
+    const integrations = (this.config as any).integrations;
     return !!(
       this.slackClient && 
-      this.config.integrations?.slack?.enabled && 
-      this.config.integrations?.slack?.channelId
+      integrations?.slack?.enabled && 
+      integrations?.slack?.channelId
     );
   }
-
-  /**
-   * Test Slack connection
-   */
+  
   public async testConnection(): Promise<boolean> {
-    if (!this.slackClient || !this.config.integrations?.slack?.enabled) {
+    const integrations = (this.config as any).integrations;
+    if (!this.slackClient || !integrations?.slack?.enabled) {
       return false;
     }
 
     try {
-      const channelId = this.config.integrations.slack.channelId;
+      const channelId = integrations.slack.channelId;
       
       if (!channelId) {
         return false;
@@ -385,7 +420,8 @@ export class SlackIntegrationService extends BaseService {
       // Test by sending a simple message
       const response = await this.slackClient.chat.postMessage({
         channel: channelId,
-        text: '✅ Slack integration test successful!'
+        text: '✅ Slack integration test successful!',
+        attachments: [] // Ensure attachments is always provided
       });
 
       return response.ok as boolean;
@@ -397,19 +433,6 @@ export class SlackIntegrationService extends BaseService {
       
       return false;
     }
-  }
-
-  protected async onInitialize(): Promise<void> {
-    logger.info('🔗 Slack Integration Service initialized', {
-      component: 'SlackIntegrationService',
-      configured: this.isConfigured()
-    });
-  }
-
-  protected async onCleanup(): Promise<void> {
-    logger.info('🧹 Slack Integration Service cleaned up', {
-      component: 'SlackIntegrationService'
-    });
   }
 }
 
