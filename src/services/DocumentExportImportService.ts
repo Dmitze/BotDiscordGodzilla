@@ -94,7 +94,6 @@ export interface BackupLogEntry {
 
 export class DocumentExportImportService extends BaseService {
   private google: GoogleService | null = null;
-  private readonly MAX_CONCURRENT_EXPORTS = 5;
   private readonly SUPPORTED_EXPORT_FORMATS: ExportFormat[];
   private readonly MAX_SYNC_LOG_ENTRIES = 1000;
   private readonly MAX_BACKUP_LOG_ENTRIES = 1000;
@@ -315,38 +314,15 @@ export class DocumentExportImportService extends BaseService {
     }
   }
 
-  /**
-   * Конвертує вміст в потрібний формат
-   */
-  private async convertContent(
-    content: string | Buffer,
-    file: DriveFile,
-    options: ExportOptions
-  ): Promise<string | Buffer> {
-    // У спрощеній реалізації повертаємо оригінальний вміст
-    // У реальній реалізації тут буде конвертація між форматами
-    return content;
-  }
 
-  /**
-   * Перевіряє чи документ є текстовим
-   */
-  private isTextDocument(mimeType: string): boolean {
-    const textTypes = [
-      'text/',
-      'application/json',
-      'application/xml',
-      'application/xhtml+xml'
-    ];
-    
-    return textTypes.some(type => mimeType.startsWith(type));
-  }
+
+
 
   /**
    * Імпортує документи
    */
   async importDocuments(
-    files: Express.Multer.File[],
+    files: Array<{ originalname: string; size: number }>,
     // options: ImportOptions // Commenting out unused parameter
   ): Promise<{ success: boolean; imported: number; errors: string[] }> {
     try {
@@ -651,7 +627,7 @@ export class DocumentExportImportService extends BaseService {
       const errors: string[] = [];
 
       // Визначаємо папку для резервного копіювання
-      const folderId = backupFolderId || this.config.drive?.backupFolderId;
+      const folderId = backupFolderId || this.config.drive?.folderId;
 
       if (!folderId) {
         throw new Error('Не вказано папку для резервного копіювання');
