@@ -427,7 +427,11 @@ export class DocumentAccessAuditService extends BaseService {
           if (!documentAccessCount[record.fileId]) {
             documentAccessCount[record.fileId] = { fileName: record.fileName || 'Unknown', count: 0 };
           }
-          documentAccessCount[record.fileId].count++;
+          // Fix: Check if the object exists before accessing its properties
+          const accessCount = documentAccessCount[record.fileId];
+          if (accessCount) {
+            accessCount.count++;
+          }
         }
       });
       
@@ -735,15 +739,19 @@ export class DocumentAccessAuditService extends BaseService {
         };
       }
       
-      monthlyData[month].totalAccesses++;
-      monthlyData[month].uniqueUsers.add(record.userId);
-      
-      // Check if this is a sensitive document access
-      if (this.SENSITIVE_KEYWORDS.some(keyword => 
-        (record.fileName && record.fileName.toLowerCase().includes(keyword)) ||
-        (record.action && record.action.toLowerCase().includes(keyword))
-      )) {
-        monthlyData[month].sensitiveAccesses++;
+      // Fix: Check if the object exists before accessing its properties
+      const monthData = monthlyData[month];
+      if (monthData) {
+        monthData.totalAccesses++;
+        monthData.uniqueUsers.add(record.userId);
+        
+        // Check if this is a sensitive document access
+        if (this.SENSITIVE_KEYWORDS.some(keyword => 
+          (record.fileName && record.fileName.toLowerCase().includes(keyword)) ||
+          (record.action && record.action.toLowerCase().includes(keyword))
+        )) {
+          monthData.sensitiveAccesses++;
+        }
       }
     });
     
@@ -777,7 +785,12 @@ export class DocumentAccessAuditService extends BaseService {
    * Generate risk assessment for compliance reporting
    */
   private generateRiskAssessment(records: DocumentAccessAuditRecord[], incidents: SecurityIncident[]): RiskAssessment {
-    const riskFactors = [];
+    const riskFactors: Array<{
+      factor: string;
+      level: 'low' | 'medium' | 'high' | 'critical';
+      description: string;
+      recommendations: string[];
+    }> = [];
     
     // Check for high number of security incidents
     if (incidents.length > 10) {
@@ -891,12 +904,14 @@ export class DocumentAccessAuditService extends BaseService {
         filteredRecords = filteredRecords.filter(record => record.action === options.action);
       }
       
-      if (options?.startDate) {
-        filteredRecords = filteredRecords.filter(record => record.timestamp >= options.startDate);
+      // Fix: Check if startDate is defined before using it
+      if (options?.startDate !== undefined) {
+        filteredRecords = filteredRecords.filter(record => record.timestamp >= options.startDate!);
       }
       
-      if (options?.endDate) {
-        filteredRecords = filteredRecords.filter(record => record.timestamp <= options.endDate);
+      // Fix: Check if endDate is defined before using it
+      if (options?.endDate !== undefined) {
+        filteredRecords = filteredRecords.filter(record => record.timestamp <= options.endDate!);
       }
       
       // Sort by timestamp (newest first)
