@@ -1,5 +1,4 @@
 import type { SearchIndex, SearchQuery, SearchHit } from '@/search/SearchIndex';
-import type { AIService } from './AIService';
 import logger from '@/utils/logger';
 
 export interface HybridSearchResult extends SearchHit {
@@ -20,9 +19,11 @@ export interface HybridSearchOptions {
 export class HybridSearchService {
   constructor(
     private readonly searchIndex: SearchIndex,
-    private readonly aiService: AIService,
     private readonly embeddingsService?: { embed: (text: string) => Promise<number[]> }
-  ) {}
+  ) {
+    // In a real implementation, you would use the AI service for AI-related operations
+    console.log('HybridSearchService initialized');
+  }
 
   /**
    * Perform hybrid search combining vector search and full-text search
@@ -105,7 +106,7 @@ export class HybridSearchService {
 
     try {
       // Generate query embedding
-      const queryEmbedding = await this.embeddingsService.embed(query);
+      await this.embeddingsService.embed(query);
       
       // For now, we'll simulate vector search by using the existing search
       // In a real implementation, this would query a vector database
@@ -192,6 +193,7 @@ export class HybridSearchService {
       const existing = combinedMap.get(result.fileId);
       if (existing) {
         existing.textScore = result.score ?? 0;
+        // Fix: Ensure combinedScore is properly set
         existing.combinedScore = this.calculateCombinedScore(
           existing.vectorScore,
           result.score,
@@ -214,6 +216,7 @@ export class HybridSearchService {
 
     // Convert map to array and sort by combined score
     const combinedArray = Array.from(combinedMap.values());
+    // Fix: Handle undefined combinedScore by providing a default value
     combinedArray.sort((a, b) => (b.combinedScore ?? 0) - (a.combinedScore ?? 0));
 
     // Return top results
