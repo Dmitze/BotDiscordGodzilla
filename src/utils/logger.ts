@@ -94,58 +94,6 @@ class Logger {
   }
 
   /**
-   * Санітізація метаданих логів: маскує секрети, обрізає великі значення, прибирає цикли
-   */
-  private sanitizeMeta(meta: LogMeta): LogMeta {
-    const SECRET_KEYS = new Set([
-      'token',
-      'apiKey',
-      'apikey',
-      'api_key',
-      'password',
-      'pass',
-      'secret',
-      'clientSecret',
-      'authorization',
-      'auth',
-      'bearer',
-      'session',
-      'cookie',
-      'cookies',
-    ]);
-
-    const MAX_STRING_LEN = 2000; // захист від гігантських полів
-
-    const seen = new WeakSet();
-
-    const redact = (key: string, value: unknown): unknown => {
-      if (value == null) return value;
-      if (SECRET_KEYS.has(key.toLowerCase())) return '[REDACTED]';
-      if (typeof value === 'string') {
-        return value.length > MAX_STRING_LEN ? value.slice(0, MAX_STRING_LEN) + '…' : value;
-      }
-      if (typeof value === 'object') {
-        if (seen.has(value)) return '[CIRCULAR]';
-        seen.add(value);
-        if (Array.isArray(value)) return value.map(v => redact(key, v));
-        const out: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-          out[k] = redact(k, v);
-        }
-        return out;
-      }
-      return value;
-    };
-
-    // Глибоке копіювання з санітізацією
-    const safe: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(meta || {})) {
-      safe[k] = redact(k, v);
-    }
-    return safe as LogMeta;
-  }
-
-  /**
    * Ініціалізація логера з детальним логуванням
    */
   private initialize(): void {
@@ -477,11 +425,11 @@ class Logger {
         break;
     }
     
-    if ((meta as any)['type'] === 'command') this.stats.commands++;
-    if ((meta as any)['type'] === 'api_request') this.stats.apiRequests++;
-    if ((meta as any)['type'] === 'performance') this.stats.performance++;
-    if ((meta as any)['type'] === 'security') this.stats.security++;
-    if ((meta as any)['type'] === 'system') this.stats.system++;
+    if (meta.type === 'command') this.stats.commands++;
+    if (meta.type === 'api_request') this.stats.apiRequests++;
+    if (meta.type === 'performance') this.stats.performance++;
+    if (meta.type === 'security') this.stats.security++;
+    if (meta.type === 'system') this.stats.system++;
   }
 
   /**
@@ -675,7 +623,7 @@ class Logger {
       event,
       user,
       type: 'security',
-      severity: (details as any)['severity'] || 'medium',
+      severity: details.severity || 'medium',
     });
   }
 
@@ -688,7 +636,7 @@ class Logger {
       operation,
       duration: `${duration}ms`,
       type: 'performance',
-      category: (details as any)['category'] || 'general',
+      category: details.category || 'general',
     });
   }
 
@@ -700,7 +648,7 @@ class Logger {
       ...details,
       event,
       type: 'system',
-      component: (details as any)['component'] || 'unknown',
+      component: details.component || 'unknown',
     });
   }
 
@@ -735,7 +683,7 @@ class Logger {
           event,
           success,
           latencyMs,
-          type: (baseMeta as any)['type'] || 'structured',
+          type: baseMeta.type || 'structured',
         };
         this.log(level, message ?? `Подія: ${event}`, meta);
         return latencyMs;
