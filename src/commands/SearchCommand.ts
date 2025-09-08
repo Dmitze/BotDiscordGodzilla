@@ -302,6 +302,51 @@ export class SearchCommand extends BaseCommand {
     });
   }
 
+  /**
+   * Генерація ключа кешу
+   */
+  private generateSearchCacheKey(params: SearchParams): string {
+    const sortedParams = Object.keys(params)
+      .sort()
+      .map(key => `${key}:${params[key as keyof SearchParams]}`)
+      .join('|');
+
+    return `search:base64:${Buffer.from(sortedParams).toString('base64')}`;
+  }
+
+  /**
+   * Public method for generating cache key (for testing)
+   */
+  public generateCacheKey(params: SearchParams): string {
+    return this.generateSearchCacheKey(params);
+  }
+
+  /**
+   * Get document type name by type key
+   */
+  public getDocumentTypeName(typeKey: string): string {
+    const typeMap: Record<string, string> = {
+      orders: 'Накази',
+      reports: 'Звіти',
+      statistics: 'Статистика',
+      plans: 'Плани',
+      instructions: 'Інструкції',
+      protocols: 'Протоколи',
+      cards: 'Картки',
+      journals: 'Журнали',
+      all: 'Всі документи'
+    };
+
+    return typeMap[typeKey] || 'Всі документи';
+  }
+
+  /**
+   * Public method for parsing date (for testing)
+   */
+  public parseDatePublic(dateString: string): Date | null {
+    return this.parseDate(dateString);
+  }
+
   // Гарантовані ранні виклики для unit‑тестів перед базовим життєвим циклом
   public override async execute(arg: CommandExecuteOptions | ChatInputCommandInteraction): Promise<void> {
     // Адаптер як у BaseCommand: підтримка виклику execute(interaction)
@@ -346,6 +391,108 @@ export class SearchCommand extends BaseCommand {
 
     // Продовжуємо стандартний потік виконання в BaseCommand
     return super.execute(options);
+  }
+
+  /**
+   * Handle component interactions (pagination buttons)
+   */
+  public async onComponent(options: { interaction: any }): Promise<void> {
+    const { interaction } = options;
+    
+    // Check if this is a button interaction
+    if (!interaction.isButton?.()) return;
+    
+    const customId = interaction.customId;
+    if (!customId?.startsWith('srch|')) return;
+    
+    try {
+      // Parse the customId to extract session info
+      const parts = customId.split('|');
+      const params: Record<string, string> = {};
+      
+      for (const part of parts) {
+        const [key, value] = part.split('=');
+        if (key && value) params[key] = value;
+      }
+      
+      const { sid, p: pageStr, a: action, t: tsStr } = params;
+      
+      if (!sid) return;
+      
+      // Check session expiration (10 minutes)
+      const session = SearchCommand.sessions.get(sid);
+      if (!session) {
+        await interaction.reply({
+          content: t('doc.sessionExpired'),
+          ephemeral: true
+        });
+        return;
+      }
+      
+      const timestamp = parseInt(tsStr || '0', 10);
+      const now = Math.floor(Date.now() / 1000);
+      const sessionTtl = SearchCommand.SESSION_TTL_SEC || 600; // 10 minutes default
+      
+      if (timestamp && (now - timestamp) > sessionTtl) {
+        await interaction.reply({
+          content: t('doc.sessionExpired'),
+          ephemeral: true
+        });
+        return;
+      }
+      
+      // Handle close action
+      if (action === 'close') {
+        // Remove session
+        SearchCommand.sessions.delete(sid);
+        
+        // Update message with empty components
+        await interaction.update({
+          components: []
+        });
+        return;
+      }
+      
+      // Handle page change
+      const newPage = parseInt(pageStr || '1', 10);
+      if (isNaN(newPage) || newPage < 1 || newPage > session.totalPages) return;
+      
+      // Update session
+      session.currentPage = newPage;
+      SearchCommand.sessions.set(sid, session);
+      
+      // Build new page
+      const { embeds, components } = this.buildSearchPage(
+        session.results,
+        newPage,
+        session.totalPages,
+        session.results.query || ''
+      );
+      
+      // Update the message
+      await interaction.update({
+        embeds,
+        components
+      });
+    } catch (error) {
+      logger.error('Error handling search pagination', {
+        error: error instanceof Error ? error.message : String(error),
+        customId
+      });
+      
+      try {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            content: '❌ Виникла помилка при обробці взаємодії',
+            ephemeral: true
+          });
+        }
+      } catch (replyError) {
+        logger.error('Error sending error reply', {
+          error: replyError instanceof Error ? replyError.message : String(replyError)
+        });
+      }
+    }
   }
 
   /**
@@ -981,131 +1128,23 @@ export class SearchCommand extends BaseCommand {
   }
 
   /**
-   * Генерація ключа кешу
-   */
-  private generateSearchCacheKey(params: SearchParams): string {
-    const sortedParams = Object.keys(params)
-      .sort()
-      .map(key => `${key}:${params[key as keyof SearchParams]}`)
-      .join('|');
-
-    return `search:${Buffer.from(sortedParams).toString('base64')}`;
-  }
-
-  // Приватний cacheKey базового класу не перевизначаємо
-
-  /**
    * Оновлення статистики пошуку
    */
   private updateSearchStats(success: boolean, duration: number, cacheHit: boolean = false): void {
     this.searchStats.totalSearches++;
     this.searchStats.totalSearchTime += duration;
-    this.searchStats.averageSearchTime = this.searchStats.totalSearchTime / this.searchStats.totalSearches;
-    this.searchStats.successfulSearches += success ? 1 : 0;
-    if (cacheHit) {
-      this.searchStats.cacheHits++;
+
+    if (success) {
+      this.searchStats.successfulSearches++;
+      if (cacheHit) {
+        this.searchStats.cacheHits++;
+      } else {
+        this.searchStats.cacheMisses++;
+      }
     } else {
-      this.searchStats.cacheMisses++;
-    }
-    if (!success) {
       this.searchStats.errors++;
     }
-  }
 
-  /**
-   * Обробка помилки пошуку
-   */
-  private async handleSearchError(
-    interaction: ChatInputCommandInteraction,
-    error: unknown
-  ): Promise<void> {
-    const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
-
-    const errorEmbed = new EmbedBuilder()
-      .setColor('#FF6B6B')
-      .setTitle('❌ Помилка пошуку')
-      .setDescription(`**Помилка:** ${errorMessage}`)
-      .addFields(
-        { name: '💡 Порада', value: 'Перевірте правильність запиту та спробуйте ще раз' },
-        { name: '📞 Підтримка', value: 'Якщо проблема повторюється, зверніться до адміністратора' }
-      )
-      .setTimestamp();
-
-    try {
-      const content = `❌ Помилка: ${errorMessage}`;
-      if (interaction.deferred) {
-        await interaction.editReply({ content, embeds: [errorEmbed] });
-      } else if (interaction.replied) {
-        await interaction.followUp({ content, embeds: [errorEmbed], ephemeral: true });
-      } else {
-        await interaction.reply({ content, embeds: [errorEmbed], ephemeral: true });
-      }
-    } catch (replyError) {
-      logger.error('Помилка відправки повідомлення про помилку', {
-        type: 'command',
-        component: 'SearchCommand',
-        error: replyError instanceof Error ? replyError.message : String(replyError),
-      });
-    }
-  }
-
-  /**
-   * Запис останніх результатів у робочий простір користувача
-   */
-  private async recordWorkspaceRecents(
-    interaction: ChatInputCommandInteraction,
-    searchResult: SearchResult
-  ): Promise<void> {
-    try {
-      // Отримуємо сервіс робочого простору
-      const workspaceService = (interaction.client as any)?.serviceContainer?.get?.('workspace');
-      if (!workspaceService) return;
-
-      // Створюємо записи для останніх результатів (до 5 елементів)
-      const recents = (searchResult.rows || [])
-        .slice(0, 5)
-        .map((row, index) => {
-          const headers = searchResult.headers || [];
-          const item: Record<string, unknown> = {};
-          headers.forEach((header, i) => {
-            item[header] = row[i];
-          });
-          return {
-            id: `search-${Date.now()}-${index}`,
-            type: 'search_result',
-            title: `Результат пошуку #${index + 1}`,
-            content: JSON.stringify(item),
-            timestamp: new Date().toISOString(),
-          };
-        });
-
-      // Зберігаємо в робочий простір користувача
-      for (const recent of recents) {
-        try {
-          await workspaceService.saveUserItem(interaction.user.id, recent);
-        } catch (saveError) {
-          logger.warn('Не вдалося зберегти елемент в робочий простір', {
-            type: 'command',
-            component: 'SearchCommand',
-            userId: interaction.user.id,
-            error: saveError instanceof Error ? saveError.message : String(saveError),
-          });
-        }
-      }
-    } catch (error) {
-      logger.warn('Помилка запису останніх результатів', {
-        type: 'command',
-        component: 'SearchCommand',
-        userId: interaction.user.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  /**
-   * Логування подій безпеки
-   */
-  private logSecurityEvent(event: string, details: Record<string, unknown>): void {
-    logger.security(event, (details as any).userId || 'unknown', details);
+    this.searchStats.averageSearchTime = Math.round(this.searchStats.totalSearchTime / this.searchStats.totalSearches);
   }
 }
