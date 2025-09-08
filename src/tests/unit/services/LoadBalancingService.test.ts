@@ -226,7 +226,7 @@ describe('LoadBalancingService', () => {
       .mockResolvedValue(false);
     
     // Set failure threshold to 1 for testing
-    (loadBalancingService as any).config.failureThreshold = 1;
+    (loadBalancingService as any).loadBalancerConfig.failureThreshold = 1;
     
     const nodes = [
       { id: 'node-1', host: '192.168.1.10', port: 3000 }
