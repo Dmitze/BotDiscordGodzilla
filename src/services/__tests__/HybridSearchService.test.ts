@@ -72,7 +72,7 @@ describe('HybridSearchService', () => {
     it('should handle search with only text results when embeddings service is not available', async () => {
       const serviceWithoutEmbeddings = new HybridSearchService(
         mockSearchIndex as any,
-        mockAIService as any
+        undefined as any
       );
 
       mockSearchIndex.search.mockResolvedValueOnce({
