@@ -1,5 +1,6 @@
 const prometheus = require('prom-client');
 const express = require('express');
+const os = require('os');
 const config = require('../../src/config/Config');
 
 class MetricsCollector {
@@ -127,6 +128,38 @@ class MetricsCollector {
       labelNames: ['format', 'size_range'],
       registers: [this.registry]
     });
+  }
+
+  initializeSystemGauges() {
+    this.cpuUsage = new prometheus.Gauge({
+      name: 'discord_bot_cpu_usage_microseconds',
+      help: 'CPU usage user/system in microseconds',
+      labelNames: ['type'],
+      registers: [this.registry]
+    });
+    this.diskSpace = new prometheus.Gauge({
+      name: 'discord_bot_disk_space_bytes',
+      help: 'Disk space info',
+      labelNames: ['type'],
+      registers: [this.registry]
+    });
+  }
+
+  /**
+   * Оновлення CPU та пам'яті (для тестів і ручного виклику)
+   */
+  updateCpuAndDisk() {
+    try {
+      const { user, system } = process.cpuUsage();
+      this.cpuUsage.set({ type: 'user' }, user);
+      this.cpuUsage.set({ type: 'system' }, system);
+      const free = os.freemem();
+      const total = os.totalmem();
+      this.diskSpace.set({ type: 'mem_free' }, free);
+      this.diskSpace.set({ type: 'mem_total' }, total);
+    } catch (error) {
+      log.warn('⚠️ Помилка updateCpuAndDisk', { type: 'metrics', event: 'update_cpu_disk_failed', error: String(error) });
+    }
   }
 
   /**
