@@ -242,7 +242,11 @@ export class DriveChangesService extends BaseService {
         }
         
         if (change.file) {
-          const isCreated = !change.file.modifiedTime || new Date(change.file.modifiedTime).getTime() === new Date(change.file.modifiedTime).getTime();
+          // For created files, the createdTime and modifiedTime should be the same
+          // For modified files, the modifiedTime should be different from createdTime
+          const isCreated = change.file.createdTime && change.file.modifiedTime && 
+            new Date(change.file.createdTime).getTime() === new Date(change.file.modifiedTime).getTime();
+          
           return {
             fileId: change.file.id,
             type: isCreated ? 'created' : 'modified',
