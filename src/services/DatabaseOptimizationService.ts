@@ -65,6 +65,45 @@ export class DatabaseOptimizationService extends BaseService {
   
   constructor(config: BotConfig) {
     super('DatabaseOptimizationService', config);
+    // Initialize with some mock data for testing
+    this.initializeMockData();
+  }
+
+  /**
+   * Initialize mock data for testing
+   */
+  private initializeMockData(): void {
+    // Create a new stats object with proper typing
+    const newStats: DatabaseStats = {
+      connectionCount: Math.floor(Math.random() * 50) + 10, // 10-60 connections
+      queryPerformance: {
+        averageQueryTime: Math.random() * 100, // 0-100ms
+        slowQueries: Math.floor(Math.random() * 20), // 0-20 slow queries
+        cachedQueries: Math.floor(Math.random() * 1000) // 0-1000 cached queries
+      },
+      storage: {
+        totalSize: 10000000000, // 10GB
+        usedSize: Math.random() * 10000000000, // 0-10GB
+        freeSize: 0 // Calculated below
+      },
+      indexes: {
+        total: Math.floor(Math.random() * 50) + 10, // 10-60 indexes
+        unused: Math.floor(Math.random() * 10), // 0-10 unused indexes
+        fragmented: Math.floor(Math.random() * 5) // 0-5 fragmented indexes
+      }
+    };
+    
+    // Calculate free size
+    newStats.storage.freeSize = newStats.storage.totalSize - newStats.storage.usedSize;
+    
+    // Update the stats
+    this.stats = newStats;
+    
+    // Generate some mock performance metrics
+    this.generateMockPerformanceMetrics();
+    
+    // Generate initial recommendations
+    this.generateRecommendations();
   }
 
   /**
@@ -323,7 +362,17 @@ export class DatabaseOptimizationService extends BaseService {
       ...baseStats,
       connectionCount: this.stats.connectionCount,
       slowQueries: this.stats.queryPerformance.slowQueries,
-      cachedQueries: this.stats.queryPerformance.cachedQueries
+      cachedQueries: this.stats.queryPerformance.cachedQueries,
+      averageQueryTime: this.stats.queryPerformance.averageQueryTime,
+      totalSize: this.stats.storage.totalSize,
+      usedSize: this.stats.storage.usedSize,
+      freeSize: this.stats.storage.freeSize,
+      totalIndexes: this.stats.indexes.total,
+      unusedIndexes: this.stats.indexes.unused,
+      fragmentedIndexes: this.stats.indexes.fragmented,
+      queryPerformance: { ...this.stats.queryPerformance },
+      storage: { ...this.stats.storage },
+      indexes: { ...this.stats.indexes }
     };
   }
 
