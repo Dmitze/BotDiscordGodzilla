@@ -842,6 +842,7 @@ export class FileManagerCommand extends BaseCommand {
   ): Promise<FileResult> {
     const googleSvc = this.getGoogleService(interaction);
     if (!googleSvc) {
+      await interaction.editReply({ content: t('files.error.serviceUnavailable') });
       return { success: false, message: t('files.error.serviceUnavailable') };
     }
 
@@ -849,55 +850,32 @@ export class FileManagerCommand extends BaseCommand {
       // Отримуємо метадані файлу
       const meta = await googleSvc.getDriveFileMetadata(options.fileId);
       if (!meta || !meta.mimeType) {
+        await interaction.editReply({ content: t('files.error.metadata') });
         return { success: false, message: t('files.error.metadata') };
       }
 
-      // Якщо це Google Sheets, використовуємо спеціальну обробку з пагінацією
+      // Якщо це Google Sheets, експортуємо як .xlsx вкладення
       if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
-        // Отримуємо дані таблиці
-        const sheetData = await googleSvc.getSheetData(options.fileId, 'A:Z');
-        
-        // Створюємо сесію для пагінації
-        const sid = Math.random().toString(36).slice(2, 10);
-        FileManagerCommand.textSessions.set(sid, {
-          fileId: options.fileId,
-          fileName: String(meta.name || options.fileId),
-          chunks: [], // Для таблиць використовуємо інший підхід
-          createdAt: Math.floor(Date.now() / 1000),
-          link: String((meta as any).webViewLink || ''),
-        });
-
-        // Формуємо відповідь з даними таблиці
-        const embed = new EmbedBuilder()
-          .setTitle(`📊 Таблиця: ${meta.name || options.fileId}`)
-          .setColor(0x22c55e)
-          .setTimestamp();
-
-        // Додаємо заголовки
-        if (sheetData.values.length > 0 && sheetData.values[0]) {
-          const headerText = sheetData.values[0].slice(0, 10).join(' | '); // Обмежуємо кількість стовпців
-          embed.addFields({ name: 'Заголовки', value: headerText });
+        try {
+          const xlsxBuf = await googleSvc.exportDriveFile(
+            options.fileId,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          );
+          const baseName = String(meta.name || options.fileId);
+          const fileName = baseName.endsWith('.xlsx') ? baseName : `${baseName}.xlsx`;
+          await interaction.editReply({
+            content: t('files.read.downloadedSheet') || 'Завантажено таблицю як .xlsx',
+            files: [{ attachment: xlsxBuf, name: fileName }]
+          });
+          return { success: true, message: 'ok' };
+        } catch (exportError) {
+          // Якщо експорт не вдався, відображаємо як звичайний текст
+          logger.warn('FileManager: не вдалося експортувати таблицю як xlsx, відображаємо як текст', {
+            component: 'FileManagerCommand',
+            event: 'sheet_export_failed',
+            error: String(exportError),
+          });
         }
-
-        // Додаємо перші рядки даних
-        if (sheetData.values.length > 1) {
-          const rowsText = sheetData.values
-            .slice(1, 11) // Показуємо більше рядків (1-10)
-            .map((row, index) => `${index + 1}. ${row.slice(0, 8).join(' | ')}`) // Більше стовпців
-            .join('\n');
-          embed.addFields({ name: `Дані (сторінка 1)`, value: rowsText });
-        }
-
-        // Додаємо інформацію про кількість рядків
-        embed.setFooter({ 
-          text: `Всього рядків: ${sheetData.values.length}` 
-        });
-
-        // Створюємо кнопки (без пагінації)
-        const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
-
-        await interaction.editReply({ embeds: [embed], components });
-        return { success: true, message: 'ok' };
       }
 
       // Для інших типів файлів використовуємо стандартну обробку
@@ -905,6 +883,7 @@ export class FileManagerCommand extends BaseCommand {
       const safeText = String(text || '').trim();
 
       if (!safeText) {
+        await interaction.editReply({ content: t('files.error.noText') });
         return { success: false, message: t('files.error.noText') };
       }
 
@@ -955,6 +934,7 @@ export class FileManagerCommand extends BaseCommand {
     } catch (error) {
       logger.error('FileManager read text error', { error: String(error) });
       const msg = this.mapGoogleApiErrorToMessage(error) || t('files.error.process');
+      await interaction.editReply({ content: msg });
       return { success: false, message: msg };
     }
   }
