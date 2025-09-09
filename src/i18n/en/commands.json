@@ -1,0 +1,41 @@
+{
+  "markdown": {
+    "name": "markdown",
+    "description": "Render markdown content in Discord",
+    "options": {
+      "content": {
+        "description": "Markdown content to render"
+      },
+      "format": {
+        "description": "Output format (text or image)"
+      }
+    },
+    "errors": {
+      "service_unavailable": "Markdown rendering service is unavailable",
+      "rendering_failed": "Failed to render markdown content"
+    }
+  },
+  "ollama": {
+    "name": "ollama",
+    "description": "Interact with the Ollama AI model",
+    "options": {
+      "prompt": {
+        "description": "The prompt to send to the AI model"
+      },
+      "model": {
+        "description": "The AI model to use (optional)"
+      },
+      "reset": {
+        "description": "Reset the conversation history for this channel"
+      }
+    },
+    "messages": {
+      "history_reset": "Conversation history has been reset for this channel.",
+      "processing": "Processing your request..."
+    },
+    "errors": {
+      "service_unavailable": "Ollama service is unavailable",
+      "generation_failed": "Failed to generate response from AI model"
+    }
+  }
+}
