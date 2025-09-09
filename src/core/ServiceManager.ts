@@ -401,6 +401,45 @@ class ServiceManager {
       });
     }
 
+    // Markdown Rendering Service (standalone service)
+    try {
+      const { MarkdownRenderingService } = await import('@/services/MarkdownRenderingService');
+      const markdownRendering = MarkdownRenderingService.getInstance(this.bot.config);
+      this.services.set('markdownRendering', markdownRendering as unknown as NonNullable<ServiceRegistry['markdownRendering']>);
+      logger.info('📝 MarkdownRenderingService зареєстровано', {
+        type: 'service_manager',
+        event: 'markdown_rendering_registered',
+        component: 'ServiceManager',
+      });
+    } catch (er) {
+      logger.error('❌ Не вдалося створити MarkdownRenderingService', {
+        type: 'service_manager',
+        event: 'markdown_rendering_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
+    // Ollama Service (depends on Cache service)
+    try {
+      const { OllamaService } = await import('@/services/OllamaService');
+      const cacheService = this.services.get('cache');
+      const ollama = new OllamaService(this.bot.config, cacheService as any);
+      this.services.set('ollama', ollama as unknown as NonNullable<ServiceRegistry['ollama']>);
+      logger.info('🦙 OllamaService зареєстровано', {
+        type: 'service_manager',
+        event: 'ollama_registered',
+        component: 'ServiceManager',
+      });
+    } catch (er) {
+      logger.error('❌ Не вдалося створити OllamaService', {
+        type: 'service_manager',
+        event: 'ollama_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
     // Response Cache Service (standalone service)
     try {
       const responseCache = new ResponseCacheService(30, 1000); // 30 min TTL, 1000 max entries
