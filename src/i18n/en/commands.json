@@ -37,5 +37,65 @@
       "service_unavailable": "Ollama service is unavailable",
       "generation_failed": "Failed to generate response from AI model"
     }
+  },
+  "analytics": {
+    "name": "analytics",
+    "description": "Analytics and reports on bot usage",
+    "options": {
+      "report": {
+        "description": "Type of report to generate"
+      },
+      "limit": {
+        "description": "Limit the number of records in the report"
+      },
+      "format": {
+        "description": "Output format for the report"
+      }
+    },
+    "reports": {
+      "usage": {
+        "title": "Usage Statistics",
+        "header": "Bot Usage Statistics",
+        "date": "Date",
+        "users": "Users",
+        "messages": "Messages",
+        "commands": "Commands"
+      },
+      "search": {
+        "title": "Search Analytics",
+        "header": "Top Search Queries",
+        "query": "Query",
+        "count": "Count",
+        "avg_results": "Avg Results"
+      },
+      "commands": {
+        "title": "Command Usage",
+        "header": "Top Commands",
+        "name": "Command",
+        "count": "Count",
+        "avg_time": "Avg Time"
+      },
+      "activity": {
+        "title": "User Activity",
+        "header": "Most Active Users",
+        "user": "User",
+        "messages": "Messages",
+        "commands": "Commands",
+        "active_days": "Active Days"
+      },
+      "performance": {
+        "title": "Performance",
+        "header": "Performance Metrics",
+        "metric": "Metric",
+        "value": "Value",
+        "status": "Status"
+      },
+      "chart_unavailable": "Charts are temporarily unavailable. Below is the text version of the report."
+    },
+    "errors": {
+      "invalid_report_type": "Invalid report type. Please select one of the available report types.",
+      "title": "Error",
+      "generation_failed": "Failed to generate report"
+    }
   }
 }
