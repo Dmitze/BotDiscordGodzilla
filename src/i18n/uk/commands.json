@@ -1,0 +1,41 @@
+{
+  "markdown": {
+    "name": "markdown",
+    "description": "Рендеринг markdown контенту в Discord",
+    "options": {
+      "content": {
+        "description": "Markdown контент для рендерингу"
+      },
+      "format": {
+        "description": "Формат виводу (текст або зображення)"
+      }
+    },
+    "errors": {
+      "service_unavailable": "Сервіс рендерингу markdown недоступний",
+      "rendering_failed": "Не вдалося відобразити markdown контент"
+    }
+  },
+  "ollama": {
+    "name": "ollama",
+    "description": "Взаємодія з AI моделлю Ollama",
+    "options": {
+      "prompt": {
+        "description": "Запит для відправки AI моделі"
+      },
+      "model": {
+        "description": "AI модель для використання (необов'язково)"
+      },
+      "reset": {
+        "description": "Скинути історію розмови для цього каналу"
+      }
+    },
+    "messages": {
+      "history_reset": "Історія розмови була скинута для цього каналу.",
+      "processing": "Обробка вашого запиту..."
+    },
+    "errors": {
+      "service_unavailable": "Сервіс Ollama недоступний",
+      "generation_failed": "Не вдалося згенерувати відповідь від AI моделі"
+    }
+  }
+}
