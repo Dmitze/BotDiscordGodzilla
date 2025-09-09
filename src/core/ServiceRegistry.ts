@@ -22,6 +22,8 @@ import type { KnowledgeBaseService } from '@/services/KnowledgeBaseService';
 import type { EnhancedRagService } from '@/services/EnhancedRagService';
 import type { MultimodalRagService } from '@/services/MultimodalRagService';
 import type { HybridSearchService } from '@/services/HybridSearchService';
+import type { MarkdownRenderingService } from '@/services/MarkdownRenderingService';
+import type { OllamaService } from '@/services/OllamaService';
 
 /**
  * Union type of all valid service keys
@@ -50,7 +52,9 @@ export type ServiceKey =
   | 'knowledgeBase'
   | 'enhancedRag'
   | 'multimodalRag'
-  | 'hybridSearch';
+  | 'hybridSearch'
+  | 'markdownRendering'
+  | 'ollama';
 
 /**
  * Registry mapping service keys to their respective types
@@ -80,4 +84,6 @@ export interface ServiceRegistry {
   enhancedRag: EnhancedRagService;
   multimodalRag: MultimodalRagService;
   hybridSearch: HybridSearchService;
+  markdownRendering: MarkdownRenderingService;
+  ollama: OllamaService;
 }
