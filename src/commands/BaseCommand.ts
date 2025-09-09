@@ -25,6 +25,7 @@ import { UserPreferencesService } from '@/services/UserPreferencesService';
 import { t, tUser } from '@/i18n';
 import { replyWithPrivacy } from '@/ui/reply';
 import { verifyComponentId } from '@/security/componentId';
+import { DiscordMarkdownFormatter } from '@/ui/markdownFormatter';
 
 // Константи для конфігурації команд
 const COMMAND_CONFIG = {
@@ -1015,5 +1016,30 @@ export abstract class BaseCommand {
 **Категорія:** ${this.category}
 **Cooldown:** ${this.cooldown / 1000}с
 ${this.examples.length > 0 ? `**Приклади:**\n${this.examples.map(ex => `\`${ex}\``).join('\n')}` : ''}`;
+  }
+
+  /**
+   * Форматування вмісту з використанням покращеного markdown
+   * @param content Вміст для форматування
+   * @param options Опції форматування
+   * @returns Відформатований вміст
+   */
+  protected async formatContent(content: string, options: any = {}): Promise<{ content?: string; embeds?: any[]; files?: any[] }> {
+    // Якщо вміст короткий, використовуємо звичайне форматування
+    if (content.length <= 2000) {
+      return { content };
+    }
+
+    // Для довгого вмісту використовуємо markdown formatter
+    try {
+      const formatter = new DiscordMarkdownFormatter(this.config);
+      return await formatter.applyAllFormatting(content, options);
+    } catch (error) {
+      logger.warn('Не вдалося використати покращене форматування, використовуємо звичайне', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Якщо форматування не вдалося, обрізаємо вміст
+      return { content: content.substring(0, 1997) + '...' };
+    }
   }
 }
