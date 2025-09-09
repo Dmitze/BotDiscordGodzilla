@@ -24,6 +24,7 @@ import type { MultimodalRagService } from '@/services/MultimodalRagService';
 import type { HybridSearchService } from '@/services/HybridSearchService';
 import type { MarkdownRenderingService } from '@/services/MarkdownRenderingService';
 import type { OllamaService } from '@/services/OllamaService';
+import type { N8nMonitoringService } from '@/services/N8nMonitoringService';
 
 /**
  * Union type of all valid service keys
@@ -54,7 +55,8 @@ export type ServiceKey =
   | 'multimodalRag'
   | 'hybridSearch'
   | 'markdownRendering'
-  | 'ollama';
+  | 'ollama'
+  | 'n8nMonitoring';
 
 /**
  * Registry mapping service keys to their respective types
@@ -86,4 +88,5 @@ export interface ServiceRegistry {
   hybridSearch: HybridSearchService;
   markdownRendering: MarkdownRenderingService;
   ollama: OllamaService;
+  n8nMonitoring: N8nMonitoringService;
 }
