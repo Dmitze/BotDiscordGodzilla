@@ -267,21 +267,23 @@ export class MarkdownRenderingService {
   public extractCodeBlocks(markdown: string): CodeBlock[] {
     const codeBlocks: CodeBlock[] = [];
     const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
-    let match;
+    let match: RegExpExecArray | null;
     let lineCounter = 1;
     
     while ((match = codeBlockRegex.exec(markdown)) !== null) {
       const [, language, content] = match;
       const startLine = lineCounter;
-      const lines = content.split('\n').length;
+      const lines = content ? content.split('\n').length : 0;
       const endLine = startLine + lines - 1;
       
-      codeBlocks.push({
-        language: language || 'text',
-        content,
-        startLine,
-        endLine
-      });
+      if (content) {
+        codeBlocks.push({
+          language: language || 'text',
+          content,
+          startLine,
+          endLine
+        });
+      }
       
       lineCounter += lines + 2; // +2 for the opening and closing ```
     }
@@ -297,6 +299,13 @@ export class MarkdownRenderingService {
   }
   
   /**
+   * Get service configuration
+   */
+  public getConfig(): BotConfig {
+    return this.config;
+  }
+  
+  /**
    * Enhance markdown for better Discord display
    */
   private enhanceMarkdownForDiscord(markdown: string): string {
@@ -304,7 +313,7 @@ export class MarkdownRenderingService {
     let enhanced = markdown;
     
     // Improve code block formatting
-    enhanced = enhanced.replace(/```(\w+)\n([\s\S]*?)```/g, (match, lang, code) => {
+    enhanced = enhanced.replace(/```(\w+)\n([\s\S]*?)```/g, (_match, lang, code) => {
       return `\`\`\`${lang}\n${code.trim()}\n\`\`\``;
     });
     

@@ -30,6 +30,9 @@ BotDiscordGodzilla is an advanced Discord bot with Google Drive integration and 
 - ✅ Document encryption for sensitive content
 - ✅ Automated document processing workflows
 - ✅ Multilingual support (primarily Ukrainian)
+- ✅ **Markdown Rendering Service**: Beautiful markdown rendering with CordMd integration
+- ✅ **Ollama Service**: Local AI model integration with conversation history management
+- ✅ **n8n Integration**: Workflow automation capabilities for document processing
 
 ## Current Status
 

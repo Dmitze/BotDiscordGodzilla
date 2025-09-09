@@ -1,16 +1,16 @@
 import { BaseCommand } from './BaseCommand';
-import type { CommandExecuteOptions } from '@/types';
+import type { CommandExecuteOptions, BotConfig } from '@/types';
 import { t } from '@/i18n';
 import type { SlashCommandBuilder } from '@discordjs/builders';
 import type { SlashCommandStringOption } from 'discord.js';
 import logger from '@/utils/logger';
 
 export class MarkdownCommand extends BaseCommand {
-  constructor() {
+  constructor(config: BotConfig) {
     super(
       'markdown',
       t('commands.markdown.description'),
-      {} as any, // config
+      config,
       {
         i18n: {
           nameKey: 'commands.markdown.name',
