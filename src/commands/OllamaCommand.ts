@@ -79,16 +79,10 @@ export class OllamaCommand extends BaseCommand {
         channelId: interaction.channelId,
       });
       
-      // Truncate response if too long for Discord (2000 character limit)
-      let responseText = response;
-      if (responseText.length > 1900) {
-        responseText = responseText.substring(0, 1900) + '\n\n... *(response truncated)*';
-      }
+      // Use enhanced formatting for better user experience
+      const formattedResponse = await this.formatContent(response);
       
-      // Send the response
-      await interaction.editReply({
-        content: responseText,
-      });
+      await interaction.editReply(formattedResponse);
     } catch (error) {
       logger.error('Error in Ollama command', { error });
       await interaction.editReply({
