@@ -262,55 +262,94 @@ export class CommandManager {
    * Завантаження всіх команд
    */
   private async loadCommands(): Promise<void> {
-    try {
-      // keep async semantics for future IO; satisfies lint rule
-      await Promise.resolve();
-      // Отримуємо сервіси через Bot.getService() (проксі до ServiceManager/ServiceContainer)
-      // Це гарантує доступ до сервісів, створених у ServiceManager
-      const googleService = (this.bot?.getService?.('google') ?? undefined) as
-        | GoogleService
-        | undefined;
+    logger.info('📥 Loading commands...', { component: 'CommandManager' });
 
-      // Створюємо екземпляри тільки необхідних команд (AI, Пошук, OCR)
-      const commandInstances = [
-        // Основні команди, які залишаємо
-        new SearchCommand(this.config, googleService),
-        new AIAssistantCommand(this.config, googleService),
-        new OCRCommand(this.config, googleService),
-      ];
+    // Import all command classes
+    const { AIAssistantCommand } = await import('@/commands/AIAssistantCommand');
+    const { AdvancedAnalysisCommand } = await import('@/commands/AdvancedAnalysisCommand');
+    const { AnalyticsCommand } = await import('@/commands/AnalyticsCommand');
+    const { AnalyzeCommand } = await import('@/commands/AnalyzeCommand');
+    const { DocCommand } = await import('@/commands/DocCommand');
+    const { DocumentAnalysisCommand } = await import('@/commands/DocumentAnalysisCommand');
+    const { DocumentsCommand } = await import('@/commands/DocumentsCommand');
+    const { DriveExtractCommand } = await import('@/commands/DriveExtractCommand');
+    const { DriveNavigateCommand } = await import('@/commands/DriveNavigateCommand');
+    const { EnhancedDriveSearchCommand } = await import('@/commands/EnhancedDriveSearchCommand');
+    const { EnhancedSearchCommand } = await import('@/commands/EnhancedSearchCommand');
+    const { FavoritesCommand } = await import('@/commands/FavoritesCommand');
+    const { FileManagerCommand } = await import('@/commands/FileManagerCommand');
+    const { LangCommand } = await import('@/commands/LangCommand');
+    const { OCRCommand } = await import('@/commands/OCRCommand');
+    const { OperationsCommand } = await import('@/commands/OperationsCommand');
+    const { PerformanceCommand } = await import('@/commands/PerformanceCommand');
+    const { SavedSearchCommand } = await import('@/commands/SavedSearchCommand');
+    const { SearchCommand } = await import('@/commands/SearchCommand');
+    const { SelectSheetCommand } = await import('@/commands/SelectSheetCommand');
+    const { SimplifiedCommand } = await import('@/commands/SimplifiedCommand');
+    const { SmartSearchCommand } = await import('@/commands/SmartSearchCommand');
+    const { WorkflowCommand } = await import('@/commands/WorkflowCommand');
+    const { WorkspaceCommand } = await import('@/commands/WorkspaceCommand');
+    const { MarkdownCommand } = await import('@/commands/MarkdownCommand');
+    const { OllamaCommand } = await import('@/commands/OllamaCommand');
 
-      // Реєструємо команди
-      for (const command of commandInstances) {
-        if (this.validateCommand(command)) {
-          const commandName = command.getName();
-          this.commands.set(commandName, command);
+    // Create command instances
+    const googleService = this.bot.getService('google');
+    const aiService = this.bot.getService('ai');
+    const config = this.bot.config;
 
-          // Категоризація команд
-          const category = this.getCommandCategory(command);
-          if (!this.commandCategories.has(category)) {
-            this.commandCategories.set(category, []);
-          }
-          this.commandCategories.get(category)!.push(commandName);
+    const commands = [
+      new AIAssistantCommand(config, googleService),
+      new AdvancedAnalysisCommand(config, googleService, aiService),
+      new AnalyticsCommand(config, googleService),
+      new AnalyzeCommand(config, googleService),
+      new DocCommand(config, googleService),
+      new DocumentAnalysisCommand(config, googleService),
+      new DocumentsCommand(config, googleService),
+      new DriveExtractCommand(config, googleService),
+      new DriveNavigateCommand(config, googleService),
+      new EnhancedDriveSearchCommand(config, googleService),
+      new EnhancedSearchCommand(config, googleService),
+      new FavoritesCommand(config, googleService),
+      new FileManagerCommand(config, googleService),
+      new LangCommand(config),
+      new OCRCommand(config, googleService),
+      new OperationsCommand(config, googleService),
+      new PerformanceCommand(config),
+      new SavedSearchCommand(config, googleService),
+      new SearchCommand(config, googleService),
+      new SelectSheetCommand(config, googleService),
+      new SimplifiedCommand(config, googleService),
+      new SmartSearchCommand(config, googleService),
+      new WorkflowCommand(config, googleService),
+      new WorkspaceCommand(config, googleService),
+      new MarkdownCommand(),
+      new OllamaCommand(),
+    ];
 
-          logger.info('📝 Завантажено команду', {
-            type: 'command_manager',
-            event: 'command_loaded',
-            commandName,
-            category,
-          });
+    // Реєструємо команди
+    for (const command of commands) {
+      if (this.validateCommand(command)) {
+        const commandName = command.getName();
+        this.commands.set(commandName, command);
+
+        // Категоризація команд
+        const category = this.getCommandCategory(command);
+        if (!this.commandCategories.has(category)) {
+          this.commandCategories.set(category, []);
         }
-      }
+        this.commandCategories.get(category)!.push(commandName);
 
-      // Оновлюємо статистику
-      this.updateStats();
-    } catch (error) {
-      logger.error('❌ Помилка завантаження команд', {
-        type: 'command_manager',
-        event: 'load_error',
-        errorMessage: String(error),
-      });
-      throw error;
+        logger.info('📝 Завантажено команду', {
+          type: 'command_manager',
+          event: 'command_loaded',
+          commandName,
+          category,
+        });
+      }
     }
+
+    // Оновлюємо статистику
+    this.updateStats();
   }
 
   /**
@@ -357,7 +396,7 @@ export class CommandManager {
     if (name.includes('продуктивність') || name.includes('performance')) {
       return 'Моніторинг';
     }
-    if (name.includes('ai') || name.includes('асистент')) {
+    if (name.includes('ai') || name.includes('асистент') || name.includes('ollama')) {
       return 'AI';
     }
     if (name.includes('документи') || name.includes('documents')) {
