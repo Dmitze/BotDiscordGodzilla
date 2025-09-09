@@ -440,6 +440,25 @@ class ServiceManager {
       });
     }
 
+    // N8n Monitoring Service (standalone service)
+    try {
+      const { N8nMonitoringService } = await import('@/services/N8nMonitoringService');
+      const n8nMonitoring = new N8nMonitoringService(this.bot.config);
+      this.services.set('n8nMonitoring', n8nMonitoring as unknown as NonNullable<ServiceRegistry['n8nMonitoring']>);
+      logger.info('📊 N8nMonitoringService зареєстровано', {
+        type: 'service_manager',
+        event: 'n8n_monitoring_registered',
+        component: 'ServiceManager',
+      });
+    } catch (er) {
+      logger.error('❌ Не вдалося створити N8nMonitoringService', {
+        type: 'service_manager',
+        event: 'n8n_monitoring_register_failed',
+        component: 'ServiceManager',
+        errorMessage: er instanceof Error ? er.message : String(er),
+      });
+    }
+
     // Response Cache Service (standalone service)
     try {
       const responseCache = new ResponseCacheService(30, 1000); // 30 min TTL, 1000 max entries
