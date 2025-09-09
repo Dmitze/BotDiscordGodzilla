@@ -51,29 +51,10 @@ export class MarkdownCommand extends BaseCommand {
       const content = interaction.options.getString('content', true);
       const format = interaction.options.getString('format') || 'text';
       
-      // Get the markdown rendering service
-      const markdownService = interaction.client.serviceContainer?.get('markdownRendering');
+      // Use enhanced formatting for better user experience
+      const formattedResponse = await this.formatContent(content, { format });
       
-      if (!markdownService) {
-        await interaction.editReply({
-          content: t('commands.markdown.errors.service_unavailable'),
-        });
-        return;
-      }
-      
-      if (format === 'image') {
-        // Render as image
-        const attachment = await markdownService.renderToImage(content);
-        await interaction.editReply({
-          files: [attachment],
-        });
-      } else {
-        // Render as text
-        const renderedText = await markdownService.renderToText(content);
-        await interaction.editReply({
-          content: renderedText,
-        });
-      }
+      await interaction.editReply(formattedResponse);
     } catch (error) {
       logger.error('Error in markdown command', { error });
       await interaction.editReply({
