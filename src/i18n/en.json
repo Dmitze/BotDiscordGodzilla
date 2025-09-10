@@ -38,13 +38,118 @@
     },
     "files": {
       "name": "files"
+    },
+    "markdown": {
+      "name": "markdown",
+      "description": "Render markdown content in Discord",
+      "options": {
+        "content": {
+          "description": "Markdown content to render"
+        },
+        "format": {
+          "description": "Output format (text or image)"
+        }
+      },
+      "errors": {
+        "service_unavailable": "Markdown rendering service is unavailable",
+        "rendering_failed": "Failed to render markdown content"
+      }
+    },
+    "ollama": {
+      "name": "ollama",
+      "description": "Interact with the Ollama AI model",
+      "options": {
+        "prompt": {
+          "description": "The prompt to send to the AI model"
+        },
+        "model": {
+          "description": "The AI model to use (optional)"
+        },
+        "reset": {
+          "description": "Reset the conversation history for this channel"
+        }
+      },
+      "messages": {
+        "history_reset": "Conversation history has been reset for this channel.",
+        "processing": "Processing your request..."
+      },
+      "errors": {
+        "service_unavailable": "Ollama service is unavailable",
+        "generation_failed": "Failed to generate response from AI model"
+      }
+    },
+    "analytics": {
+      "name": "analytics",
+      "description": "Analytics and reports on bot usage",
+      "options": {
+        "report": {
+          "description": "Type of report to generate"
+        },
+        "limit": {
+          "description": "Limit the number of records in the report"
+        },
+        "format": {
+          "description": "Output format for the report"
+        }
+      },
+      "reports": {
+        "usage": {
+          "title": "Usage Statistics",
+          "header": "Bot Usage Statistics",
+          "date": "Date",
+          "users": "Users",
+          "messages": "Messages",
+          "commands": "Commands"
+        },
+        "search": {
+          "title": "Search Analytics",
+          "header": "Top Search Queries",
+          "query": "Query",
+          "count": "Count",
+          "avg_results": "Avg Results"
+        },
+        "commands": {
+          "title": "Command Usage",
+          "header": "Top Commands",
+          "name": "Command",
+          "count": "Count",
+          "avg_time": "Avg Time"
+        },
+        "activity": {
+          "title": "User Activity",
+          "header": "Most Active Users",
+          "user": "User",
+          "messages": "Messages",
+          "commands": "Commands",
+          "active_days": "Active Days"
+        },
+        "performance": {
+          "title": "Performance",
+          "header": "Performance Metrics",
+          "metric": "Metric",
+          "value": "Value",
+          "status": "Status"
+        },
+        "chart_unavailable": "Charts are temporarily unavailable. Below is the text version of the report."
+      },
+      "errors": {
+        "invalid_report_type": "Invalid report type. Please select one of the available report types.",
+        "title": "Error",
+        "generation_failed": "Failed to generate report"
+      }
     }
   },
   "ai": {
-    "command": { "description": "🤖 AI assistant for Google Sheets" },
+    "command": {
+      "description": "🤖 AI assistant for Google Sheets"
+    },
     "opt": {
-      "query": { "description": "What do you want to do? (e.g., 'find iPhone items', 'analyze stock')" },
-      "context": { "description": "Additional context for AI" }
+      "query": {
+        "description": "What do you want to do? (e.g., 'find iPhone items', 'analyze stock')"
+      },
+      "context": {
+        "description": "Additional context for AI"
+      }
     },
     "validation": {
       "failed": "❌ Validation error:\n{{errors}}"
@@ -84,7 +189,9 @@
     }
   },
   "files": {
-    "command": { "description": "📁 Work with files in Google Drive" },
+    "command": {
+      "description": "📁 Work with files in Google Drive"
+    },
     "buttons": {
       "open": "Open",
       "download": "Download",
@@ -101,11 +208,21 @@
       "folder": "folder"
     },
     "opt": {
-      "query": { "description": "File name to search" },
-      "folder": { "description": "Folder ID to search in (optional)" },
-      "id": { "description": "Google Drive file ID" },
-      "type": { "description": "Analysis type" },
-      "format": { "description": "Report format" }
+      "query": {
+        "description": "File name to search"
+      },
+      "folder": {
+        "description": "Folder ID to search in (optional)"
+      },
+      "id": {
+        "description": "Google Drive file ID"
+      },
+      "type": {
+        "description": "Analysis type"
+      },
+      "format": {
+        "description": "Report format"
+      }
     },
     "choices": {
       "analysis": {
@@ -162,10 +279,21 @@
       "noContent": "No content for the report"
     },
     "sub": {
-      "search": { "title": "Search", "description": "Search files in Google Drive" },
-      "read": { "title": "Read", "description": "Read file contents" },
-      "analyze": { "title": "Analyze", "description": "AI analysis of a file" },
-      "report": { "description": "Create a report based on a file" }
+      "search": {
+        "title": "Search",
+        "description": "Search files in Google Drive"
+      },
+      "read": {
+        "title": "Read",
+        "description": "Read file contents"
+      },
+      "analyze": {
+        "title": "Analyze",
+        "description": "AI analysis of a file"
+      },
+      "report": {
+        "description": "Create a report based on a file"
+      }
     },
     "error": {
       "serviceUnavailable": "❌ GoogleService unavailable",
@@ -183,8 +311,7 @@
       "process": "❌ File processing error. Please retry or contact the administrator.",
       "noText": "❌ Could not extract text from the file"
     }
-  }
-  ,
+  },
   "chat": {
     "help": "I'm an assistant. I can: 1) analyze Google Sheets; 2) analyze Google Drive files; 3) answer questions. Examples: \"analyze sheet \"Personnel\"\", \"how many records in \"Report_July\"\", \"what's in file with id ...\"",
     "errors": {
@@ -207,16 +334,19 @@
       "error": "❌ Error generating answer. Please try again later."
     },
     "unknown": "I didn't understand the request. Examples: \"analyze sheet \"Summary\"\", \"how many records in \"Report\"\", \"what's in file with id ...\""
-  }
-  ,
+  },
   "operations": {
     "error": {
       "unknownSubcommand": "❌ Unknown subcommand",
       "general": "❌ Operations command error",
       "getSituation": "❌ Failed to get situation",
       "unknownAction": "❌ Unknown action",
-      "coordination": { "error": "❌ Coordination error" },
-      "intelligence": { "error": "❌ Intelligence error" }
+      "coordination": {
+        "error": "❌ Coordination error"
+      },
+      "intelligence": {
+        "error": "❌ Intelligence error"
+      }
     },
     "common": {
       "active": "✅ Active",
@@ -284,8 +414,12 @@
       "description": "Recognize text in an image (offline Tesseract or Google Vision)"
     },
     "opt": {
-      "image": { "description": "Upload an image for OCR" },
-      "drive_id": { "description": "Image file ID in Google Drive" }
+      "image": {
+        "description": "Upload an image for OCR"
+      },
+      "drive_id": {
+        "description": "Image file ID in Google Drive"
+      }
     },
     "error": {
       "needInput": "Please provide either an attachment (image) or drive_id.",
@@ -297,21 +431,34 @@
       "provider": "Provider: {{provider}}",
       "empty": "[empty]"
     }
-  }
-  ,
+  },
   "search": {
     "command": {
       "description": "🔍 Flexible search across documents",
       "usage": "/search query:text [options]"
     },
     "opt": {
-      "query": { "description": "What to search for? (e.g., 'personnel', 'equipment', 'weapons')" },
-      "type": { "description": "Document type to search" },
-      "dateFrom": { "description": "Date from (format: DD.MM.YYYY)" },
-      "dateTo": { "description": "Date to (format: DD.MM.YYYY)" },
-      "unit": { "description": "Unit to search in" },
-      "priority": { "description": "Document priority" },
-      "limit": { "description": "Number of results (max {{max}})" }
+      "query": {
+        "description": "What to search for? (e.g., 'personnel', 'equipment', 'weapons')"
+      },
+      "type": {
+        "description": "Document type to search"
+      },
+      "dateFrom": {
+        "description": "Date from (format: DD.MM.YYYY)"
+      },
+      "dateTo": {
+        "description": "Date to (format: DD.MM.YYYY)"
+      },
+      "unit": {
+        "description": "Unit to search in"
+      },
+      "priority": {
+        "description": "Document priority"
+      },
+      "limit": {
+        "description": "Number of results (max {{max}})"
+      }
     },
     "choices": {
       "type": {
@@ -350,8 +497,7 @@
       "error": "Search error",
       "cacheHit": "Result found in cache"
     }
-  }
-  ,
+  },
   "doc": {
     "command": {
       "description": "Work with Google Docs"
@@ -362,9 +508,15 @@
       }
     },
     "opt": {
-      "documentid": { "description": "ID or link to a Google Docs document" },
-      "limit": { "description": "How many blocks to show (1-25)" },
-      "format": { "description": "Output format: short | full | headings" }
+      "documentid": {
+        "description": "ID or link to a Google Docs document"
+      },
+      "limit": {
+        "description": "How many blocks to show (1-25)"
+      },
+      "format": {
+        "description": "Output format: short | full | headings"
+      }
     },
     "unknownSub": "Unknown subcommand",
     "id": {
@@ -391,16 +543,21 @@
       "emptyTable": "[empty table]",
       "footnote": "footnote {{id}}"
     }
-  }
-  ,
+  },
   "sheets": {
     "command": {
       "description": "📁 Select Google Spreadsheet and sheet as search context"
     },
     "opt": {
-      "mode": { "description": "Action: set, show or clear" },
-      "spreadsheet": { "description": "Spreadsheet name (within folder) or ID" },
-      "sheet": { "description": "Sheet name in the spreadsheet" }
+      "mode": {
+        "description": "Action: set, show or clear"
+      },
+      "spreadsheet": {
+        "description": "Spreadsheet name (within folder) or ID"
+      },
+      "sheet": {
+        "description": "Sheet name in the spreadsheet"
+      }
     },
     "choices": {
       "mode": {
@@ -432,21 +589,38 @@
     "log": {
       "multiMatchWarn": "SelectSheet: multiple matches found, selecting the first"
     }
-  }
-  ,
+  },
   "ws": {
-    "command": { "description": "Personal workspace: saved documents and queries" },
+    "command": {
+      "description": "Personal workspace: saved documents and queries"
+    },
     "sub": {
-      "add": { "description": "Add a file or a search query to the workspace" },
-      "list": { "description": "Show workspace" },
-      "remove": { "description": "Remove an item from workspace" },
-      "run": { "description": "Run a workspace item (for query) or show file" }
+      "add": {
+        "description": "Add a file or a search query to the workspace"
+      },
+      "list": {
+        "description": "Show workspace"
+      },
+      "remove": {
+        "description": "Remove an item from workspace"
+      },
+      "run": {
+        "description": "Run a workspace item (for query) or show file"
+      }
     },
     "opt": {
-      "type": { "description": "Item type: file | query" },
-      "title": { "description": "Item title" },
-      "fileid": { "description": "File ID (for type=file)" },
-      "query": { "description": "Search query (for type=query)" }
+      "type": {
+        "description": "Item type: file | query"
+      },
+      "title": {
+        "description": "Item title"
+      },
+      "fileid": {
+        "description": "File ID (for type=file)"
+      },
+      "query": {
+        "description": "Search query (for type=query)"
+      }
     },
     "reply": {
       "unknownSub": "❌ Unknown subcommand",
@@ -470,32 +644,37 @@
       "defaultTitleFile": "File {{fileId}}",
       "defaultTitleQuery": "Query: {{query}}"
     }
-  }
-  ,
+  },
   "lang": {
-    "command": { "description": "Language preferences" },
+    "command": {
+      "description": "Language preferences"
+    },
     "sub": {
-      "set": { "description": "Set your preferred language" },
-      "show": { "description": "Show your current language" }
+      "set": {
+        "description": "Set your preferred language"
+      },
+      "show": {
+        "description": "Show your current language"
+      }
     },
     "opt": {
-      "locale": { "description": "Language to use" }
+      "locale": {
+        "description": "Language to use"
+      }
     },
     "reply": {
       "setOk": "✅ Language updated: {{locale}}",
       "current": "🌐 Current language: {{locale}}",
       "unknownSub": "❌ Unknown subcommand"
     }
-  }
-  ,
+  },
   "parsers": {
     "fallback": {
       "used": "Fallback parser used"
     },
     "unsupportedMime": "Unsupported MIME: {{mime}}",
     "parseError": "Parsing error"
-  }
-  ,
+  },
   "changes": {
     "notify": {
       "title": "🛎️ Google Drive Updates",
@@ -508,8 +687,7 @@
       },
       "noChannel": "Notification channel is not configured"
     }
-  }
-  ,
+  },
   "analytics": {
     "keywords": {
       "title": "Keywords",
@@ -524,8 +702,7 @@
       "byMonth": "By month",
       "byOwner": "By owner"
     }
-  }
-  ,
+  },
   "workspace": {
     "common": {
       "unknownSub": "❌ Unknown subcommand",
@@ -533,7 +710,9 @@
       "notFound": "⚠️ Not found"
     },
     "fav": {
-      "command": { "description": "Favorites: manage your favorite files" },
+      "command": {
+        "description": "Favorites: manage your favorite files"
+      },
       "sub": {
         "add": "Add file to favorites",
         "list": "Show favorites",
@@ -546,7 +725,9 @@
       "listTitle": "⭐ Favorites:"
     },
     "search": {
-      "command": { "description": "Saved searches" },
+      "command": {
+        "description": "Saved searches"
+      },
       "sub": {
         "save": "Save search",
         "run": "Run saved search",
