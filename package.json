@@ -65,6 +65,7 @@
     "ocr:smoke:drive": "ts-node -r tsconfig-paths/register src/scripts/ocrSmokeDrive.ts",
     "drive:smoke": "ts-node -r tsconfig-paths/register src/scripts/driveExtractSmoke.ts",
     "i18n:coverage": "ts-node -r tsconfig-paths/register src/scripts/i18nCoverage.ts",
+    "i18n:merge": "ts-node -r tsconfig-paths/register src/scripts/mergeI18n.ts",
     "test:integration:advanced": "ts-node -r tsconfig-paths/register src/scripts/testAdvancedServicesIntegration.ts"
   },
   "keywords": [
