@@ -22,25 +22,29 @@ jest.mock('@/commands/BaseCommand', () => {
         this.config = config;
       }
       
-      async execute(options: any) {
+      async execute(options: any): Promise<void> {
         // Mock execute method
         return this.onExecute(options);
+      }
+      
+      // This is what will be implemented by the actual command
+      protected async onExecute(_options: any) {
+        // This will be overridden by the actual implementation
       }
     }
   };
 });
 
 // Import after mocks
-import { OllamaCommand } from '@/commands/OllamaCommand';
 
-const makeInteraction = (prompt: string, model: string | undefined = undefined, reset: boolean = false) => {
+const makeOllamaInteraction = (prompt: string, model: string | undefined = undefined, reset: boolean = false) => {
   const replies: any[] = [];
   const interaction: any = {
     user: { id: 'u1', tag: 'user#0001' },
     channelId: 'test-channel',
     deferred: false,
     options: {
-      getString: (name: string, required?: boolean) => {
+      getString: (name: string, _required?: boolean) => {
         if (name === 'prompt') return prompt;
         if (name === 'model') return model;
         return null;
@@ -70,19 +74,18 @@ describe('OllamaCommand', () => {
 
   test('should generate response from Ollama service', async () => {
     // Create a minimal mock command
-    const cmd: any = {
-      onExecute: (await import('@/commands/OllamaCommand')).OllamaCommand.prototype.onExecute
-    };
+    const CmdClass = (await import('@/commands/OllamaCommand')).OllamaCommand;
+    const cmd = new CmdClass();
     
-    const interaction = makeInteraction('Hello, how are you?');
+    const interaction = makeOllamaInteraction('Hello, how are you?');
     
     const ollamaService = {
       generate: jest.fn().mockResolvedValue('I am doing well, thank you for asking!'),
     };
     
-    interaction.client.serviceContainer.get = (k: string) => (k === 'ollama' ? ollamaService : undefined);
+    interaction.client.serviceContainer.get = (_k: string) => (ollamaService as any);
 
-    await cmd.onExecute({ interaction });
+    await cmd.execute({ interaction } as any);
 
     expect(interaction.deferReply).toHaveBeenCalled();
     expect(ollamaService.generate).toHaveBeenCalledWith('Hello, how are you?', {
@@ -95,15 +98,14 @@ describe('OllamaCommand', () => {
 
   test('should handle service unavailability', async () => {
     // Create a minimal mock command
-    const cmd: any = {
-      onExecute: (await import('@/commands/OllamaCommand')).OllamaCommand.prototype.onExecute
-    };
+    const CmdClass = (await import('@/commands/OllamaCommand')).OllamaCommand;
+    const cmd = new CmdClass();
     
-    const interaction = makeInteraction('Hello, how are you?');
+    const interaction = makeOllamaInteraction('Hello, how are you?');
     
-    interaction.client.serviceContainer.get = (k: string) => null;
+    interaction.client.serviceContainer.get = (_k: string) => null;
 
-    await cmd.onExecute({ interaction });
+    await cmd.execute({ interaction } as any);
 
     expect(interaction.deferReply).toHaveBeenCalled();
     
@@ -113,19 +115,18 @@ describe('OllamaCommand', () => {
 
   test('should handle generation errors', async () => {
     // Create a minimal mock command
-    const cmd: any = {
-      onExecute: (await import('@/commands/OllamaCommand')).OllamaCommand.prototype.onExecute
-    };
+    const CmdClass = (await import('@/commands/OllamaCommand')).OllamaCommand;
+    const cmd = new CmdClass();
     
-    const interaction = makeInteraction('Hello, how are you?');
+    const interaction = makeOllamaInteraction('Hello, how are you?');
     
     const ollamaService = {
       generate: jest.fn().mockRejectedValue(new Error('Generation failed')),
     };
     
-    interaction.client.serviceContainer.get = (k: string) => (k === 'ollama' ? ollamaService : undefined);
+    interaction.client.serviceContainer.get = (_k: string) => (ollamaService as any);
 
-    await cmd.onExecute({ interaction });
+    await cmd.execute({ interaction } as any);
 
     expect(interaction.deferReply).toHaveBeenCalled();
     
@@ -135,19 +136,18 @@ describe('OllamaCommand', () => {
 
   test('should reset channel history', async () => {
     // Create a minimal mock command
-    const cmd: any = {
-      onExecute: (await import('@/commands/OllamaCommand')).OllamaCommand.prototype.onExecute
-    };
+    const CmdClass = (await import('@/commands/OllamaCommand')).OllamaCommand;
+    const cmd = new CmdClass();
     
-    const interaction = makeInteraction('Hello, how are you?', undefined, true);
+    const interaction = makeOllamaInteraction('Hello, how are you?', undefined, true);
     
     const ollamaService = {
       resetChannelHistory: jest.fn().mockResolvedValue(undefined),
     };
     
-    interaction.client.serviceContainer.get = (k: string) => (k === 'ollama' ? ollamaService : undefined);
+    interaction.client.serviceContainer.get = (_k: string) => (ollamaService as any);
 
-    await cmd.onExecute({ interaction });
+    await cmd.execute({ interaction } as any);
 
     expect(interaction.deferReply).toHaveBeenCalled();
     expect(ollamaService.resetChannelHistory).toHaveBeenCalledWith('test-channel');
