@@ -231,7 +231,9 @@ export class N8nMonitoringService extends BaseService {
     execution.status = 'success';
     execution.endTime = endTime;
     execution.duration = duration;
-    execution.nodeId = nodeId !== undefined ? nodeId : undefined;
+    if (nodeId !== undefined) {
+      execution.nodeId = nodeId;
+    }
 
     // Видаляємо з активних виконань
     this.activeExecutions.delete(workflowId);
@@ -288,7 +290,9 @@ export class N8nMonitoringService extends BaseService {
     execution.endTime = endTime;
     execution.duration = duration;
     execution.error = error;
-    execution.nodeId = nodeId !== undefined ? nodeId : undefined;
+    if (nodeId !== undefined) {
+      execution.nodeId = nodeId;
+    }
 
     // Видаляємо з активних виконань
     this.activeExecutions.delete(workflowId);
@@ -518,7 +522,7 @@ export class N8nMonitoringService extends BaseService {
   /**
    * Зупинка сервісу
    */
-  protected override async onStop(): Promise<void> {
+  protected async onStop(): Promise<void> {
     logger.info('Зупинка N8nMonitoring сервісу...', {
       type: 'n8n_monitoring_service',
       event: 'stopping',
