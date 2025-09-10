@@ -239,7 +239,7 @@ export class DocumentEncryptionService extends BaseService {
   /**
    * Derive a key from a password and salt
    */
-  private deriveKeyFromPassword(password: string, salt: Buffer): Buffer {
+  private deriveKeyFromPassword(password: string): Buffer {
     return createHash('sha256').update(password).digest();
   }
 
@@ -248,7 +248,7 @@ export class DocumentEncryptionService extends BaseService {
    */
   private getEncryptionKey(password?: string, salt?: Buffer): Buffer {
     if (password && salt) {
-      return this.deriveKeyFromPassword(password, salt);
+      return this.deriveKeyFromPassword(password);
     }
     
     // Ensure the key is exactly 32 bytes for AES-256-GCM
