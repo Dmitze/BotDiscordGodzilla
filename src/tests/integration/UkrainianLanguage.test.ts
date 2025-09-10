@@ -3,7 +3,7 @@
  */
 
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
-import { LanguageDetector } from '../../nlp/LanguageDetector';
+import { detectLanguage } from '../../nlp/LanguageDetector';
 import { t } from '../../i18n';
 
 // Mock the logger
@@ -12,7 +12,7 @@ jest.mock('../../utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn(),
+    debug: jest.fn(), // Add the missing debug function
     log: jest.fn(),
     apiRequest: jest.fn(),
     apiError: jest.fn(),
@@ -32,19 +32,19 @@ describe('Ukrainian Language Integration', () => {
   describe('Language Detection', () => {
     it('should detect Ukrainian language correctly', () => {
       const ukrainianText = 'Привіт, як справи? Документи готові для аналізу.';
-      const detected = LanguageDetector.detectLanguage(ukrainianText);
+      const detected = detectLanguage(ukrainianText);
       expect(detected).toBe('uk');
     });
 
     it('should detect English language correctly', () => {
       const englishText = 'Hello, how are you? Documents are ready for analysis.';
-      const detected = LanguageDetector.detectLanguage(englishText);
+      const detected = detectLanguage(englishText);
       expect(detected).toBe('en');
     });
 
     it('should default to Ukrainian for mixed or unknown text', () => {
       const mixedText = 'Привіт hello як how справи?';
-      const detected = LanguageDetector.detectLanguage(mixedText);
+      const detected = detectLanguage(mixedText);
       expect(detected).toBe('uk');
     });
   });
@@ -53,7 +53,7 @@ describe('Ukrainian Language Integration', () => {
     it('should provide Ukrainian translations for key commands', () => {
       // Test Ukrainian translations
       expect(t('commands.search.name')).toBe('пошук');
-      expect(t('commands.search.description')).toBe('Пошук документів у Google Диску');
+      expect(t('commands.search.description')).toBe('🔍 Гнучкий пошук по документах');
       expect(t('commands.markdown.name')).toBe('markdown');
       expect(t('commands.analytics.name')).toBe('аналітика');
     });
