@@ -1,5 +1,5 @@
 import { BaseService } from '@/core/BaseService';
-import type { BotConfig, ServiceStats, HealthStatus } from '@/types';
+import type { BotConfig, ServiceStats } from '@/types';
 import logger from '@/utils/logger';
 import { CacheService } from './CacheService';
 
@@ -22,7 +22,7 @@ interface OllamaServiceStats extends ServiceStats {
 }
 
 export class OllamaService extends BaseService {
-  private config: OllamaConfig;
+  private ollamaConfig: OllamaConfig;
   private cacheService: CacheService | null = null;
   private stats: OllamaServiceStats;
 
@@ -30,7 +30,7 @@ export class OllamaService extends BaseService {
     super('OllamaService', config);
     this.cacheService = cacheService || null;
     
-    this.config = {
+    this.ollamaConfig = {
       host: (config as any).ai?.ollama?.host || 'http://localhost:11434',
       model: (config as any).ai?.ollama?.model || 'llama3',
       ctx: (config as any).ai?.ollama?.ctx || 2048,
@@ -49,15 +49,15 @@ export class OllamaService extends BaseService {
   protected override async onInitialize(): Promise<void> {
     try {
       // Test connection to Ollama
-      const response = await fetch(`${this.config.host}/api/tags`);
+      const response = await fetch(`${this.ollamaConfig.host}/api/tags`);
       if (!response.ok) {
         throw new Error(`Failed to connect to Ollama: ${response.status} ${response.statusText}`);
       }
       
       logger.info('✅ Ollama Service initialized', { 
         component: 'OllamaService',
-        host: this.config.host,
-        model: this.config.model
+        host: this.ollamaConfig.host,
+        model: this.ollamaConfig.model
       });
     } catch (error) {
       logger.error('❌ Failed to initialize Ollama Service:', { 
@@ -91,21 +91,21 @@ export class OllamaService extends BaseService {
       messages.push({ role: 'user', content: prompt });
       
       // Limit history length
-      if (messages.length > this.config.chatMaxLength) {
-        messages = messages.slice(-this.config.chatMaxLength);
+      if (messages.length > this.ollamaConfig.chatMaxLength) {
+        messages = messages.slice(-this.ollamaConfig.chatMaxLength);
       }
       
-      const response = await fetch(`${this.config.host}/api/chat`, {
+      const response = await fetch(`${this.ollamaConfig.host}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: options.model || this.config.model,
+          model: options.model || this.ollamaConfig.model,
           messages,
           stream: false,
           options: {
             temperature: options.temperature !== undefined ? options.temperature : 0.7,
             num_predict: options.maxTokens || 1000,
-            num_ctx: this.config.ctx,
+            num_ctx: this.ollamaConfig.ctx,
           },
         }),
       });
@@ -132,7 +132,7 @@ export class OllamaService extends BaseService {
       
       logger.debug('✅ Ollama response generated', {
         component: 'OllamaService',
-        model: data.model || this.config.model,
+        model: data.model || this.ollamaConfig.model,
         responseTime: `${responseTime}ms`,
         responseLength: responseText.length
       });
@@ -221,7 +221,7 @@ export class OllamaService extends BaseService {
    */
   public async pullModel(modelName: string): Promise<void> {
     try {
-      const response = await fetch(`${this.config.host}/api/pull`, {
+      const response = await fetch(`${this.ollamaConfig.host}/api/pull`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: modelName }),
@@ -250,7 +250,7 @@ export class OllamaService extends BaseService {
    */
   public async listModels(): Promise<any[]> {
     try {
-      const response = await fetch(`${this.config.host}/api/tags`);
+      const response = await fetch(`${this.ollamaConfig.host}/api/tags`);
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Failed to list models: ${response.status} ${response.statusText} - ${errorText}`);
@@ -283,7 +283,7 @@ export class OllamaService extends BaseService {
 
   protected override async onHealthCheck(): Promise<any> {
     try {
-      const response = await fetch(`${this.config.host}/api/tags`);
+      const response = await fetch(`${this.ollamaConfig.host}/api/tags`);
       return {
         healthy: response.ok,
         service: 'OllamaService',
@@ -308,7 +308,7 @@ export class OllamaService extends BaseService {
 
   public override async healthCheck(): Promise<any> {
     try {
-      const response = await fetch(`${this.config.host}/api/tags`);
+      const response = await fetch(`${this.ollamaConfig.host}/api/tags`);
       return {
         healthy: response.ok,
         service: 'OllamaService',
