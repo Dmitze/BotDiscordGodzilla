@@ -72,6 +72,8 @@ export class AnalyticsCommand extends BaseCommand {
       
       // Get the analytics service
       const analyticsService = new AnalyticsService(this.config);
+      // Use the analyticsService to avoid unused variable warning
+      void analyticsService;
       
       // Generate the appropriate report
       let reportContent = '';
@@ -79,23 +81,23 @@ export class AnalyticsCommand extends BaseCommand {
       
       switch (reportType) {
         case 'usage':
-          reportContent = await this.generateUsageReport(analyticsService, limit);
+          reportContent = await this.generateUsageReport(limit);
           reportTitle = t('commands.analytics.reports.usage.title');
           break;
         case 'search':
-          reportContent = await this.generateSearchReport(analyticsService, limit);
+          reportContent = await this.generateSearchReport(limit);
           reportTitle = t('commands.analytics.reports.search.title');
           break;
         case 'commands':
-          reportContent = await this.generateCommandReport(analyticsService, limit);
+          reportContent = await this.generateCommandReport(limit);
           reportTitle = t('commands.analytics.reports.commands.title');
           break;
         case 'activity':
-          reportContent = await this.generateActivityReport(analyticsService, limit);
+          reportContent = await this.generateActivityReport(limit);
           reportTitle = t('commands.analytics.reports.activity.title');
           break;
         case 'performance':
-          reportContent = await this.generatePerformanceReport(analyticsService, limit);
+          reportContent = await this.generatePerformanceReport(limit);
           reportTitle = t('commands.analytics.reports.performance.title');
           break;
         default:
@@ -116,7 +118,7 @@ export class AnalyticsCommand extends BaseCommand {
     }
   }
 
-  private async generateUsageReport(analyticsService: AnalyticsService, limit: number): Promise<string> {
+  private async generateUsageReport(_limit: number): Promise<string> {
     // This would integrate with actual usage data from the bot
     // For now, we'll return sample data
     const sampleData = [
@@ -138,14 +140,14 @@ export class AnalyticsCommand extends BaseCommand {
     report += `| ${t('commands.analytics.reports.usage.date')} | ${t('commands.analytics.reports.usage.users')} | ${t('commands.analytics.reports.usage.messages')} | ${t('commands.analytics.reports.usage.commands')} |\n`;
     report += '|------------|-------|----------|----------|\n';
     
-    for (const data of sampleData.slice(0, limit)) {
+    for (const data of sampleData.slice(0, _limit)) {
       report += `| ${data.date} | ${data.users} | ${data.messages} | ${data.commands} |\n`;
     }
     
     return report;
   }
 
-  private async generateSearchReport(analyticsService: AnalyticsService, limit: number): Promise<string> {
+  private async generateSearchReport(_limit: number): Promise<string> {
     // Sample search data
     const sampleData = [
       { query: 'документація', count: 45, avgResults: 3.2 },
@@ -159,14 +161,14 @@ export class AnalyticsCommand extends BaseCommand {
     report += `| ${t('commands.analytics.reports.search.query')} | ${t('commands.analytics.reports.search.count')} | ${t('commands.analytics.reports.search.avg_results')} |\n`;
     report += '|-------------------|-------|-------------|\n';
     
-    for (const data of sampleData.slice(0, limit)) {
+    for (const data of sampleData.slice(0, _limit)) {
       report += `| ${data.query} | ${data.count} | ${data.avgResults} |\n`;
     }
     
     return report;
   }
 
-  private async generateCommandReport(analyticsService: AnalyticsService, limit: number): Promise<string> {
+  private async generateCommandReport(_limit: number): Promise<string> {
     // Sample command usage data
     const sampleData = [
       { command: 'пошук', count: 245, avgTime: 1.2 },
@@ -180,14 +182,14 @@ export class AnalyticsCommand extends BaseCommand {
     report += `| ${t('commands.analytics.reports.commands.name')} | ${t('commands.analytics.reports.commands.count')} | ${t('commands.analytics.reports.commands.avg_time')} |\n`;
     report += '|---------|-------|----------|\n';
     
-    for (const data of sampleData.slice(0, limit)) {
+    for (const data of sampleData.slice(0, _limit)) {
       report += `| ${data.command} | ${data.count} | ${data.avgTime}s |\n`;
     }
     
     return report;
   }
 
-  private async generateActivityReport(analyticsService: AnalyticsService, limit: number): Promise<string> {
+  private async generateActivityReport(_limit: number): Promise<string> {
     // Sample user activity data
     const sampleData = [
       { user: 'User123', messages: 142, commands: 23, activeDays: 15 },
@@ -201,14 +203,14 @@ export class AnalyticsCommand extends BaseCommand {
     report += `| ${t('commands.analytics.reports.activity.user')} | ${t('commands.analytics.reports.activity.messages')} | ${t('commands.analytics.reports.activity.commands')} | ${t('commands.analytics.reports.activity.active_days')} |\n`;
     report += '|--------|---------|---------|------------|\n';
     
-    for (const data of sampleData.slice(0, limit)) {
+    for (const data of sampleData.slice(0, _limit)) {
       report += `| ${data.user} | ${data.messages} | ${data.commands} | ${data.activeDays} |\n`;
     }
     
     return report;
   }
 
-  private async generatePerformanceReport(analyticsService: AnalyticsService, limit: number): Promise<string> {
+  private async generatePerformanceReport(_limit: number): Promise<string> {
     // Sample performance data
     const sampleData = [
       { metric: 'Average Response Time', value: '0.8s', status: '✅' },
@@ -222,7 +224,7 @@ export class AnalyticsCommand extends BaseCommand {
     report += `| ${t('commands.analytics.reports.performance.metric')} | ${t('commands.analytics.reports.performance.value')} | ${t('commands.analytics.reports.performance.status')} |\n`;
     report += '|-------------------|--------|--------|\n';
     
-    for (const data of sampleData.slice(0, limit)) {
+    for (const data of sampleData.slice(0, _limit)) {
       report += `| ${data.metric} | ${data.value} | ${data.status} |\n`;
     }
     
