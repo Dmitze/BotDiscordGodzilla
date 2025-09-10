@@ -7,7 +7,6 @@ import { Collection, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle } from
 import type { ChatInputCommandInteraction, Interaction, Client } from 'discord.js';
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
-import type { GoogleService } from '@/services/GoogleService';
 import { replyWithPrivacy } from '@/ui/reply';
 import { signComponentId, verifyComponentId } from '@/security/componentId';
 import { tUser } from '@/i18n';
@@ -17,11 +16,6 @@ import { detectIntent } from '@/nlp/IntentDetector';
 import type { ClassifyIntentFn } from '@/nlp/IntentDetector';
 import { detectLanguage } from '@/nlp/LanguageDetector';
 import { validateInput } from '@/utils/security';
-
-// Імпорт необхідних команд
-import { SearchCommand } from '@/commands/SearchCommand';
-import { AIAssistantCommand } from '@/commands/AIAssistantCommand';
-import { OCRCommand } from '@/commands/OCRCommand';
 
 interface CommandStats {
   totalCommands: number;
@@ -293,36 +287,37 @@ export class CommandManager {
     const { OllamaCommand } = await import('@/commands/OllamaCommand');
 
     // Create command instances
-    const googleService = this.bot.getService('google');
-    const aiService = this.bot.getService('ai');
-    const config = this.bot.config;
+    const googleService = this.bot.getService ? this.bot.getService('google') : undefined;
+    const aiService = this.bot.getService ? this.bot.getService('ai') : undefined;
+    const workflowEngine = this.bot.getService ? this.bot.getService('workflow') : undefined;
+    const config = this.config || (this.bot as any).config || {};
 
     const commands = [
-      new AIAssistantCommand(config, googleService),
-      new AdvancedAnalysisCommand(config, googleService, aiService),
-      new AnalyticsCommand(config, googleService),
-      new AnalyzeCommand(config, googleService),
-      new DocCommand(config, googleService),
-      new DocumentAnalysisCommand(config, googleService),
-      new DocumentsCommand(config, googleService),
-      new DriveExtractCommand(config, googleService),
-      new DriveNavigateCommand(config, googleService),
-      new EnhancedDriveSearchCommand(config, googleService),
-      new EnhancedSearchCommand(config, googleService),
-      new FavoritesCommand(config, googleService),
-      new FileManagerCommand(config, googleService),
+      new AIAssistantCommand(config, googleService as any),
+      new AdvancedAnalysisCommand(config, googleService as any, aiService as any),
+      new AnalyticsCommand(config),
+      new AnalyzeCommand(config, googleService as any),
+      new DocCommand(config, googleService as any),
+      new DocumentAnalysisCommand(config, googleService as any),
+      new DocumentsCommand(config, googleService as any),
+      new DriveExtractCommand(config, googleService as any),
+      new DriveNavigateCommand(config, googleService as any),
+      new EnhancedDriveSearchCommand(config, googleService as any),
+      new EnhancedSearchCommand(config, googleService as any),
+      new FavoritesCommand(config, googleService as any),
+      new FileManagerCommand(config, googleService as any),
       new LangCommand(config),
-      new OCRCommand(config, googleService),
-      new OperationsCommand(config, googleService),
+      new OCRCommand(config, googleService as any),
+      new OperationsCommand(config),
       new PerformanceCommand(config),
-      new SavedSearchCommand(config, googleService),
-      new SearchCommand(config, googleService),
-      new SelectSheetCommand(config, googleService),
-      new SimplifiedCommand(config, googleService),
-      new SmartSearchCommand(config, googleService),
-      new WorkflowCommand(config, googleService),
-      new WorkspaceCommand(config, googleService),
-      new MarkdownCommand(),
+      new SavedSearchCommand(config, googleService as any),
+      new SearchCommand(config, googleService as any),
+      new SelectSheetCommand(config, googleService as any),
+      new SimplifiedCommand(config, googleService as any),
+      new SmartSearchCommand(config, googleService as any),
+      new WorkflowCommand(config, workflowEngine as any),
+      new WorkspaceCommand(config, googleService as any),
+      new MarkdownCommand(config),
       new OllamaCommand(),
     ];
 
