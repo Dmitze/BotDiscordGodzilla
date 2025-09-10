@@ -62,7 +62,7 @@ export class DiscordMarkdownFormatter {
     const renderedText = await this.markdownService.renderToText(content);
     
     return {
-      content: renderedText
+      content: renderedText ?? ''
     };
   }
 
@@ -74,12 +74,13 @@ export class DiscordMarkdownFormatter {
    */
   private async formatAsImage(content: string, options: FormatOptions): Promise<FormattedResponse> {
     // Use the markdown service to render to image
-    const attachment = await this.markdownService.renderToImage(content, {
-      theme: options.theme,
-      fontSize: options.fontSize,
-      maxWidth: options.maxWidth,
-      maxHeight: options.maxHeight
-    });
+    const renderOptions: any = {};
+    if (options.theme !== undefined) renderOptions.theme = options.theme;
+    if (options.fontSize !== undefined) renderOptions.fontSize = options.fontSize;
+    if (options.maxWidth !== undefined) renderOptions.maxWidth = options.maxWidth;
+    if (options.maxHeight !== undefined) renderOptions.maxHeight = options.maxHeight;
+    
+    const attachment = await this.markdownService.renderToImage(content, renderOptions);
     
     return {
       files: [attachment]
@@ -95,17 +96,17 @@ export class DiscordMarkdownFormatter {
   private async formatAsEmbed(content: string, options: FormatOptions): Promise<FormattedResponse> {
     // Extract title from markdown (first heading)
     const titleMatch = content.match(/^#\s+(.+)$/m);
-    const title = titleMatch ? titleMatch[1].substring(0, 256) : 'Document';
+    const title = titleMatch && titleMatch[1] ? titleMatch[1].substring(0, 256) : 'Document';
     
     // Extract description (first paragraph or content without headings)
     const descriptionMatch = content.match(/^[^#].*$/m);
-    const description = descriptionMatch ? descriptionMatch[0].substring(0, 4096) : '';
+    const description = descriptionMatch && descriptionMatch[0] ? descriptionMatch[0].substring(0, 4096) : '';
     
     // Create embed with enhanced formatting
     const embed = new EmbedBuilder()
       .setTitle(title)
       .setDescription(await this.markdownService.renderToText(description || content))
-      .setColor(options.theme === 'dark' ? '#404EED' : '#FFFFFF')
+      .setColor(options.theme === 'dark' ? 0x404EED : 0xFFFFFF)
       .setTimestamp();
     
     // Add fields for code blocks if present
@@ -139,8 +140,8 @@ export class DiscordMarkdownFormatter {
     const imageResponse = await this.formatAsImage(content, options);
     
     return {
-      content: textResponse.content,
-      files: imageResponse.files
+      content: textResponse.content !== undefined ? textResponse.content : '',
+      files: imageResponse.files !== undefined ? imageResponse.files : []
     };
   }
 
