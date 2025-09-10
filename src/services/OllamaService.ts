@@ -1,5 +1,5 @@
 import { BaseService } from '@/core/BaseService';
-import type { BotConfig, ServiceStats } from '@/types';
+import type { BotConfig, ServiceStats, HealthStatus } from '@/types';
 import logger from '@/utils/logger';
 import { CacheService } from './CacheService';
 
@@ -31,10 +31,10 @@ export class OllamaService extends BaseService {
     this.cacheService = cacheService || null;
     
     this.config = {
-      host: config.ai.ollama.host || 'http://localhost:11434',
-      model: config.ai.ollama.model || 'llama3',
-      ctx: config.ai.ollama.ctx || 2048,
-      chatMaxLength: config.ai.ollama.chatMaxLength || 500,
+      host: (config as any).ai?.ollama?.host || 'http://localhost:11434',
+      model: (config as any).ai?.ollama?.model || 'llama3',
+      ctx: (config as any).ai?.ollama?.ctx || 2048,
+      chatMaxLength: (config as any).ai?.ollama?.chatMaxLength || 500,
     };
     
     this.stats = {
@@ -46,7 +46,7 @@ export class OllamaService extends BaseService {
     };
   }
 
-  protected async onInitialize(): Promise<void> {
+  protected override async onInitialize(): Promise<void> {
     try {
       // Test connection to Ollama
       const response = await fetch(`${this.config.host}/api/tags`);
@@ -270,28 +270,55 @@ export class OllamaService extends BaseService {
   /**
    * Get service statistics
    */
-  public getStats(): OllamaServiceStats {
+  public override getStats(): OllamaServiceStats {
     return {
       ...this.stats,
       uptime: Date.now() - this.startTime,
     };
   }
 
-  protected async onShutdown(): Promise<void> {
+  protected override async onShutdown(): Promise<void> {
     logger.info('🛑 Ollama Service shutdown', { component: 'OllamaService' });
   }
 
-  public async healthCheck(): Promise<{ healthy: boolean; message?: string }> {
+  protected override async onHealthCheck(): Promise<any> {
     try {
       const response = await fetch(`${this.config.host}/api/tags`);
       return {
         healthy: response.ok,
+        service: 'OllamaService',
         message: response.ok ? 'Ollama is available' : 'Ollama is not available'
       };
     } catch (error) {
       return {
         healthy: false,
-        message: error instanceof Error ? error.message : 'Unknown error'
+        service: 'OllamaService',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  protected override onGetStats(): Partial<ServiceStats> {
+    return {
+      requests: this.stats.requests,
+      errors: this.stats.errors,
+      avgResponseTime: this.stats.avgResponseTime,
+    };
+  }
+
+  public override async healthCheck(): Promise<any> {
+    try {
+      const response = await fetch(`${this.config.host}/api/tags`);
+      return {
+        healthy: response.ok,
+        service: 'OllamaService',
+        message: response.ok ? 'Ollama is available' : 'Ollama is not available'
+      };
+    } catch (error) {
+      return {
+        healthy: false,
+        service: 'OllamaService',
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
