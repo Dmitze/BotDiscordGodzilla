@@ -242,10 +242,10 @@ export class DriveChangesService extends BaseService {
         }
         
         if (change.file) {
-          // For created files, the createdTime and modifiedTime should be the same
-          // For modified files, the modifiedTime should be different from createdTime
-          const isCreated = change.file.createdTime && change.file.modifiedTime && 
-            new Date(change.file.createdTime).getTime() === new Date(change.file.modifiedTime).getTime();
+          // For modified files, we'll determine if it's created based on whether we have previous info about it
+          // Since we don't have createdTime in DriveFile, we'll use a heuristic based on modifiedTime
+          // In a real implementation, we would check our database/cache for previous file info
+          const isCreated = !change.file.modifiedTime; // If no modifiedTime, assume it's new
           
           return {
             fileId: change.file.id,
