@@ -100,19 +100,26 @@ export class DocumentAnalysisCommand extends BaseCommand {
       }
 
       // Find the file in Google Drive
-      const searchResult = await this.googleService.searchDriveFiles({
-        query: opts.file,
-        limit: 1
-      });
+      const searchResult = await this.googleService.searchFiles(`name contains '${opts.file}'`);
       
-      if (!searchResult || !searchResult.results || searchResult.results.length === 0) {
+      if (!searchResult || searchResult.length === 0) {
         await interaction.editReply({
           content: t('document.analysis.error.file_not_found', { fileName: opts.file })
         });
         return;
       }
 
-      const file = searchResult.results[0];
+      // Get the first file's ID and convert to DriveFile
+      const fileId = searchResult[0]?.id;
+      if (!fileId) {
+        await interaction.editReply({
+          content: t('document.analysis.error.file_no_id', { fileName: opts.file })
+        });
+        return;
+      }
+
+      // Convert Schema$File to DriveFile using the public getDriveFile method
+      const file = await this.googleService.getDriveFile(fileId);
       
       // Ensure the file has an id
       if (!file || !file.id) {
@@ -184,22 +191,6 @@ export class DocumentAnalysisCommand extends BaseCommand {
       await interaction.editReply({
         content: formattedResult
       });
-
-      // Track command usage with analytics service if available
-      if (options.services?.analytics) {
-        try {
-          await options.services.analytics.trackCommandUsage('analyze-doc', {
-            userId: interaction.user.id,
-            fileId: file.id,
-            analysisType: opts.analysisType
-          });
-        } catch (analyticsError) {
-          logger.warn('Failed to track command usage', {
-            component: 'DocumentAnalysisCommand',
-            error: analyticsError instanceof Error ? analyticsError.message : String(analyticsError)
-          });
-        }
-      }
 
       // Log the command execution
       logger.info('Document analysis command executed', {
