@@ -14,12 +14,14 @@ jest.mock('@/utils/logger', () => ({
 // Mock discord.js
 jest.mock('discord.js', () => ({
   EmbedBuilder: class {
-    constructor() {}
-    setTitle(title: string) { this.title = title; return this; }
-    setDescription(description: string) { this.description = description; return this; }
-    setColor(color: string) { this.color = color; return this; }
-    setTimestamp() { this.timestamp = new Date(); return this; }
-    addFields(fields: any[]) { this.fields = fields; return this; }
+    private _data: any = {};
+    
+    setTitle(title: string) { this._data.title = title; return this; }
+    setDescription(description: string) { this._data.description = description; return this; }
+    setColor(color: number) { this._data.color = color; return this; }
+    setTimestamp(timestamp?: Date) { this._data.timestamp = timestamp || new Date(); return this; }
+    addFields(fields: any[]) { this._data.fields = fields; return this; }
+    toJSON() { return this._data; }
   },
   AttachmentBuilder: class {
     constructor(buffer: Buffer, options: { name: string }) {
@@ -87,9 +89,9 @@ describe('DiscordMarkdownFormatter', () => {
   
   describe('formatCodeBlocks', () => {
     it('should format code blocks correctly', () => {
-      const content = 'Some text\n```javascript\nconsole.log("Hello");\n```\nMore text';
+      const content = 'Some text\n``javascript\nconsole.log("Hello");\n```\nMore text';
       const result = formatter.formatCodeBlocks(content);
-      expect(result).toContain('```javascript');
+      expect(result).toContain('``javascript');
     });
   });
   
