@@ -41,7 +41,30 @@ describe('OllamaService', () => {
           chatMaxLength: 500,
         },
       },
-    } as BotConfig;
+      discord: {
+        token: 'test-token',
+        enableSlash: true,
+        clientId: 'test-client-id',
+      },
+      google: {
+        spreadsheetId: 'test-spreadsheet-id',
+        sheetName: 'test-sheet-name',
+      },
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
+      metrics: {
+        enabled: true,
+        port: 9090,
+      },
+      features: {
+        enableUserWorkspace: true,
+      },
+      drive: {
+        pageSize: 10,
+      },
+    } as unknown as BotConfig;
 
     mockCacheService = {
       get: jest.fn(),
@@ -102,9 +125,11 @@ describe('OllamaService', () => {
 
   describe('healthCheck', () => {
     it('should return healthy status when fetch succeeds', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-      } as Response);
+      (global as any).fetch = jest.fn().mockImplementation(async () => {
+        return Promise.resolve({
+          ok: true,
+        });
+      });
 
       const result = await ollamaService.healthCheck();
       expect(result.healthy).toBe(true);
@@ -112,10 +137,14 @@ describe('OllamaService', () => {
     });
 
     it('should return unhealthy status when fetch fails', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+      (global as any).fetch = jest.fn().mockImplementation(async () => {
+        return Promise.reject(new Error('Network error'));
+      });
 
       const result = await ollamaService.healthCheck();
       expect(result.healthy).toBe(false);
     });
   });
 });
+
+export {};
