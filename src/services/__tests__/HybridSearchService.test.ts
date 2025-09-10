@@ -7,11 +7,6 @@ const mockSearchIndex = {
   getDiff: jest.fn()
 };
 
-const mockAIService = {
-  generateResponse: jest.fn(),
-  embed: jest.fn()
-};
-
 const mockEmbeddingsService = {
   embed: jest.fn()
 };
