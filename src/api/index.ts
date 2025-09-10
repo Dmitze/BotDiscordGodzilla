@@ -54,8 +54,8 @@ function authenticateToken(req: Request, res: Response, next: NextFunction): voi
     return;
   }
   
-  // In a real implementation, you would verify the token
-  // For now, we'll just check if it exists
+  // In In a real implementation, you would verify the token
+  // // For now, we'll just check if it exists
   if (token !== (process.env['API_ACCESS_TOKEN'] || '')) {
     res.status(403).json({ error: 'Invalid access token' });
     return;
@@ -407,14 +407,44 @@ app.post('/webhook/n8n/drive', async (req: Request, res: Response) => {
       return;
     }
 
-    // Process the file update
-    logger.info('Processing Google Drive file update', {
+    // Process the file update through the DriveIndexerService
+    logger.info('Processing Google Drive file update through indexer', {
       component: 'ApiService',
       event: 'file_update_processing',
       fileId,
       fileName,
       mimeType
     });
+
+    try {
+      // Create a mock DriveFile object for the indexer
+      const mockDriveFile = {
+        id: fileId,
+        name: fileName,
+        mimeType: mimeType || 'application/octet-stream',
+        modifiedTime: new Date().toISOString()
+      };
+
+      // Index the file using the DriveIndexerService
+      await apiServices.indexerService.indexOneFileByMeta(mockDriveFile);
+      
+      logger.info('File successfully indexed', {
+        component: 'ApiService',
+        event: 'file_indexed',
+        fileId,
+        fileName
+      });
+    } catch (indexError) {
+      logger.error('Error indexing file', {
+        component: 'ApiService',
+        event: 'file_index_error',
+        fileId,
+        fileName,
+        error: indexError instanceof Error ? indexError.message : String(indexError)
+      });
+      
+      // Continue processing even if indexing fails
+    }
 
     // If we have chunks and embeddings, process them for RAG
     if (chunks && embeddings && Array.isArray(chunks) && Array.isArray(embeddings)) {
@@ -434,7 +464,7 @@ app.post('/webhook/n8n/drive', async (req: Request, res: Response) => {
     // Acknowledge the webhook
     res.status(200).json({
       success: true,
-      message: 'File update received and queued for processing',
+      message: 'File update received and processed',
       fileId,
       fileName
     });
