@@ -38,6 +38,105 @@
     },
     "files": {
       "name": "файли"
+    },
+    "markdown": {
+      "name": "markdown",
+      "description": "Рендеринг markdown контенту в Discord",
+      "options": {
+        "content": {
+          "description": "Markdown контент для рендерингу"
+        },
+        "format": {
+          "description": "Формат виводу (текст або зображення)"
+        }
+      },
+      "errors": {
+        "service_unavailable": "Сервіс рендерингу markdown недоступний",
+        "rendering_failed": "Не вдалося відобразити markdown контент"
+      }
+    },
+    "ollama": {
+      "name": "ollama",
+      "description": "Взаємодія з AI моделлю Ollama",
+      "options": {
+        "prompt": {
+          "description": "Запит для відправки AI моделі"
+        },
+        "model": {
+          "description": "AI модель для використання (необов'язково)"
+        },
+        "reset": {
+          "description": "Скинути історію розмови для цього каналу"
+        }
+      },
+      "messages": {
+        "history_reset": "Історія розмови була скинута для цього каналу.",
+        "processing": "Обробка вашого запиту..."
+      },
+      "errors": {
+        "service_unavailable": "Сервіс Ollama недоступний",
+        "generation_failed": "Не вдалося згенерувати відповідь від AI моделі"
+      }
+    },
+    "analytics": {
+      "name": "аналітика",
+      "description": "Аналітика та звіти про використання бота",
+      "options": {
+        "report": {
+          "description": "Тип звіту для генерації"
+        },
+        "limit": {
+          "description": "Обмеження кількості записів у звіті"
+        },
+        "format": {
+          "description": "Формат виводу звіту"
+        }
+      },
+      "reports": {
+        "usage": {
+          "title": "Статистика використання",
+          "header": "Статистика використання бота",
+          "date": "Дата",
+          "users": "Користувачі",
+          "messages": "Повідомлення",
+          "commands": "Команди"
+        },
+        "search": {
+          "title": "Аналітика пошуку",
+          "header": "Найпопулярніші пошукові запити",
+          "query": "Запит",
+          "count": "Кількість",
+          "avg_results": "Середня кількість результатів"
+        },
+        "commands": {
+          "title": "Використання команд",
+          "header": "Найпопулярніші команди",
+          "name": "Команда",
+          "count": "Кількість",
+          "avg_time": "Середній час"
+        },
+        "activity": {
+          "title": "Активність користувачів",
+          "header": "Найактивніші користувачі",
+          "user": "Користувач",
+          "messages": "Повідомлення",
+          "commands": "Команди",
+          "active_days": "Активні дні"
+        },
+        "performance": {
+          "title": "Продуктивність",
+          "header": "Метрики продуктивності",
+          "metric": "Метрика",
+          "value": "Значення",
+          "status": "Статус"
+        },
+        "chart_unavailable": "Графіки тимчасово недоступні. Нижче наведено текстову версію звіту."
+      },
+      "errors": {
+        "invalid_report_type": "Невірний тип звіту. Будь ласка, виберіть один з доступних типів звітів.",
+        "title": "Помилка",
+        "generation_failed": "Не вдалося згенерувати звіт"
+      }
     }
   },
   "ai": {
@@ -94,8 +193,12 @@
       "description": "Розпізнати текст на зображенні (офлайн Tesseract або Google Vision)"
     },
     "opt": {
-      "image": { "description": "Завантажте зображення для OCR" },
-      "drive_id": { "description": "ID файлу зображення в Google Drive" }
+      "image": {
+        "description": "Завантажте зображення для OCR"
+      },
+      "drive_id": {
+        "description": "ID файлу зображення в Google Drive"
+      }
     },
     "error": {
       "needInput": "Будь ласка, вкажіть вкладення image або drive_id.",
@@ -114,13 +217,27 @@
       "usage": "/пошук запит:текст [опції]"
     },
     "opt": {
-      "query": { "description": "Що шукати? (наприклад: \"особовий склад\", \"техніка\", \"зброя\")" },
-      "type": { "description": "Тип документа для пошуку" },
-      "dateFrom": { "description": "Дата від (формат: ДД.ММ.РРРР)" },
-      "dateTo": { "description": "Дата до (формат: ДД.ММ.РРРР)" },
-      "unit": { "description": "Підрозділ для пошуку" },
-      "priority": { "description": "Пріоритет документа" },
-      "limit": { "description": "Кількість результатів (макс. {{max}})" }
+      "query": {
+        "description": "Що шукати? (наприклад: \"особовий склад\", \"техніка\", \"зброя\")"
+      },
+      "type": {
+        "description": "Тип документа для пошуку"
+      },
+      "dateFrom": {
+        "description": "Дата від (формат: ДД.ММ.РРРР)"
+      },
+      "dateTo": {
+        "description": "Дата до (формат: ДД.ММ.РРРР)"
+      },
+      "unit": {
+        "description": "Підрозділ для пошуку"
+      },
+      "priority": {
+        "description": "Пріоритет документа"
+      },
+      "limit": {
+        "description": "Кількість результатів (макс. {{max}})"
+      }
     },
     "choices": {
       "type": {
@@ -211,10 +328,21 @@
       "description": "📁 Робота з файлами в Google Drive"
     },
     "sub": {
-      "search": { "title": "Пошук", "description": "Пошук файлів у Google Drive" },
-      "read": { "title": "Читання", "description": "Читати вміст файлу" },
-      "analyze": { "title": "Аналіз", "description": "AI-аналіз вмісту файлу" },
-      "report": { "description": "Створити звіт на основі файлу" }
+      "search": {
+        "title": "Пошук",
+        "description": "Пошук файлів у Google Drive"
+      },
+      "read": {
+        "title": "Читання",
+        "description": "Читати вміст файлу"
+      },
+      "analyze": {
+        "title": "Аналіз",
+        "description": "AI-аналіз вмісту файлу"
+      },
+      "report": {
+        "description": "Створити звіт на основі файлу"
+      }
     },
     "buttons": {
       "open": "Відкрити",
@@ -232,11 +360,21 @@
       "folder": "папка"
     },
     "opt": {
-      "query": { "description": "Назва файлу для пошуку" },
-      "folder": { "description": "ID папки для пошуку (опціонально)" },
-      "id": { "description": "ID файлу в Google Drive" },
-      "type": { "description": "Тип аналізу" },
-      "format": { "description": "Формат звіту" }
+      "query": {
+        "description": "Назва файлу для пошуку"
+      },
+      "folder": {
+        "description": "ID папки для пошуку (опціонально)"
+      },
+      "id": {
+        "description": "ID файлу в Google Drive"
+      },
+      "type": {
+        "description": "Тип аналізу"
+      },
+      "format": {
+        "description": "Формат звіту"
+      }
     },
     "choices": {
       "analysis": {
@@ -290,7 +428,6 @@
       "fallbackTxt": "[текстовий звіт]",
       "noContent": "Немає вмісту для звіту"
     },
-    
     "search": {
       "largeMark": "великий",
       "filteredByPolicy": "⚠️ Деякі елементи ({{count}}) приховано політиками доступу",
@@ -320,9 +457,15 @@
       "description": "📁 Вибір Google таблиці та листа для контексту пошуку"
     },
     "opt": {
-      "mode": { "description": "Дія: встановити, показати або очистити" },
-      "spreadsheet": { "description": "Назва таблиці (у папці) або ID" },
-      "sheet": { "description": "Назва листа в таблиці" }
+      "mode": {
+        "description": "Дія: встановити, показати або очистити"
+      },
+      "spreadsheet": {
+        "description": "Назва таблиці (у папці) або ID"
+      },
+      "sheet": {
+        "description": "Назва листа в таблиці"
+      }
     },
     "choices": {
       "mode": {
@@ -354,21 +497,38 @@
     "log": {
       "multiMatchWarn": "SelectSheet: знайдено кілька відповідників, обираємо перший"
     }
-  }
-  ,
+  },
   "ws": {
-    "command": { "description": "Особистий workspace: збережені документи та запити" },
+    "command": {
+      "description": "Особистий workspace: збережені документи та запити"
+    },
     "sub": {
-      "add": { "description": "Додати файл або пошуковий запит до workspace" },
-      "list": { "description": "Показати workspace" },
-      "remove": { "description": "Видалити елемент з workspace" },
-      "run": { "description": "Виконати елемент workspace (для query) або показати файл" }
+      "add": {
+        "description": "Додати файл або пошуковий запит до workspace"
+      },
+      "list": {
+        "description": "Показати workspace"
+      },
+      "remove": {
+        "description": "Видалити елемент з workspace"
+      },
+      "run": {
+        "description": "Виконати елемент workspace (для query) або показати файл"
+      }
     },
     "opt": {
-      "type": { "description": "Тип елемента: file | query" },
-      "title": { "description": "Назва елемента" },
-      "fileid": { "description": "ID файлу (для type=file)" },
-      "query": { "description": "Пошуковий запит (для type=query)" }
+      "type": {
+        "description": "Тип елемента: file | query"
+      },
+      "title": {
+        "description": "Назва елемента"
+      },
+      "fileid": {
+        "description": "ID файлу (для type=file)"
+      },
+      "query": {
+        "description": "Пошуковий запит (для type=query)"
+      }
     },
     "choices": {
       "file": "file",
@@ -396,24 +556,30 @@
       "defaultTitleFile": "Файл {{fileId}}",
       "defaultTitleQuery": "Запит: {{query}}"
     }
-  }
-  ,
+  },
   "lang": {
-    "command": { "description": "Налаштування мови" },
+    "command": {
+      "description": "Налаштування мови"
+    },
     "sub": {
-      "set": { "description": "Встановити бажану мову" },
-      "show": { "description": "Показати поточну мову" }
+      "set": {
+        "description": "Встановити бажану мову"
+      },
+      "show": {
+        "description": "Показати поточну мову"
+      }
     },
     "opt": {
-      "locale": { "description": "Обрана мова" }
+      "locale": {
+        "description": "Обрана мова"
+      }
     },
     "reply": {
       "setOk": "✅ Мову оновлено: {{locale}}",
       "current": "🌐 Поточна мова: {{locale}}",
       "unknownSub": "❌ Невідома підкоманда"
     }
-  }
-  ,
+  },
   "chat": {
     "help": "Я асистент. Можу: 1) аналізувати таблиці Google Sheets; 2) аналізувати файли Google Drive; 3) відповідати на питання. Приклади: \"проаналізуй таблицю \"Особовий склад\"\", \"скільки записів у \"Звіт_липень\"\", \"що у файлі з id ...\"",
     "errors": {
@@ -436,16 +602,19 @@
       "error": "❌ Помилка генерації відповіді. Спробуйте ще раз пізніше."
     },
     "unknown": "Не зрозумів запит. Приклади: \"проаналізуй таблицю \"Зведення\"\", \"скільки записів у \"Звіт\"\", \"що у файлі з id ...\""
-  }
-  ,
+  },
   "operations": {
     "error": {
       "unknownSubcommand": "❌ Невідома підкоманда",
       "general": "❌ Помилка оперативного управління",
       "getSituation": "❌ Помилка отримання ситуації",
       "unknownAction": "❌ Невідома дія",
-      "coordination": { "error": "❌ Помилка координації" },
-      "intelligence": { "error": "❌ Помилка розвідки" }
+      "coordination": {
+        "error": "❌ Помилка координації"
+      },
+      "intelligence": {
+        "error": "❌ Помилка розвідки"
+      }
     },
     "common": {
       "active": "✅ Активна",
@@ -553,8 +722,7 @@
     },
     "unsupportedMime": "Непідтримуваний MIME: {{mime}}",
     "parseError": "Помилка парсингу"
-  }
-  ,
+  },
   "changes": {
     "notify": {
       "title": "🛎️ Оновлення Google Drive",
@@ -567,8 +735,7 @@
       },
       "noChannel": "Канал для сповіщень не налаштований"
     }
-  }
-  ,
+  },
   "analytics": {
     "keywords": {
       "title": "Ключові слова",
@@ -583,8 +750,7 @@
       "byMonth": "Розподіл за місяцями",
       "byOwner": "Розподіл за власниками"
     }
-  }
-  ,
+  },
   "workspace": {
     "common": {
       "unknownSub": "❌ Невідома підкоманда",
@@ -592,7 +758,9 @@
       "notFound": "⚠️ Не знайдено"
     },
     "fav": {
-      "command": { "description": "Обране: керування списком файлів" },
+      "command": {
+        "description": "Обране: керування списком файлів"
+      },
       "sub": {
         "add": "Додати файл до обраного",
         "list": "Показати обране",
@@ -605,7 +773,9 @@
       "listTitle": "⭐ Обране:"
     },
     "search": {
-      "command": { "description": "Збережені пошуки" },
+      "command": {
+        "description": "Збережені пошуки"
+      },
       "sub": {
         "save": "Зберегти пошук",
         "run": "Виконати збережений пошук",
