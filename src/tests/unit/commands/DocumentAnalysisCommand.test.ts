@@ -24,12 +24,10 @@ const mockInteraction = {
 
 // Mock services
 const mockGoogleService = {
-  searchDriveFiles: jest.fn().mockResolvedValue({
-    results: [{
-      id: 'test-file-id',
-      name: 'Test Document.txt',
-    }],
-  }),
+  searchFiles: jest.fn().mockResolvedValue([{
+    id: 'test-file-id',
+    name: 'Test Document.txt',
+  }]),
 };
 
 const mockDocumentAnalysisService = {
@@ -76,10 +74,7 @@ describe('DocumentAnalysisCommand', () => {
       });
 
       expect(mockInteraction.deferReply).toHaveBeenCalled();
-      expect(mockGoogleService.searchDriveFiles).toHaveBeenCalledWith({
-        query: 'test-document',
-        limit: 1,
-      });
+      expect(mockGoogleService.searchFiles).toHaveBeenCalledWith(`name contains 'test-document'`);
       expect(mockDocumentAnalysisService.analyzeDocument).toHaveBeenCalled();
       expect(mockInteraction.editReply).toHaveBeenCalled();
       expect(mockAnalyticsService.trackCommandUsage).toHaveBeenCalledWith('analyze-doc', {
@@ -150,9 +145,7 @@ describe('DocumentAnalysisCommand', () => {
 
     it('should handle file not found', async () => {
       const googleServiceWithoutResults = {
-        searchDriveFiles: jest.fn().mockResolvedValue({
-          results: [],
-        }),
+        searchFiles: jest.fn().mockResolvedValue([]),
       };
 
       const commandWithNoFileResults = new DocumentAnalysisCommand(
@@ -167,10 +160,7 @@ describe('DocumentAnalysisCommand', () => {
       });
 
       expect(mockInteraction.deferReply).toHaveBeenCalled();
-      expect(googleServiceWithoutResults.searchDriveFiles).toHaveBeenCalledWith({
-        query: 'test-document',
-        limit: 1,
-      });
+      expect(googleServiceWithoutResults.searchFiles).toHaveBeenCalledWith(`name contains 'test-document'`);
       expect(mockInteraction.editReply).toHaveBeenCalledWith({
         content: 'document.analysis.error.file_not_found',
       });
@@ -178,7 +168,7 @@ describe('DocumentAnalysisCommand', () => {
 
     it('should handle execution errors gracefully', async () => {
       const failingGoogleService = {
-        searchDriveFiles: jest.fn().mockRejectedValue(new Error('Search failed')),
+        searchFiles: jest.fn().mockRejectedValue(new Error('Search failed')),
       };
 
       const commandWithFailingService = new DocumentAnalysisCommand(
