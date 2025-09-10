@@ -12,14 +12,14 @@ jest.mock('../../utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn(), // Add the missing debug function
+    debug: jest.fn(),
     log: jest.fn(),
     apiRequest: jest.fn(),
     apiError: jest.fn(),
     security: jest.fn(),
     performance: jest.fn(),
     system: jest.fn(),
-    logStructured: jest.fn(),
+    logStructured: jest.fn(), // Add the missing logStructured method
     startStructuredTimer: jest.fn().mockReturnValue({ end: jest.fn() }),
     getStats: jest.fn(),
     getLogBuffer: jest.fn(),
