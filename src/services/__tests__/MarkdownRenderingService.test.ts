@@ -3,12 +3,12 @@ import { MarkdownRenderingService } from '../MarkdownRenderingService';
 
 // Mock the cordmd library
 jest.mock('cordmd', () => ({
-  renderMarkdown: jest.fn().mockResolvedValue(Buffer.from('mock image data')),
-  validateMarkdown: jest.fn().mockImplementation((input: string) => {
-    if (input.includes('invalid')) {
+  renderMarkdown: jest.fn().mockImplementation(async () => Buffer.from('mock image data')),
+  validateMarkdown: jest.fn().mockImplementation((input: unknown) => {
+    if (typeof input === 'string' && input.includes('invalid')) {
       throw new Error('Invalid markdown');
     }
-    return input;
+    return { isValid: true, errors: [] };
   }),
 }));
 
@@ -108,7 +108,7 @@ describe('MarkdownRenderingService', () => {
   
   describe('extractCodeBlocks', () => {
     it('should extract code blocks correctly', () => {
-      const markdown = 'Some text\n```javascript\nconsole.log("Hello");\n```\nMore text';
+      const markdown = 'Some text\n``javascript\nconsole.log("Hello");\n```\nMore text';
       const codeBlocks = service.extractCodeBlocks(markdown);
       expect(codeBlocks).toHaveLength(1);
       if (codeBlocks[0]) {
