@@ -14,7 +14,7 @@ import {
   EmbedBuilder
 } from 'discord.js';
 import type { BotConfig, SheetData, SearchParams } from '@/types';
-import { BaseCommand, type CommandExecuteOptions } from './BaseCommand';
+import { BaseCommand, type CommandExecuteOptions, type CommandComponentOptions } from './BaseCommand';
 import logger from '@/utils/logger';
 import { sanitizeInput } from '@/utils/security';
 import { GoogleService } from '@/services/GoogleService';
@@ -315,13 +315,6 @@ export class SearchCommand extends BaseCommand {
   }
 
   /**
-   * Public method for generating cache key (for testing)
-   */
-  public generateCacheKey(params: SearchParams): string {
-    return this.generateSearchCacheKey(params);
-  }
-
-  /**
    * Get document type name by type key
    */
   public getDocumentTypeName(typeKey: string): string {
@@ -396,7 +389,7 @@ export class SearchCommand extends BaseCommand {
   /**
    * Handle component interactions (pagination buttons)
    */
-  public async onComponent(options: { interaction: any }): Promise<void> {
+  public override async onComponent(options: CommandComponentOptions): Promise<void> {
     const { interaction } = options;
     
     // Check if this is a button interaction
@@ -982,6 +975,90 @@ export class SearchCommand extends BaseCommand {
   }
 
   /**
+   * Handle search errors
+   */
+  public async handleSearchError(
+    interaction: ChatInputCommandInteraction,
+    error: unknown
+  ): Promise<void> {
+    const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
+
+    const errorEmbed = new EmbedBuilder()
+      .setColor('#FF6B6B')
+      .setTitle('❌ Помилка пошуку')
+      .setDescription(`**Помилка:** ${errorMessage}`)
+      .addFields(
+        { name: '💡 Порада', value: 'Перевірте правильність запиту та спробуйте ще раз' },
+        { name: '📞 Підтримка', value: 'Якщо проблема повторюється, зверніться до адміністратора' }
+      )
+      .setTimestamp();
+
+    try {
+      const content = `❌ Помилка: ${errorMessage}`;
+      if (interaction.deferred) {
+        await interaction.editReply({ content, embeds: [errorEmbed] });
+      } else if (interaction.replied) {
+        await interaction.followUp({ content, embeds: [errorEmbed], ephemeral: true });
+      } else {
+        await interaction.reply({ content, embeds: [errorEmbed], ephemeral: true });
+      }
+    } catch (replyError) {
+      logger.error('Помилка відправки повідомлення про помилку пошуку', {
+        component: 'SearchCommand',
+        error: replyError,
+      });
+    }
+  }
+
+  /**
+   * Record workspace recents
+   */
+  public async recordWorkspaceRecents(
+    interaction: ChatInputCommandInteraction,
+    searchResult: SearchResult,
+  ): Promise<void> {
+    try {
+      const workspace: any = (interaction as any)?.client?.serviceContainer?.get?.('workspace');
+      if (!workspace?.addRecent) return;
+
+      const headers = Array.isArray(searchResult?.headers) ? searchResult.headers.map(h => String(h).toLowerCase()) : [];
+      const rows = Array.isArray(searchResult?.rows) ? searchResult.rows : [];
+      const pickIdx = (...names: string[]) => headers.findIndex(h => names.map(n => n.toLowerCase()).includes(h));
+      const idIdx = pickIdx('id', 'file id', 'fileId', 'doc id', 'docId');
+      const nameIdx = pickIdx('name', 'title');
+      const snipIdx = pickIdx('snippet', 'preview');
+      const docs = rows.map(r => ({
+        id: idIdx >= 0 ? r[idIdx] : undefined,
+        name: nameIdx >= 0 ? r[nameIdx] : undefined,
+        snippet: snipIdx >= 0 ? r[snipIdx] : undefined,
+      })).filter(d => d.id);
+      if (!docs.length) return;
+
+      const now = Date.now();
+      for (const d of docs.slice(0, 5)) {
+        await workspace.addRecent(interaction.user.id, {
+          fileId: d.id as string,
+          name: d.name,
+          snippet: d.snippet,
+          openedAt: now,
+        });
+      }
+    } catch {}
+  }
+
+  /**
+   * Log security events
+   */
+  public logSecurityEvent(eventType: string, data: Record<string, unknown>): void {
+    logger.security(eventType, (data['userId'] as string) || 'unknown', {
+      type: 'security',
+      component: 'SearchCommand',
+      command: this.name,
+      ...data,
+    });
+  }
+
+  /**
    * Побудова сторінки пошуку з кращим форматуванням
    */
   private buildSearchPage(
@@ -1147,4 +1224,8 @@ export class SearchCommand extends BaseCommand {
 
     this.searchStats.averageSearchTime = Math.round(this.searchStats.totalSearchTime / this.searchStats.totalSearches);
   }
+
+  /**
+   * Отримання статистики пошуку
+   */
 }
