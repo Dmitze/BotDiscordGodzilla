@@ -64,16 +64,16 @@ export class N8nMonitoringService extends BaseService {
     };
 
     this.alertThresholds = {
-      failureRate: config.n8n?.alertThresholds?.failureRate || 10, // 10%
-      executionTime: config.n8n?.alertThresholds?.executionTime || 300000, // 5 minutes
-      consecutiveFailures: config.n8n?.alertThresholds?.consecutiveFailures || 3,
+      failureRate: (config as any).n8n?.alertThresholds?.failureRate || 10, // 10%
+      executionTime: (config as any).n8n?.alertThresholds?.executionTime || 300000, // 5 minutes
+      consecutiveFailures: (config as any).n8n?.alertThresholds?.consecutiveFailures || 3,
     };
   }
 
   /**
    * Ініціалізація сервісу моніторингу n8n
    */
-  protected async onInitialize(): Promise<void> {
+  protected override async onInitialize(): Promise<void> {
     try {
       logger.info('📊 Ініціалізація N8nMonitoring сервісу...', {
         type: 'n8n_monitoring_service',
@@ -108,7 +108,7 @@ export class N8nMonitoringService extends BaseService {
   private async createMetrics(): Promise<void> {
     try {
       // Отримуємо MetricsService якщо він доступний
-      const metricsService = this.getService('metrics');
+      const metricsService = (this as any).getService('metrics');
       if (!metricsService) {
         logger.debug('MetricsService недоступний, метрики не будуть створені', {
           type: 'n8n_monitoring_service',
@@ -231,7 +231,7 @@ export class N8nMonitoringService extends BaseService {
     execution.status = 'success';
     execution.endTime = endTime;
     execution.duration = duration;
-    execution.nodeId = nodeId;
+    execution.nodeId = nodeId !== undefined ? nodeId : undefined;
 
     // Видаляємо з активних виконань
     this.activeExecutions.delete(workflowId);
@@ -288,7 +288,7 @@ export class N8nMonitoringService extends BaseService {
     execution.endTime = endTime;
     execution.duration = duration;
     execution.error = error;
-    execution.nodeId = nodeId;
+    execution.nodeId = nodeId !== undefined ? nodeId : undefined;
 
     // Видаляємо з активних виконань
     this.activeExecutions.delete(workflowId);
@@ -444,12 +444,48 @@ export class N8nMonitoringService extends BaseService {
   }
 
   /**
-   * Отримання статистики
+   * Зупинка сервісу
    */
-  public getStats(): N8nMonitoringStats {
+  protected override async onShutdown(): Promise<void> {
+    logger.info('🛑 N8nMonitoring сервіс зупинено', {
+      type: 'n8n_monitoring_service',
+      event: 'shutdown',
+      component: 'N8nMonitoringService',
+    });
+  }
+
+  /**
+   * Перевірка стану здоров'я сервісу
+   */
+  protected override async onHealthCheck(): Promise<any> {
+    try {
+      // Basic health check - service is running
+      return {
+        healthy: true,
+        service: 'N8nMonitoringService',
+        message: 'N8nMonitoring service is running'
+      };
+    } catch (error) {
+      return {
+        healthy: false,
+        service: 'N8nMonitoringService',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Отримання статистики сервісу
+   */
+  protected override onGetStats(): Partial<ServiceStats> {
     return {
-      ...this.stats,
-      uptime: Date.now() - this.stats.startTime,
+      requests: this.stats.requests,
+      errors: this.stats.errors,
+      totalExecutions: this.stats.totalExecutions,
+      successfulExecutions: this.stats.successfulExecutions,
+      failedExecutions: this.stats.failedExecutions,
+      activeWorkflows: this.stats.activeWorkflows,
+      averageExecutionTime: this.stats.averageExecutionTime,
     };
   }
 
@@ -482,7 +518,7 @@ export class N8nMonitoringService extends BaseService {
   /**
    * Зупинка сервісу
    */
-  protected async onStop(): Promise<void> {
+  protected override async onStop(): Promise<void> {
     logger.info('Зупинка N8nMonitoring сервісу...', {
       type: 'n8n_monitoring_service',
       event: 'stopping',
@@ -498,5 +534,23 @@ export class N8nMonitoringService extends BaseService {
       event: 'stopped',
       component: 'N8nMonitoringService',
     });
+  }
+
+  /**
+   * Get service statistics
+   */
+  public override getStats(): ServiceStats {
+    const baseStats = super.getStats();
+    return {
+      ...baseStats,
+      uptime: Date.now() - ((this.stats as any).startTime || Date.now()),
+      requests: this.stats.totalExecutions,
+      errors: this.stats.errors,
+      activeWorkflows: this.stats.activeWorkflows,
+      totalExecutions: this.stats.totalExecutions,
+      successfulExecutions: this.stats.successfulExecutions,
+      failedExecutions: this.stats.failedExecutions,
+      averageExecutionTime: this.stats.averageExecutionTime,
+    };
   }
 }
