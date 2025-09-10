@@ -35,10 +35,16 @@ export function detectLanguage(text: string): DetectedLang {
     }
 
     const lang: DetectedLang = ukScore > enScore ? 'uk' : enScore > ukScore ? 'en' : 'unknown';
-    logger.debug('language_detect', { ukScore, enScore, lang });
+    // Safely call logStructured if available
+    if (logger && typeof logger.logStructured === 'function') {
+      logger.logStructured('debug', 'language_detect', { ukScore, enScore, lang });
+    }
     return lang;
   } catch (e) {
-    logger.debug('language_detect_failed', { error: e instanceof Error ? e.message : String(e) });
+    // Safely call logStructured if available
+    if (logger && typeof logger.logStructured === 'function') {
+      logger.logStructured('debug', 'language_detect_failed', { error: e instanceof Error ? e.message : String(e) });
+    }
     return 'unknown';
   }
 }
