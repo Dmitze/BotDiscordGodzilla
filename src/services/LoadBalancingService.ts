@@ -564,7 +564,7 @@ export class LoadBalancingService extends BaseService {
     
     logger.info('Load balancer rebalanced', {
       component: 'LoadBalancingService',
-      timestamp: this.lastRebalanced
+      timestamp: this.lastRebalanced.toISOString()
     });
   }
 
