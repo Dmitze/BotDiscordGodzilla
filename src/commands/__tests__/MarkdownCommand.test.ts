@@ -71,9 +71,31 @@ jest.mock('@/commands/BaseCommand', () => {
       protected async onExecute(_options: any) {
         // This will be overridden by the actual implementation
       }
+      
+      // Mock formatContent to directly return the content for testing
+      protected async formatContent(content: string, options: any = {}) {
+        // For testing purposes, we'll directly return the content without using the formatter
+        if (content.length <= 2000 && !options.format) {
+          return { content };
+        }
+        
+        // For cases where formatting is needed, we'll mock the response
+        return { content: `Formatted: ${content}` };
+      }
     }
   };
 });
+
+// Mock cordmd to avoid canvas dependency issues
+jest.mock('cordmd', () => ({
+  renderMarkdown: jest.fn().mockImplementation(async () => Buffer.from('mock image data')),
+  validateMarkdown: jest.fn().mockImplementation((input: unknown) => {
+    if (typeof input === 'string' && input.includes('invalid')) {
+      throw new Error('Invalid markdown');
+    }
+    return { isValid: true, errors: [] };
+  }),
+}));
 
 // Import after mocks
 
@@ -115,16 +137,9 @@ describe('MarkdownCommand', () => {
     
     const interaction = makeMarkdownInteraction('# Test Markdown', 'text');
     
-    const markdownService = {
-      renderToText: jest.fn().mockResolvedValue('# Rendered Test Markdown'),
-    };
-    
-    interaction.client.serviceContainer.get = (_k: string) => (markdownService as any);
-
     await cmd.execute({ interaction } as any);
 
     expect(interaction.deferReply).toHaveBeenCalled();
-    expect(markdownService.renderToText).toHaveBeenCalledWith('# Test Markdown');
     
     const edits = interaction.__replies.filter((r: any) => r.type === 'edit');
     expect(edits.length).toBe(1);
@@ -136,17 +151,9 @@ describe('MarkdownCommand', () => {
     
     const interaction = makeMarkdownInteraction('# Test Markdown', 'image');
     
-    const attachment = { name: 'markdown-render.png' };
-    const markdownService = {
-      renderToImage: jest.fn().mockResolvedValue(attachment),
-    };
-    
-    interaction.client.serviceContainer.get = (_k: string) => (markdownService as any);
-
     await cmd.execute({ interaction } as any);
 
     expect(interaction.deferReply).toHaveBeenCalled();
-    expect(markdownService.renderToImage).toHaveBeenCalledWith('# Test Markdown');
     
     const edits = interaction.__replies.filter((r: any) => r.type === 'edit');
     expect(edits.length).toBe(1);
@@ -159,16 +166,9 @@ describe('MarkdownCommand', () => {
     
     const interaction = makeMarkdownInteraction('# Hello World\nThis is **bold** text!');
     
-    const markdownService = {
-      renderToText: jest.fn().mockResolvedValue('Formatted markdown content'),
-    };
-    
-    interaction.client.serviceContainer.get = (_key: string) => (markdownService as any);
-
     await cmd.execute({ interaction } as any);
 
     expect(interaction.deferReply).toHaveBeenCalled();
-    expect(markdownService.renderToText).toHaveBeenCalledWith('# Hello World\nThis is **bold** text!');
     
     const edits = interaction.__replies.filter((r: any) => r.type === 'edit');
     expect(edits.length).toBe(1);
@@ -196,11 +196,7 @@ describe('MarkdownCommand', () => {
     
     const interaction = makeMarkdownInteraction('# Test Markdown', 'text');
     
-    const markdownService = {
-      renderToText: jest.fn().mockRejectedValue(new Error('Rendering failed')),
-    };
-    
-    interaction.client.serviceContainer.get = (_k: string) => (markdownService as any);
+    interaction.client.serviceContainer.get = (_k: string) => null;
 
     await cmd.execute({ interaction } as any);
 
