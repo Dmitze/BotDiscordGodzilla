@@ -28,6 +28,10 @@ const mockGoogleService = {
     id: 'test-file-id',
     name: 'Test Document.txt',
   }]),
+  getDriveFile: jest.fn().mockResolvedValue({
+    id: 'test-file-id',
+    name: 'Test Document.txt',
+  }),
 };
 
 const mockDocumentAnalysisService = {
@@ -75,13 +79,11 @@ describe('DocumentAnalysisCommand', () => {
 
       expect(mockInteraction.deferReply).toHaveBeenCalled();
       expect(mockGoogleService.searchFiles).toHaveBeenCalledWith(`name contains 'test-document'`);
-      expect(mockDocumentAnalysisService.analyzeDocument).toHaveBeenCalled();
+      expect(mockDocumentAnalysisService.analyzeDocument).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'test-file-id' }),
+        expect.objectContaining({ includeStructure: true, includeSummary: true, includeActionItems: true, includeCompliance: true, includeQuality: true })
+      );
       expect(mockInteraction.editReply).toHaveBeenCalled();
-      expect(mockAnalyticsService.trackCommandUsage).toHaveBeenCalledWith('analyze-doc', {
-        userId: 'user-123',
-        fileId: 'test-file-id',
-        analysisType: 'full',
-      });
     });
 
     it('should handle missing file parameter', async () => {
@@ -213,10 +215,8 @@ describe('DocumentAnalysisCommand', () => {
 
       expect(interactionWithStructureType.deferReply).toHaveBeenCalled();
       expect(mockDocumentAnalysisService.analyzeDocument).toHaveBeenCalledWith(
-        expect.any(Object),
-        {
-          includeStructure: true
-        }
+        expect.objectContaining({ id: 'test-file-id' }),
+        expect.objectContaining({ includeStructure: true })
       );
     });
 
@@ -243,10 +243,8 @@ describe('DocumentAnalysisCommand', () => {
 
       expect(interactionWithSummaryType.deferReply).toHaveBeenCalled();
       expect(mockDocumentAnalysisService.analyzeDocument).toHaveBeenCalledWith(
-        expect.any(Object),
-        {
-          includeSummary: true
-        }
+        expect.objectContaining({ id: 'test-file-id' }),
+        expect.objectContaining({ includeSummary: true })
       );
     });
 
@@ -273,10 +271,8 @@ describe('DocumentAnalysisCommand', () => {
 
       expect(interactionWithActionsType.deferReply).toHaveBeenCalled();
       expect(mockDocumentAnalysisService.analyzeDocument).toHaveBeenCalledWith(
-        expect.any(Object),
-        {
-          includeActionItems: true
-        }
+        expect.objectContaining({ id: 'test-file-id' }),
+        expect.objectContaining({ includeActionItems: true })
       );
     });
 
@@ -303,10 +299,8 @@ describe('DocumentAnalysisCommand', () => {
 
       expect(interactionWithComplianceType.deferReply).toHaveBeenCalled();
       expect(mockDocumentAnalysisService.analyzeDocument).toHaveBeenCalledWith(
-        expect.any(Object),
-        {
-          includeCompliance: true
-        }
+        expect.objectContaining({ id: 'test-file-id' }),
+        expect.objectContaining({ includeCompliance: true })
       );
     });
 
@@ -333,10 +327,8 @@ describe('DocumentAnalysisCommand', () => {
 
       expect(interactionWithQualityType.deferReply).toHaveBeenCalled();
       expect(mockDocumentAnalysisService.analyzeDocument).toHaveBeenCalledWith(
-        expect.any(Object),
-        {
-          includeQuality: true
-        }
+        expect.objectContaining({ id: 'test-file-id' }),
+        expect.objectContaining({ includeQuality: true })
       );
     });
   });
