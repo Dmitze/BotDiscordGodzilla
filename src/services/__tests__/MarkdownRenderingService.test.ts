@@ -52,7 +52,7 @@ describe('MarkdownRenderingService', () => {
     });
     
     it('should handle code blocks', async () => {
-      const markdown = '``javascript\nconsole.log("Hello");\n```';
+      const markdown = '```javascript\nconsole.log("Hello");\n```';
       const result = await service.renderToText(markdown);
       // The service escapes backticks, so we expect escaped backticks
       expect(result).toContain('\\`\\`javascript');
@@ -108,7 +108,7 @@ describe('MarkdownRenderingService', () => {
   
   describe('extractCodeBlocks', () => {
     it('should extract code blocks correctly', () => {
-      const markdown = 'Some text\n``javascript\nconsole.log("Hello");\n```\nMore text';
+      const markdown = 'Some text\n```javascript\nconsole.log("Hello");\n```\nMore text';
       const codeBlocks = service.extractCodeBlocks(markdown);
       expect(codeBlocks).toHaveLength(1);
       if (codeBlocks[0]) {
