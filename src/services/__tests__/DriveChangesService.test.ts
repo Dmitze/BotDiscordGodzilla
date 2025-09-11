@@ -50,7 +50,10 @@ const change = (id: string, type: 'created'|'modified'|'removed', folderId = 'FO
     return { removed: true, fileId: id, time: '2020-01-02T00:00:00Z', file: { ...baseFile, trashed: true } };
   }
   if (type === 'created') {
-    return { file: { ...baseFile }, time: baseFile.createdTime };
+    // For created files, we should not have a modifiedTime to differentiate them
+    const createdFile = { ...baseFile };
+    delete createdFile.modifiedTime;
+    return { file: createdFile, time: baseFile.createdTime };
   }
   // modified
   return { file: { ...baseFile, modifiedTime: '2020-01-03T00:00:00Z' }, time: '2020-01-03T00:00:00Z' };
