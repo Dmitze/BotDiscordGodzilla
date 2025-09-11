@@ -1025,15 +1025,20 @@ ${this.examples.length > 0 ? `**Приклади:**\n${this.examples.map(ex => `
    * @returns Відформатований вміст
    */
   protected async formatContent(content: string, options: any = {}): Promise<{ content?: string; embeds?: any[]; files?: any[] }> {
-    // Якщо вміст короткий, використовуємо звичайне форматування
-    if (content.length <= 2000) {
+    // Якщо вміст короткий і не вказано спеціальний формат, використовуємо звичайне форматування
+    if (content.length <= 2000 && !options.format) {
       return { content };
     }
 
-    // Для довгого вмісту використовуємо markdown formatter
+    // Для довгого вмісту або коли вказано формат, використовуємо markdown formatter
     try {
       const formatter = new DiscordMarkdownFormatter(this.config);
-      return await formatter.applyAllFormatting(content, options);
+      // Якщо вказано формат, використовуємо його, інакше використовуємо mixed для довгого вмісту
+      if (options.format) {
+        return await formatter.formatMarkdown(content, options);
+      } else {
+        return await formatter.applyAllFormatting(content, options);
+      }
     } catch (error) {
       logger.warn('Не вдалося використати покращене форматування, використовуємо звичайне', {
         error: error instanceof Error ? error.message : String(error),
