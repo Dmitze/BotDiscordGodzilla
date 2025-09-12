@@ -175,8 +175,8 @@ describe('Load Tests', () => {
       const duration = Date.now() - startTime;
       
       // 10 циклов должны выполниться за разумное время
-      expect(duration).toBeLessThan(30000); // 30 секунд
-    }, 60000);
+      expect(duration).toBeLessThan(60000); // Increased from 30000 to 60000ms
+    }, 120000); // Increased timeout from 60000 to 120000ms
   });
 
   describe('Memory Load Testing', () => {

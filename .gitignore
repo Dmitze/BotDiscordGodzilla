@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # =========================
 # 📦 Залежності
 # =========================
@@ -160,3 +161,10 @@ docs/_site/
 .idea/watcherTasks.xml
 .idea/workspace.xml
 .idea/
+=======
+node_modules
+        modified:   data/logs/bot.log
+        modified:   data/logs/commands.log
+        modified:   data/logs/performance.log
+        modified:   data/logs/security.log
+>>>>>>> e9343191 (chore: stop tracking logs; update .gitignore)
