@@ -1,6 +1,31 @@
 version: '3.8'
 
 services:
+  discord-bot:
+    build:
+      context: .
+      dockerfile: src/config/docker/Dockerfile
+    container_name: discord-ai-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - discord-bot-network
+    volumes:
+      - ./data:/usr/src/app/data
+      - ./workspace:/usr/src/app/workspace
+    healthcheck:
+      test: ["CMD", "node", "src/config/docker/healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   n8n:
     image: n8n/n8n:latest
     container_name: discord-bot-n8n
