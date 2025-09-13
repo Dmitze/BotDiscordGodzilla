@@ -1,0 +1,322 @@
+[
+  {
+    "title": "Головна сторінка",
+    "url": "index.html",
+    "category": "main"
+  },
+  {
+    "title": "Пошук по документації",
+    "url": "search.html",
+    "category": "main"
+  },
+  {
+    "title": "API Документація",
+    "url": "pages/api/API_DOCUMENTATION.html",
+    "category": "api"
+  },
+  {
+    "title": "Довідник команд",
+    "url": "pages/api/COMMANDS_REFERENCE.html",
+    "category": "api"
+  },
+  {
+    "title": "Архітектура нових сервісів",
+    "url": "pages/architecture/NEW_SERVICES_ARCHITECTURE.html",
+    "category": "architecture"
+  },
+  {
+    "title": "План розвитку",
+    "url": "pages/architecture/ROADMAP.html",
+    "category": "architecture"
+  },
+  {
+    "title": "Архітектура системи",
+    "url": "pages/ARCHITECTURE.html",
+    "category": "architecture"
+  },
+  {
+    "title": "Журнал змін",
+    "url": "pages/changelog/CHANGELOG.html",
+    "category": "changelog"
+  },
+  {
+    "title": "Гайд розробника",
+    "url": "pages/DEVELOPER_GUIDE.html",
+    "category": "development"
+  },
+  {
+    "title": "Покращення документації",
+    "url": "pages/DOCUMENTATION_IMPROVEMENTS_SUMMARY.html",
+    "category": "documentation"
+  },
+  {
+    "title": "Швидкий старт (укр)",
+    "url": "pages/guides/QUICK_START.html",
+    "category": "guides"
+  },
+  {
+    "title": "Налаштування (укр)",
+    "url": "pages/guides/SETUP.html",
+    "category": "guides"
+  },
+  {
+    "title": "Гід користувача (укр)",
+    "url": "pages/guides/USAGE_GUIDE.html",
+    "category": "guides"
+  },
+  {
+    "title": "Безпека (укр)",
+    "url": "pages/guides/SECURITY.html",
+    "category": "guides"
+  },
+  {
+    "title": "FAQ та підтримка",
+    "url": "pages/guides/FAQ_SUPPORT.html",
+    "category": "guides"
+  },
+  {
+    "title": "Інтерактивний навчальний гід",
+    "url": "pages/guides/INTERACTIVE_LEARNING_GUIDE.html",
+    "category": "guides"
+  },
+  {
+    "title": "Покращення Google Drive",
+    "url": "pages/enhanced/GOOGLE_DRIVE_ENHANCEMENTS.html",
+    "category": "enhanced"
+  },
+  {
+    "title": "Підсумок покращень",
+    "url": "pages/enhanced/SUMMARY_OF_ENHANCEMENTS.html",
+    "category": "enhanced"
+  },
+  {
+    "title": "Документація RAG",
+    "url": "pages/guides/rag.html",
+    "category": "guides"
+  },
+  {
+    "title": "Локальний AI (Ollama)",
+    "url": "pages/guides/LOCAL_AI.html",
+    "category": "guides"
+  },
+  {
+    "title": "Гайд з тестування",
+    "url": "pages/guides/TESTING_GUIDE.html",
+    "category": "guides"
+  },
+  {
+    "title": "Гайд з оновлення",
+    "url": "pages/guides/UPGRADE_GUIDE.html",
+    "category": "guides"
+  },
+  {
+    "title": "Гайд з TypeScript",
+    "url": "pages/guides/TYPESCRIPT_MIGRATION_GUIDE.html",
+    "category": "guides"
+  },
+  {
+    "title": "Гайд зі статистики",
+    "url": "pages/guides/STATISTICS_COMMAND_GUIDE.html",
+    "category": "guides"
+  },
+  {
+    "title": "Відео туторіали",
+    "url": "pages/guides/VIDEO_TUTORIAL_GUIDE.html",
+    "category": "guides"
+  },
+  {
+    "title": "Інструкції запуску",
+    "url": "pages/guides/LAUNCH_INSTRUCTIONS.html",
+    "category": "guides"
+  },
+  {
+    "title": "Гайд продуктивності",
+    "url": "pages/guides/PERFORMANCE_GUIDE.html",
+    "category": "guides"
+  },
+  {
+    "title": "Безпека системи",
+    "url": "pages/security/SECURITY_GUIDE.html",
+    "category": "security"
+  },
+  {
+    "title": "Документація розгортання",
+    "url": "pages/deployment/DEPLOYMENT_GUIDE.html",
+    "category": "deployment"
+  },
+  {
+    "title": "Docker розгортання",
+    "url": "pages/deployment/DOCKER.html",
+    "category": "deployment"
+  },
+  {
+    "title": "Огляд API",
+    "url": "pages/API_OVERVIEW.html",
+    "category": "api"
+  },
+  {
+    "title": "Організація документації",
+    "url": "pages/DOCUMENTATION_ORGANIZATION_PLAN.html",
+    "category": "documentation"
+  },
+  {
+    "title": "Архітектура (англ)",
+    "url": "pages/en/ARCHITECTURE.html",
+    "category": "english"
+  },
+  {
+    "title": "Команди (англ)",
+    "url": "pages/en/COMMANDS_REFERENCE.html",
+    "category": "english"
+  },
+  {
+    "title": "FAQ (англ)",
+    "url": "pages/en/FAQ_SUPPORT.html",
+    "category": "english"
+  },
+  {
+    "title": "Швидкий старт (англ)",
+    "url": "pages/en/QUICK_START.html",
+    "category": "english"
+  },
+  {
+    "title": "RAG гайд (англ)",
+    "url": "pages/en/RAG_GUIDE.html",
+    "category": "english"
+  },
+  {
+    "title": "Безпека (англ)",
+    "url": "pages/en/SECURITY.html",
+    "category": "english"
+  },
+  {
+    "title": "Налаштування (англ)",
+    "url": "pages/en/SETUP.html",
+    "category": "english"
+  },
+  {
+    "title": "Використання (англ)",
+    "url": "pages/en/USAGE_GUIDE.html",
+    "category": "english"
+  },
+  {
+    "title": "Гід користувача (англ)",
+    "url": "pages/en/USER_GUIDE.html",
+    "category": "english"
+  },
+  {
+    "title": "Огляд реалізації",
+    "url": "pages/FINAL_IMPLEMENTATION_SUMMARY.html",
+    "category": "implementation"
+  },
+  {
+    "title": "Покращення",
+    "url": "pages/IMPROVEMENTS_SUMMARY.html",
+    "category": "implementation"
+  },
+  {
+    "title": "Інтеграція",
+    "url": "pages/INTEGRATION_SUMMARY.html",
+    "category": "implementation"
+  },
+  {
+    "title": "Спрощені команди",
+    "url": "pages/SIMPLIFIED_COMMANDS.html",
+    "category": "commands"
+  },
+  {
+    "title": "Документація користувача (укр)",
+    "url": "pages/uk/USER_GUIDE.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "Безпека (укр)",
+    "url": "pages/uk/SECURITY.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "Команди (укр)",
+    "url": "pages/uk/COMMANDS_REFERENCE.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "Гайд розробника (укр)",
+    "url": "pages/uk/DEVELOPER_GUIDE.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "FAQ (укр)",
+    "url": "pages/uk/FAQ.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "Встановлення (укр)",
+    "url": "pages/uk/INSTALLATION.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "Огляд (укр)",
+    "url": "pages/uk/OVERVIEW.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "RAG гайд (укр)",
+    "url": "pages/uk/RAG_GUIDE.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "Документація (укр)",
+    "url": "pages/uk/README.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "Документація Україна",
+    "url": "pages/ukrainian_documentation.html",
+    "category": "ukrainian"
+  },
+  {
+    "title": "Мапа документації",
+    "url": "pages/DOCUMENTATION_MAP.html",
+    "category": "documentation"
+  },
+  {
+    "title": "Markdown рендеринг",
+    "url": "pages/markdown-rendering.html",
+    "category": "rendering"
+  },
+  {
+    "title": "Специфікація Markdown",
+    "url": "pages/markdown-rendering-service-spec.html",
+    "category": "rendering"
+  },
+  {
+    "title": "Інтеграція Ollama",
+    "url": "pages/ollama-integration.html",
+    "category": "ai"
+  },
+  {
+    "title": "Покриття i18n",
+    "url": "pages/i18n-coverage.html",
+    "category": "internationalization"
+  },
+  {
+    "title": "Гід проекту",
+    "url": "pages/README.html",
+    "category": "main"
+  },
+  {
+    "title": "Статус проекту",
+    "url": "pages/root/PROJECT_STATUS_AND_ROADMAP.html",
+    "category": "main"
+  },
+  {
+    "title": "Чек-лист PR",
+    "url": "pages/PR_CHECKLIST.html",
+    "category": "development"
+  },
+  {
+    "title": "Гайд публікації",
+    "url": "pages/PUBLISHING_GUIDE.html",
+    "category": "development"
+  }
+]
