@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Godzilla Bot - Documentation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #5865F2;
+            --background: #1e1e2d;
+            --surface: #2b2b40;
+            --text: #e6e6e6;
+            --text-secondary: #a1a1aa;
+            --accent: #7289da;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: linear-gradient(135deg, var(--background) 0%, #121212 100%);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 3rem 2rem;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .languages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .language-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(88, 101, 242, 0.1);
+            text-decoration: none;
+            color: var(--text);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .language-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(88, 101, 242, 0.3);
+        }
+        
+        .language-card h2 {
+            color: var(--primary);
+            margin: 1.5rem 0;
+            font-size: 1.8rem;
+        }
+        
+        .language-card p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .btn:hover {
+            background: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(88, 101, 242, 0.4);
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+        
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .feature i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+        
+        .feature h3 {
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 2rem;
+            border-top: 1px solid var(--surface);
+        }
+        
+        .search-link {
+            display: block;
+            text-align: center;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: rgba(88, 101, 242, 0.1);
+            border-radius: 8px;
+            color: var(--primary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .search-link:hover {
+            background: rgba(88, 101, 242, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .languages-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Godzilla Bot Documentation</h1>
+            <p class="subtitle">Powerful Discord bot with AI functionality for the Armed Forces of Ukraine</p>
+            
+            <div class="features">
+                <div class="feature">
+                    <i class="fas fa-robot"></i>
+                    <h3>AI Assistant</h3>
+                    <p>Natural language data analysis</p>
+                </div>
+                
+                <div class="feature">
+                    <i class="fas fa-search"></i>
+                    <h3>Smart Search</h3>
+                    <p>Flexible document search</p>
+                </div>
+                
+                <div class="feature">
+                    <i class="fas fa-file-alt"></i>
+                    <h3>Document Management</h3>
+                    <p>Google Sheets & Drive integration</p>
+                </div>
+                
+                <div class="feature">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Security</h3>
+                    <p>Maximum protection level</p>
+                </div>
+            </div>
+        </header>
+        
+        <a href="search.html" class="search-link">
+            <i class="fas fa-search"></i> Search Documentation
+        </a>
+        
+        <h2 style="text-align: center; margin: 2rem 0; color: var(--primary);">🌐 Documentation Languages</h2>
+        
+        <div class="languages-grid">
+            <a href="uk/README.md" class="language-card">
+                <i class="fas fa-language" style="font-size: 3rem; color: var(--primary);"></i>
+                <h2>🇺🇦 Ukrainian</h2>
+                <p>Повна документація українською мовою для користувачів та розробників</p>
+                <button class="btn">Переглянути</button>
+            </a>
+            
+            <a href="en/README.md" class="language-card">
+                <i class="fas fa-language" style="font-size: 3rem; color: var(--primary);"></i>
+                <h2>🇺🇸 English</h2>
+                <p>Complete documentation in English for users and developers</p>
+                <button class="btn">View Documentation</button>
+            </a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Created by Dmitry Shivachov (Dmitze)</p>
+            <p>Licensed under MIT License | Version: v3.0.0</p>
+        </footer>
+    </div>
+</body>
+</html>

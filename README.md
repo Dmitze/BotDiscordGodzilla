@@ -1,241 +1,235 @@
-# 🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**
+# 🦖 Discord AI Assistant Bot - Godzilla
 
 **Потужний Discord бот з AI функціоналом для Збройних Сил України**
+**Оновлено: 25.08.2025**
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/Dmitze/BotDiscordGodzilla)
-[![License](https://img.shields.io/badge/license-Godzilla%20Bot%20License%20v3.0-green.svg)](LICENSE.md)
-[![Node.js](https://img.shields.io/badge/node.js-18+-yellow.svg)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/typescript-5.3+-blue.svg)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Discord.js](https://img.shields.io/badge/Discord.js-v14-blue)](https://discord.js.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org/)
 
----
+## 🎯 Призначення
 
-## 🚀 Key Features
+Discord AI Assistant Bot (Godzilla) - це інноваційний бот, розроблений для автоматизації роботи з документами, аналізу даних та підтримки операційної діяльності. Спеціально адаптований для потреб ЗСУ та критично важливих організацій.
 
-### 🤖 AI Assistant
-- Natural language document search and analysis
-- Context-aware responses with conversation history
-- Multi-model support (OpenAI, Ollama)
-- RAG-enhanced document retrieval
+Бот інтегрується з Google Sheets, Google Drive, Discord та AI сервісами (OpenAI, Ollama) для надання потужних інструментів аналізу та автоматизації.
 
-### 📄 Document Management
-- Google Drive integration with real-time indexing
-- Advanced search with hybrid vector/text retrieval
-- Document analysis and summarization
-- Compliance and audit tracking
+## 🚀 Основні можливості
 
-### 🎨 Enhanced Discord Experience
-- Rich markdown rendering with syntax highlighting
-- Interactive buttons and menus for document navigation
-- Thread-based conversations with context preservation
-- Multi-language support (primarily Ukrainian)
+### 🤖 AI асистент
+- Природномовний аналіз даних
+- Генерація звітів та рекомендацій
+- Контекстна пам'ять для розмов
 
-### 🔧 Automation & Integration
-- n8n workflow automation for document processing
-- Scheduled tasks and notifications
-- External API integrations (Jira, Trello, Notion)
-- Real-time document change monitoring
+### 🔍 Розумний пошук
+- Гнучкий пошук по всіх документах
+- Фільтрація за датами, типами, пріоритетами
+- Пагінація результатів
 
----
+### 📄 Управління документами
+- Робота з Google Sheets та Google Drive
+- Читання різних форматів файлів (PDF, DOCX, TXT)
+- AI-аналіз вмісту файлів
 
-## 📚 **ДОКУМЕНТАЦІЯ**
+### 📊 Аналітика
+- Статистика використання бота
+- Аналіз даних з таблиць
+- Експорт результатів у різних форматах
 
-- **[🔗 Індекс документації](docs/INDEX.md)** — огляд і швидкі переходи
-- **[🏗️ Архітектура](docs/ARCHITECTURE.md)** — карта системи, технології, потоки
-- **[🛡️ Безпека](docs/security/SECURITY_GUIDE.md)** — політика і технічні захисти
-- **[🧩 API та команди](docs/API_OVERVIEW.md)** — огляд публічних інтерфейсів
-- **[🧭 Гайд розробника](docs/DEVELOPER_GUIDE.md)** — як працювати з кодом
-- **[🧠 RAG та пошук](docs/guides/rag.md)** — гібридний пошук, embeddings, ENV
+### ⚡ Операції
+- Управління військовими операціями
+- Координація між підрозділами
+- Розвідувальні дані
 
-> Примітка: детальні README з підпапок коду переїхали в `docs/...` з тію самою структурою (див. нижче «README по папках коду»).
+### 🔒 Безпека
+- Максимальний рівень захисту даних
+- Контроль доступу через ролі Discord
+- Rate limiting та валідація даних
 
+## 📚 Документація
 
-## 🎯 **ОСНОВНІ КОМАНДИ**
+Повна документація доступна у папці [docs/](docs/):
 
-### **🔍 Пошук та аналіз**
-```bash
+### 🌐 Мови документації
+- [🇺🇦 Українська](docs/uk/README.md) - повна документація українською
+- [🇺🇸 English](docs/en/README.md) - complete documentation in English
+
+### 📖 Основні розділи
+- [Швидкий старт](docs/guides/QUICK_START.md)
+- [Налаштування](docs/guides/SETUP.md)
+- [Гід користувача](docs/guides/USAGE_GUIDE.md)
+- [Архітектура](docs/ARCHITECTURE.md)
+- [Безпека](docs/security/SECURITY_GUIDE.md)
+- [API документація](docs/api/API_DOCUMENTATION.md)
+
+### 🔍 Пошук по документації
+Доступний інтерактивний пошук: [search.html](docs/search.html)
+
+## 🏗️ Архітектура
+
+### Основні компоненти
+
+1. **Ядро бота** (`src/core/Bot.ts`)
+   - Головний клас бота
+   - Ініціалізація та управління сервісами
+   - Обробка подій Discord
+
+2. **Команди** (`src/commands/`)
+   - Модульна система команд
+   - Валідація вхідних даних
+   - Структурне логування
+
+3. **Сервіси** (`src/services/`)
+   - GoogleService - робота з Google API
+   - AIService - інтеграція з AI моделями
+   - CacheService - кешування даних
+   - MetricsService - збір метрик
+
+4. **Пошук** (`src/search/`)
+   - Гібридний пошук (FTS + векторний)
+   - Індексація документів
+   - RAG пайплайн
+
+5. **RAG** (`src/rag/`)
+   - Пошук релевантних фрагментів
+   - Підготовка контексту
+   - Генерація відповідей
+
+### Технологічний стек
+
+- **Мова**: TypeScript 5.0+
+- **Платформа**: Node.js 20.x (LTS)
+- **Фреймворк**: Discord.js 14.x
+- **База даних**: SQLite3 (FTS5), Redis (кеш)
+- **AI/ML**: Ollama (локально), OpenAI API (опційно)
+- **Інтеграції**: Google Sheets API, Google Drive API
+- **Моніторинг**: Prometheus + Grafana
+
+## ⚙️ Встановлення та налаштування
+
+### Системні вимоги
+
+- Node.js 18+
+- Git
+- Docker (опційно)
+- Google Cloud обліковий запис
+- Discord Developer обліковий запис
+
+### Швидкий старт
+
+1. **Клонування проекту**
+   ```bash
+   git clone https://github.com/Dmitze/BotDiscordGodzilla.git
+   cd BotDiscordGodzilla
+   ```
+
+2. **Встановлення залежностей**
+   ```bash
+   npm install
+   ```
+
+3. **Налаштування змінних середовища**
+   ```bash
+   cp .env.example .env
+   # Відредагуйте .env файл з вашими налаштуваннями
+   ```
+
+4. **Налаштування Discord бота**
+   - Перейдіть на Discord Developer Portal
+   - Створіть новий додаток та бота
+   - Скопіюйте токен
+   - Увімкніть необхідні Intents
+
+5. **Налаштування Google API**
+   - Створіть проект у Google Cloud Console
+   - Увімкніть Google Sheets API та Google Drive API
+   - Створіть Service Account та завантажте JSON ключ
+
+6. **Запуск бота**
+   ```bash
+   npm run deploy
+   npm start
+   ```
+
+## 📋 Команди бота
+
+### 🔍 Пошук та аналіз
+
+```
 /пошук запит:"особовий склад" тип_документа:"накази"
 /розумний-пошук кількість_вище:100 ціна_нижче:1000
 /ai запит:проаналізуй залишки та дай рекомендації
 ```
 
-### **📄 Управління документами**
-```bash
+### 📄 Управління документами
+
+```
 /документи особовий-склад список
 /документи техніка додати назва:"Танк Т-72"
 /файли завантажити файл:document.pdf
 ```
 
-### **📊 Аналітика**
-```bash
+### 📊 Аналітика
+
+```
 /статистика
 /аналітика звіт тип:general
 /продуктивність моніторинг
 ```
 
-### **⚡ Операції**
-```bash
+### ⚡ Операції
+
+```
 /операції ситуація поточний_стан
 /операції завдання створити опис:"Патрулювання"
 /операції координація зв'язок_з_штабом
 ```
 
-### **📋 Аналіз документів**
-```bash
-/analyze-doc file:"Наказ №123" type:"full"
-/analyze-doc file:"Звіт про постачання" type:"structure"
-/analyze-doc file:"План операції" type:"summary"
-/analyze-doc file:"Договір" type:"actions"
-/analyze-doc file:"Фінансовий звіт" type:"compliance"
-/analyze-doc file:"Протокол" type:"quality"
-```
-
----
-
-## 🏗️ **АРХІТЕКТУРА**
-
-### **📁 Структура проекту**
-
-```
-src/
-├── commands/          # Команди бота
-├── services/          # Бізнес-логіка
-├── core/             # Ядро системи
-├── config/           # Конфігурація
-├── utils/            # Утиліти
-└── tests/            # Тести
-```
-
-### **🔧 Основні компоненти**
-- **Bot** - головний клас бота
-- **CommandManager** - управління командами
-- **ServiceContainer** - контейнер сервісів
-- **ErrorHandler** - обробка помилок
-- **EventManager** - управління подіями
-
-### **🛠️ Сервіси**
-- **AIService** - AI функціональність
-- **GoogleService** - робота з Google API
-- **CacheService** - кешування
-- **MetricsService** - метрики
-- **SchedulerService** - планувальник
-- **DocumentAnalysisService** - аналіз документів
-
-### **🧠 Функції аналізу документів**
-- **Структурний аналіз** - визначення розділів, заголовків, типу документа
-- **Підсумування** - короткий, середній та детальний опис
-- **Витяг дій** - завдання, відповідальні особи, терміни
-- **Генерація питань** - фактичні, аналітичні та оцінювальні запитання
-- **Перевірка відповідності** - дотримання стандартів та політик
-- **Переклад** - переклад документів українською мовою
-- **Оцінка якості** - читабельність, структура, граматика
-- **Аналіз даних** - витяг числових даних та статистики
-- **Огляд безпеки** - визначення конфіденційної інформації
-- **Аналіз змін** - порівняння версій документів
-- **Прогнозування ефективності** - оцінка сприйняття аудиторією
-- **Аналіз зацікавлених сторін** - визначення учасників та їх ролей
-- **Аналіз бюджету** - витрати, джерела фінансування
-- **Оцінка ризиків** - потенційні загрози та заходи з протидії
-- **Сегментація аудиторії** - визначення цільових груп
-- **Хронологічний аналіз** - витяг таймлайнів та подій
-- **Кластеризація ключових слів** - групування термінів та концепцій
-- **Візуалізація даних** - рекомендації щодо графіків та діаграм
-- **Перевірка цитування** - верифікація джерел та посилань
-- **Аналіз мовного стилю** - оцінка тону та формальності
-- **Аналіз прогалин** - визначення відсутньої інформації
-- **Переосмислення вмісту** - ідеї для репурпузингу контенту
-- **Оцінка доступності** - перевірка відповідності стандартам
-- **Оптимізація процесів** - вдосконалення описаних процедур
-- **Персоналізація контенту** - адаптація під різні аудиторії
-- **Бенчмаркинг** - встановлення показників ефективності
-
----
-
-## 🚀 **ЗАПУСК**
-
-### **⚡ Швидкий запуск**
+## 🧪 Тестування
 
 ```bash
-# Клонування репозиторію
-git clone https://github.com/Dmitze/BotDiscordGodzilla.git
-cd BotDiscordGodzilla
-
-# Встановлення залежностей
-npm install
-
-# Налаштування змінних середовища
-cp .env.example .env
-# Відредагуйте .env файл
-
-# Запуск
-npm run dev
+npm run test              # Запуск всіх тестів
+npm run test:unit         # Модульні тести
+npm run test:integration  # Інтеграційні тести
+npm run test:coverage     # Звіт про покриття
 ```
 
-### **🐳 Docker запуск**
+## 📦 Розгортання
 
-```
-# Збірка образу
-docker build -t godzilla-bot .
+### Docker
 
-# Запуск контейнера
-docker run -d --name godzilla-bot godzilla-bot
+```bash
+docker-compose up -d
 ```
+
+### PM2
+
+```bash
+npm run build
+pm2 start dist/index.js
+```
+
+## 🤝 Внесок у розвиток
+
+1. Форкніть репозиторій
+2. Створіть feature branch
+3. Зробіть коміт змін
+4. Відправте Pull Request
+
+## 📃 Ліцензія
+
+Цей проект ліцензовано за ліцензією MIT - див. файл [LICENSE](LICENSE) для деталей.
+
+## 📞 Контакти
+
+- Автор: Дмитро Шивачов (Dmitze)
+- Email: dmitzeshivachov@outlook.com
+- GitHub: [@Dmitze](https://github.com/Dmitze)
+- Discord: dmitryshivachov3756
+- Telegram: [@DmitryShiva](https://t.me/DmitryShiva)
 
 ---
 
-## 🔧 **НАЛАШТУВАННЯ**
-
-### **📋 Обов'язкові змінні середовища**
-
-```
-# Discord
-DISCORD_TOKEN=your_discord_token
-DISCORD_CLIENT_ID=your_client_id
-DISCORD_GUILD_ID=your_guild_id
-
-# Google
-GOOGLE_API_KEY=your_google_api_key
-GOOGLE_APP_SCRIPT_URL=your_app_script_url
-
-# AI
-# Провайдер AI: ollama (локальна LLM)
-OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3
-
-# Пошук/RAG (уривки, індекси, ембеддінги)
-SEARCH_INDEX_PATH=.data/search/index.sqlite
-SEARCH_FTS_TOKENIZER=unicode61
-RETRIEVER_K=8
-RETRIEVER_ALPHA=0.7
-EMBEDDINGS_ENABLE=true
-EMBEDDINGS_PROVIDER=local
-EMBEDDINGS_MODEL=nomic-embed-text
-RAG_MAX_CONTEXT_TOKENS=3000
-AI_MAX_TOKENS=1024
-
-# OpenAI (опційно)
-OPENAI_API_KEY=your_openai_api_key
-```
-
-### **🎯 Рекомендовані налаштування**
-- **Node.js** 18+ 
-- **RAM** 2GB+
-- **Discord** Developer Portal налаштування
-- **Google Cloud** проект
-
----
-
-## 📊 **МЕТРИКИ ТА МОНІТОРИНГ**
-
-### **📈 Ключові показники**
-- **Час відповіді:** < 1.5 секунди
-- **Доступність:** 99.9%
-- **Покриття тестами:** 95%+
-- **Використання пам'яті:** < 500MB
-
-### **🔍 Моніторинг**
-- **Prometheus** метрики
-- **Winston** логування
-- **Health checks** кожні 30 секунд
-- **Memory monitoring** кожну хвилину
-
----
+<div align="center">
+  <sub>Потужний. Надійний. Український.</sub>
+</div>

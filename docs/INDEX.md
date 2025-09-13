@@ -1,5 +1,19 @@
 # 📚 Godzilla Bot - Documentation Center
 
+## 🌍 Languages
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+  <a href="index.html" style="border: 1px solid #444; border-radius: 8px; padding: 1rem; text-decoration: none; color: #e6e6e6; transition: all 0.2s; background: linear-gradient(135deg, #1e1e2d 0%, #2b2b40 100%);">
+    <h3>🇺🇦 Ukrainian</h3>
+    <p>Українська документація</p>
+  </a>
+  
+  <a href="en/index.html" style="border: 1px solid #444; border-radius: 8px; padding: 1rem; text-decoration: none; color: #e6e6e6; transition: all 0.2s; background: linear-gradient(135deg, #1e1e2d 0%, #2b2b40 100%);">
+    <h3>🇺🇸 English</h3>
+    <p>English documentation</p>
+  </a>
+</div>
+
 ## 🚀 Quick Start
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
@@ -43,12 +57,10 @@
 
 ### 🛡️ Security
 - [Security Guide](security/SECURITY_GUIDE.md)
-- [Privacy Policy](security/PRIVACY.md)
 
 ### 👩‍💻 Development
 - [Developer Guide](DEVELOPER_GUIDE.md)
 - [PR Checklist](PR_CHECKLIST.md)
-- [Architecture Decisions](architecture/DECISIONS.md)
 - [TypeScript Migration](guides/TYPESCRIPT_MIGRATION_GUIDE.md)
 
 ### 🧪 Examples
@@ -101,8 +113,3 @@
 </div>
 
 ---
-
-<div style="text-align: center; margin-top: 3rem; color: #888; font-size: 0.9rem;">
-  <p>© 2025 Godzilla Bot | <a href="https://github.com/Dmitze" style="color: #4dabf7; text-decoration: none;">Dmitry Shivachov</a></p>
-  <p>License: <a href="../LICENSE" style="color: #4dabf7; text-decoration: none;">MIT</a> | Version: v3.0.0</p>
-</div>
