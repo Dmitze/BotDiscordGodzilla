@@ -1,0 +1,548 @@
+[
+  {
+    "path": "pages\\api\\API_DOCUMENTATION.html",
+    "title": "📚 API Документація Discord AI Assistant Bot",
+    "category": "api",
+    "size": 49329,
+    "lastModified": "2025-09-13T20:31:38.625Z"
+  },
+  {
+    "path": "pages\\api\\COMMANDS_REFERENCE.html",
+    "title": "📋 Повний список команд Discord Bot з AI",
+    "category": "api",
+    "size": 25603,
+    "lastModified": "2025-09-13T20:31:38.628Z"
+  },
+  {
+    "path": "pages\\api\\README.html",
+    "title": "⚠️ ЗАСТАРІЛО: API-документація (папка `docs/api/`)",
+    "category": "api",
+    "size": 27421,
+    "lastModified": "2025-09-13T20:31:38.631Z"
+  },
+  {
+    "path": "pages\\API_OVERVIEW.html",
+    "title": "📚 API та команди",
+    "category": "root",
+    "size": 21123,
+    "lastModified": "2025-09-13T20:31:38.634Z"
+  },
+  {
+    "path": "pages\\architecture\\NEW_SERVICES_ARCHITECTURE.html",
+    "title": "🏗️ Архітектура нових сервісів Discord AI Assistant Bot",
+    "category": "architecture",
+    "size": 35415,
+    "lastModified": "2025-09-13T20:31:38.636Z"
+  },
+  {
+    "path": "pages\\architecture\\README.html",
+    "title": "⚠️ ЗАСТАРІЛО: Архітектурна документація (папка `docs/architecture/`)",
+    "category": "architecture",
+    "size": 29087,
+    "lastModified": "2025-09-13T20:31:38.639Z"
+  },
+  {
+    "path": "pages\\architecture\\ROADMAP.html",
+    "title": "🗺️ Роадмап розвитку Discord AI Assistant Bot",
+    "category": "architecture",
+    "size": 38373,
+    "lastModified": "2025-09-13T20:31:38.642Z"
+  },
+  {
+    "path": "pages\\ARCHITECTURE.html",
+    "title": "🏗️ Архітектура Discord AI Assistant Bot",
+    "category": "root",
+    "size": 25054,
+    "lastModified": "2025-09-13T20:31:38.644Z"
+  },
+  {
+    "path": "pages\\ARCHITECTURE_NEW.html",
+    "title": "🏗️ Архітектура Discord AI Assistant Bot",
+    "category": "root",
+    "size": 25011,
+    "lastModified": "2025-09-13T20:31:38.647Z"
+  },
+  {
+    "path": "pages\\archive\\README.html",
+    "title": "Архів документів",
+    "category": "archive",
+    "size": 16988,
+    "lastModified": "2025-09-13T20:31:38.649Z"
+  },
+  {
+    "path": "pages\\changelog\\CHANGELOG.html",
+    "title": "📝 Журнал змін - Discord Bot з AI",
+    "category": "changelog",
+    "size": 26664,
+    "lastModified": "2025-09-13T20:31:38.651Z"
+  },
+  {
+    "path": "pages\\changelog\\README.html",
+    "title": "📝 **CHANGELOG - ІСТОРІЯ ЗМІН**",
+    "category": "changelog",
+    "size": 24183,
+    "lastModified": "2025-09-13T20:31:38.653Z"
+  },
+  {
+    "path": "pages\\data\\README.html",
+    "title": "README",
+    "category": "data",
+    "size": 17644,
+    "lastModified": "2025-09-13T20:31:38.655Z"
+  },
+  {
+    "path": "pages\\deployment\\DEPLOYMENT_GUIDE.html",
+    "title": "Deployment Guide",
+    "category": "deployment",
+    "size": 24234,
+    "lastModified": "2025-09-13T20:31:38.657Z"
+  },
+  {
+    "path": "pages\\deployment\\DOCKER.html",
+    "title": "Docker Deployment Guide",
+    "category": "deployment",
+    "size": 21264,
+    "lastModified": "2025-09-13T20:31:38.660Z"
+  },
+  {
+    "path": "pages\\DEVELOPER_GUIDE.html",
+    "title": "Гайд розробника",
+    "category": "root",
+    "size": 19805,
+    "lastModified": "2025-09-13T20:31:38.661Z"
+  },
+  {
+    "path": "pages\\DOCUMENTATION_IMPROVEMENTS_SUMMARY.html",
+    "title": "📚 Documentation Improvements Summary",
+    "category": "root",
+    "size": 21345,
+    "lastModified": "2025-09-13T20:31:38.665Z"
+  },
+  {
+    "path": "pages\\DOCUMENTATION_MAP.html",
+    "title": "Documentation Map",
+    "category": "root",
+    "size": 20966,
+    "lastModified": "2025-09-13T20:31:38.667Z"
+  },
+  {
+    "path": "pages\\DOCUMENTATION_ORGANIZATION_PLAN.html",
+    "title": "Documentation Organization Plan",
+    "category": "root",
+    "size": 17786,
+    "lastModified": "2025-09-13T20:31:38.669Z"
+  },
+  {
+    "path": "pages\\en\\ARCHITECTURE.html",
+    "title": "🏗️ Discord AI Assistant Bot Architecture",
+    "category": "en",
+    "size": 19031,
+    "lastModified": "2025-09-13T20:31:38.673Z"
+  },
+  {
+    "path": "pages\\en\\COMMANDS_REFERENCE.html",
+    "title": "📋 Complete List of Discord Bot Commands with AI",
+    "category": "en",
+    "size": 20361,
+    "lastModified": "2025-09-13T20:31:38.675Z"
+  },
+  {
+    "path": "pages\\en\\FAQ_SUPPORT.html",
+    "title": "❓ FAQ and Godzilla Bot Support",
+    "category": "en",
+    "size": 22813,
+    "lastModified": "2025-09-13T20:31:38.677Z"
+  },
+  {
+    "path": "pages\\en\\QUICK_START.html",
+    "title": "🚀 Quick Start with Godzilla Bot",
+    "category": "en",
+    "size": 18356,
+    "lastModified": "2025-09-13T20:31:38.678Z"
+  },
+  {
+    "path": "pages\\en\\RAG_GUIDE.html",
+    "title": "RAG (Retrieval-Augmented Generation) in BotDiscordGodzilla",
+    "category": "en",
+    "size": 20937,
+    "lastModified": "2025-09-13T20:31:38.681Z"
+  },
+  {
+    "path": "pages\\en\\README.html",
+    "title": "🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**",
+    "category": "en",
+    "size": 26605,
+    "lastModified": "2025-09-13T20:31:38.683Z"
+  },
+  {
+    "path": "pages\\en\\SECURITY.html",
+    "title": "🛡️ Security",
+    "category": "en",
+    "size": 22522,
+    "lastModified": "2025-09-13T20:31:38.687Z"
+  },
+  {
+    "path": "pages\\en\\SETUP.html",
+    "title": "🔧 Godzilla Bot Setup",
+    "category": "en",
+    "size": 19428,
+    "lastModified": "2025-09-13T20:31:38.688Z"
+  },
+  {
+    "path": "pages\\en\\USAGE_GUIDE.html",
+    "title": "📚 Discord AI Assistant Bot Usage Guide",
+    "category": "en",
+    "size": 20238,
+    "lastModified": "2025-09-13T20:31:38.690Z"
+  },
+  {
+    "path": "pages\\en\\USER_GUIDE.html",
+    "title": "📚 User Guide",
+    "category": "en",
+    "size": 22588,
+    "lastModified": "2025-09-13T20:31:38.694Z"
+  },
+  {
+    "path": "pages\\enhanced\\GOOGLE_DRIVE_ENHANCEMENTS.html",
+    "title": "🚀 Покращення для взаємодії з Google документами",
+    "category": "enhanced",
+    "size": 28936,
+    "lastModified": "2025-09-13T20:31:38.696Z"
+  },
+  {
+    "path": "pages\\enhanced\\SUMMARY_OF_ENHANCEMENTS.html",
+    "title": "📋 Підсумок покращень для взаємодії з Google документами",
+    "category": "enhanced",
+    "size": 26035,
+    "lastModified": "2025-09-13T20:31:38.698Z"
+  },
+  {
+    "path": "pages\\examples\\README.html",
+    "title": "Examples",
+    "category": "examples",
+    "size": 17082,
+    "lastModified": "2025-09-13T20:31:38.701Z"
+  },
+  {
+    "path": "pages\\FINAL_IMPLEMENTATION_SUMMARY.html",
+    "title": "Final Implementation Summary - BotDiscordGodzilla Markdown Rendering and Ollama Integration",
+    "category": "root",
+    "size": 24607,
+    "lastModified": "2025-09-13T20:31:38.703Z"
+  },
+  {
+    "path": "pages\\guides\\FAQ_SUPPORT.html",
+    "title": "❓ FAQ та Підтримка Godzilla Bot",
+    "category": "guides",
+    "size": 31501,
+    "lastModified": "2025-09-13T20:31:38.707Z"
+  },
+  {
+    "path": "pages\\guides\\INTERACTIVE_LEARNING_GUIDE.html",
+    "title": "🎓 Інтерактивний навчальний гід Discord AI Assistant Bot",
+    "category": "guides",
+    "size": 37174,
+    "lastModified": "2025-09-13T20:31:38.709Z"
+  },
+  {
+    "path": "pages\\guides\\LAUNCH_INSTRUCTIONS.html",
+    "title": "🚀 Інструкції по запуску доробленого проекту",
+    "category": "guides",
+    "size": 24178,
+    "lastModified": "2025-09-13T20:31:38.712Z"
+  },
+  {
+    "path": "pages\\guides\\LOCAL_AI.html",
+    "title": "🦙 Локальний AI з Ollama",
+    "category": "guides",
+    "size": 22115,
+    "lastModified": "2025-09-13T20:31:38.713Z"
+  },
+  {
+    "path": "pages\\guides\\PERFORMANCE_GUIDE.html",
+    "title": "Performance Guide",
+    "category": "guides",
+    "size": 24324,
+    "lastModified": "2025-09-13T20:31:38.715Z"
+  },
+  {
+    "path": "pages\\guides\\QUICK_START.html",
+    "title": "🚀 Швидкий старт з Godzilla Bot",
+    "category": "guides",
+    "size": 21992,
+    "lastModified": "2025-09-13T20:31:38.717Z"
+  },
+  {
+    "path": "pages\\guides\\rag.html",
+    "title": "RAG (Retrieval-Augmented Generation) у BotDiscordGodzilla",
+    "category": "guides",
+    "size": 22750,
+    "lastModified": "2025-09-13T20:31:38.719Z"
+  },
+  {
+    "path": "pages\\guides\\README.html",
+    "title": "📚 **GUIDES - ГАЙДИ ТА ІНСТРУКЦІЇ**",
+    "category": "guides",
+    "size": 31540,
+    "lastModified": "2025-09-13T20:31:38.722Z"
+  },
+  {
+    "path": "pages\\guides\\SECURITY.html",
+    "title": "Security Guide",
+    "category": "guides",
+    "size": 22396,
+    "lastModified": "2025-09-13T20:31:38.725Z"
+  },
+  {
+    "path": "pages\\guides\\SETUP.html",
+    "title": "🔧 Налаштування Godzilla Bot",
+    "category": "guides",
+    "size": 23688,
+    "lastModified": "2025-09-13T20:31:38.727Z"
+  },
+  {
+    "path": "pages\\guides\\STATISTICS_COMMAND_GUIDE.html",
+    "title": "📊 ГІД ПО КОМАНДІ STATISTICS",
+    "category": "guides",
+    "size": 33136,
+    "lastModified": "2025-09-13T20:31:38.729Z"
+  },
+  {
+    "path": "pages\\guides\\TESTING_GUIDE.html",
+    "title": "🧪 РУКОВОДСТВО ПО ТЕСТИРОВАНИЮ DISCORD БОТА",
+    "category": "guides",
+    "size": 27407,
+    "lastModified": "2025-09-13T20:31:38.732Z"
+  },
+  {
+    "path": "pages\\guides\\TYPESCRIPT_MIGRATION_GUIDE.html",
+    "title": "🚀 TypeScript Migration Guide",
+    "category": "guides",
+    "size": 27078,
+    "lastModified": "2025-09-13T20:31:38.734Z"
+  },
+  {
+    "path": "pages\\guides\\UPGRADE_GUIDE.html",
+    "title": "🚀 Гід по оновленню проекту - Версія 2.2.0",
+    "category": "guides",
+    "size": 27444,
+    "lastModified": "2025-09-13T20:31:38.737Z"
+  },
+  {
+    "path": "pages\\guides\\USAGE_GUIDE.html",
+    "title": "📚 Гід по використанню Discord AI Assistant Bot",
+    "category": "guides",
+    "size": 29526,
+    "lastModified": "2025-09-13T20:31:38.739Z"
+  },
+  {
+    "path": "pages\\guides\\VIDEO_TUTORIAL_GUIDE.html",
+    "title": "VIDEO_TUTORIAL_GUIDE",
+    "category": "guides",
+    "size": 35414,
+    "lastModified": "2025-09-13T20:31:38.741Z"
+  },
+  {
+    "path": "pages\\helpers\\README.html",
+    "title": "🛠️ **HELPERS - ДОПОМІЖНІ ФУНКЦІЇ**",
+    "category": "helpers",
+    "size": 25489,
+    "lastModified": "2025-09-13T20:31:38.744Z"
+  },
+  {
+    "path": "pages\\i18n-coverage.html",
+    "title": "i18n Coverage Report",
+    "category": "root",
+    "size": 20127,
+    "lastModified": "2025-09-13T20:31:38.746Z"
+  },
+  {
+    "path": "pages\\IMPROVEMENTS_SUMMARY.html",
+    "title": "Резюме покращень Discord бота",
+    "category": "root",
+    "size": 28188,
+    "lastModified": "2025-09-13T20:31:38.748Z"
+  },
+  {
+    "path": "pages\\INTEGRATION_SUMMARY.html",
+    "title": "Integration Summary",
+    "category": "root",
+    "size": 27342,
+    "lastModified": "2025-09-13T20:31:38.753Z"
+  },
+  {
+    "path": "pages\\markdown-rendering-service-spec.html",
+    "title": "Markdown Rendering Service Specification",
+    "category": "root",
+    "size": 32530,
+    "lastModified": "2025-09-13T20:31:38.756Z"
+  },
+  {
+    "path": "pages\\markdown-rendering.html",
+    "title": "Markdown Rendering Service",
+    "category": "root",
+    "size": 20839,
+    "lastModified": "2025-09-13T20:31:38.759Z"
+  },
+  {
+    "path": "pages\\ollama-integration.html",
+    "title": "Ollama Integration",
+    "category": "root",
+    "size": 20794,
+    "lastModified": "2025-09-13T20:31:38.761Z"
+  },
+  {
+    "path": "pages\\PR_CHECKLIST.html",
+    "title": "Контрольний список для Pull Request",
+    "category": "root",
+    "size": 18974,
+    "lastModified": "2025-09-13T20:31:38.763Z"
+  },
+  {
+    "path": "pages\\PUBLISHING_GUIDE.html",
+    "title": "📚 Documentation Publishing Guide",
+    "category": "root",
+    "size": 21103,
+    "lastModified": "2025-09-13T20:31:38.765Z"
+  },
+  {
+    "path": "pages\\README.html",
+    "title": "🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**",
+    "category": "root",
+    "size": 40666,
+    "lastModified": "2025-09-13T20:31:38.768Z"
+  },
+  {
+    "path": "pages\\root\\PROJECT_STATUS_AND_ROADMAP.html",
+    "title": "BotDiscordGodzilla - Project Status and Roadmap",
+    "category": "root",
+    "size": 31010,
+    "lastModified": "2025-09-13T20:31:38.771Z"
+  },
+  {
+    "path": "pages\\root\\README.html",
+    "title": "🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**",
+    "category": "root",
+    "size": 28173,
+    "lastModified": "2025-09-13T20:31:38.772Z"
+  },
+  {
+    "path": "pages\\security\\README.html",
+    "title": "🔒 **SECURITY - БЕЗПЕКА**",
+    "category": "security",
+    "size": 25419,
+    "lastModified": "2025-09-13T20:31:38.775Z"
+  },
+  {
+    "path": "pages\\security\\SECURITY_GUIDE.html",
+    "title": "🛡️ Гід по безпеці Discord AI Bot",
+    "category": "security",
+    "size": 33447,
+    "lastModified": "2025-09-13T20:31:38.777Z"
+  },
+  {
+    "path": "pages\\SIMPLIFIED_COMMANDS.html",
+    "title": "Спрощена структура команд",
+    "category": "root",
+    "size": 26950,
+    "lastModified": "2025-09-13T20:31:38.779Z"
+  },
+  {
+    "path": "pages\\src\\commands\\README.html",
+    "title": "📁 Команди бота (`src/commands/`)",
+    "category": "src",
+    "size": 18932,
+    "lastModified": "2025-09-13T20:31:38.781Z"
+  },
+  {
+    "path": "pages\\src\\README.html",
+    "title": "README",
+    "category": "src",
+    "size": 18853,
+    "lastModified": "2025-09-13T20:31:38.783Z"
+  },
+  {
+    "path": "pages\\src\\TEMPLATE_README.html",
+    "title": "Шаблон README модуля",
+    "category": "src",
+    "size": 19698,
+    "lastModified": "2025-09-13T20:31:38.786Z"
+  },
+  {
+    "path": "pages\\src\\tests\\README.html",
+    "title": "🧪 **TESTS - ТЕСТУВАННЯ**",
+    "category": "src",
+    "size": 30037,
+    "lastModified": "2025-09-13T20:31:38.788Z"
+  },
+  {
+    "path": "pages\\uk\\COMMANDS_REFERENCE.html",
+    "title": "📋 Довідник команд",
+    "category": "uk",
+    "size": 27168,
+    "lastModified": "2025-09-13T20:31:38.790Z"
+  },
+  {
+    "path": "pages\\uk\\DEVELOPER_GUIDE.html",
+    "title": "🛠️ Гайд розробника",
+    "category": "uk",
+    "size": 22455,
+    "lastModified": "2025-09-13T20:31:38.792Z"
+  },
+  {
+    "path": "pages\\uk\\FAQ.html",
+    "title": "❓ Часті питання",
+    "category": "uk",
+    "size": 26855,
+    "lastModified": "2025-09-13T20:31:38.794Z"
+  },
+  {
+    "path": "pages\\uk\\INSTALLATION.html",
+    "title": "🛠️ Встановлення та налаштування",
+    "category": "uk",
+    "size": 22663,
+    "lastModified": "2025-09-13T20:31:38.796Z"
+  },
+  {
+    "path": "pages\\uk\\OVERVIEW.html",
+    "title": "🦖 Discord AI Assistant Bot - Godzilla",
+    "category": "uk",
+    "size": 20710,
+    "lastModified": "2025-09-13T20:31:38.798Z"
+  },
+  {
+    "path": "pages\\uk\\RAG_GUIDE.html",
+    "title": "🧠 RAG (Retrieval-Augmented Generation)",
+    "category": "uk",
+    "size": 22761,
+    "lastModified": "2025-09-13T20:31:38.800Z"
+  },
+  {
+    "path": "pages\\uk\\README.html",
+    "title": "📚 Україномовна документація",
+    "category": "uk",
+    "size": 18493,
+    "lastModified": "2025-09-13T20:31:38.802Z"
+  },
+  {
+    "path": "pages\\uk\\SECURITY.html",
+    "title": "🛡️ Безпека",
+    "category": "uk",
+    "size": 26224,
+    "lastModified": "2025-09-13T20:31:38.805Z"
+  },
+  {
+    "path": "pages\\uk\\USER_GUIDE.html",
+    "title": "📚 Гід користувача",
+    "category": "uk",
+    "size": 25943,
+    "lastModified": "2025-09-13T20:31:38.808Z"
+  },
+  {
+    "path": "pages\\ukrainian_documentation.html",
+    "title": "🦖 Discord AI Assistant Bot - Godzilla",
+    "category": "root",
+    "size": 30843,
+    "lastModified": "2025-09-13T20:31:38.810Z"
+  }
+]
