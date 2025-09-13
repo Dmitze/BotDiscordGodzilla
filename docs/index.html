@@ -19,6 +19,19 @@
             --error: #f04747;
         }
         
+        /* Light theme variables */
+        .light-theme {
+            --primary: #5865F2;
+            --background: #f0f0f5;
+            --surface: #ffffff;
+            --text: #333333;
+            --text-secondary: #666666;
+            --accent: #7289da;
+            --success: #43b581;
+            --warning: #faa61a;
+            --error: #f04747;
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -34,6 +47,12 @@
             margin: 0;
             padding: 0;
             min-height: 100vh;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        
+        /* Light theme background */
+        .light-theme body {
+            background: linear-gradient(135deg, var(--background) 0%, #e0e0e0 100%);
         }
         
         .container {
@@ -54,19 +73,92 @@
         }
         
         h1 {
-            font-size: 3rem;
+            font-size: 2.5rem;
             margin-bottom: 1rem;
             color: var(--primary);
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         
         .subtitle {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             color: var(--text-secondary);
             margin-bottom: 2rem;
             max-width: 800px;
             margin-left: auto;
             margin-right: auto;
+        }
+        
+        /* Theme toggle styles */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--surface);
+            border: 1px solid var(--primary);
+            color: var(--text);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--primary);
+            transform: rotate(15deg);
+        }
+        
+        /* Search filter styles */
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 2rem;
+            position: relative;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 0.8rem 1rem 0.8rem 3rem;
+            border-radius: 50px;
+            border: 1px solid var(--primary);
+            background: var(--surface);
+            color: var(--text);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.3);
+            border-color: var(--accent);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+        
+        .clear-search {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .clear-search.visible {
+            opacity: 1;
         }
         
         .languages-grid {
@@ -79,7 +171,7 @@
         .language-card {
             background: var(--surface);
             border-radius: 12px;
-            padding: 2rem;
+            padding: 1.5rem;
             text-align: center;
             transition: all 0.3s ease;
             border: 1px solid rgba(88, 101, 242, 0.1);
@@ -96,28 +188,28 @@
         
         .language-card h2 {
             color: var(--primary);
-            margin: 1.5rem 0;
-            font-size: 1.8rem;
+            margin: 1.2rem 0;
+            font-size: 1.6rem;
         }
         
         .language-card p {
             color: var(--text-secondary);
-            font-size: 1.1rem;
-            margin-bottom: 1.5rem;
+            font-size: 1rem;
+            margin-bottom: 1.2rem;
         }
         
         .btn {
             display: inline-block;
             background: var(--primary);
             color: white;
-            padding: 0.8rem 2rem;
+            padding: 0.7rem 1.8rem;
             border-radius: 50px;
             text-decoration: none;
             font-weight: 600;
             transition: all 0.3s ease;
             border: none;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
         
         .btn:hover {
@@ -130,26 +222,27 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1.5rem;
-            margin: 3rem 0;
+            margin: 2rem 0;
         }
         
         .feature {
             background: rgba(255, 255, 255, 0.05);
-            padding: 1.5rem;
+            padding: 1.2rem;
             border-radius: 8px;
             text-align: center;
             backdrop-filter: blur(10px);
         }
         
         .feature i {
-            font-size: 2rem;
+            font-size: 1.8rem;
             color: var(--primary);
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
         }
         
         .feature h3 {
             color: var(--text);
             margin-bottom: 0.5rem;
+            font-size: 1.2rem;
         }
         
         .feature p {
@@ -159,7 +252,7 @@
         
         footer {
             text-align: center;
-            padding: 2rem;
+            padding: 1.5rem;
             color: var(--text-secondary);
             font-size: 0.9rem;
             margin-top: 2rem;
@@ -169,13 +262,14 @@
         .search-link {
             display: block;
             text-align: center;
-            margin: 2rem 0;
-            padding: 1rem;
+            margin: 1.5rem 0;
+            padding: 0.8rem;
             background: rgba(88, 101, 242, 0.1);
             border-radius: 8px;
             color: var(--primary);
             text-decoration: none;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .search-link:hover {
@@ -194,30 +288,30 @@
         .stat-card {
             background: var(--surface);
             border-radius: 8px;
-            padding: 1rem 2rem;
+            padding: 1rem 1.5rem;
             text-align: center;
-            min-width: 150px;
+            min-width: 120px;
         }
         
         .stat-number {
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: bold;
             color: var(--primary);
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
         }
         
         .stat-label {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
         
         /* Documentation sections */
         .docs-section {
-            margin: 3rem 0;
+            margin: 2rem 0;
         }
         
         .section-title {
-            font-size: 2rem;
+            font-size: 1.8rem;
             color: var(--primary);
             margin-bottom: 1.5rem;
             text-align: center;
@@ -227,7 +321,7 @@
         .section-title::after {
             content: '';
             display: block;
-            width: 100px;
+            width: 80px;
             height: 3px;
             background: var(--primary);
             margin: 0.5rem auto;
@@ -238,13 +332,13 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
-            margin-top: 2rem;
+            margin-top: 1.5rem;
         }
         
         .doc-card {
             background: var(--surface);
             border-radius: 12px;
-            padding: 1.5rem;
+            padding: 1.2rem;
             transition: all 0.3s ease;
             border: 1px solid rgba(88, 101, 242, 0.1);
             text-decoration: none;
@@ -260,14 +354,14 @@
         
         .doc-card h3 {
             color: var(--primary);
-            margin-bottom: 0.8rem;
-            font-size: 1.3rem;
+            margin-bottom: 0.7rem;
+            font-size: 1.2rem;
         }
         
         .doc-card p {
             color: var(--text-secondary);
             font-size: 0.95rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
         }
         
         .doc-card .category {
@@ -349,24 +443,24 @@
         }
         
         .floating-element:nth-child(1) {
-            width: 300px;
-            height: 300px;
+            width: 200px;
+            height: 200px;
             top: 10%;
             left: 5%;
             animation-delay: 0s;
         }
         
         .floating-element:nth-child(2) {
-            width: 200px;
-            height: 200px;
+            width: 150px;
+            height: 150px;
             bottom: 15%;
             right: 10%;
             animation-delay: 2s;
         }
         
         .floating-element:nth-child(3) {
-            width: 150px;
-            height: 150px;
+            width: 100px;
+            height: 100px;
             top: 40%;
             right: 20%;
             animation-delay: 4s;
@@ -398,6 +492,21 @@
             .docs-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .floating-element:nth-child(1) {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .floating-element:nth-child(2) {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .floating-element:nth-child(3) {
+                width: 70px;
+                height: 70px;
+            }
         }
         
         /* Gradient background animation */
@@ -406,9 +515,784 @@
             background-size: 400% 400%;
             animation: gradient 15s ease infinite;
         }
+        
+        /* Carousel styles */
+        .carousel-container {
+            margin: 2rem 0;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            background: var(--surface);
+            padding: 1.5rem;
+            border: 1px solid rgba(88, 101, 242, 0.2);
+        }
+        
+        .carousel-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .carousel-header h2 {
+            font-size: 1.8rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .carousel-header h2 i {
+            animation: pulse 2s infinite;
+        }
+        
+        .carousel-header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .carousel {
+            display: flex;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+            padding: 1rem 0;
+            position: relative;
+            height: 220px;
+        }
+        
+        .carousel-track {
+            display: flex;
+            transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1.25);
+            height: 100%;
+        }
+        
+        .carousel-item {
+            flex: 0 0 auto;
+            width: 280px;
+            margin: 0 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 1.2rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(88, 101, 242, 0.2);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .carousel-item:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+            border-color: var(--primary);
+            z-index: 10;
+        }
+        
+        .carousel-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+        
+        .carousel-item:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .carousel-item h3 {
+            color: var(--primary);
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .carousel-item h3 i {
+            margin-right: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .carousel-item p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+        
+        .carousel-item .category {
+            display: inline-block;
+            background: rgba(88, 101, 242, 0.2);
+            color: var(--primary);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            align-self: flex-start;
+        }
+        
+        .carousel-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .carousel-btn {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .carousel-btn:hover {
+            background: var(--primary);
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(88, 101, 242, 0.4);
+        }
+        
+        .carousel-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1.2rem;
+        }
+        
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .indicator.active {
+            background: var(--primary);
+            transform: scale(1.2);
+        }
+        
+        /* Category colors */
+        .category-api { 
+            border-top: 4px solid #FF6B6B; 
+        }
+        .category-api::before { background: #FF6B6B; }
+        
+        .category-architecture { 
+            border-top: 4px solid #9B5DE5; 
+        }
+        .category-architecture::before { background: #9B5DE5; }
+        
+        .category-guides { 
+            border-top: 4px solid #00F5D4; 
+        }
+        .category-guides::before { background: #00F5D4; }
+        
+        .category-security { 
+            border-top: 4px solid #FF9E00; 
+        }
+        .category-security::before { background: #FF9E00; }
+        
+        .category-deployment { 
+            border-top: 4px solid #06D6A0; 
+        }
+        .category-deployment::before { background: #06D6A0; }
+        
+        .category-changelog { 
+            border-top: 4px solid #8AC926; 
+        }
+        .category-changelog::before { background: #8AC926; }
+        
+        .category-examples { 
+            border-top: 4px solid #FFB703; 
+        }
+        .category-examples::before { background: #FFB703; }
+        
+        .category-en { 
+            border-top: 4px solid #5865F2; 
+        }
+        .category-en::before { background: #5865F2; }
+        
+        .category-root { 
+            border-top: 4px solid #7289da; 
+        }
+        .category-root::before { background: #7289da; }
+        
+        /* Responsive carousel */
+        @media (max-width: 768px) {
+            .carousel-item {
+                width: 250px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .carousel-item {
+                width: 200px;
+            }
+        }
+        
+        /* Additional enhancements */
+        .recently-viewed {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(88, 101, 242, 0.1);
+        }
+        
+        .recently-viewed h2 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .recent-items {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding: 0.5rem;
+        }
+        
+        .recent-item {
+            flex: 0 0 auto;
+            min-width: 200px;
+            padding: 1rem;
+            background: rgba(88, 101, 242, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .recent-item:hover {
+            background: rgba(88, 101, 242, 0.2);
+            transform: translateY(-3px);
+        }
+        
+        .recent-item h3 {
+            font-size: 1rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .recent-item .category {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .recent-item-placeholder {
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 1rem;
+            text-align: center;
+            width: 100%;
+        }
+        
+        /* Category filter */
+        .category-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+        
+        .category-btn {
+            padding: 0.5rem 1rem;
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--primary);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .category-btn:hover, .category-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        /* Back to top button */
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 100;
+        }
+        
+        .back-to-top.visible {
+            opacity: 1;
+        }
+        
+        .back-to-top:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Progress bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+            z-index: 1000;
+        }
+        
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .category-filter {
+                justify-content: flex-start;
+                overflow-x: auto;
+                padding: 0.5rem;
+            }
+            
+            .recent-items {
+                padding: 0.5rem;
+            }
+            
+            .theme-toggle {
+                top: 10px;
+                right: 10px;
+                width: 35px;
+                height: 35px;
+            }
+        }
+        
+        /* Search suggestions */
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--primary);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .search-suggestions.visible {
+            display: block;
+        }
+        
+        .suggestion-item {
+            padding: 0.8rem 1rem 0.8rem 3rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid rgba(88, 101, 242, 0.1);
+            position: relative;
+            font-size: 0.9rem;
+        }
+        
+        .suggestion-item:hover {
+            background: rgba(88, 101, 242, 0.1);
+        }
+        
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .suggestion-item i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary);
+        }
+        
+        /* Bookmark styles */
+        .bookmark-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .bookmark-btn:hover {
+            color: var(--warning);
+            background: rgba(250, 166, 26, 0.1);
+        }
+        
+        .bookmark-btn.bookmarked {
+            color: var(--warning);
+        }
+        
+        /* Rating styles */
+        .rating-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .rating-stars {
+            display: flex;
+            gap: 0.2rem;
+        }
+        
+        .rating-star {
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s ease;
+            font-size: 1rem;
+        }
+        
+        .rating-star.active {
+            color: var(--warning);
+        }
+        
+        .rating-value {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        /* Document preview tooltip */
+        .preview-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 1rem;
+            width: 300px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+            margin-bottom: 10px;
+        }
+        
+        .preview-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px;
+            border-style: solid;
+            border-color: var(--primary) transparent transparent transparent;
+        }
+        
+        .preview-tooltip h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .preview-tooltip p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .preview-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+        
+        /* Floating TOC */
+        .floating-toc {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--surface);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 1rem;
+            max-height: 70vh;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            max-width: 250px;
+            display: none;
+        }
+        
+        .floating-toc.visible {
+            display: block;
+        }
+        
+        .toc-title {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .toc-item {
+            margin-bottom: 0.5rem;
+        }
+        
+        .toc-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s ease;
+            display: block;
+            padding: 0.3rem 0;
+        }
+        
+        .toc-link:hover {
+            color: var(--primary);
+        }
+        
+        .toc-link.indent-1 {
+            padding-left: 1rem;
+        }
+        
+        .toc-link.indent-2 {
+            padding-left: 2rem;
+        }
+        
+        .toc-link.indent-3 {
+            padding-left: 3rem;
+        }
+        
+        /* Toggle TOC button */
+        .toc-toggle {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: var(--primary);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            z-index: 99;
+        }
+        
+        /* Progress bar enhancement */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+            z-index: 1000;
+        }
+        
+        /* Bookmark section */
+        .bookmarks-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(88, 101, 242, 0.1);
+        }
+        
+        .bookmarks-section h2 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .bookmark-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .bookmark-item {
+            padding: 1rem;
+            background: rgba(88, 101, 242, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .bookmark-item:hover {
+            background: rgba(88, 101, 242, 0.2);
+            transform: translateY(-3px);
+        }
+        
+        .remove-bookmark {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 1rem;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .remove-bookmark:hover {
+            background: rgba(240, 71, 71, 0.1);
+        }
+        
+        .bookmark-item h3 {
+            font-size: 1rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .bookmark-item .category {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .bookmark-placeholder {
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 1rem;
+            text-align: center;
+            grid-column: 1 / -1;
+        }
+        
+        /* Sentinel for progressive loading */
+        #carousel-sentinel {
+            height: 1px;
+            width: 100%;
+        }
+    </style>
+</head>
+        .bookmark-item:hover {
+            background: rgba(88, 101, 242, 0.2);
+            transform: translateY(-3px);
+        }
+        
+        .remove-bookmark {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 1rem;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .remove-bookmark:hover {
+            background: rgba(240, 71, 71, 0.1);
+        }
+        
+        .bookmark-item h3 {
+            font-size: 1rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .bookmark-item .category {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .bookmark-placeholder {
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 1rem;
+            text-align: center;
+            grid-column: 1 / -1;
+        }
+        
+        /* Sentinel for progressive loading */
+        #carousel-sentinel {
+            height: 1px;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+    
     <div class="floating-elements">
         <div class="floating-element"></div>
         <div class="floating-element"></div>
@@ -416,6 +1300,11 @@
     </div>
 
     <div class="container">
+        <!-- Theme toggle button -->
+        <div class="theme-toggle" id="themeToggle" title="Toggle theme">
+            <i class="fas fa-moon"></i>
+        </div>
+        
         <header>
             <h1>📚 Документація Godzilla Bot</h1>
             <p class="subtitle">Потужний Discord бот з AI функціоналом для Збройних Сил України</p>
@@ -530,8 +1419,30 @@
             </div>
         </div>
         
+        <!-- Search filter for carousel -->
+        <div class="search-container">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="carouselSearch" class="search-input" placeholder="Пошук по документах...">
+            <button class="clear-search" id="clearSearch">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="search-suggestions" id="searchSuggestions"></div>
+        </div>
+        
         <div class="docs-section">
             <h2 class="section-title">📋 Всі Документи</h2>
+            
+            <!-- Category filter -->
+            <div class="category-filter" id="categoryFilter">
+                <button class="category-btn active" data-category="all">Всі</button>
+                <button class="category-btn" data-category="api">API</button>
+                <button class="category-btn" data-category="guides">Посібники</button>
+                <button class="category-btn" data-category="architecture">Архітектура</button>
+                <button class="category-btn" data-category="security">Безпека</button>
+                <button class="category-btn" data-category="deployment">Розгортання</button>
+                <button class="category-btn" data-category="changelog">Зміни</button>
+                <button class="category-btn" data-category="en">English</button>
+            </div>
             
             <div class="docs-grid">
                 <a href="pages/guides/README.html" class="doc-card animate__animated animate__fadeInUp">
@@ -572,10 +1483,842 @@
             </div>
         </div>
         
+        <!-- Bookmarked documents -->
+        <div class="bookmarks-section">
+            <h2><i class="fas fa-bookmark"></i> Закладки</h2>
+            <div class="bookmark-items" id="bookmarkItems">
+                <!-- Bookmarked items will be populated by JavaScript -->
+                <div class="bookmark-placeholder">
+                    <p>Документи, які ви додали в закладки, з'являтимуться тут</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recently viewed documents -->
+        <div class="recently-viewed">
+            <h2><i class="fas fa-history"></i> Нещодавно переглянуті</h2>
+            <div class="recent-items" id="recentItems">
+                <!-- Recently viewed items will be populated by JavaScript -->
+                <div class="recent-item-placeholder">
+                    <p>Документи, які ви переглядали, з'являтимуться тут</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Interactive Documentation Carousel -->
+        <div class="carousel-container">
+            <div class="carousel-header">
+                <h2><i class="fas fa-book-open"></i> Всі Документи (79)</h2>
+                <p>Перегляньте всі документи проєкту в інтерактивному режимі</p>
+            </div>
+            
+            <div class="carousel" id="docsCarousel">
+                <div class="carousel-track" id="carouselTrack">
+                    <!-- Carousel items will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="carousel-controls">
+                <div class="carousel-btn" id="prevBtn">
+                    <i class="fas fa-chevron-left"></i>
+                </div>
+                <div class="carousel-btn" id="nextBtn">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+            
+            <div class="carousel-indicators" id="carouselIndicators">
+                <!-- Indicators will be populated by JavaScript -->
+            </div>
+        </div>
+        
         <footer>
             <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
             <p>Ліцензія MIT | Версія: v3.0.0</p>
         </footer>
     </div>
+    
+    <!-- Floating TOC Toggle -->
+    <div class="toc-toggle" id="tocToggle" title="Переключити зміст">
+        <i class="fas fa-list"></i>
+    </div>
+    
+    <!-- Floating TOC -->
+    <div class="floating-toc" id="floatingToc">
+        <h3 class="toc-title">Зміст документа</h3>
+        <ul class="toc-list" id="tocList">
+            <!-- TOC items will be populated by JavaScript -->
+        </ul>
+    </div>
+    
+    <!-- Back to top button -->
+    <div class="back-to-top" id="backToTop">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+    
+    <!-- Load documentation data and initialize carousel -->
+    <script>
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = themeToggle.querySelector('i');
+        
+        // Check for saved theme preference or respect OS preference
+        const savedTheme = localStorage.getItem('theme');
+        const osPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const currentTheme = savedTheme || (osPrefersDark ? 'dark' : 'light');
+        
+        // Apply theme
+        document.body.classList.toggle('light-theme', currentTheme === 'light');
+        themeIcon.className = currentTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        
+        // Toggle theme
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            themeIcon.className = isLight ? 'fas fa-moon' : 'fas fa-sun';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        });
+        
+        // Search functionality for carousel
+        const searchInput = document.getElementById('carouselSearch');
+        const clearSearch = document.getElementById('clearSearch');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+        
+        searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            clearSearch.classList.toggle('visible', searchTerm.length > 0);
+            filterCarouselItems(searchTerm);
+            showSearchSuggestions(searchTerm);
+        });
+        
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.length > 0) {
+                showSearchSuggestions(searchInput.value.toLowerCase());
+            }
+        });
+        
+        searchInput.addEventListener('blur', () => {
+            // Delay hiding suggestions to allow clicking on them
+            setTimeout(() => {
+                searchSuggestions.classList.remove('visible');
+            }, 200);
+        });
+        
+        clearSearch.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearch.classList.remove('visible');
+            filterCarouselItems('');
+            searchSuggestions.classList.remove('visible');
+        });
+        
+        function showSearchSuggestions(term) {
+            if (term.length < 2) {
+                searchSuggestions.classList.remove('visible');
+                return;
+            }
+            
+            // Clear existing suggestions
+            searchSuggestions.innerHTML = '';
+            
+            // Get all documents and filter by term
+            fetch('docs-data.json')
+                .then(response => response.json())
+                .then(docsData => {
+                    const filteredDocs = docsData.filter(doc => 
+                        doc.title.toLowerCase().includes(term) || 
+                        doc.category.toLowerCase().includes(term)
+                    ).slice(0, 5); // Limit to 5 suggestions
+                    
+                    if (filteredDocs.length === 0) {
+                        searchSuggestions.classList.remove('visible');
+                        return;
+                    }
+                    
+                    // Create suggestion items
+                    filteredDocs.forEach(doc => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        
+                        // Create category icon based on category
+                        let icon = 'fa-file-alt';
+                        switch(doc.category) {
+                            case 'api':
+                                icon = 'fa-plug';
+                                break;
+                            case 'architecture':
+                                icon = 'fa-project-diagram';
+                                break;
+                            case 'guides':
+                                icon = 'fa-book';
+                                break;
+                            case 'security':
+                                icon = 'fa-shield-alt';
+                                break;
+                            case 'deployment':
+                                icon = 'fa-server';
+                                break;
+                            case 'changelog':
+                                icon = 'fa-history';
+                                break;
+                            case 'examples':
+                                icon = 'fa-lightbulb';
+                                break;
+                            case 'en':
+                                icon = 'fa-globe';
+                                break;
+                            default:
+                                icon = 'fa-folder';
+                        }
+                        
+                        item.innerHTML = `
+                            <i class="fas ${icon}"></i>
+                            ${doc.title}
+                            <span class="category" style="float: right; font-size: 0.8rem;">${doc.category}</span>
+                        `;
+                        
+                        item.addEventListener('click', () => {
+                            window.location.href = doc.path;
+                        });
+                        
+                        searchSuggestions.appendChild(item);
+                    });
+                    
+                    searchSuggestions.classList.add('visible');
+                });
+        }
+        
+        // Category filtering
+        const categoryButtons = document.querySelectorAll('.category-btn');
+        categoryButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons
+                categoryButtons.forEach(btn => btn.classList.remove('active'));
+                // Add active class to clicked button
+                button.classList.add('active');
+                // Filter carousel items
+                const category = button.dataset.category;
+                filterByCategory(category);
+            });
+        });
+        
+        function filterCarouselItems(term) {
+            const items = document.querySelectorAll('.carousel-item');
+            items.forEach(item => {
+                const title = item.querySelector('h3').textContent.toLowerCase();
+                const category = item.querySelector('.category').textContent.toLowerCase();
+                const isVisible = term === '' || title.includes(term) || category.includes(term);
+                item.style.display = isVisible ? 'flex' : 'none';
+            });
+            
+            // Update carousel track to account for hidden items
+            updateCarouselTrack();
+        }
+        
+        function filterByCategory(category) {
+            const items = document.querySelectorAll('.carousel-item');
+            items.forEach(item => {
+                if (category === 'all') {
+                    item.style.display = 'flex';
+                } else {
+                    const itemCategory = item.classList.toString().match(/category-(\w+)/);
+                    if (itemCategory) {
+                        const itemCat = itemCategory[1];
+                        item.style.display = (itemCat === category) ? 'flex' : 'none';
+                    }
+                }
+            });
+            
+            // Update carousel track to account for hidden items
+            updateCarouselTrack();
+        }
+        
+        function updateCarouselTrack() {
+            const track = document.getElementById('carouselTrack');
+            const visibleItems = document.querySelectorAll('.carousel-item:not([style*="display: none"])');
+            // This would need more complex logic to properly reorganize the carousel
+            // For now, we'll just let the existing carousel navigation handle it
+        }
+        
+        // Back to top button
+        const backToTopButton = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.add('visible');
+            } else {
+                backToTopButton.classList.remove('visible');
+            }
+            
+            // Update progress bar
+            const scrollTop = window.pageYOffset;
+            const docHeight = document.body.scrollHeight - window.innerHeight;
+            const scrollPercent = (scrollTop / docHeight) * 100;
+            document.getElementById('progressBar').style.width = scrollPercent + '%';
+        });
+        
+        backToTopButton.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+        
+        // Recently viewed documents
+        function updateRecentlyViewed(doc) {
+            // Get existing recently viewed items from localStorage
+            let recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed')) || [];
+            
+            // Remove the document if it's already in the list
+            recentlyViewed = recentlyViewed.filter(item => item.path !== doc.path);
+            
+            // Add the document to the beginning of the list
+            recentlyViewed.unshift({
+                title: doc.title,
+                path: doc.path,
+                category: doc.category
+            });
+            
+            // Keep only the last 5 items
+            if (recentlyViewed.length > 5) {
+                recentlyViewed.pop();
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('recentlyViewed', JSON.stringify(recentlyViewed));
+            
+            // Update the UI
+            displayRecentlyViewed();
+        }
+        
+        function displayRecentlyViewed() {
+            const recentlyViewedContainer = document.getElementById('recentItems');
+            const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed')) || [];
+            
+            if (recentlyViewed.length === 0) {
+                recentlyViewedContainer.innerHTML = '<div class="recent-item-placeholder"><p>Документи, які ви переглядали, з\'являтимуться тут</p></div>';
+                return;
+            }
+            
+            recentlyViewedContainer.innerHTML = '';
+            
+            recentlyViewed.forEach(doc => {
+                const item = document.createElement('div');
+                item.className = 'recent-item';
+                item.innerHTML = `
+                    <h3><i class="fas fa-file-alt"></i> ${doc.title}</h3>
+                    <span class="category">${doc.category}</span>
+                `;
+                
+                item.addEventListener('click', () => {
+                    window.location.href = doc.path;
+                });
+                
+                recentlyViewedContainer.appendChild(item);
+            });
+        }
+        
+        // Bookmarking system
+        function toggleBookmark(doc) {
+            // Get existing bookmarks from localStorage
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+            
+            // Check if document is already bookmarked
+            const isBookmarked = bookmarks.some(bookmark => bookmark.path === doc.path);
+            
+            if (isBookmarked) {
+                // Remove bookmark
+                bookmarks = bookmarks.filter(bookmark => bookmark.path !== doc.path);
+            } else {
+                // Add bookmark
+                bookmarks.push({
+                    title: doc.title,
+                    path: doc.path,
+                    category: doc.category
+                });
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+            
+            // Update UI
+            displayBookmarks();
+            return !isBookmarked; // Return new bookmark state
+        }
+        
+        function displayBookmarks() {
+            const bookmarksContainer = document.getElementById('bookmarkItems');
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+            
+            if (bookmarks.length === 0) {
+                bookmarksContainer.innerHTML = '<div class="bookmark-placeholder"><p>Документи, які ви додали в закладки, з\'являтимуться тут</p></div>';
+                return;
+            }
+            
+            bookmarksContainer.innerHTML = '';
+            
+            bookmarks.forEach(doc => {
+                const item = document.createElement('div');
+                item.className = 'bookmark-item';
+                item.innerHTML = `
+                    <button class="remove-bookmark" title="Видалити закладку">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <h3><i class="fas fa-bookmark"></i> ${doc.title}</h3>
+                    <span class="category">${doc.category}</span>
+                `;
+                
+                // Add click event to open document
+                item.addEventListener('click', (e) => {
+                    if (!e.target.closest('.remove-bookmark')) {
+                        window.location.href = doc.path;
+                    }
+                });
+                
+                // Add click event to remove bookmark
+                const removeBtn = item.querySelector('.remove-bookmark');
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleBookmark(doc);
+                });
+                
+                bookmarksContainer.appendChild(item);
+            });
+        }
+        
+        // Initialize bookmarks section
+        displayBookmarks();
+        
+        // Floating TOC
+        const tocToggle = document.getElementById('tocToggle');
+        const floatingToc = document.getElementById('floatingToc');
+        
+        tocToggle.addEventListener('click', () => {
+            floatingToc.classList.toggle('visible');
+        });
+        
+        // Document rating system
+        function saveRating(docPath, rating) {
+            // Get existing ratings from localStorage
+            let ratings = JSON.parse(localStorage.getItem('documentRatings')) || {};
+            
+            // Save rating for this document
+            ratings[docPath] = rating;
+            
+            // Save to localStorage
+            localStorage.setItem('documentRatings', JSON.stringify(ratings));
+            
+            // Update UI
+            updateCarouselRatings();
+        }
+        
+        function getAverageRating(docPath) {
+            // Get ratings from localStorage
+            const ratings = JSON.parse(localStorage.getItem('documentRatings')) || {};
+            
+            // For now, we'll just return the user's rating if it exists
+            // In a real implementation, this would calculate average from multiple users
+            return ratings[docPath] || 0;
+        }
+        
+        function updateCarouselRatings() {
+            // This would update the ratings displayed in the carousel
+            // For now, we'll implement this when we enhance the carousel items
+        }
+        
+        // Load documentation data
+        fetch('docs-data.json')
+            .then(response => response.json())
+            .then(docsData => {
+                // Initialize carousel with progressive loading
+                initializeCarousel(docsData);
+            })
+            .catch(error => {
+                console.error('Error loading documentation data:', error);
+            });
+            
+        // Variables for progressive loading
+        let allDocsData = [];
+        let currentIndex = 0;
+        let itemsPerPage = 6; // Number of items to load per batch
+        let loadedItems = 0;
+        
+        function initializeCarousel(docsData) {
+            allDocsData = [...docsData]; // Store all data for filtering
+            const carouselTrack = document.getElementById('carouselTrack');
+            const carouselIndicators = document.getElementById('carouselIndicators');
+            
+            // Clear existing content
+            carouselTrack.innerHTML = '';
+            carouselIndicators.innerHTML = '';
+            
+            // Reset counters
+            loadedItems = 0;
+            currentIndex = 0;
+            
+            // Load initial batch of items
+            loadMoreItems();
+            
+            // Set up intersection observer for progressive loading
+            setupIntersectionObserver();
+        }
+        
+        function loadMoreItems() {
+            const carouselTrack = document.getElementById('carouselTrack');
+            const carouselIndicators = document.getElementById('carouselIndicators');
+            
+            // Determine how many items to load in this batch
+            const remainingItems = allDocsData.length - loadedItems;
+            const batchSize = Math.min(itemsPerPage, remainingItems);
+            
+            // If no more items to load, return
+            if (batchSize <= 0) return;
+            
+            // Create carousel items for this batch
+            for (let i = 0; i < batchSize; i++) {
+                const docIndex = loadedItems + i;
+                if (docIndex >= allDocsData.length) break;
+                
+                const doc = allDocsData[docIndex];
+                
+                // Create category icon based on category
+                let icon = 'fa-file-alt';
+                switch(doc.category) {
+                    case 'api':
+                        icon = 'fa-plug';
+                        break;
+                    case 'architecture':
+                        icon = 'fa-project-diagram';
+                        break;
+                    case 'guides':
+                        icon = 'fa-book';
+                        break;
+                    case 'security':
+                        icon = 'fa-shield-alt';
+                        break;
+                    case 'deployment':
+                        icon = 'fa-server';
+                        break;
+                    case 'changelog':
+                        icon = 'fa-history';
+                        break;
+                    case 'examples':
+                        icon = 'fa-lightbulb';
+                        break;
+                    case 'en':
+                        icon = 'fa-globe';
+                        break;
+                    default:
+                        icon = 'fa-folder';
+                }
+                
+                // Truncate title if too long
+                let displayTitle = doc.title;
+                if (displayTitle.length > 50) {
+                    displayTitle = displayTitle.substring(0, 47) + '...';
+                }
+                
+                // Capitalize first letter of category
+                const categoryDisplay = doc.category.charAt(0).toUpperCase() + doc.category.slice(1);
+                
+                // Format file size
+                const fileSize = formatFileSize(doc.size);
+                
+                // Format last modified date
+                const lastModified = formatDate(doc.lastModified);
+                
+                // Get bookmark status
+                const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+                const isBookmarked = bookmarks.some(bookmark => bookmark.path === doc.path);
+                
+                // Get rating
+                const rating = getAverageRating(doc.path);
+                
+                // Create carousel item
+                const item = document.createElement('div');
+                item.className = `carousel-item category-${doc.category}`;
+                item.dataset.title = doc.title.toLowerCase();
+                item.dataset.category = doc.category.toLowerCase();
+                item.innerHTML = `
+                    <button class="bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" title="${isBookmarked ? 'Видалити з закладок' : 'Додати в закладки'}">
+                        <i class="fas fa-bookmark"></i>
+                    </button>
+                    <h3><i class="fas ${icon}"></i> ${displayTitle}</h3>
+                    <p>Категорія: ${categoryDisplay}</p>
+                    <span class="category">${categoryDisplay}</span>
+                    <div class="rating-container">
+                        <div class="rating-stars" data-path="${doc.path}">
+                            ${[1, 2, 3, 4, 5].map(star => 
+                                `<span class="rating-star ${star <= rating ? 'active' : ''}" data-rating="${star}">&#9733;</span>`
+                            ).join('')}
+                        </div>
+                        <span class="rating-value">${rating > 0 ? rating.toFixed(1) : ''}</span>
+                    </div>
+                `;
+                
+                // Add preview tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'preview-tooltip';
+                tooltip.innerHTML = `
+                    <h4>${doc.title}</h4>
+                    <p>Категорія: ${categoryDisplay}</p>
+                    <p>Розмір: ${fileSize}</p>
+                    <div class="preview-meta">
+                        <span>Оновлено: ${lastModified}</span>
+                    </div>
+                `;
+                item.appendChild(tooltip);
+                
+                // Add bookmark button event
+                const bookmarkBtn = item.querySelector('.bookmark-btn');
+                bookmarkBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isNowBookmarked = toggleBookmark(doc);
+                    bookmarkBtn.classList.toggle('bookmarked', isNowBookmarked);
+                    bookmarkBtn.title = isNowBookmarked ? 'Видалити з закладок' : 'Додати в закладки';
+                });
+                
+                // Add rating stars event
+                const ratingStars = item.querySelector('.rating-stars');
+                const ratingValue = item.querySelector('.rating-value');
+                ratingStars.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('rating-star')) {
+                        const rating = parseInt(e.target.dataset.rating);
+                        saveRating(doc.path, rating);
+                        
+                        // Update stars display
+                        const stars = ratingStars.querySelectorAll('.rating-star');
+                        stars.forEach((star, i) => {
+                            star.classList.toggle('active', i < rating);
+                        });
+                        
+                        // Update rating value
+                        ratingValue.textContent = rating.toFixed(1);
+                    }
+                });
+                
+                // Add click event to open document and track recently viewed
+                item.addEventListener('click', () => {
+                    updateRecentlyViewed(doc);
+                    window.location.href = doc.path;
+                });
+                
+                // Add hover effect for tooltip
+                item.addEventListener('mouseenter', () => {
+                    item.style.transform = 'translateY(-10px) scale(1.02)';
+                    tooltip.style.display = 'block';
+                });
+                
+                item.addEventListener('mouseleave', () => {
+                    item.style.transform = '';
+                    tooltip.style.display = 'none';
+                });
+                
+                carouselTrack.appendChild(item);
+                
+                // Create indicator for every 3rd item
+                if ((docIndex + 1) % 3 === 0 || docIndex === allDocsData.length - 1) {
+                    const indicatorIndex = Math.floor((docIndex + 1) / 3);
+                    let indicator = carouselIndicators.querySelector(`.indicator[data-index="${indicatorIndex}"]`);
+                    
+                    if (!indicator) {
+                        indicator = document.createElement('div');
+                        indicator.className = 'indicator';
+                        if (indicatorIndex === 0) indicator.classList.add('active');
+                        indicator.dataset.index = indicatorIndex;
+                        indicator.addEventListener('click', (e) => {
+                            goToSlide(parseInt(e.target.dataset.index));
+                        });
+                        carouselIndicators.appendChild(indicator);
+                    }
+                }
+            }
+            
+            // Update loaded items count
+            loadedItems += batchSize;
+            
+            // Update carousel navigation
+            updateCarouselNavigation();
+        }
+        
+        // Helper function to format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Helper function to format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('uk-UA', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+        
+        function setupIntersectionObserver() {
+            // Create a sentinel element at the end of the carousel
+            const sentinel = document.createElement('div');
+            sentinel.id = 'carousel-sentinel';
+            sentinel.style.height = '1px';
+            document.getElementById('carouselTrack').appendChild(sentinel);
+            
+            // Create intersection observer
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && loadedItems < allDocsData.length) {
+                        // Load more items when sentinel is visible
+                        loadMoreItems();
+                    }
+                });
+            }, {
+                root: document.querySelector('.carousel'),
+                rootMargin: '100px' // Load more when 100px from the bottom
+            });
+            
+            // Start observing the sentinel
+            observer.observe(sentinel);
+        }
+        
+        function updateCarouselNavigation() {
+            // Update carousel navigation based on loaded items
+            const totalSlides = Math.ceil(loadedItems / 3);
+            const indicators = document.querySelectorAll('.indicator');
+            
+            // Hide indicators if only one slide
+            document.querySelector('.carousel-controls').style.display = totalSlides > 1 ? 'flex' : 'none';
+            document.getElementById('carouselIndicators').style.display = totalSlides > 1 ? 'flex' : 'none';
+        }
+        
+        // Carousel navigation functions (modified to work with progressive loading)
+        function updateCarousel() {
+            const carouselTrack = document.getElementById('carouselTrack');
+            const translateX = -currentIndex * 1020; // 3 items * 340px (300px width + 40px margin)
+            carouselTrack.style.transform = `translateX(${translateX}px)`;
+            
+            // Update indicators
+            const indicators = document.querySelectorAll('.indicator');
+            indicators.forEach((indicator, index) => {
+                indicator.classList.toggle('active', index === currentIndex);
+            });
+        }
+        
+        function goToSlide(index) {
+            const totalSlides = Math.ceil(loadedItems / 3);
+            currentIndex = Math.max(0, Math.min(index, totalSlides - 1));
+            updateCarousel();
+        }
+        
+        function nextSlide() {
+            const totalSlides = Math.ceil(loadedItems / 3);
+            if (currentIndex < totalSlides - 1) {
+                currentIndex++;
+            } else {
+                currentIndex = 0; // Loop back to start
+            }
+            updateCarousel();
+        }
+        
+        function prevSlide() {
+            if (currentIndex > 0) {
+                currentIndex--;
+            } else {
+                const totalSlides = Math.ceil(loadedItems / 3);
+                currentIndex = totalSlides - 1; // Go to end
+            }
+            updateCarousel();
+        }
+        
+        // Event listeners for carousel navigation
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        
+        prevBtn.addEventListener('click', prevSlide);
+        nextBtn.addEventListener('click', nextSlide);
+        
+        // Auto-advance carousel
+        let carouselInterval = setInterval(nextSlide, 5000);
+        
+        // Pause auto-advance when hovering over carousel
+        const carouselContainer = document.querySelector('.carousel-container');
+        carouselContainer.addEventListener('mouseenter', () => {
+            clearInterval(carouselInterval);
+        });
+        
+        carouselContainer.addEventListener('mouseleave', () => {
+            carouselInterval = setInterval(nextSlide, 5000);
+        });
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                prevSlide();
+            } else if (e.key === 'ArrowRight') {
+                nextSlide();
+            }
+        });
+        
+        // Touch swipe support for mobile
+        let startX = 0;
+        let endX = 0;
+        
+        carouselContainer.addEventListener('touchstart', (e) => {
+            startX = e.changedTouches[0].screenX;
+        });
+        
+        carouselContainer.addEventListener('touchend', (e) => {
+            endX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+        
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = startX - endX;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    nextSlide(); // Swipe left
+                } else {
+                    prevSlide(); // Swipe right
+                }
+            }
+        }
+        
+        // Update items per slide on resize
+        window.addEventListener('resize', () => {
+            updateCarousel();
+        });
+        
+        // Modified filter functions to work with progressive loading
+        function filterCarouselItems(term) {
+            // Filter the source data
+            const filteredDocs = term === '' ? [...allDocsData] : allDocsData.filter(doc => 
+                doc.title.toLowerCase().includes(term) || 
+                doc.category.toLowerCase().includes(term)
+            );
+            
+            // Re-initialize carousel with filtered data
+            allDocsData = filteredDocs;
+            loadedItems = 0;
+            currentIndex = 0;
+            initializeCarousel(filteredDocs);
+        }
+        
+        function filterByCategory(category) {
+            // Filter the source data
+            const filteredDocs = category === 'all' ? [...allDocsData] : allDocsData.filter(doc => 
+                doc.category === category
+            );
+            
+            // Re-initialize carousel with filtered data
+            allDocsData = filteredDocs;
+            loadedItems = 0;
+            currentIndex = 0;
+            initializeCarousel(filteredDocs);
+        }
+    </script>
 </body>
 </html>
