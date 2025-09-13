@@ -3,7 +3,7 @@
 **Потужний Discord бот з AI функціоналом для Збройних Сил України**
 **Оновлено: 25.08.2025**
 
-Ця папка містить всю документацію проекту, організовану за категоріями.
+Ця папка містить всю документацію проектету, організовану за категоріями.
 
 ## 📁 Структура документації
 
@@ -121,7 +121,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 ### **📊 Звіти та аналізи**
 
-- **[📋 Фінальний звіт](documentation/FINAL_REPORT.md)** - підсумок розробки
+- **[📋 Фінальний звіт](documentation/FINAL_REPORT.md)** - підсумки розробки
 - **[✅ Фінальний чекліст](documentation/FINAL_CHECKLIST.md)** - контрольний список
 - **[🔄 Звіт рефакторингу](documentation/REFACTORING_REPORT.md)** - деталі рефакторингу
 - **[📈 Звіт оптимізації](documentation/OPTIMIZATION_REPORT.md)** - оптимізація продуктивності
@@ -199,7 +199,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 ### **📁 Структура проекту**
 
-```text
+```
 src/
 ├── commands/          # Команди бота
 ├── services/          # Бізнес-логіка
@@ -231,7 +231,7 @@ src/
 
 ### **⚡ Швидкий запуск**
 
-```bash
+```
 # Клонування репозиторію
 git clone https://github.com/Dmitze/BotDiscordGodzilla.git
 cd BotDiscordGodzilla
@@ -249,7 +249,7 @@ npm run dev
 
 ### **🐳 Docker запуск**
 
-```bash
+```
 # Збірка образу
 docker build -t godzilla-bot .
 
@@ -263,7 +263,7 @@ docker run -d --name godzilla-bot godzilla-bot
 
 ### **📋 Обов'язкові та рекомендовані змінні середовища**
 
-```env
+```
 # Discord
 DISCORD_TOKEN=your_discord_token
 DISCORD_CLIENT_ID=your_client_id
