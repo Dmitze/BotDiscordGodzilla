@@ -1,12 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Godzilla Bot - Documentation</title>
+    <title>Godzilla Bot - Документація</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-
     <style>
         :root {
             --primary: #5865F2;
@@ -212,6 +211,75 @@
             font-size: 0.9rem;
         }
         
+        /* Documentation sections */
+        .docs-section {
+            margin: 3rem 0;
+        }
+        
+        .section-title {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 100px;
+            height: 3px;
+            background: var(--primary);
+            margin: 0.5rem auto;
+            border-radius: 3px;
+        }
+        
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .doc-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(88, 101, 242, 0.1);
+            text-decoration: none;
+            color: var(--text);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .doc-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(88, 101, 242, 0.3);
+        }
+        
+        .doc-card h3 {
+            color: var(--primary);
+            margin-bottom: 0.8rem;
+            font-size: 1.3rem;
+        }
+        
+        .doc-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+        
+        .doc-card .category {
+            display: inline-block;
+            background: rgba(88, 101, 242, 0.2);
+            color: var(--primary);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -326,6 +394,10 @@
                 align-items: center;
                 gap: 1rem;
             }
+            
+            .docs-grid {
+                grid-template-columns: 1fr;
+            }
         }
         
         /* Gradient background animation */
@@ -345,66 +417,70 @@
 
     <div class="container">
         <header>
-            <h1>📚 Godzilla Bot Documentation</h1>
-            <p class="subtitle">Powerful Discord bot with AI functionality for the Armed Forces of Ukraine</p>
+            <h1>📚 Документація Godzilla Bot</h1>
+            <p class="subtitle">Потужний Discord бот з AI функціоналом для Збройних Сил України</p>
             
             <div class="stats">
                 <div class="stat-card">
-                    <div class="stat-number">72</div>
-                    <div class="stat-label">Documentation Files</div>
+                    <div class="stat-number">79</div>
+                    <div class="stat-label">Документів</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">12+</div>
-                    <div class="stat-label">Tech Stack</div>
+                    <div class="stat-label">Технологій</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">6</div>
-                    <div class="stat-label">Core Modules</div>
+                    <div class="stat-label">Модулів</div>
                 </div>
             </div>
             
             <div class="features">
                 <div class="feature">
                     <i class="fas fa-robot"></i>
-                    <h3>AI Assistant</h3>
-                    <p>Natural language data analysis</p>
+                    <h3>AI Асистент</h3>
+                    <p>Аналіз даних природною мовою</p>
                 </div>
                 
                 <div class="feature">
                     <i class="fas fa-search"></i>
-                    <h3>Smart Search</h3>
-                    <p>Flexible document search</p>
+                    <h3>Розумний Пошук</h3>
+                    <p>Гнучкий пошук по документах</p>
                 </div>
                 
                 <div class="feature">
                     <i class="fas fa-file-alt"></i>
-                    <h3>Document Management</h3>
-                    <p>Google Sheets & Drive integration</p>
+                    <h3>Управління Документами</h3>
+                    <p>Інтеграція з Google Sheets & Drive</p>
                 </div>
                 
                 <div class="feature">
                     <i class="fas fa-shield-alt"></i>
-                    <h3>Security</h3>
-                    <p>Maximum protection level</p>
+                    <h3>Безпека</h3>
+                    <p>Максимальний рівень захисту</p>
                 </div>
             </div>
         </header>
         
         <a href="search.html" class="search-link animate__animated animate__pulse animate__infinite">
-            <i class="fas fa-search"></i> Search Documentation (72 files indexed)
+            <i class="fas fa-search"></i> Пошук по документації (79 файлів)
         </a>
         
-        <h2 style="text-align: center; margin: 2rem 0; color: var(--primary);">🌐 Documentation Languages</h2>
+        <a href="all-docs.html" class="search-link" style="background: rgba(114, 137, 218, 0.1); margin-top: 1rem;">
+            <i class="fas fa-list"></i> Переглянути всі документи
+        </a>
+        
+        <h2 style="text-align: center; margin: 2rem 0; color: var(--primary);">🌐 Мови Документації</h2>
         
         <div class="languages-grid">
-            <a href="uk/README.md" class="language-card animate__animated animate__fadeInUp">
+            <a href="uk/README.html" class="language-card animate__animated animate__fadeInUp">
                 <i class="fas fa-language" style="font-size: 3rem; color: var(--primary);"></i>
-                <h2>🇺🇦 Ukrainian</h2>
+                <h2>🇺🇦 Українська</h2>
                 <p>Повна документація українською мовою для користувачів та розробників</p>
                 <button class="btn">Переглянути</button>
             </a>
             
-            <a href="en/README.md" class="language-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+            <a href="en/README.html" class="language-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
                 <i class="fas fa-language" style="font-size: 3rem; color: var(--primary);"></i>
                 <h2>🇺🇸 English</h2>
                 <p>Complete documentation in English for users and developers</p>
@@ -412,9 +488,93 @@
             </a>
         </div>
         
+        <div class="docs-section">
+            <h2 class="section-title">📚 Основні Розділи Документації</h2>
+            
+            <div class="docs-grid">
+                <a href="pages/guides/QUICK_START.html" class="doc-card animate__animated animate__fadeInUp">
+                    <h3><i class="fas fa-bolt"></i> Швидкий Старт</h3>
+                    <p>Покрокова інструкція для швидкого запуску бота</p>
+                    <span class="category">Посібники</span>
+                </a>
+                
+                <a href="pages/guides/SETUP.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
+                    <h3><i class="fas fa-cog"></i> Налаштування</h3>
+                    <p>Детальне налаштування бота та інтеграцій</p>
+                    <span class="category">Посібники</span>
+                </a>
+                
+                <a href="pages/guides/USAGE_GUIDE.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+                    <h3><i class="fas fa-book"></i> Гід Користувача</h3>
+                    <p>Повний посібник з використання бота</p>
+                    <span class="category">Посібники</span>
+                </a>
+                
+                <a href="pages/ARCHITECTURE.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
+                    <h3><i class="fas fa-project-diagram"></i> Архітектура</h3>
+                    <p>Технічна архітектура системи та компоненти</p>
+                    <span class="category">Розробка</span>
+                </a>
+                
+                <a href="pages/api/API_DOCUMENTATION.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.4s;">
+                    <h3><i class="fas fa-plug"></i> API Документація</h3>
+                    <p>Повна документація API та команд бота</p>
+                    <span class="category">Розробка</span>
+                </a>
+                
+                <a href="pages/security/SECURITY_GUIDE.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.5s;">
+                    <h3><i class="fas fa-lock"></i> Безпека</h3>
+                    <p>Безпека, приватність та захист даних</p>
+                    <span class="category">Безпека</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="docs-section">
+            <h2 class="section-title">📋 Всі Документи</h2>
+            
+            <div class="docs-grid">
+                <a href="pages/guides/README.html" class="doc-card animate__animated animate__fadeInUp">
+                    <h3><i class="fas fa-folder"></i> Посібники</h3>
+                    <p>Усі навчальні посібники та інструкції</p>
+                    <span class="category">Категорія</span>
+                </a>
+                
+                <a href="pages/api/README.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
+                    <h3><i class="fas fa-folder"></i> API</h3>
+                    <p>Документація API та команд</p>
+                    <span class="category">Категорія</span>
+                </a>
+                
+                <a href="pages/architecture/README.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+                    <h3><i class="fas fa-folder"></i> Архітектура</h3>
+                    <p>Архітектурні рішення та план розвитку</p>
+                    <span class="category">Категорія</span>
+                </a>
+                
+                <a href="pages/deployment/README.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
+                    <h3><i class="fas fa-folder"></i> Розгортання</h3>
+                    <p>Інструкції з розгортання бота</p>
+                    <span class="category">Категорія</span>
+                </a>
+                
+                <a href="pages/changelog/README.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.4s;">
+                    <h3><i class="fas fa-folder"></i> Історія Змін</h3>
+                    <p>Журнал змін та оновлень</p>
+                    <span class="category">Категорія</span>
+                </a>
+                
+                <a href="pages/en/README.html" class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.5s;">
+                    <h3><i class="fas fa-folder"></i> Англійська Документація</h3>
+                    <p>Повна документація англійською мовою</p>
+                    <span class="category">Категорія</span>
+                </a>
+            </div>
+        </div>
+        
         <footer>
-            <p>© 2025 Godzilla Bot | Created by Dmitry Shivachov (Dmitze)</p>
-            <p>Licensed under MIT License | Version: v3.0.0</p>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
         </footer>
     </div>
 </body>
