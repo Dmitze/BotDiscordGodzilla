@@ -115,7 +115,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 
 ### **🏗️ Архітектура та розробка**
 
-- **[�����������](ARCHITECTURE.md)** - технічна архітектура
+- **[�����������](ARCHITECTURE.md)** - технічна архітектура
 - **[🎯 Нова архітектура команд](architecture/NEW_COMMANDS_ARCHITECTURE.md)** - архітектура команд
 - **[🗺️ План розвитку](architecture/ROADMAP.md)** - майбутні оновлення
 

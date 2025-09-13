@@ -4,12 +4,7 @@
  * Версія 1.0.0 - Нова реалізація
  */
 
-<<<<<<< HEAD
-import type { GuildMember, User, PermissionResolvable} from 'discord.js';
-import { PermissionFlagsBits } from 'discord.js';
-=======
 import { GuildMember, User, PermissionResolvable, PermissionFlagsBits } from 'discord.js';
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
 import type { BotConfig } from '@/types';
 import logger from '@/utils/logger';
 
@@ -110,11 +105,7 @@ export interface DocumentAccessControl {
 
 export class PermissionManager {
   private static instance: PermissionManager | null = null;
-<<<<<<< HEAD
   private permissionConfigs = new Map<string, DetailedPermissionConfig>();
-=======
-  private permissionConfigs = new Map<string, PermissionConfig>();
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
   private userCache = new Map<string, UserPermissionCache>();
   private commandUsage = new Map<string, CommandUsage>();
   private documentAccessControls = new Map<string, DocumentAccessControl>();
@@ -128,11 +119,7 @@ export class PermissionManager {
       }
       return PermissionManager.instance;
     }
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
     PermissionManager.instance = this;
     this.initialize();
   }
@@ -153,13 +140,7 @@ export class PermissionManager {
       this.isInitialized = true;
       logger.info('✅ Система прав доступу ініціалізована');
     } catch (error) {
-<<<<<<< HEAD
-      logger.error(
-        `❌ Помилка ініціалізації системи прав: ${error instanceof Error ? error.message : String(error)}`
-      );
-=======
       logger.error(`❌ Помилка ініціалізації системи прав: ${error instanceof Error ? error.message : String(error)}`);
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
       throw error;
     }
   }
@@ -344,33 +325,13 @@ export class PermissionManager {
       // Перевірка використання команди (rate limiting + daily limits)
       const usageCheck = this.checkCommandUsage(user.id, commandName, permConfig);
 
-<<<<<<< HEAD
-      // Перевірка доступу до ресурсів, якщо вказано
-      const resourceAccessResults = resourceChecks ? await this.checkResourcePermissions(
-        user.id,
-        resourceChecks,
-        userInfo
-      ) : [];
-
-      // Загальна перевірка
-      const allowed =
-        hasRequiredRoles && hasRequiredPermissions && canUseInChannel && usageCheck.allowed &&
-        (resourceAccessResults.length === 0 || resourceAccessResults.every(r => r.allowed));
-
-=======
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
       const resultBase = {
         allowed,
         userLevel: userInfo.userLevel,
         hasRequiredRoles,
         hasRequiredPermissions,
         canUseInChannel,
-<<<<<<< HEAD
-        remainingUses: usageCheck.remainingUses,
-        resourceAccess: resourceAccessResults,
-=======
         remainingUses: usageCheck.remainingUses
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
       } as PermissionCheckResult;
       if (!allowed) {
         const denialObj: {
@@ -378,22 +339,13 @@ export class PermissionManager {
           hasRequiredPermissions: boolean;
           canUseInChannel: boolean;
           usageAllowed: boolean;
-<<<<<<< HEAD
-          resourceAccessAllowed: boolean;
-=======
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
           // do not include usageReason key when undefined (exactOptionalPropertyTypes)
           usageReason?: string;
         } = {
           hasRequiredRoles,
           hasRequiredPermissions,
           canUseInChannel,
-<<<<<<< HEAD
-          usageAllowed: usageCheck.allowed,
-          resourceAccessAllowed: resourceAccessResults.length === 0 || resourceAccessResults.every(r => r.allowed),
-=======
           usageAllowed: usageCheck.allowed
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
         };
         if (usageCheck.reason !== undefined) {
           denialObj.usageReason = usageCheck.reason;
@@ -407,36 +359,19 @@ export class PermissionManager {
       const duration = Date.now() - startTime;
       if (allowed) {
         this.recordCommandUsage(user.id, commandName);
-<<<<<<< HEAD
-        logger.info(
-          `✅ Доступ дозволено user=${user.id} command=${commandName} duration=${duration}ms level=${UserLevel[userInfo.userLevel]}`
-        );
-=======
         logger.debug(`✅ Доступ дозволено user=${user.id} command=${commandName} duration=${duration}ms level=${UserLevel[userInfo.userLevel]}`);
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
       } else {
         this.logSecurityEvent('access_denied', user.id, {
           command: commandName,
           reason: result.reason ?? '',
-<<<<<<< HEAD
-          duration: `${duration}ms`,
-=======
           duration: `${duration}ms`
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
         });
       }
 
       return result;
     } catch (error) {
-<<<<<<< HEAD
-      logger.error(
-        `❌ Помилка перевірки прав доступу: user=${user.id} command=${commandName} error=${error instanceof Error ? error.message : String(error)}`
-      );
-
-=======
       logger.error(`❌ Помилка перевірки прав доступу: user=${user.id} command=${commandName} error=${error instanceof Error ? error.message : String(error)}`);
       
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
       // У разі помилки дозволяємо доступ для базових команд
       return {
         allowed: ['пошук', 'довідка'].includes(commandName),
@@ -671,11 +606,7 @@ export class PermissionManager {
     const usageKey = `${userId}:${command}`;
     const now = Date.now();
     const [today = ''] = new Date().toISOString().split('T');
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 706adaf9 (core: strict TS fixes, DI cleanup, logger meta typing; align SchedulerService import/constructor)
     const existing = this.commandUsage.get(usageKey);
 
     if (existing && existing.date === today) {
