@@ -77,7 +77,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 - [API документація](docs/api/API_DOCUMENTATION.md) 🔌
 
 ### 🔍 Пошук по документації
-Доступний інтерактивний пошук: [search.html](docs/search.html) 🔍
+Доступний інтерактивний пошук: [search.html]([docs/search.html](https://dmitze.github.io/BotDiscordGodzilla/)) 🔍
 
 ## 🏗️ Архітектура
 
