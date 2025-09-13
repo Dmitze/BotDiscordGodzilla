@@ -273,7 +273,7 @@ export class PermissionManager {
           userLevel: UserLevel.USER,
           hasRequiredRoles: true,
           hasRequiredPermissions: true,
-          canUseInChannel: true,
+          canUseInChannel: true
         };
       }
 
@@ -285,7 +285,7 @@ export class PermissionManager {
           userLevel: UserLevel.USER,
           hasRequiredRoles: false,
           hasRequiredPermissions: false,
-          canUseInChannel: false,
+          canUseInChannel: false
         };
       }
 
@@ -306,7 +306,7 @@ export class PermissionManager {
           userLevel: userInfo.userLevel,
           hasRequiredRoles: false,
           hasRequiredPermissions: false,
-          canUseInChannel: true,
+          canUseInChannel: true
         };
       }
 
@@ -325,35 +325,62 @@ export class PermissionManager {
       // Перевірка використання команди (rate limiting + daily limits)
       const usageCheck = this.checkCommandUsage(user.id, commandName, permConfig);
 
-      const resultBase = {
+      // Initialize allowed variable
+      let allowed = hasRequiredRoles && hasRequiredPermissions && canUseInChannel && usageCheck.allowed;
+
+      // Перевірка доступу до ресурсів, якщо потрібно
+      let resourceAccess: {
+        resourceId: string;
+        allowed: boolean;
+        reason?: string;
+      }[] | undefined = undefined;
+      
+      if (resourceChecks && resourceChecks.length > 0) {
+        const resourceResults = await this.checkResourcePermissions(user.id, resourceChecks, userInfo);
+        resourceAccess = resourceResults;
+        const allResourcesAllowed = resourceResults.every(result => result.allowed);
+        allowed = allowed && allResourcesAllowed;
+      }
+
+      const resultBase: PermissionCheckResult = {
         allowed,
         userLevel: userInfo.userLevel,
         hasRequiredRoles,
         hasRequiredPermissions,
-        canUseInChannel,
-        remainingUses: usageCheck.remainingUses
-      } as PermissionCheckResult;
+        canUseInChannel
+      };
+      
+      // Only add optional properties if they're not undefined
+      if (usageCheck.remainingUses !== undefined) {
+        resultBase.remainingUses = usageCheck.remainingUses;
+      }
+      
+      if (resourceAccess !== undefined) {
+        resultBase.resourceAccess = resourceAccess;
+      }
+
       if (!allowed) {
         const denialObj: {
           hasRequiredRoles: boolean;
           hasRequiredPermissions: boolean;
           canUseInChannel: boolean;
           usageAllowed: boolean;
+          resourceAccessAllowed: boolean;
           // do not include usageReason key when undefined (exactOptionalPropertyTypes)
           usageReason?: string;
         } = {
           hasRequiredRoles,
           hasRequiredPermissions,
           canUseInChannel,
-          usageAllowed: usageCheck.allowed
+          usageAllowed: usageCheck.allowed,
+          resourceAccessAllowed: resourceAccess ? resourceAccess.every(ra => ra.allowed) : true
         };
         if (usageCheck.reason !== undefined) {
           denialObj.usageReason = usageCheck.reason;
         }
         const reasonStr = this.buildDenialReason(denialObj);
-        (resultBase as any).reason = reasonStr;
+        resultBase.reason = reasonStr;
       }
-      const result: PermissionCheckResult = resultBase;
 
       // Логування результату
       const duration = Date.now() - startTime;
@@ -363,12 +390,12 @@ export class PermissionManager {
       } else {
         this.logSecurityEvent('access_denied', user.id, {
           command: commandName,
-          reason: result.reason ?? '',
+          reason: resultBase.reason ?? '',
           duration: `${duration}ms`
         });
       }
 
-      return result;
+      return resultBase;
     } catch (error) {
       logger.error(`❌ Помилка перевірки прав доступу: user=${user.id} command=${commandName} error=${error instanceof Error ? error.message : String(error)}`);
       
@@ -379,7 +406,7 @@ export class PermissionManager {
         userLevel: UserLevel.USER,
         hasRequiredRoles: false,
         hasRequiredPermissions: false,
-        canUseInChannel: true,
+        canUseInChannel: true
       };
     }
   }
