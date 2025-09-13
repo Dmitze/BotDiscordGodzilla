@@ -6,7 +6,539 @@
     <title>🦖 **DISCORD AI ASSISTANT BOT - GODZILLA** - Godzilla Bot Документація</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-    <link rel="stylesheet" href="../assets/styles.css">
+    <!-- Category-specific Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Segoe+UI:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #5865F2;
+            --secondary: #a1a1aa;
+            --accent: #7289da;
+            --background: #1e1e2d;
+            --surface: #2b2b40;
+            --text: #e6e6e6;
+            --text-secondary: #a1a1aa;
+            --success: #43b581;
+            --warning: #faa61a;
+            --error: #f04747;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: linear-gradient(135deg, var(--background) 0%, #000000 100%);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(88, 101, 242, 0.3);
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            font-weight: 700;
+        }
+        
+        .content {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
+            border: 1px solid rgba(88, 101, 242, 0.2);
+        }
+        
+        .content h1 {
+            font-size: 1.8rem;
+            margin-top: 0;
+            color: var(--primary);
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--accent);
+        }
+        
+        .content h2 {
+            font-size: 1.5rem;
+            margin-top: 1.5rem;
+            color: var(--accent);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 0.4rem;
+        }
+        
+        .content h3 {
+            font-size: 1.3rem;
+            margin-top: 1.2rem;
+            color: var(--text);
+            position: relative;
+            padding-left: 0.8rem;
+        }
+        
+        .content h3:before {
+            content: "▶";
+            color: var(--primary);
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 0.8rem;
+        }
+        
+        .content h4 {
+            font-size: 1.1rem;
+            margin-top: 1rem;
+            color: var(--text-secondary);
+        }
+        
+        .content p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        
+        .content ul, .content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .content li {
+            margin-bottom: 0.4rem;
+            position: relative;
+            padding-left: 1.2rem;
+        }
+        
+        .content ul li:before {
+            content: "•";
+            color: var(--primary);
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        
+        .content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+        
+        .content pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.8rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 0.8rem 0;
+            border-left: 3px solid var(--primary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        
+        .content a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-bottom: 1px dotted var(--primary);
+        }
+        
+        .content a:hover {
+            color: var(--accent);
+            text-decoration: underline;
+            border-bottom: 1px solid var(--accent);
+        }
+        
+        .content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.8rem 0;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 0.9rem;
+        }
+        
+        .content table th, .content table td {
+            padding: 0.6rem;
+            text-align: left;
+            border: 1px solid var(--text-secondary);
+        }
+        
+        .content table th {
+            background: rgba(88, 101, 242, 0.2);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .content blockquote {
+            border-left: 3px solid var(--primary);
+            padding: 0.5rem 0.8rem;
+            margin: 0.8rem 0;
+            background: rgba(88, 101, 242, 0.1);
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1.5rem;
+        }
+        
+        .nav-button {
+            display: inline-block;
+            background: var(--surface);
+            color: var(--text);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: 1px solid var(--primary);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .nav-button:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(88, 101, 242, 0.4);
+        }
+        
+        .nav-button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .nav-button.disabled:hover {
+            background: var(--surface);
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1.2rem;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--primary);
+            font-size: 0.9rem;
+        }
+        
+        .back-link:hover {
+            color: var(--accent);
+            transform: translateX(-3px);
+            background: rgba(88, 101, 242, 0.1);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--surface);
+        }
+        
+        /* Floating elements */
+        .floating-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .floating-element {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(88, 101, 242, 0.1) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .floating-element:nth-child(1) {
+            width: 200px;
+            height: 200px;
+            top: 10%;
+            left: 5%;
+            animation-delay: 0s;
+        }
+        
+        .floating-element:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            bottom: 15%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+        
+        .floating-element:nth-child(3) {
+            width: 100px;
+            height: 100px;
+            top: 40%;
+            right: 20%;
+            animation-delay: 4s;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        /* Category-specific animations */
+        .category-animation {
+            animation: borderGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 5px var(--primary); }
+            100% { box-shadow: 0 0 15px var(--primary), 0 0 20px var(--accent); }
+        }
+        
+        @keyframes borderGlow {
+            0% { border-color: var(--primary); }
+            100% { border-color: var(--accent); }
+        }
+        
+        @keyframes textGlow {
+            0% { text-shadow: 0 0 5px var(--primary); }
+            100% { text-shadow: 0 0 8px var(--primary), 0 0 15px var(--accent); }
+        }
+        
+        /* Category-specific header styles */
+        header {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--background) 100%); border: 1px solid var(--primary);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 1.6rem;
+            }
+            
+            .content {
+                padding: 1rem;
+            }
+            
+            .content h1 {
+                font-size: 1.5rem;
+            }
+            
+            .content h2 {
+                font-size: 1.3rem;
+            }
+            
+            .content h3 {
+                font-size: 1.1rem;
+            }
+            
+            .navigation {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .nav-button {
+                text-align: center;
+            }
+            
+            .floating-element:nth-child(1) {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .floating-element:nth-child(2) {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .floating-element:nth-child(3) {
+                width: 70px;
+                height: 70px;
+            }
+        }
+        
+        /* Bookmark styles */
+        .bookmark-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .bookmark-btn:hover {
+            color: var(--warning);
+            background: rgba(250, 166, 26, 0.1);
+        }
+        
+        .bookmark-btn.bookmarked {
+            color: var(--warning);
+        }
+        
+        /* Rating styles */
+        .rating-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--text-secondary);
+        }
+        
+        .rating-container p {
+            margin: 0;
+            color: var(--text);
+        }
+        
+        .rating-stars {
+            display: flex;
+            gap: 0.2rem;
+        }
+        
+        .rating-star {
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s ease;
+            font-size: 1.2rem;
+        }
+        
+        .rating-star.active {
+            color: var(--warning);
+        }
+        
+        .rating-value {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        /* Floating TOC */
+        .floating-toc {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--surface);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 1rem;
+            max-height: 70vh;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            max-width: 250px;
+            display: none;
+        }
+        
+        .floating-toc.visible {
+            display: block;
+        }
+        
+        .toc-title {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .toc-item {
+            margin-bottom: 0.5rem;
+        }
+        
+        .toc-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s ease;
+            display: block;
+            padding: 0.3rem 0;
+        }
+        
+        .toc-link:hover {
+            color: var(--primary);
+        }
+        
+        .toc-link.indent-1 {
+            padding-left: 1rem;
+        }
+        
+        .toc-link.indent-2 {
+            padding-left: 2rem;
+        }
+        
+        .toc-link.indent-3 {
+            padding-left: 3rem;
+        }
+        
+        /* Toggle TOC button */
+        .toc-toggle {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: var(--primary);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            z-index: 99;
+        }
+    </style>
 </head>
 <body>
     <div class="floating-elements">
@@ -16,8 +548,8 @@
     </div>
 
     <div class="container">
-        <header>
-            <h1><i class="fas fa-book"></i> 🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**</h1>
+        <header class="category-animation">
+            <h1><i class="fas fa-home"></i> 🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**</h1>
             <p>Документація Discord AI Assistant Bot - Godzilla</p>
         </header>
         
@@ -29,7 +561,7 @@
             <h1>🦖 <strong>DISCORD AI ASSISTANT BOT - GODZILLA</strong></h1>
 <strong>Потужний Discord бот з AI функціоналом для Збройних Сил України</strong>
 <strong>Оновлено: 25.08.2025</strong>
-Ця папка містить всю документацію проекту, організовану за категоріями.
+Ця папка містить всю документацію проектету, організовану за категоріями.
 <h2>📁 Структура документації</h2>
 <h3><strong>📖 guides/</strong> - Гайди та інструкції</h3><ul><li><code>README.md</code> - Головний README проекту</li><li><code>QUICK_START.md</code> - Швидкий старт</li><li><code>SETUP.md</code> - Детальне налаштування</li><li><code>LAUNCH_INSTRUCTIONS.md</code> - Інструкції запуску</li><li><code>USAGE_GUIDE.md</code> - Гід по використанню</li><li><code>FAQ_SUPPORT.md</code> - Часті питання та підтримка</li><li><code>INTERACTIVE_LEARNING_GUIDE.md</code> - Інтерактивний гід навчання</li><li><code>VIDEO_TUTORIAL_GUIDE.md</code> - Відео туторіали</li><li><code>CURSOR_CUSTOM_INSTRUCTIONS.md</code> - Кастомні інструкції для Cursor</li>
 <h3><strong>🔌 api/</strong> - API документація</h3><li><code>API_DOCUMENTATION.md</code> - Повна API документація</li><li><code>COMMANDS_REFERENCE.md</code> - Довідник команд</li><li><code>AI_EXAMPLES.md</code> - Приклади AI запитів</li>
@@ -55,7 +587,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 <h3><strong>🎓 Гайди та інструкції</strong></h3><li><strong><a href="guides/QUICK_START.md">📖 Швидкий старт</a></strong> - як запустити бота за 5 хвилин</li><li><strong><a href="guides/SETUP.md">⚙️ Налаштування</a></strong> - детальне налаштування системи</li><li><strong><a href="guides/LAUNCH_INSTRUCTIONS.md">🚀 Запуск</a></strong> - інструкції запуску</li><li><strong><a href="guides/USAGE_GUIDE.md">📖 Гід користувача</a></strong> - повний посібник користувача</li><li><strong><a href="guides/FAQ_SUPPORT.md">❓ FAQ</a></strong> - часті питання та підтримка</li><li><strong><a href="guides/rag.md">🧠 RAG та пошук</a></strong> - гібридний пошук, embeddings, ENV</li><li><strong><a href="guides/INTERACTIVE_LEARNING_GUIDE.md">🎓 Інтерактивне навчання</a></strong> - інтерактивний гід</li><li><strong><a href="guides/VIDEO_TUTORIAL_GUIDE.md">🎥 Відео туторіали</a></strong> - відео інструкції</li><li><strong><a href="guides/CURSOR_SETUP_GUIDE.md">🔧 Налаштування Cursor</a></strong> - налаштування розробки</li><li><strong><a href="guides/CURSOR_CUSTOM_INSTRUCTIONS.md">📝 Кастомні інструкції</a></strong> - для розробників</li><li><strong><a href="guides/STATISTICS_COMMAND_GUIDE.md">📊 Статистика</a></strong> - робота зі статистикою</li><li><strong><a href="guides/TESTING_GUIDE.md">🧪 Тестування</a></strong> - гід по тестуванню</li><li><strong><a href="guides/UPGRADE_GUIDE.md">🔄 Оновлення</a></strong> - як оновити бота</li><li><strong><a href="guides/TYPESCRIPT_MIGRATION_GUIDE.md">📘 TypeScript</a></strong> - міграція на TypeScript</li>
 <h3><strong>🔌 API та технічна документація</strong></h3><li><strong><a href="api/API_DOCUMENTATION.md">📋 API документація</a></strong> - повна API документація</li><li><strong><a href="api/COMMANDS_REFERENCE.md">📝 Довідник команд</a></strong> - всі команди бота</li>
 <h3><strong>🏗️ Архітектура та розробка</strong></h3><li><strong><a href="ARCHITECTURE.md">�����������</a></strong> - технічна архітектура</li><li><strong><a href="architecture/NEW_COMMANDS_ARCHITECTURE.md">🎯 Нова архітектура команд</a></strong> - архітектура команд</li><li><strong><a href="architecture/ROADMAP.md">🗺️ План розвитку</a></strong> - майбутні оновлення</li>
-<h3><strong>📊 Звіти та аналізи</strong></h3><li><strong><a href="documentation/FINAL_REPORT.md">📋 Фінальний звіт</a></strong> - підсумок розробки</li><li><strong><a href="documentation/FINAL_CHECKLIST.md">✅ Фінальний чекліст</a></strong> - контрольний список</li><li><strong><a href="documentation/REFACTORING_REPORT.md">🔄 Звіт рефакторингу</a></strong> - деталі рефакторингу</li><li><strong><a href="documentation/OPTIMIZATION_REPORT.md">📈 Звіт оптимізації</a></strong> - оптимізація продуктивності</li><li><strong><a href="documentation/TESTING_REPORT.md">🧪 Звіт тестування</a></strong> - результати тестування</li><li><strong><a href="documentation/DEPLOYMENT_REPORT.md">🚀 Звіт розгортання</a></strong> - процес розгортання</li><li><strong><a href="documentation/COMPREHENSIVE_REFACTORING_REPORT.md">📊 Комплексний звіт</a></strong> - повний аналіз</li><li><strong><a href="documentation/COMMANDS_REFACTORING_REPORT.md">📋 Звіт команд</a></strong> - рефакторинг команд</li><li><strong><a href="documentation/COMPLETE_COVERAGE_REPORT.md">📈 Звіт покриття</a></strong> - тестове покриття</li><li><strong><a href="documentation/FINAL_TYPESCRIPT_MIGRATION_REPORT.md">🔄 Звіт міграції</a></strong> - міграція на TypeScript</li><li><strong><a href="documentation/FINAL_TESTING_REPORT.md">📊 Звіт тестування</a></strong> - фінальне тестування</li><li><strong><a href="documentation/COVERAGE_EXPANSION_REPORT.md">📈 Розширення покриття</a></strong> - покращення тестів</li><li><strong><a href="documentation/PROJECT_STRUCTURE_ANALYSIS.md">📋 Аналіз структури</a></strong> - аналіз проекту</li><li><strong><a href="documentation/TESTING_CHECKLIST.md">✅ Чекліст тестування</a></strong> - контрольний список тестів</li><li><strong><a href="documentation/PHASE3_REFACTORING_PLAN.md">🔄 План рефакторингу</a></strong> - план робіт</li><li><strong><a href="documentation/PHASE3_SERVICES_MIGRATION_REPORT.md">📊 Звіт міграції сервісів</a></strong> - міграція сервісів</li><li><strong><a href="documentation/PHASE3_COMMANDS_MIGRATION_REPORT.md">📋 Звіт міграції команд</a></strong> - міграція команд</li><li><strong><a href="documentation/PHASE3_PROGRESS_REPORT.md">📈 Звіт прогресу</a></strong> - прогрес робіт</li><li><strong><a href="documentation/PHASE2_COMPLETION_REPORT.md">✅ Звіт завершення</a></strong> - завершення етапу</li><li><strong><a href="documentation/PHASE2_OPTIMIZATION_REPORT.md">📈 Звіт оптимізації</a></strong> - оптимізація</li>
+<h3><strong>📊 Звіти та аналізи</strong></h3><li><strong><a href="documentation/FINAL_REPORT.md">📋 Фінальний звіт</a></strong> - підсумки розробки</li><li><strong><a href="documentation/FINAL_CHECKLIST.md">✅ Фінальний чекліст</a></strong> - контрольний список</li><li><strong><a href="documentation/REFACTORING_REPORT.md">🔄 Звіт рефакторингу</a></strong> - деталі рефакторингу</li><li><strong><a href="documentation/OPTIMIZATION_REPORT.md">📈 Звіт оптимізації</a></strong> - оптимізація продуктивності</li><li><strong><a href="documentation/TESTING_REPORT.md">🧪 Звіт тестування</a></strong> - результати тестування</li><li><strong><a href="documentation/DEPLOYMENT_REPORT.md">🚀 Звіт розгортання</a></strong> - процес розгортання</li><li><strong><a href="documentation/COMPREHENSIVE_REFACTORING_REPORT.md">📊 Комплексний звіт</a></strong> - повний аналіз</li><li><strong><a href="documentation/COMMANDS_REFACTORING_REPORT.md">📋 Звіт команд</a></strong> - рефакторинг команд</li><li><strong><a href="documentation/COMPLETE_COVERAGE_REPORT.md">📈 Звіт покриття</a></strong> - тестове покриття</li><li><strong><a href="documentation/FINAL_TYPESCRIPT_MIGRATION_REPORT.md">🔄 Звіт міграції</a></strong> - міграція на TypeScript</li><li><strong><a href="documentation/FINAL_TESTING_REPORT.md">📊 Звіт тестування</a></strong> - фінальне тестування</li><li><strong><a href="documentation/COVERAGE_EXPANSION_REPORT.md">📈 Розширення покриття</a></strong> - покращення тестів</li><li><strong><a href="documentation/PROJECT_STRUCTURE_ANALYSIS.md">📋 Аналіз структури</a></strong> - аналіз проекту</li><li><strong><a href="documentation/TESTING_CHECKLIST.md">✅ Чекліст тестування</a></strong> - контрольний список тестів</li><li><strong><a href="documentation/PHASE3_REFACTORING_PLAN.md">🔄 План рефакторингу</a></strong> - план робіт</li><li><strong><a href="documentation/PHASE3_SERVICES_MIGRATION_REPORT.md">📊 Звіт міграції сервісів</a></strong> - міграція сервісів</li><li><strong><a href="documentation/PHASE3_COMMANDS_MIGRATION_REPORT.md">📋 Звіт міграції команд</a></strong> - міграція команд</li><li><strong><a href="documentation/PHASE3_PROGRESS_REPORT.md">📈 Звіт прогресу</a></strong> - прогрес робіт</li><li><strong><a href="documentation/PHASE2_COMPLETION_REPORT.md">✅ Звіт завершення</a></strong> - завершення етапу</li><li><strong><a href="documentation/PHASE2_OPTIMIZATION_REPORT.md">📈 Звіт оптимізації</a></strong> - оптимізація</li>
 <h3><strong>🔒 Безпека</strong></h3><li><strong><a href="security/SECURITY_GUIDE.md">🛡️ Гід безпеки</a></strong> - безпека та конфіденційність</li>
 <h3>🤖 Локальний AI (Ollama) та конфіденційність</h3><li>За замовчуванням AI працює локально через <code>Ollama</code> (<code>AI_PROVIDER=ollama</code>).</li><li>Дані (запити, контекст RAG, результати) не покидають хост.</li><li>Зовнішні провайдери (OpenAI/Anthropic) вмикаються лише за явної конфігурації.</li><li>Деталі: <code>security/SECURITY_GUIDE.md</code>, <code>architecture/ARCHITECTURE.md</code>, <code>guides/rag.md</code>.</li>
 <h3><strong>📝 Історія змін</strong></h3><li><strong><a href="changelog/CHANGELOG.md">📋 Changelog</a></strong> - історія оновлень</li>
@@ -88,7 +620,7 @@ Discord AI Assistant Bot (Godzilla) - це інноваційний бот, ро
 ---
 <h2>🏗️ <strong>АРХІТЕКТУРА</strong></h2>
 <h3><strong>📁 Структура проекту</strong></h3>
-<pre><code>text
+<pre><code>
 src/
 ├── commands/          # Команди бота
 ├── services/          # Бізнес-логіка
@@ -102,7 +634,7 @@ src/
 ---
 <h2>🚀 <strong>ЗАПУСК</strong></h2>
 <h3><strong>⚡ Швидкий запуск</strong></h3>
-<pre><code>bash
+<pre><code>
 <h1>Клонування репозиторію</h1>
 git clone https://github.com/Dmitze/BotDiscordGodzilla.git
 cd BotDiscordGodzilla
@@ -115,7 +647,7 @@ cp .env.example .env
 npm run dev
 </code></pre>
 <h3><strong>🐳 Docker запуск</strong></h3>
-<pre><code>bash
+<pre><code>
 <h1>Збірка образу</h1>
 docker build -t godzilla-bot .
 <h1>Запуск контейнера</h1>
@@ -124,7 +656,7 @@ docker run -d --name godzilla-bot godzilla-bot
 ---
 <h2>🔧 <strong>НАЛАШТУВАННЯ</strong></h2>
 <h3><strong>📋 Обов'язкові та рекомендовані змінні середовища</strong></h3>
-<pre><code>env
+<pre><code>
 <h1>Discord</h1>
 DISCORD_TOKEN=your_discord_token
 DISCORD_CLIENT_ID=your_client_id
