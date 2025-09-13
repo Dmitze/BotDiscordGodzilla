@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation Organization Plan - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Documentation Organization Plan</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Documentation Organization Plan</h1>
+<h2>Current Structure</h2>
+The documentation is currently spread across multiple locations:<ul><li>Root directory (README.md, LICENSE.md, etc.)</li><li>docs/ directory with subdirectories</li><li>examples/ directory</li><li>n8n-workflows/ directory</li>
+<h2>Proposed Structure</h2>
+<pre><code>
+docs/
+├── root/                 # Root documentation files
+├── examples/             # Code examples
+├── changelog/            # Version history
+├── security/             # Security documentation
+├── api/                  # API documentation
+├── architecture/         # Architecture documentation
+├── guides/               # User guides
+├── commands/             # Command reference
+├── development/          # Development guides
+├── deployment/           # Deployment guides
+├── testing/              # Testing documentation
+└── troubleshooting/      # Troubleshooting guides
+</code></pre>
+<h2>Migration Plan</h2>
+<h3>Phase 1: Create Directory Structure</h3><li>Create missing directories</li><li>Update INDEX.md with new structure</li>
+<h3>Phase 2: Move Root Documentation</h3><li>Move root documentation files to docs/root/</li><li>Update links in INDEX.md</li>
+<h3>Phase 3: Organize Examples</h3><li>Move examples to docs/examples/</li><li>Create examples README</li>
+<h3>Phase 4: Update References</h3><li>Update all internal links</li><li>Update README.md references</li>
+<h3>Phase 5: Docker Documentation</h3><li>Create deployment documentation</li><li>Update Docker configuration references</li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\DOCUMENTATION_MAP.html" class="nav-button"><i class="fas fa-arrow-left"></i> Documentation Map</a>
+            <a href="pages\en\ARCHITECTURE.html" class="nav-button">🏗️ Discord AI Assistant Bot Architecture <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

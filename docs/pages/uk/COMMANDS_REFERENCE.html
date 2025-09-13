@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📋 Довідник команд - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📋 Довідник команд</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📋 Довідник команд</h1>
+<h1>Повна довідка команд Discord AI Assistant Bot</h1>
+<h2>🎯 Вступ</h2>
+Цей довідник містить повний перелік усіх команд, доступних у Discord AI Assistant Bot, з детальним описом параметрів та прикладів використання.
+<h2>🔍 Команди пошуку</h2>
+<h3>/пошук</h3>
+Базова команда для пошуку інформації в документах.
+<strong>Синтаксис:</strong>
+<pre><code>
+/пошук запит:"<текст>" [тип_документа:"<тип>"] [дата_від:"<дата>"] [дата_до:"<дата>"] [підрозділ:"<назва>"] [пріоритет:"<рівень>"] [ліміт:<число>]
+</code></pre>
+<strong>Параметри:</strong><ul><li><code>запит</code> (обов'язковий) - текст для пошуку</li><li><code>тип_документа</code> (опційно) - фільтр за типом документа</li><li><code>дата_від</code> (опційно) - пошук з певної дати (формат: ДД.ММ.РРРР)</li><li><code>дата_до</code> (опційно) - пошук до певної дати (формат: ДД.ММ.РРРР)</li><li><code>підрозділ</code> (опційно) - фільтр за підрозділом</li><li><code>пріоритет</code> (опційно) - фільтр за пріоритетом</li><li><code>ліміт</code> (опційно) - кількість результатів (за замовчуванням: 10)</li>
+<strong>Приклади:</strong>
+<pre><code>
+/пошук запит:"особовий склад" тип_документа:"накази"
+/пошук запит:"запит на постачання" дата_від:"01.01.2025" ліміт:5
+</code></pre>
+<h3>/розумний-пошук</h3>
+Розширена команда пошуку з додатковими фільтрами.
+<strong>Синтаксис:</strong>
+<pre><code>
+/розумний-пошук [кількість_вище:<число>] [кількість_нижче:<число>] [ціна_вище:<число>] [ціна_нижче:<число>]
+</code></pre>
+<strong>Параметри:</strong><li><code>кількість_вище</code> (опційно) - мінімальна кількість</li><li><code>кількість_нижче</code> (опційно) - максимальна кількість</li><li><code>ціна_вище</code> (опційно) - мінімальна ціна</li><li><code>ціна_нижче</code> (опційно) - максимальна ціна</li>
+<strong>Приклади:</strong>
+<pre><code>
+/розумний-пошук кількість_вище:100 ціна_нижче:1000
+</code></pre>
+<h2>🤖 AI команди</h2>
+<h3>/ai</h3>
+Команда для взаємодії з AI асистентом.
+<strong>Синтаксис:</strong>
+<pre><code>
+/ai запит:"<текст>" [контекст:"<текст>"]
+</code></pre>
+<strong>Параметри:</strong><li><code>запит</code> (обов'язковий) - ваш запит до AI</li><li><code>контекст</code> (опційно) - додатковий контекст для AI</li>
+<strong>Приклади:</strong>
+<pre><code>
+/ai запит:"проаналізуй особовий склад"
+/ai запит:"створи звіт по залишках на складі" контекст:"станом на 01.04.2025"
+</code></pre>
+<h3>/analyze-doc</h3>
+Аналіз документів з різних аспектів.
+<strong>Синтаксис:</strong>
+<pre><code>
+/analyze-doc file:"<назва файлу>" type:"<тип аналізу>"
+</code></pre>
+<strong>Параметри:</strong><li><code>file</code> (обов'язковий) - назва або ID файлу</li><li><code>type</code> (обов'язковий) - тип аналізу:</li><li><code>full</code> - повний аналіз</li><li><code>structure</code> - структурний аналіз</li><li><code>summary</code> - підсумування</li><li><code>actions</code> - витяг дій</li><li><code>compliance</code> - перевірка відповідності</li><li><code>quality</code> - оцінка якості</li>
+<strong>Приклади:</strong>
+<pre><code>
+/analyze-doc file:"Наказ №123" type:"full"
+/analyze-doc file:"Звіт про постачання" type:"summary"
+</code></pre>
+<h2>📄 Команди роботи з документами</h2>
+<h3>/документи</h3>
+Управління документами.
+<strong>Синтаксис:</strong>
+<pre><code>
+/документи <підкоманда>
+</code></pre>
+<strong>Підкоманди:</strong><li><code>додати</code> - додати новий документ</li><li><code>список</code> - показати список документів</li><li><code>оновити</code> - оновити існуючий документ</li><li><code>видалити</code> - видалити документ</li>
+<strong>Приклади:</strong>
+<pre><code>
+/документи особовий-склад список
+/документи техніка додати назва:"Танк Т-72"
+</code></pre>
+<h3>/файли</h3>
+Робота з файлами Google Drive.
+<strong>Синтаксис:</strong>
+<pre><code>
+/файли <підкоманда>
+</code></pre>
+<strong>Підкоманди:</strong><li><code>пошук</code> - пошук файлів</li><li><code>читати</code> - читання вмісту файлу</li><li><code>аналіз</code> - AI-аналіз файлу</li><li><code>звіт</code> - створення звіту за файлом</li>
+<strong>Приклади:</strong>
+<pre><code>
+/файли пошук запит:"назва файлу"
+/файли читати id:"1abc123def456ghi"
+</code></pre>
+<h2>📊 Аналітика та статистика</h2>
+<h3>/статистика</h3>
+Показує статистику використання бота.
+<strong>Синтаксис:</strong>
+<pre><code>
+/статистика
+</code></pre>
+<h3>/аналітика</h3>
+Генерує аналітичні звіти.
+<strong>Синтаксис:</strong>
+<pre><code>
+/аналітика звіт тип:"<тип звіту>"
+</code></pre>
+<strong>Типи звітів:</strong><li><code>загальний</code> - загальна аналітика</li><li><code>пошук</code> - аналітика пошуку</li><li><code>команди</code> - аналітика команд</li><li><code>активність</code> - аналітика активності</li>
+<h2>⚡ Операційні команди</h2>
+<h3>/операції</h3>
+Управління військовими операціями.
+<strong>Синтаксис:</strong>
+<pre><code>
+/операції <підкоманда>
+</code></pre>
+<strong>Підкоманди:</strong><li><code>ситуація</code> - отримати інформацію про ситуацію</li><li><code>завдання</code> - управління завданнями</li><li><code>координація</code> - координація між підрозділами</li><li><code>розвідка</code> - розвідувальні дані</li>
+<h2>🛠️ Адміністративні команди</h2>
+<h3>/статус</h3>
+Показує статус системи.
+<strong>Синтаксис:</strong>
+<pre><code>
+/статус
+</code></pre>
+<h3>/кеш</h3>
+Управління кешем.
+<strong>Синтаксис:</strong>
+<pre><code>
+/кеш <підкоманда>
+</code></pre>
+<strong>Підкоманди:</strong><li><code>очистити</code> - очистити кеш</li><li><code>статистика</code> - показати статистику кешу</li>
+<h3>/допомога</h3>
+Показує довідку.
+<strong>Синтаксис:</strong>
+<pre><code>
+/допомога [категорія:"<категорія>"]
+</code></pre>
+<strong>Категорії:</strong><li><code>пошук</code> - команди пошуку</li><li><code>ai</code> - AI команди</li><li><code>документи</code> - робота з документами</li><li><code>файли</code> - робота з файлами</li><li><code>аналітика</code> - аналітичні команди</li><li><code>операції</code> - операційні команди</li>
+<h2>🔧 Команди налаштувань</h2>
+<h3>/налаштування</h3>
+Управління налаштуваннями користувача.
+<strong>Синтаксис:</strong>
+<pre><code>
+/налаштування <підкоманда>
+</code></pre>
+<strong>Підкоманди:</strong><li><code>мова</code> - змінити мову інтерфейсу</li><li><code>ai-провайдер</code> - вибрати AI провайдера</li><li><code>сповіщення</code> - налаштувати сповіщення</li>
+<h2>📤 Експорт даних</h2>
+Більшість команд підтримують експорт результатів через кнопки в інтерфейсі:<li>Excel (.xlsx)</li><li>CSV (.csv)</li><li>PDF (.pdf)</li><li>Word (.docx)</li>
+<h2>🔒 Обмеження та безпека</h2>
+<h3>Rate limiting</h3><li>Пошук: 10 запитів за хвилину</li><li>AI аналіз: 5 запитів за 2 хвилини</li><li>Експорт: 3 запити за 5 хвилин</li><li>Загальні команди: 20 запитів за хвилину</li>
+<h3>Валідація даних</h3><li>Максимальна довжина тексту: 500 символів</li><li>Максимальна довжина пошукового запиту: 200 символів</li><li>Максимальна довжина AI запиту: 1000 символів</li>
+<h2>❓ Часті питання</h2>
+<h3>Як отримати доступ до всіх команд?</h3>
+Для використання всіх команд необхідно мати відповідні ролі у Discord:<li>Бот-Користувач</li><li>Sheets-Доступ</li><li>AI-Доступ</li><li>Експорт-Доступ</li>
+<h3>Які формати файлів підтримуються?</h3>
+Бот підтримує роботу з:<li>Google Sheets</li><li>Google Docs</li><li>PDF файли</li><li>Microsoft Word документи</li><li>Текстові файли</li></ul>
+© 2025 Dmitry Shivachov (Dmitze). Всі права захищені.
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\src\tests\README.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🧪 **TESTS - ТЕСТУВАННЯ**</a>
+            <a href="pages\uk\DEVELOPER_GUIDE.html" class="nav-button">🛠️ Гайд розробника <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

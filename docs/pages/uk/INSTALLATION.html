@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛠️ Встановлення та налаштування - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🛠️ Встановлення та налаштування</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🛠️ Встановлення та налаштування</h1>
+<h1>Посібник з встановлення Discord AI Assistant Bot</h1>
+<h2>📋 Системні вимоги</h2>
+Перед встановленням бота переконайтесь, що у вашій системі встановлено:<ul><li><strong>Node.js</strong> 18 або новіша версія</li><li><strong>Git</strong> для клонування репозиторію</li><li><strong>Docker</strong> (опційно, для контейнеризації)</li><li><strong>Google Cloud обліковий запис</strong> для інтеграції з Google Sheets/Drive</li><li><strong>Discord Developer обліковий запис</strong> для створення бота</li>
+<h2>🚀 Встановлення</h2>
+<h3>1. Клонування проекту</h3>
+Відкрийте термінал та виконайте команди:
+<pre><code>bash
+git clone https://github.com/Dmitze/BotDiscordGodzilla.git
+cd BotDiscordGodzilla
+</code></pre>
+<h3>2. Встановлення залежностей</h3>
+<pre><code>bash
+npm install
+</code></pre>
+<h3>3. Налаштування змінних середовища</h3>
+Скопіюйте приклад файлу конфігурації:
+<pre><code>bash
+cp .env.example .env
+</code></pre>
+Відредагуйте файл <code>.env</code> та заповніть необхідні змінні:
+<pre><code>env
+<h1>Discord налаштування</h1>
+DISCORD_TOKEN=ваш_discord_токен
+DISCORD_CLIENT_ID=ваш_client_id
+DISCORD_GUILD_ID=ваш_guild_id
+<h1>Google API налаштування</h1>
+GOOGLE_API_KEY=ваш_google_api_ключ
+GOOGLE_SERVICE_ACCOUNT_KEY=шлях_до_файлу_сервісного_акаунта.json
+GOOGLE_SPREADSHEET_ID=ідентифікатор_таблиці
+<h1>AI налаштування (опційно)</h1>
+OPENAI_API_KEY=ваш_openai_api_ключ
+AI_PROVIDER=ollama # або openai
+OLLAMA_BASE_URL=http://localhost:11434
+<h1>Інші налаштування</h1>
+REDIS_URL=redis://localhost:6379
+DATABASE_URL=sqlite://data/database.sqlite
+</code></pre>
+<h3>4. Налаштування Discord бота</h3>
+1. Перейдіть на <a href="https://discord.com/developers/applications">Discord Developer Portal</a>
+2. Натисніть "New Application" та введіть назву вашого бота
+3. У розділі "Bot" натисніть "Add Bot"
+4. Скопіюйте токен та вставте його в <code>.env</code> файл
+5. Увімкніть наступні "Privileged Gateway Intents":<li>Presence Intent</li><li>Server Members Intent</li><li>Message Content Intent</li>
+<h3>5. Налаштування Google API</h3>
+1. Перейдіть на <a href="https://console.cloud.google.com/">Google Cloud Console</a>
+2. Створіть новий проект або виберіть існуючий
+3. Увімкніть наступні API:<li>Google Sheets API</li><li>Google Drive API</li>
+4. Створіть Service Account:<li>Перейдіть до "IAM & Admin" → "Service Accounts"</li><li>Натисніть "Create Service Account"</li><li>Введіть ім'я та натисніть "Create"</li><li>Натисніть "Create Key" та виберіть тип "JSON"</li><li>Завантажте файл та вкажіть шлях до нього в <code>.env</code></li>
+5. Надайте доступ до вашої Google Sheet:<li>Відкрийте таблицю</li><li>Натисніть "Share"</li><li>Додайте email вашого Service Account з правами редактора</li>
+<h3>6. Налаштування локального AI (Ollama)</h3>
+Для локального використання AI моделей:
+1. Встановіть Ollama з <a href="https://ollama.com/">офиційного сайту</a>
+2. Завантажте модель:
+   <pre><code>bash
+   ollama run llama3.1
+   </code></pre>
+3. Вкажіть налаштування в <code>.env</code>:
+   <pre><code>env
+   AI_PROVIDER=ollama
+   OLLAMA_BASE_URL=http://localhost:11434
+   </code></pre>
+<h2>▶️ Запуск бота</h2>
+<h3>Розробницький режим</h3>
+<pre><code>bash
+npm run dev
+</code></pre>
+<h3>Продакшн режим</h3>
+<pre><code>bash
+npm run build
+npm start
+</code></pre>
+<h3>Docker (опційно)</h3>
+<pre><code>bash
+docker-compose up -d
+</code></pre>
+<h2>✅ Перевірка встановлення</h2>
+Після запуску бота:
+1. Перевірте, що бот онлайн у вашому Discord сервері
+2. Спробуйте виконати команду <code>/допомога</code>
+3. Перевірте логи на наявність помилок
+<h2>🔧 Усунення проблем</h2>
+<h3>Бот не відповідає</h3><li>Перевірте правильність Discord токена</li><li>Переконайтесь, що бот доданий до сервера</li><li>Перевірте налаштування intents</li>
+<h3>Помилки з Google API</h3><li>Перевірте правильність шляху до файлу Service Account</li><li>Переконайтесь, що Service Account має доступ до таблиці</li><li>Перевірте, чи увімкнені необхідні API</li>
+<h3>Проблеми з AI</h3><li>Перевірте, чи запущений Ollama (якщо використовуєте локальні моделі)</li><li>Перевірте правильність API ключів</li><li>Переконайтесь, що обрана правильна модель</li></ul>
+<h2>🔄 Оновлення</h2>
+Для оновлення бота до останньої версії:
+<pre><code>bash
+git pull
+npm install
+npm run build
+npm run deploy
+</code></pre>
+<h2>📞 Підтримка</h2>
+Якщо у вас виникли проблеми з встановленням:
+1. Перевірте логи у папці <code>logs/</code>
+2. Створіть issue у репозиторії GitHub
+3. Зверніться до підтримки через Discord або Telegram
+© 2025 Dmitry Shivachov (Dmitze). Всі права захищені.
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\uk\FAQ.html" class="nav-button"><i class="fas fa-arrow-left"></i> ❓ Часті питання</a>
+            <a href="pages\uk\OVERVIEW.html" class="nav-button">🦖 Discord AI Assistant Bot - Godzilla <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

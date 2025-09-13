@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Гід по безпеці Discord AI Bot - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🛡️ Гід по безпеці Discord AI Bot</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🛡️ Гід по безпеці Discord AI Bot</h1>
+<h2>Огляд безпеки</h2>
+Цей документ описує систему безпеки Discord AI Bot, яка забезпечує захист даних, контроль доступу та запобігання зловживанням.
+<h2>Рівні безпеки</h2>
+<h3>1. Контроль доступу в Discord</h3>
+<h4>Ролі користувачів</h4><ul><li>Адміністратор - повний доступ до всіх функцій</li><li>Бот-Користувач - базовий доступ до бота</li><li>Sheets-Доступ - доступ до Google Sheets функцій</li><li>AI-Доступ - доступ до AI-функцій</li><li>Експорт-Доступ - доступ до експорту даних</li>
+<h4>Налаштування ролей</h4>
+<pre><code>javascript
+// Приклад перевірки ролі
+const hasAccess = await checkPermission(
+  interaction, 
+  [ROLES.AI_ACCESS, ROLES.ADMIN], 
+  'AI Assistant'
+);
+</code></pre>
+<h3>2. Rate Limiting</h3>
+<h4>Ліміти запитів</h4><li>Пошук: 10 запитів за хвилину</li><li>AI-аналіз: 5 запитів за 2 хвилини</li><li>Експорт: 3 запити за 5 хвилин</li><li>Загальні команди: 20 запитів за хвилину</li>
+<h4>Налаштування</h4>
+<pre><code>javascript
+const RATE_LIMITS = {
+  SEARCH: { max: 10, window: 60 },
+  AI_ANALYSIS: { max: 5, window: 120 },
+  EXPORT: { max: 3, window: 300 },
+  GENERAL: { max: 20, window: 60 }
+};
+</code></pre>
+<h3>3. Валідація вхідних даних</h3>
+<h4>Типи валідації</h4><li>search - пошукові запити (макс. 200 символів)</li><li>ai_prompt - AI запити (макс. 1000 символів)</li><li>filename - назви файлів (макс. 100 символів)</li><li>general - загальний текст (макс. 500 символів)</li>
+<h4>Приклад валідації</h4>
+<pre><code>javascript
+const validationSchema = {
+  query: {
+    required: true,
+    type: 'string',
+    maxLength: 1000,
+    sanitize: 'ai_prompt'
+  }
+};
+</code></pre>
+<h2>Захист даних</h2>
+<h3>1. Змінні середовища</h3>
+<h4>Обов'язкові змінні</h4>
+<pre><code>env
+<h1>Discord</h1>
+DISCORD_TOKEN=your_discord_bot_token
+DISCORD_CLIENT_ID=your_client_id
+<h1>Google Services</h1>
+GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
+GOOGLE_SPREADSHEET_ID=your_spreadsheet_id
+<h1>AI</h1>
+OPENAI_API_KEY=your_openai_key
+AI_PROVIDER=openai
+<h1>Redis</h1>
+REDIS_HOST=localhost
+REDIS_PORT=6379
+</code></pre>
+<h4>Рекомендації</h4><li>Ніколи не комітьте <code>.env</code> файл</li><li>Використовуйте різні ключі для різних середовищ</li><li>Регулярно ротуйте API ключі</li>
+<h3>2. Google API безпека</h3>
+<h4>Service Account</h4><li>Створіть окремий Service Account для бота</li><li>Надайте мінімально необхідні права</li><li>Обмежте доступ до конкретних папок/файлів</li>
+<h4>Налаштування прав</h4>
+<pre><code>json
+{
+  "type": "service_account",
+  "project_id": "your-project",
+  "private_key_id": "key-id",
+  "private_key": "-----BEGIN PRIVATE KEY-----\n...",
+  "client_email": "bot@your-project.iam.gserviceaccount.com",
+  "client_id": "client-id",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token"
+}
+</code></pre>
+<h3>3. Шифрування та кешування</h3>
+<h4>Redis безпека</h4><li>Використовуйте пароль для Redis</li><li>Обмежте доступ до Redis порту</li><li>Регулярно очищайте кеш</li>
+<pre><code>javascript
+// Приклад підключення до Redis
+const redis = require('redis');
+const client = redis.createClient({
+  url: <code>redis://:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}</code>,
+  database: process.env.REDIS_DB
+});
+</code></pre>
+<h2>Логування безпеки</h2>
+<h3>1. Типи подій</h3>
+<h4>Безпека</h4><li>access_denied - відмовлено в доступі</li><li>rate_limit_exceeded - перевищено ліміт запитів</li><li>invalid_input - невалідні вхідні дані</li><li>security_violation - порушення безпеки</li>
+<h4>Використання</h4><li>command_executed - команда виконана</li><li>ai_query_processed - AI запит оброблено</li><li>file_accessed - доступ до файлу</li>
+<h3>2. Формат логів</h3>
+<pre><code>javascript
+logSecurityEvent('access_denied', {
+  userId: interaction.user.id,
+  userTag: interaction.user.tag,
+  command: 'ai',
+  reason: 'insufficient_permissions',
+  timestamp: new Date().toISOString()
+});
+</code></pre>
+<h2>Налаштування безпеки</h2>
+<h3>1. Створення ролей Discord</h3>
+<h4>Кроки</h4>
+1. Відкрийте налаштування сервера
+2. Перейдіть до розділу "Ролі"
+3. Створіть ролі:<li>Адміністратор (червоний колір)</li><li>Бот-Користувач (синій колір)</li><li>Sheets-Доступ (зелений колір)</li><li>AI-Доступ (фіолетовий колір)</li><li>Експорт-Доступ (жовтий колір)</li>
+<h4>Права ролей</h4><li>Адміністратор: Всі права</li><li>Бот-Користувач: Базові команди</li><li>Sheets-Доступ: Робота з Google Sheets</li><li>AI-Доступ: AI-функції</li><li>Експорт-Доступ: Експорт даних</li>
+<h3>2. Налаштування Google API</h3>
+<h4>Створення Service Account</h4>
+1. Перейдіть до <a href="https://console.cloud.google.com/">Google Cloud Console</a>
+2. Створіть новий проект або виберіть існуючий
+3. Увімкніть Google Sheets API та Google Drive API
+4. Створіть Service Account
+5. Завантажте JSON ключ
+6. Надайте доступ до конкретних файлів/папок
+<h4>Налаштування прав доступу</h4>
+<pre><code>javascript
+// Приклад надання доступу до файлу
+// В Google Drive: Правий клік на файлі → Надати доступ → Додати email Service Account
+</code></pre>
+<h3>3. Налаштування Redis</h3>
+<h4>Встановлення Redis</h4>
+<pre><code>bash
+<h1>Ubuntu/Debian</h1>
+sudo apt update
+sudo apt install redis-server
+<h1>Windows (WSL або Docker)</h1>
+docker run -d -p 6379:6379 redis:alpine
+</code></pre>
+<h4>Налаштування пароля</h4>
+<pre><code>bash
+<h1>Редагування redis.conf</h1>
+sudo nano /etc/redis/redis.conf
+<h1>Додати пароль</h1>
+requirepass your_strong_password
+<h1>Перезапуск Redis</h1>
+sudo systemctl restart redis
+</code></pre>
+<h2>Моніторинг безпеки</h2>
+<h3>1. Метрики безпеки</h3>
+<h4>Prometheus метрики</h4>
+<pre><code>javascript
+// Приклад метрик
+const securityMetrics = {
+  access_denied_total: new prometheus.Counter({
+    name: 'bot_access_denied_total',
+    help: 'Total number of access denials'
+  }),
+  rate_limit_exceeded_total: new prometheus.Counter({
+    name: 'bot_rate_limit_exceeded_total',
+    help: 'Total number of rate limit violations'
+  })
+};
+</code></pre>
+<h3>2. Алерти</h3>
+<h4>Налаштування алертів</h4><li>Більше 10 відмов в доступі за хвилину</li><li>Перевищення rate limit більше 5 разів за хвилину</li><li>Невалідні запити більше 20 за хвилину</li>
+<h2>Реагування на інциденти</h2>
+<h3>1. Типи інцидентів</h3>
+<h4>Критичні</h4><li>Неавторизований доступ до адміністративних функцій</li><li>Масові спроби обходу rate limiting</li><li>Підозріла активність з AI-функціями</li>
+<h4>Середні</h4><li>Перевищення лімітів запитів</li><li>Невалідні вхідні дані</li><li>Помилки автентифікації</li>
+<h3>2. План реагування</h3>
+<h4>Кроки</h4>
+1. Виявлення - моніторинг логів та метрик
+2. Оцінка - визначення рівня загрози
+3. Реагування - блокування користувача/функції
+4. Аналіз - дослідження причин
+5. Відновлення - повернення функціональності
+<h4>Команди для адміністраторів</h4>
+<pre><code>javascript
+// Блокування користувача
+await blockUser(userId, reason, duration);
+// Вимкнення функції
+await disableFeature('ai_analysis', reason);
+// Очищення кешу
+await clearUserCache(userId);
+</code></pre>
+<h2>Оновлення безпеки</h2>
+<h3>1. Регулярні перевірки</h3>
+<h4>Щотижнево</h4><li>Перегляд логів безпеки</li><li>Аналіз метрик</li><li>Оновлення залежностей</li>
+<h4>Щомісячно</h4><li>Аудит прав доступу</li><li>Перевірка API ключів</li><li>Тестування системи безпеки</li>
+<h3>2. Оновлення залежностей</h3>
+<pre><code>bash
+<h1>Перевірка вразливостей</h1>
+npm audit
+<h1>Оновлення пакетів</h1>
+npm update
+<h1>Оновлення до нових версій</h1>
+npm outdated
+npm install package@latest
+</code></pre>
+<h2>Підтримка безпеки</h2>
+<h3>Контакти</h3><li>Адміністратор: @admin</li><li>Технічна підтримка: support@example.com</li><li>Екстрені випадки: emergency@example.com</li>
+<h3>Ресурси</h3><li><a href="https://discord.com/developers/docs">Discord Developer Portal</a></li><li><a href="https://cloud.google.com/security">Google Cloud Security</a></li><li><a href="https://redis.io/topics/security">Redis Security</a></li>
+<h2>Безпека RAG (Retrieval-Augmented Generation)</h2>
+<h3>Захист даних</h3><li><strong>PII-маскування</strong>: автоматичне приховування конфіденційних даних перед індексацією</li><li><strong>Шифрування ембеддінгів</strong>: зберігання зашифрованих векторів у базі даних</li><li><strong>Контроль доступу</strong>: перевірка прав доступу до документів перед пошуком</li>
+<h3>Налаштування безпеки</h3>
+<pre><code>env
+<h1>RAG & FTS</h1>
+RAG_ENABLED=true
+RAG_MAX_CONTEXT_TOKENS=4000
+FTS_TOKENIZER=unicode61  # Варіанти: unicode61, porter, simple
+SEARCH_INDEX_PATH=./data/search.sqlite
+</code></pre>
+<h2>FTS (Full-Text Search) Безпека</h2>
+<h3>Заходи безпеки</h3>
+1. <strong>Ін'єкції SQL</strong>: параметризовані запити, екранування вхідних даних
+2. <strong>Доступ до індексу</strong>: обмеження прав доступу до файлу індексу
+3. <strong>Токенізація</strong>: використання безпечних токенізаторів (unicode61)
+<h3>Рекомендації</h3><li>Регулярно створюйте резервні копії індексу</li><li>Обмежуйте розмір індексу для запобігання атак на споживання пам'яті</li><li>Використовуйте TTL для автоматичного оновлення індексів</li>
+<h2>Локальний AI (Ollama)</h2>
+<h3>Переваги безпеки</h3><li>Дані не залишають інфраструктуру</li><li>Відсутність обмежень API ключів</li><li>Можливість офлайн-роботи</li>
+<h3>Налаштування</h3>
+<pre><code>env
+<h1>Ollama</h1>
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3
+OLLAMA_TIMEOUT=30000
+</code></pre>
+<h2>Модель загроз (STRIDE-lite)</h2><li><strong>Spoofing</strong>: підробка компонентних ID — захист через <code>signComponentId</code> (HMAC+TTL), перевірки підпису і строку дії.</li><li><strong>Tampering</strong>: модифікація payload/кнопок — валідація схеми, строго типізовані об'єкти, reject при невідповідності.</li><li><strong>Repudiation</strong>: заперечення дій — централізований логер із кореляційними ID, журнали доступу.</li><li>Information Disclosure: витік даних — мінімізація даних у відповідях, фільтрація PII, ефермерні реплаї, шифрування секретів (ENV).</li><li>Denial of Service: спам/флуди — rate limiting, backoff, черги, контроль довжин.</li><li>Elevation of Privilege: підвищення прав — RBAC/перевірки ролей Discord, allowlist серверів/каналів.</li>
+<h2>🔐 Secure defaults</h2><li>Локаль за замовчуванням: <code>uk</code> (українська) для UX послідовності.</li><li>Всі інтерактивні компоненти — лише підписані (HMAC) з коротким TTL.</li><li>Ефермерні відповіді для чутливого контенту за замовчуванням.</li><li>Заборонено <code>console.*</code> поза <code>src/scripts/</code>; використовуйте централізований логер.</li><li>Секрети тільки через <code>.env</code>; валідніть на старті, приклад у <code>env.example</code>.</li>
+<h2>🤖 Локальний AI та конфіденційність (Ollama)</h2><li>За замовчуванням AI-обробка виконується ЛОКАЛЬНО через <code>Ollama</code> (<code>AI_PROVIDER=ollama</code>).</li><li>Моделі LLM завантажуються й працюють на вашій інфраструктурі; мережевий витік промптів/даних до сторонніх API відсутній.</li><li>Дані користувача, промпти та контекст RAG не покидають хост. Вихід назовні дозволяється лише за явної конфігурації провайдера (<code>AI_PROVIDER=openai</code> тощо).</li><li>Для UI-компонентів, що ініціюють AI-запити, використовується <code>signComponentId</code> (HMAC+TTL), щоб виключити підробку дій та повторне відтворення (replay).</li><li>Для тестового середовища збережена легасі-сумісність підписів (для unit-тестів), у продакшні завжди вимагайте підпис.</li>
+<h2>🕒 Політика розкриття вразливостей (Disclosure) та SLA на виправлення</h2><li>Канали повідомлення: див. <code>SECURITY.md</code> (email, Discord) — приватно.</li><li>Підтвердження отримання: до 48 годин.</li><li>Класифікація (CVSS-rough):</li><li>Критична: RCE, витік секретів, EoP — ETA патчу ≤ 72 год.</li><li>Висока: DoS, обхід авторизації — ETA патчу ≤ 7 днів.</li><li>Середня/Низька: інформаційні, UX-лейки — планово, наступний реліз.</li><li>Координоване розкриття: публікація після доступності виправлення і оновлення <code>docs/changelog/CHANGELOG.md</code>.</li>
+<h2>🔗 Додатково</h2><li>Політика безпеки: <code>SECURITY.md</code></li><li>Архітектура та підпис компонентів: <code>docs/ARCHITECTURE.md</code></li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\security\README.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🔒 **SECURITY - БЕЗПЕКА**</a>
+            <a href="pages\SIMPLIFIED_COMMANDS.html" class="nav-button">Спрощена структура команд <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

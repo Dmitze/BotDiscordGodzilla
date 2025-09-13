@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Швидкий старт з Godzilla Bot - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🚀 Швидкий старт з Godzilla Bot</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🚀 Швидкий старт з Godzilla Bot</h1>
+<h2>⚡ Швидке налаштування за 5 кроків</h2>
+<h3>1. Встановлення залежностей</h3>
+<pre><code>bash
+git clone https://github.com/Dmitze/BotDiscordGodzilla.git
+cd BotDiscordGodzilla
+npm install
+</code></pre>
+<h3>2. Налаштування змінних середовища</h3>
+Створіть файл <code>.env</code> в корені проекту, використовуючи приклад:
+<pre><code>bash
+cp .env.example .env
+</code></pre>
+Відредагуйте <code>.env</code> файл, додавши обов'язкові налаштування:
+<pre><code>env
+<h1>Основні налаштування</h1>
+NODE_ENV=development
+LOG_LEVEL=info
+<h1>Discord</h1>
+DISCORD_TOKEN=your_discord_bot_token_here
+DISCORD_CLIENT_ID=your_discord_client_id
+<h1>Безпека</h1>
+HMAC_SECRET=generate_secure_random_string_here
+COMPONENT_TTL=300000  # 5 хвилин
+<h1>База даних</h1>
+DB_PATH=./data/godzilla.db
+<h1>AI (виберіть провайдера: ollama або openai)</h1>
+AI_PROVIDER=ollama
+AI_MODEL=llama3
+</code></pre>
+<h3>3. Налаштування Discord Bot</h3>
+1. Перейдіть на <a href="https://discord.com/developers/applications">Discord Developer Portal</a>
+2. Створіть новий додаток та бота
+3. Увімкніть необхідні Intents:<ul><li>Message Content</li><li>Server Members</li><li>Presence</li><li>Message Content</li>
+4. Додайте бота на сервер через OAuth2 URL Generator з дозволами:<li><code>bot</code></li><li><code>applications.commands</code></li><li>Дозволи: <code>Send Messages</code>, <code>Embed Links</code>, <code>Read Message History</code></li>
+<h3>4. Налаштування локального AI (Ollama)</h3>
+1. Встановіть <a href="https://ollama.ai/">Ollama</a>
+2. Завантажте модель:
+   <pre><code>bash
+   ollama pull llama3
+   </code></pre>
+3. Запустіть сервер Ollama:
+   <pre><code>bash
+   ollama serve
+   </code></pre>
+<h3>5. Запуск бота</h3>
+<pre><code>bash
+<h1>Розробка з автоматичним перезавантаженням</h1>
+npm run dev
+<h1>Або звичайний запуск</h1>
+npm start
+</code></pre>
+<h2>🧩 Основні можливості</h2>
+<h3>Пошук та аналіз</h3><li><code>/search [запит]</code> - пошук серед індексованих документів</li><li><code>/analyze [текст]</code> - аналіз тексту за допомогою AI</li>
+<h3>Робота з документами</h3><li><code>/index [url]</code> - індексувати документ за посиланням</li><li><code>/list</code> - перегляд індексованих документів</li>
+<h3>Налаштування</h3><li><code>/settings</code> - керування налаштуваннями бота</li><li><code>/help</code> - довідка за командами</li>
+<h2>🧪 Тестування роботи</h2>
+Переконайтеся, що бот працює коректно:
+1. Відправте <code>/help</code> у чат Discord
+2. Перевірте наявність команд автодоповнення
+3. Протестуйте базові команди:
+   <pre><code>bash
+   /search тестовий пошук
+   /analyze Це тестовий аналіз тексту
+   </code></pre>
+<h2>🔍 Наступні кроки</h2><li>Додайте більше документів для індексації</li><li>Налаштуйте канали для роботи з ботом</li><li>Вивчіть розширені можливості у повній документації</li>
+<h2>❓ Допомога</h2>
+Якщо виникли питання:
+1. Перевірте логи у консолі
+2. Перегляньте розділ "Поширені проблеми" у документації
+3. Створіть Issue у репозиторії<li><code>/ai-пошук запит:покажи товари дешевше 1000</code> - природномовний пошук</li>
+<h2>📋 Мінімальні вимоги</h2>
+<h3>Для роботи без AI:</h3><li>Discord Bot Token</li><li>Google API Key</li><li>Google Sheet ID</li>
+<h3>Для повного функціоналу:</h3><li>+ OpenAI API Key</li>
+<h2>🔧 Швидке виправлення проблем</h2>
+<h3>Бот не відповідає:</h3>
+<pre><code>bash
+<h1>Перевірте логи</h1>
+tail -f logs/bot.log
+<h1>Перевірте змінні середовища</h1>
+echo $BOT_TOKEN
+</code></pre>
+<h3>Помилка Google Sheets:</h3>
+<pre><code>bash
+<h1>Перевірте доступ до таблиці</h1>
+curl "https://sheets.googleapis.com/v4/spreadsheets/YOUR_SHEET_ID/values/A1?key=YOUR_API_KEY"
+</code></pre>
+<h3>AI не працює:</h3>
+<pre><code>bash
+<h1>Тест AI-функцій</h1>
+node test-ai.js
+</code></pre>
+<h2>📚 Детальна документація</h2><li><a href="README.md">README.md</a> - повна документація</li><li><a href="SETUP.md">SETUP.md</a> - детальне налаштування</li><li><a href="AI_EXAMPLES.md">AI_EXAMPLES.md</a> - приклади AI-функцій</li>
+<h2>🆘 Підтримка</h2>
+Проблеми? Створіть Issue в репозиторії з:<li>Описом проблеми</li><li>Логами з папки <code>logs/</code></li><li>Версією Node.js (<code>node --version</code>) </li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\PERFORMANCE_GUIDE.html" class="nav-button"><i class="fas fa-arrow-left"></i> Performance Guide</a>
+            <a href="pages\guides\rag.html" class="nav-button">RAG (Retrieval-Augmented Generation) у BotDiscordGodzilla <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

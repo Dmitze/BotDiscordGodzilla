@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦖 Discord AI Assistant Bot - Godzilla - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🦖 Discord AI Assistant Bot - Godzilla</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🦖 Discord AI Assistant Bot - Godzilla</h1>
+<strong>Потужний Discord бот з AI функціоналом для Збройних Сил України</strong>
+---
+<h2>📋 Зміст</h2>
+1. <a href="#огляд">Огляд</a>
+2. <a href="#основні-можливості">Основні можливості</a>
+3. <a href="#архітектура">Архітектура</a>
+4. <a href="#встановлення-та-налаштування">Встановлення та налаштування</a>
+5. <a href="#команди-бота">Команди бота</a>
+6. <a href="#ai-функціонал">AI функціонал</a>
+7. <a href="#безпека">Безпека</a>
+8. <a href="#локальний-ai-ollama">Локальний AI (Ollama)</a>
+9. <a href="#метрики-та-моніторинг">Метрики та моніторинг</a>
+10. <a href="#розробка">Розробка</a>
+---
+<h2>🎯 Огляд</h2>
+Discord AI Assistant Bot (Godzilla) - це інноваційний бот, розроблений для автоматизації роботи з документами, аналізу даних та підтримки операційної діяльності. Спеціально адаптований для потреб ЗСУ та критично важливих організацій.
+Бот інтегрується з Google Sheets, Google Drive, Discord та AI сервісами (OpenAI, Ollama) для надання потужних інструментів аналізу та автоматизації.
+---
+<h2>🚀 Основні можливості</h2>
+<h3>🤖 AI асистент</h3><ul><li>Природномовний аналіз даних</li><li>Генерація звітів та рекомендацій</li><li>Контекстна пам'ять для розмов</li>
+<h3>🔍 Розумний пошук</h3><li>Гнучкий пошук по всіх документах</li><li>Фільтрація за датами, типами, пріоритетами</li><li>Пагінація результатів</li>
+<h3>📄 Управління документами</h3><li>Робота з Google Sheets та Google Drive</li><li>Читання різних форматів файлів (PDF, DOCX, TXT)</li><li>AI-аналіз вмісту файлів</li>
+<h3>📊 Аналітика</h3><li>Статистика використання бота</li><li>Аналіз даних з таблиць</li><li>Експорт результатів у різних форматах</li>
+<h3>⚡ Операції</h3><li>Управління військовими операціями</li><li>Координація між підрозділами</li><li>Розвідувальні дані</li>
+<h3>🔒 Безпека</h3><li>Максимальний рівень захисту даних</li><li>Контроль доступу через ролі Discord</li><li>Rate limiting та валідація даних</li>
+---
+<h2>🏗️ Архітектура</h2>
+<h3>Основні компоненти</h3>
+1. <strong>Ядро бота</strong> (<code>src/core/Bot.ts</code>)<li>Головний клас бота</li><li>Ініціалізація та управління сервісами</li><li>Обробка подій Discord</li>
+2. <strong>Команди</strong> (<code>src/commands/</code>)<li>Модульна система команд</li><li>Валідація вхідних даних</li><li>Структурне логування</li>
+3. <strong>Сервіси</strong> (<code>src/services/</code>)<li>GoogleService - робота з Google API</li><li>AIService - інтеграція з AI моделями</li><li>CacheService - кешування даних</li><li>MetricsService - збір метрик</li>
+4. <strong>Пошук</strong> (<code>src/search/</code>)<li>Гібридний пошук (FTS + векторний)</li><li>Індексація документів</li><li>RAG пайплайн</li>
+5. <strong>RAG</strong> (<code>src/rag/</code>)<li>Пошук релевантних фрагментів</li><li>Підготовка контексту</li><li>Генерація відповідей</li>
+<h3>Технологічний стек</h3><li><strong>Мова</strong>: TypeScript 5.0+</li><li><strong>Платформа</strong>: Node.js 20.x (LTS)</li><li><strong>Фреймворк</strong>: Discord.js 14.x</li><li><strong>База даних</strong>: SQLite3 (FTS5), Redis (кеш)</li><li><strong>AI/ML</strong>: Ollama (локально), OpenAI API (опційно)</li><li><strong>Інтеграції</strong>: Google Sheets API, Google Drive API</li><li><strong>Моніторинг</strong>: Prometheus + Grafana</li>
+---
+<h2>⚙️ Встановлення та налаштування</h2>
+<h3>Системні вимоги</h3><li>Node.js 18+</li><li>Git</li><li>Docker (опційно)</li><li>Google Cloud обліковий запис</li><li>Discord Developer обліковий запис</li>
+<h3>Швидкий старт</h3>
+1. <strong>Клонування проекту</strong>
+   <pre><code>bash
+   git clone https://github.com/Dmitze/BotDiscordGodzilla.git
+   cd BotDiscordGodzilla
+   </code></pre>
+2. <strong>Встановлення залежностей</strong>
+   <pre><code>bash
+   npm install
+   </code></pre>
+3. <strong>Налаштування змінних середовища</strong>
+   <pre><code>bash
+   cp .env.example .env
+   # Відредагуйте .env файл з вашими налаштуваннями
+   </code></pre>
+4. <strong>Налаштування Discord бота</strong><li>Перейдіть на Discord Developer Portal</li><li>Створіть новий додаток та бота</li><li>Скопіюйте токен</li><li>Увімкніть необхідні Intents</li>
+5. <strong>Налаштування Google API</strong><li>Створіть проект у Google Cloud Console</li><li>Увімкніть Google Sheets API та Google Drive API</li><li>Створіть Service Account та завантажте JSON ключ</li>
+6. <strong>Запуск бота</strong>
+   <pre><code>bash
+   npm run deploy
+   npm start
+   </code></pre>
+---
+<h2>📋 Команди бота</h2>
+<h3>🔍 Пошук та аналіз</h3>
+<pre><code>
+/пошук запит:"особовий склад" тип_документа:"накази"
+/розумний-пошук кількість_вище:100 ціна_нижче:1000
+/ai запит:проаналізуй залишки та дай рекомендації
+</code></pre>
+<h3>📄 Управління документами</h3>
+<pre><code>
+/документи особовий-склад список
+/документи техніка додати назва:"Танк Т-72"
+/файли завантажити файл:document.pdf
+</code></pre>
+<h3>📊 Аналітика</h3>
+<pre><code>
+/статистика
+/аналітика звіт тип:general
+/продуктивність моніторинг
+</code></pre>
+<h3>⚡ Операції</h3>
+<pre><code>
+/операції ситуація поточний_стан
+/операції завдання створити опис:"Патрулювання"
+/операції координація зв'язок_з_штабом
+</code></pre>
+---
+<h2>🤖 AI функціонал</h2>
+<h3>Основні можливості</h3>
+1. <strong>Природномовний аналіз</strong><li>Обробка запитів українською мовою</li><li>Розуміння контексту</li><li>Генерація структурованих відповідей</li>
+2. <strong>Генерація звітів</strong><li>Автоматичне створення аналітичних звітів</li><li>Форматування даних</li><li>Експорт у різних форматах</li>
+3. <strong>Рекомендації</strong><li>Аналіз тенденцій</li><li>Виявлення аномалій</li><li>Пропозиції щодо оптимізації</li>
+<h3>Приклади використання</h3>
+<pre><code>
+/ai запит:знайди товари iPhone з кількістю більше 5
+/ai запит:проаналізуй продажі за останній місяць
+/ai запит:створи звіт по залишках на складі
+</code></pre>
+---
+<h2>🔐 Безпека</h2>
+<h3>Механізми захисту</h3>
+1. <strong>Підпис компонентів</strong><li>Усі кнопки та селектори підписуються через HMAC-SHA256</li><li>TTL для кожного компоненту (за замовчуванням 15 хв)</li><li>Відмова у доступі до прострочених компонентів</li>
+2. <strong>Робота з даними</strong><li>PII-маскування у логах</li><li>Шифрування конфіденційних даних</li><li>Обмежений доступ до API ключів</li>
+3. <strong>Захист API</strong><li>Rate limiting</li><li>Валідація вхідних даних</li><li>Обробка помилок без розголошення деталей</li>
+<h3>Ролі та права доступу</h3><li><strong>Адміністратор</strong> - повний доступ до всіх функцій</li><li><strong>Бот-Користувач</strong> - базові команди</li><li><strong>Sheets-Доступ</strong> - робота з Google Sheets</li><li><strong>AI-Доступ</strong> - AI функції</li><li><strong>Експорт-Доступ</strong> - експорт даних</li>
+---
+<h2>🦙 Локальний AI (Ollama)</h2>
+<h3>Переваги</h3><li>Дані не залишають інфраструктуру</li><li>Відсутність обмежень API ключів</li><li>Можливість офлайн-роботи</li>
+<h3>Встановлення</h3>
+1. <strong>Встановлення Ollama</strong>
+   <pre><code>bash
+   # Для Windows/Linux/macOS
+   curl -fsSL https://ollama.com/install.sh | sh
+   </code></pre>
+2. <strong>Завантаження моделі</strong>
+   <pre><code>bash
+   ollama run llama3.1
+   </code></pre>
+3. <strong>Налаштування бота</strong>
+   Додайте до вашого <code>.env</code> файлу:
+   <pre><code>
+   AI_PROVIDER=ollama
+   OLLAMA_BASE_URL=http://localhost:11434
+   </code></pre>
+---
+<h2>📊 Метрики та моніторинг</h2>
+<h3>Prometheus метрики</h3>
+Бот збирає різні метрики для моніторингу продуктивності:<li>Кількість команд</li><li>Час виконання запитів</li><li>Попадання в кеш</li><li>Помилки</li><li>Використання пам'яті</li>
+<h3>Health checks</h3>
+Регулярна перевірка стану системи:<li>Кожні 30 секунд</li><li>Моніторинг пам'яті кожну хвилину</li><li>Автоматичний перезапуск при перевищенні лімітів</li>
+<h3>Логування</h3>
+Централізоване логування з різними рівнями:<li>error - критичні помилки</li><li>warn - попередження</li><li>info - інформаційні повідомлення</li><li>debug - налагоджувальна інформація</li>
+---
+<h2>👨‍💻 Розробка</h2>
+<h3>Структура проекту</h3>
+<pre><code>
+src/
+├── api/          # API документація
+├── chat/         # Чат-функціонал
+├── commands/     # Команди бота
+├── components/   # Компоненти інтерфейсу
+├── config/       # Конфігурація
+├── core/         # Ядро бота
+├── i18n/         # Локалізація
+├── nlp/          # NLP функції
+├── parsers/      # Парсери файлів
+├── rag/          # RAG пайплайн
+├── scripts/      # Скрипти
+├── search/       # Пошукові функції
+├── security/     # Безпека
+├── services/     # Сервіси
+├── tests/        # Тести
+├── types/        # Типи TypeScript
+├── ui/           # UI компоненти
+├── utils/        # Утиліти
+└── workspace/    # Робоча область
+</code></pre>
+<h3>Додавання нової команди</h3>
+1. Створіть файл команди у <code>src/commands/</code>
+2. Наслідуйтесь від <code>BaseCommand</code>
+3. Реалізуйте методи <code>execute</code> та <code>getCommandData</code>
+4. Зареєструйте команду в <code>CommandManager</code>
+<h3>Тестування</h3>
+Проект має повне покриття тестами:<li>Unit тести</li><li>Integration тести</li><li>E2E тести</li>
+Запуск тестів:
+<pre><code>bash
+npm test
+npm run test:coverage
+</code></pre>
+---
+<h2>📞 Підтримка</h2>
+<h3>Контакти</h3><li><strong>Discord</strong>: dmitryshivachov3756</li><li><strong>Telegram</strong>: https://t.me/DmitryShiva</li><li><strong>Email</strong>: dmitzeshivachov@outlook.com</li><li><strong>GitHub</strong>: https://github.com/Dmitze</li>
+<h3>Документація</h3>
+Повна документація доступна у каталозі <a href="docs/">docs/</a>:<li><a href="docs/guides/">Гайди та інструкції</a></li><li><a href="docs/api/">API документація</a></li><li><a href="docs/architecture/">Архітектура</a></li><li><a href="docs/security/">Безпека</a></li>
+---
+<h2>📄 Ліцензія</h2>
+Godzilla Bot License v3.0:<li>Військове використання: БЕЗКОШТОВНО</li><li>Державні установи: БЕЗКОШТОВНО</li><li>Освітні заклади: БЕЗКОШТОВНО</li><li>Комерційне використання: від $50/місяць</li></ul>
+---
+© 2025 Dmitry Shivachov (Dmitze). Всі права захищені.
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\uk\USER_GUIDE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📚 Гід користувача</a>
+            <a href="#" class="nav-button disabled" style="opacity: 0.5; cursor: not-allowed;">Наступна <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

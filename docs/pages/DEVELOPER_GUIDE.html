@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гайд розробника - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Гайд розробника</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Гайд розробника</h1>
+<h2>Технології</h2><ul><li>Node.js 18+, TypeScript, Discord.js, Jest, ESLint/Prettier</li><li>Архітектура: команди (<code>src/commands</code>), сервіси (<code>src/services</code>), ядро (<code>src/core</code>)</li>
+<h2>Як працювати з кодом</h2><li>Налаштування: див. <code>README.md</code> (швидкий старт)</li><li>Структура: див. <code>architecture/ARCHITECTURE.md</code></li><li>README підпапок: <code>src/.../README.md</code></li>
+<h2>Тести та якість</h2><li><code>npm test</code>, <code>npm run lint</code>, <code>npm run type-check</code></li><li>Покриття не зменшуємо; нова логіка — з тестами.</li>
+<h2>Безпека</h2><li>Політика: <code>SECURITY.md</code>, деталі: <code>security/SECURITY_GUIDE.md</code></li><li>Секрети у <code>.env</code>, не комітьте ключі.</li>
+<h2>Швидкий старт</h2>
+1. Встановіть залежності:
+<pre><code>bash
+npm ci
+</code></pre>
+1. Сконфігуруйте змінні середовища:<li>Скопіюйте <code>env.example</code> → <code>.env</code></li><li>Заповніть ключі Discord/Google/AI (див. <code>guides/SETUP.md</code>)</li>
+1. Запуск у dev-режимі:
+<pre><code>bash
+npm run dev
+</code></pre>
+1. Реєстрація команд (за потреби):
+<pre><code>bash
+npm run bot:register-commands
+</code></pre>
+<h2>Корисні npm-скрипти</h2>
+<pre><code>bash
+<h1>Типи та збірка</h1>
+npm run type-check
+npm run build
+<h1>Тести</h1>
+npm test
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+<h1>Лінт та форматування</h1>
+npm run lint
+npm run format
+<h1>Команди бота</h1>
+npm run bot:register-commands
+npm run bot:clear-commands
+</code></pre>
+<h2>CI/CD (приклад GitHub Actions)</h2>
+<pre><code>yaml
+name: ci
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:<li>uses: actions/checkout@v4</li><li>uses: actions/setup-node@v4</li>
+        with:
+          node-version: 18
+          cache: npm<li>run: npm ci</li><li>run: npm run type-check</li><li>run: npm run lint</li><li>run: npm test -- --ci</li>
+</code></pre>
+<h2>Релізи</h2><li>Семантичні версії: <code>MAJOR.MINOR.PATCH</code></li><li>CHANGELOG: <code>changelog/CHANGELOG.md</code></li><li>Теги релізів у Git: <code>vX.Y.Z</code></li><li>Перевірте безпеку перед релізом: <code>npm audit</code> + оновлення залежностей</li>
+<h2>Профілювання та логування</h2><li>Централізований логер; <code>console.*</code> заборонено поза <code>src/scripts/</code></li><li>Рівні логів: <code>debug|info|warn|error</code>; у проді — <code>info+</code></li><li>Метрики/спостережуваність: Prometheus-метрики безпеки (див. <code>security/SECURITY_GUIDE.md</code>)</li><li>Трейсинг компонентних дій через кореляційні ID у логері</li>
+<h2>Корисні посилання</h2><li>Архітектура: <code>architecture/ARCHITECTURE.md</code></li><li>Безпека: <code>SECURITY.md</code>, <code>security/SECURITY_GUIDE.md</code></li><li>RAG/пошук: <code>guides/rag.md</code></li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\deployment\DOCKER.html" class="nav-button"><i class="fas fa-arrow-left"></i> Docker Deployment Guide</a>
+            <a href="pages\DOCUMENTATION_IMPROVEMENTS_SUMMARY.html" class="nav-button">📚 Documentation Improvements Summary <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Guide - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Security Guide</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Security Guide</h1>
+This project implements multiple layers of security to protect users and reduce abuse surface. This document explains the key mechanisms and how to configure them.
+<h2>Security Config (<code>src/config/security.ts</code>)</h2>
+All security-related settings are centralized and validated with Zod:<ul><li>HMAC key and TTL for component IDs</li><li>Allowlist of MIME types and maximum file size</li><li>PII masking flags (apply to logs and user-visible replies)</li>
+Environment variables are validated at startup. See <code>.env.example</code> for the minimal required envs and values.
+<h2>Signed Component IDs (HMAC + TTL)</h2>
+Discord message components (buttons/selects) can be interacted with outside the original context. To prevent replay and tampering, we sign <code>customId</code> values with HMAC and embed a short-lived timestamp.<li>Sign: <code>signComponentId(payload)</code> -> returns a string customId</li><li>Verify: <code>verifyComponentId(customId)</code> -> returns <code>{ valid, reason?: 'expired'|'invalid', payload? }</code></li><li>TTL: configured via <code>securityConfig.components.ttlMs</code></li>
+<h3>Conventions</h3><li>Payloads include <code>kind</code> to route handling, e.g. <code>kind: 'srch'</code>, <code>kind: 'filetxt'</code>, <code>kind: 'docblk'</code></li><li>Compact format prefix <code>c.</code> is used to keep IDs short; fields are shortened (e.g., <code>kind -> k</code>, <code>page -> p</code>).</li><li>Signed IDs are backward compatible: handlers fall back to legacy parsers if no valid signature is present</li>
+<h4>Drive buttons (<code>kind: 'drive'</code>)</h4>
+UI‑картки файлів (<code>src/ui/FileCardBuilder.ts</code>) створюють підписані <code>customId</code> для дій Google Drive:<li>Дії: <code>action ∈ {'open'|'download'|'summary'|'question'}</code></li><li>Формат payload: <code>{ kind: 'drive', action, id: <driveFileId> }</code></li><li>Обробка: у <code>FileManagerCommand.onComponent()</code> спочатку читається <code>options.context.componentPayload</code> (після валідації HMAC/TTL в <code>BaseCommand</code>), далі виконується дія:</li><li><code>open</code> → відповідає посиланням <code>https://drive.google.com/file/d/<id>/view</code></li><li><code>download</code> → відповідає посиланням <code>https://drive.google.com/uc?export=download&id=<id></code></li><li><code>summary</code> → викликає пайплайн аналізу (модуль <code>analyzers.ts</code>) з <code>analysisType: 'summary'</code></li><li><code>question</code> → інтеграція з RAG/AI: якщо доступний <code>RagService</code>, використовується <code>rag.answer(...)</code>, інакше — <code>AIService.generateResponse(...)</code></li>
+Тестовий режим (NODE_ENV=test): для стабільності юніт‑тестів <code>FileCardBuilder</code> зберігає fallback‑формат без підпису — рядок <code>drive:<action>:<base64({id})></code>. Обробник має легасі‑парсер, який активується лише якщо підписаний payload відсутній.
+<h3>Base Handling</h3>
+<code>BaseCommand.handleComponent()</code> automatically:
+1. Detects signed IDs and verifies them via <code>verifyComponentId()</code>
+2. On failure, responds with i18n messages:<li><code>security.component.invalidId</code></li><li><code>security.component.expiredId</code></li>
+3. On success, injects <code>context.componentPayload</code> to downstream handlers
+Command overrides should prefer <code>options.context.componentPayload</code> when available and only parse legacy <code>customId</code> when not.
+<h2>Environment Variables</h2>
+Configure component signing and security using the following env vars (see <code>env.example</code>):
+<pre><code>dotenv
+<h1>HMAC key (>=16 chars) and TTL for signed component IDs (milliseconds)</h1>
+COMPONENT_HMAC_KEY=change_me_please_min16chars
+COMPONENT_TTL_MS=900000
+<h1>File and PII policies</h1>
+SECURITY_MIME_ALLOWLIST=application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain
+SECURITY_MAX_BYTES=26214400
+SECURITY_PII_MASTER=true
+SECURITY_PII_EMAIL=true
+SECURITY_PII_PHONE=true
+</code></pre>
+Notes:<li>Keep TTL short (e.g., 5–15 minutes) to minimize replay windows.</li><li>Rotate <code>COMPONENT_HMAC_KEY</code> periodically. Consider a short grace period for key rotation if needed.</li>
+<h2>PII Masking (<code>src/utils/pii.ts</code>)</h2>
+All user-facing replies and logs pass through masking helpers to redact emails and phone numbers:<li><code>maskPII(text)</code> – returns redacted string</li><li><code>maskReplyOptions(options)</code> – applies masking to <code>content</code> and embed fields</li><li><code>replyWithPrivacy()</code> from <code>src/ui/reply.ts</code> wraps Discord replies to ensure masking is applied consistently (ephemeral by default, can be made public via share flag where applicable)</li>
+<h2>i18n for Security Errors (<code>src/i18n/*.json</code>)</h2>
+Security error messages are localized and selected per user automatically:<li><code>security.component.invalidId</code></li><li><code>security.component.expiredId</code></li>
+Use <code>tUser(key, interaction)</code> to render messages in the user's locale. Default locale is Ukrainian (<code>uk</code>).
+<h2>Testing</h2><li>Unit/e2e tests should avoid real timeouts by either:</li><li>Using short TTL in test env</li><li>Stubbing <code>verifyComponentId()</code> to return deterministic results</li><li>In test mode (<code>NODE_ENV=test</code>), health checks are forced to healthy to avoid external dependencies affecting test stability.</li>
+<h2>Operational Notes</h2><li>Rotate HMAC keys periodically. Rotation strategy: accept old signatures for a grace window if needed.</li><li>Keep TTL short (e.g., 5–10 minutes) to reduce replay windows.</li><li>Ensure ephemeral responses for invalid/expired interactions to avoid leaking context in channels.</li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\README.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📚 **GUIDES - ГАЙДИ ТА ІНСТРУКЦІЇ**</a>
+            <a href="pages\guides\SETUP.html" class="nav-button">🔧 Налаштування Godzilla Bot <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

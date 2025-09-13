@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Deployment Guide - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Docker Deployment Guide</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Docker Deployment Guide</h1>
+This guide explains how to deploy the Discord AI Assistant Bot using Docker and Docker Compose.
+<h2>Overview</h2>
+The project uses Docker Compose to manage multiple services:<ul><li><strong>discord-bot</strong>: The main Discord bot service</li><li><strong>n8n</strong>: Workflow automation platform</li><li><strong>PostgreSQL</strong>: Database for n8n</li><li><strong>Redis</strong>: In-memory data structure store</li>
+<h2>Docker Compose Configuration</h2>
+The main configuration is in <a href="../../docker-compose.yml">docker-compose.yml</a> which defines all services:
+<h3>Discord Bot Service</h3><li>Built from <a href="../../src/config/docker/Dockerfile">src/config/docker/Dockerfile</a></li><li>Port: 3000</li><li>Environment variables from <code>.env</code> file</li><li>Volumes for persistent data</li>
+<h3>n8n Service</h3><li>Image: <code>n8n/n8n:latest</code></li><li>Port: 5678</li><li>Environment variables for authentication</li><li>Volumes for persistent data</li>
+<h3>PostgreSQL Service</h3><li>Image: <code>postgres:15</code></li><li>Port: 5432</li><li>Environment variables for database configuration</li><li>Volume for data persistence</li>
+<h3>Redis Service</h3><li>Image: <code>redis:7-alpine</code></li><li>Port: 6379</li><li>Volume for data persistence</li>
+<h2>Prerequisites</h2>
+1. Docker Engine installed
+2. Docker Compose installed
+3. Environment variables configured in <code>.env</code> file
+<h2>Setup Instructions</h2>
+<h3>1. Environment Configuration</h3>
+Create a <code>.env</code> file based on <code>.env.example</code>:
+<pre><code>bash
+cp .env.example .env
+</code></pre>
+Edit the <code>.env</code> file and set your values:
+<pre><code>env
+<h1>Discord Configuration</h1>
+DISCORD_TOKEN=your_discord_bot_token
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_GUILD_ID=your_guild_id
+<h1>Google Configuration</h1>
+GOOGLE_API_KEY=your_google_api_key
+GOOGLE_APP_SCRIPT_URL=your_app_script_url
+<h1>n8n Configuration</h1>
+N8N_USER=your_n8n_username
+N8N_PASSWORD=your_n8n_password
+<h1>PostgreSQL Configuration</h1>
+POSTGRES_USER=your_postgres_user
+POSTGRES_PASSWORD=your_postgres_password
+POSTGRES_DB=your_database_name
+<h1>AI Configuration (optional)</h1>
+OPENAI_API_KEY=your_openai_api_key
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3
+</code></pre>
+<h3>2. Start Services</h3>
+Start all services using Docker Compose:
+<pre><code>bash
+docker-compose up -d
+</code></pre>
+This will start:<li>Discord bot on port 3000</li><li>n8n on http://localhost:5678</li><li>PostgreSQL on port 5432</li><li>Redis on port 6379</li>
+<h3>3. Access Services</h3><li><strong>Discord Bot</strong>: Runs on port 3000 (internal)</li><li><strong>n8n</strong>: http://localhost:5678</li><li><strong>PostgreSQL</strong>: localhost:5432</li><li><strong>Redis</strong>: localhost:6379</li></ul>
+<h2>Management Commands</h2>
+<h3>View Logs</h3>
+<pre><code>bash
+<h1>View all logs</h1>
+docker-compose logs
+<h1>View specific service logs</h1>
+docker-compose logs discord-bot
+docker-compose logs n8n
+docker-compose logs postgres
+docker-compose logs redis
+</code></pre>
+<h3>Stop Services</h3>
+<pre><code>bash
+docker-compose down
+</code></pre>
+<h3>Update Services</h3>
+<pre><code>bash
+<h1>Pull latest images</h1>
+docker-compose pull
+<h1>Restart services</h1>
+docker-compose up -d
+</code></pre>
+<h2>Troubleshooting</h2>
+<h3>Common Issues</h3>
+1. <strong>Port conflicts</strong>: Ensure ports 3000, 5678, 5432, and 6379 are free
+2. <strong>Permission issues</strong>: Check file permissions for volumes
+3. <strong>Environment variables</strong>: Ensure all required variables are set
+<h3>Debugging</h3>
+<pre><code>bash
+<h1>Check service status</h1>
+docker-compose ps
+<h1>View real-time logs</h1>
+docker-compose logs -f
+<h1>Execute commands in containers</h1>
+docker-compose exec discord-bot sh
+docker-compose exec n8n sh
+docker-compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB
+</code></pre>
+<h2>Security Considerations</h2>
+1. Change default passwords in <code>.env</code>
+2. Use secure passwords for all services
+3. Restrict access to exposed ports
+4. Regularly update Docker images
+5. Use Docker secrets for sensitive data in production
+<h2>Performance Optimization</h2>
+1. Adjust resource limits in docker-compose.yml:
+   <pre><code>yaml
+   discord-bot:
+     # ... existing config ...
+     deploy:
+       resources:
+         limits:
+           cpus: '0.5'
+           memory: 512M
+   </code></pre>
+2. Use external volumes for better performance:
+   <pre><code>yaml
+   volumes:
+     data_volume:
+       driver: local
+       driver_opts:
+         type: none
+         o: bind
+         device: /path/to/host/directory
+   </code></pre>
+<h2>Backup and Restore</h2>
+<h3>Backup</h3>
+<pre><code>bash
+<h1>Backup PostgreSQL data</h1>
+docker-compose exec postgres pg_dump -U $POSTGRES_USER -d $POSTGRES_DB > backup.sql
+</code></pre>
+<h3>Restore</h3>
+<pre><code>bash
+<h1>Restore PostgreSQL data</h1>
+docker-compose exec -T postgres psql -U $POSTGRES_USER -d $POSTGRES_DB < backup.sql
+</code></pre>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\deployment\DEPLOYMENT_GUIDE.html" class="nav-button"><i class="fas fa-arrow-left"></i> Deployment Guide</a>
+            <a href="pages\DEVELOPER_GUIDE.html" class="nav-button">Гайд розробника <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

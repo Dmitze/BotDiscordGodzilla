@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Integration - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Ollama Integration</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Ollama Integration</h1>
+This document describes the Ollama integration in the BotDiscordGodzilla project, which enables local AI model capabilities for the Discord bot.
+<h2>Overview</h2>
+The Ollama integration provides the following capabilities:<ul><li>Interaction with local AI models through Ollama</li><li>Conversation history management per Discord channel</li><li>Model management (listing, pulling)</li><li>Context-aware responses with conversation memory</li>
+<h2>Architecture</h2>
+The integration consists of two main components:
+1. <strong>OllamaService</strong> - Core service that handles communication with the Ollama API
+2. <strong>OllamaCommand</strong> - Discord slash command that exposes Ollama functionality to users
+<h3>OllamaService</h3>
+The OllamaService is responsible for:<li>Managing connection to the Ollama API</li><li>Handling conversation history using Redis caching</li><li>Generating responses from AI models</li><li>Managing model operations (list, pull)</li>
+<h4>Key Methods</h4><li><code>generate(prompt, options)</code> - Generate a response from the AI model</li><li><code>resetChannelHistory(channelId)</code> - Clear conversation history for a channel</li><li><code>listModels()</code> - List available models</li><li><code>pullModel(modelName)</code> - Download a model</li><li><code>healthCheck()</code> - Check if Ollama is available</li>
+<h3>OllamaCommand</h3>
+The OllamaCommand provides a Discord interface for users to:<li>Send prompts to the AI model</li><li>Specify which model to use</li><li>Reset conversation history</li>
+<h2>Configuration</h2>
+<h3>Environment Variables</h3>
+<pre><code>env
+<h1>Ollama Configuration</h1>
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3
+OLLAMA_CTX=2048
+OLLAMA_CHAT_MAX_LENGTH=500
+</code></pre>
+<h3>Service Configuration</h3>
+<pre><code>typescript
+interface OllamaConfig {
+  host: string;
+  model: string;
+  ctx: number;
+  chatMaxLength: number;
+}
+</code></pre>
+<h2>Usage</h2>
+<h3>Discord Command</h3>
+Users can interact with the Ollama integration through the <code>/ollama</code> slash command:
+<pre><code>
+/ollama prompt:"Explain quantum computing" model:"llama3" reset:false
+</code></pre>
+Options:<li><code>prompt</code> (required) - The prompt to send to the AI model</li><li><code>model</code> (optional) - Specify which model to use</li><li><code>reset</code> (optional) - Reset the conversation history for this channel</li>
+<h3>Examples</h3>
+1. <strong>Simple query:</strong>
+   <pre><code>
+   /ollama prompt:"What is the capital of France?"
+   </code></pre>
+2. <strong>Using a specific model:</strong>
+   <pre><code>
+   /ollama prompt:"Write a poem" model:"mistral"
+   </code></pre>
+3. <strong>Reset conversation history:</strong>
+   <pre><code>
+   /ollama prompt:"Hello" reset:true
+   </code></pre>
+<h2>Conversation History</h2>
+The Ollama integration maintains conversation history per Discord channel using Redis caching:<li>History is stored for 7 days by default</li><li>Each channel has its own conversation context</li><li>History can be reset using the <code>reset</code> option</li>
+<h2>Supported Models</h2>
+The integration supports any model available through Ollama:<li>Llama 3 (llama3, llama3.2)</li><li>Mistral (mistral, mixtral)</li><li>Gemma (gemma, gemma2)</li><li>Phi (phi, phi3)</li><li>And many others</li>
+Models can be pulled using the <code>pullModel</code> method or through Ollama's CLI.
+<h2>Error Handling</h2>
+The service includes comprehensive error handling:<li>Network errors when connecting to Ollama</li><li>API errors from Ollama</li><li>Cache errors when managing conversation history</li><li>Model errors during generation</li>
+<h2>Performance Considerations</h2><li>Response times depend on the local hardware and model size</li><li>Conversation history is cached to reduce repeated context transmission</li><li>Large responses are truncated to fit Discord's message limits</li>
+<h2>Security</h2><li>Input sanitization to prevent injection attacks</li><li>Rate limiting through Discord's built-in mechanisms</li><li>Secure storage of conversation history in Redis</li>
+<h2>Testing</h2>
+Unit tests are provided for the OllamaService:<li>Configuration validation</li><li>Method functionality</li><li>Error handling</li><li>Cache integration</li>
+<h2>Future Enhancements</h2>
+Planned improvements:<li>Streaming responses for faster interaction</li><li>Multi-modal support (images, audio)</li><li>Advanced model management (unload, delete)</li><li>Custom system prompts per channel</li><li>Model performance monitoring</li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\markdown-rendering.html" class="nav-button"><i class="fas fa-arrow-left"></i> Markdown Rendering Service</a>
+            <a href="pages\PR_CHECKLIST.html" class="nav-button">Контрольний список для Pull Request <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

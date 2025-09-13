@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>README - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> README</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            ﻿# 📁 Вихідний код (src)
+Цей каталог містить вихідний код бота, розділений за логічними модулями.
+<h2>🏗️ Основні компоненти</h2>
+<h3>📂 /commands</h3><ul><li><strong>BaseCommand.ts</strong> - базовий клас для всіх команд</li><li><strong>SearchCommand.ts</strong> - пошук та фільтрація даних</li><li><strong>AIAssistantCommand.ts</strong> - AI асистент</li><li><strong>DocumentsCommand.ts</strong> - управління документами</li><li><strong>FileManagerCommand.ts</strong> - робота з файлами</li><li><strong>OperationsCommand.ts</strong> - військові операції</li><li><strong>AnalyticsCommand.ts</strong> - аналітика та звіти</li><li><strong>PerformanceCommand.ts</strong> - моніторинг продуктивності</li><li><strong>EnhancedSearchCommand.ts</strong> - розширений пошук</li><li><strong>statistics.ts</strong> - статистика використання</li>
+<h3>📂 /services</h3><li><strong>AIService.ts</strong> - AI функціональність (OpenAI, Ollama)</li><li><strong>GoogleService.ts</strong> - робота з Google API</li><li><strong>CacheService.ts</strong> - кешування даних</li><li><strong>MetricsService.ts</strong> - метрики та моніторинг</li><li><strong>SchedulerService.ts</strong> - планувальник завдань</li>
+<h3>📂 /core</h3><li><strong>Bot.ts</strong> - головний клас бота</li><li><strong>CommandManager.ts</strong> - управління командами</li><li><strong>ServiceContainer.ts</strong> - контейнер сервісів</li><li><strong>ErrorHandler.ts</strong> - централізована обробка помилок</li>
+<h3>📂 /utils</h3><li><strong>logger.ts</strong> - логування подій</li><li><strong>formatters.ts</strong> - форматування даних</li><li><strong>security.ts</strong> - функції безпеки</li><li><strong>pagination.ts</strong> - робота з пагінацією</li>
+<h3>📂 /config</h3><li><strong>index.ts</strong> - конфігурація додатку</li><li><strong>constants.ts</strong> - константи</li><li><strong>enums.ts</strong> - перерахування</li>
+<h2>🔗 Пов'язана документація</h2><li><a href="../ARCHITECTURE.md">Архітектура</a></li><li><a href="../DEVELOPER_GUIDE.md">Гайд розробника</a></li><li><a href="../API_OVERVIEW.md">API документація</a></li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\src\commands\README.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📁 Команди бота (`src/commands/`)</a>
+            <a href="pages\src\TEMPLATE_README.html" class="nav-button">Шаблон README модуля <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📋 Complete List of Discord Bot Commands with AI - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📋 Complete List of Discord Bot Commands with AI</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📋 Complete List of Discord Bot Commands with AI</h1>
+<h2>🤖 AI Commands (New)</h2>
+<h3>/ai-search</h3>
+Description: Natural language search using AI
+Usage: <code>/ai-search query:"find all documents about personnel"</code>
+Examples: <ul><li><code>/ai-search query:"find orders from January 2024"</code></li><li><code>/ai-search query:"show me equipment maintenance records"</code></li>
+<h3>/ai-analyze</h3>
+Description: Automatic AI data analysis from table
+Usage: <code>/ai-analyze</code>
+Result: Statistics, trends, anomalies, recommendations
+<h3>/ai-recommend</h3>
+Description: AI recommendations based on data
+Usage: <code>/ai-recommend</code>
+Result: Optimization tips, efficiency improvements
+<h3>/ai-report</h3>
+Description: Creates intelligent report
+Usage: <code>/ai-report type:<report_type></code>
+Report Types:<li><code>general-report</code> - general report</li><li><code>stock-report</code> - stock report</li><li><code>sales-report</code> - sales report</li><li><code>suppliers-report</code> - suppliers report</li>
+<h2>📊 Main Commands (Existing)</h2>
+<h3>/summary</h3>
+Description: Shows summary values from table
+Usage: <code>/summary</code>
+Result: Total cost, quantity, price
+<h3>/recent</h3>
+Description: Shows last 10 records from table
+Usage: <code>/recent</code>
+Result: Last records from table
+<h3>/search</h3>
+Description: Search by table fields
+Usage: <code>/search field:<field> query:<query></code>
+Fields for search: Name, Serial Number, Counterparty, Quantity, Price
+<h3>/advanced-search</h3>
+Description: Search by multiple fields
+Usage: <code>/advanced-search</code>
+Parameters:<li>Search by product name</li><li>Search by counterparty</li><li>Search by serial number</li><li>Show products more expensive than this value</li><li>Show products with quantity more than</li>
+<h3>/export-search</h3>
+Description: Exports search results to Excel
+Usage: <code>/export-search field:<field> query:<query></code>
+Result: Excel file with search results
+<h3>/export-all</h3>
+Description: Exports entire table to Excel
+Usage: <code>/export-all</code>
+Result: Excel file with entire table
+<h3>/help</h3>
+Description: Shows list of all available commands
+Usage: <code>/help</code>
+Result: List of commands with description
+<h2>💬 Text Commands (Existing)</h2>
+<h3>/add-record</h3>
+Description: Adds new record via Google Apps Script
+Usage: <code>/add-record</code>
+Result: New record added to table
+<h3>/export-table</h3>
+Description: Exports entire table
+Usage: <code>/export-table</code>
+Result: Excel file with entire table
+<h2>🎯 Usage Examples</h2>
+<h3>AI Search (Most Useful Examples):</h3>
+Combined search: <code>/ai-search query:"find all equipment from supplier ABC with price above 10000"</code>
+Regular search: <code>/ai-search query:"show me all maintenance records"</code>
+Smart search: <code>/ai-search query:"which equipment needs maintenance this month"</code>
+<h3>AI Reports (Examples):</h3>
+General report: <code>/ai-report type:general-report</code>
+Stock report: <code>/ai-report type:stock-report</code>
+Sales report: <code>/ai-report type:sales-report</code>
+Suppliers report: <code>/ai-report type:suppliers-report</code>
+<h2>🔧 Technical Details</h2>
+<h3>Limitations:</h3><li>AI-search: maximum 20 results</li><li>AI-analysis: first 50 data rows</li><li>File export: automatic deletion after 10 seconds</li>
+<h3>Requirements:</h3><li>OpenAI API key for AI functions</li><li>Google Sheets API for working with tables</li><li>Discord Bot Token for bot operation</li>
+<h3>Caching:</h3><li>Search results are cached for 5 minutes</li><li>Cached results can be exported</li></ul>
+<h2>🆘 Help</h2>
+If commands don't work:
+1. Check bot rights on server
+2. Ensure all API keys are configured
+3. Check logs in folder
+For AI functions:
+1. Ensure OpenAI API key exists
+2. Run test: 
+3. Check OpenAI account balance
+For Google Sheets:
+1. Check access to table
+2. Ensure Google Sheets API is enabled
+3. Verify SHEET_ID correctness
+💡 Tip: Start with <code>/help</code> command to familiarize yourself with all bot capabilities!
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\en\ARCHITECTURE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🏗️ Discord AI Assistant Bot Architecture</a>
+            <a href="pages\en\FAQ_SUPPORT.html" class="nav-button">❓ FAQ and Godzilla Bot Support <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 User Guide - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📚 User Guide</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📚 User Guide</h1>
+<h1>Discord AI Assistant Bot User Guide</h1>
+<h2>🎯 Introduction</h2>
+This guide will help you effectively use the Discord AI Assistant Bot to automate document work, analyze data, and support operational activities.
+<h2>🔐 Roles and Access Rights</h2>
+The bot uses a role-based system to control access:<ul><li><strong>Administrator</strong> - full access to all functions</li><li><strong>Bot User</strong> - basic commands</li><li><strong>Sheets Access</strong> - working with Google Sheets</li><li><strong>AI Access</strong> - AI functions</li><li><strong>Export Access</strong> - data export</li>
+Contact your server administrator to obtain the necessary roles.
+<h2>🔍 Search Commands</h2>
+<h3>Basic Search</h3>
+The <code>/search</code> command allows you to search for information in documents:
+<pre><code>
+/search query:"keyword" document_type:"orders"
+</code></pre>
+<strong>Parameters:</strong><li><code>query</code> - text to search for (required)</li><li><code>document_type</code> - document type filter</li><li><code>date_from</code> - search from a specific date</li><li><code>date_to</code> - search up to a specific date</li><li><code>unit</code> - unit filter</li><li><code>priority</code> - document priority filter</li><li><code>limit</code> - number of results</li>
+<h3>Smart Search</h3>
+The <code>/smart-search</code> command allows you to perform more complex search queries:
+<pre><code>
+/smart-search quantity_above:100 price_below:1000
+</code></pre>
+<strong>Parameters:</strong><li><code>quantity_above</code> - minimum quantity</li><li><code>quantity_below</code> - maximum quantity</li><li><code>price_above</code> - minimum price</li><li><code>price_below</code> - maximum price</li>
+<h2>🤖 AI Commands</h2>
+<h3>AI Assistant</h3>
+The <code>/ai</code> command allows you to interact with the AI assistant:
+<pre><code>
+/ai query:"analyze personnel"
+</code></pre>
+<strong>Parameters:</strong><li><code>query</code> - your query to AI (required)</li><li><code>context</code> - additional context for AI</li>
+<h3>AI Usage Examples</h3>
+1. <strong>Data Analysis:</strong>
+   <pre><code>
+   /ai query:"analyze sales for the last month"
+   </code></pre>
+2. <strong>Report Generation:</strong>
+   <pre><code>
+   /ai query:"create a report on warehouse stock"
+   </code></pre>
+3. <strong>Recommendations:</strong>
+   <pre><code>
+   /ai query:"how to optimize logistics?"
+   </code></pre>
+<h2>📄 Working with Documents</h2>
+<h3>/documents Command</h3>
+Allows you to work with documents:
+<pre><code>
+/documents personnel list
+</code></pre>
+<strong>Subcommands:</strong><li><code>add</code> - add a new document</li><li><code>list</code> - show list of documents</li><li><code>update</code> - update an existing document</li><li><code>delete</code> - delete a document</li>
+<h3>/files Command</h3>
+Allows you to work with Google Drive files:
+<pre><code>
+/files search query:"file name"
+</code></pre>
+<strong>Subcommands:</strong><li><code>search</code> - search for files</li><li><code>read</code> - read file content</li><li><code>analyze</code> - AI analyze file</li><li><code>report</code> - create a report from file</li>
+<h2>📊 Analytics and Statistics</h2>
+<h3>/statistics Command</h3>
+Shows bot usage statistics:
+<pre><code>
+/statistics
+</code></pre>
+<h3>/analytics Command</h3>
+Generates analytical reports:
+<pre><code>
+/analytics report type:"general"
+</code></pre>
+<strong>Report Types:</strong><li><code>general</code> - general analytics</li><li><code>search</code> - search analytics</li><li><code>commands</code> - command analytics</li><li><code>activity</code> - activity analytics</li>
+<h2>⚡ Operational Commands</h2>
+<h3>/operations Command</h3>
+Military operations management:
+<pre><code>
+/operations situation sector:"A"
+</code></pre>
+<strong>Subcommands:</strong><li><code>situation</code> - get situation information</li><li><code>task</code> - task management</li><li><code>coordination</code> - unit coordination</li><li><code>intelligence</code> - intelligence data</li>
+<h2>🛠️ Administrative Commands</h2>
+<h3>/status Command</h3>
+Shows system status:
+<pre><code>
+/status
+</code></pre>
+<h3>/cache Command</h3>
+Cache management:
+<pre><code>
+/cache clear type:"all"
+</code></pre>
+<strong>Cache Types:</strong><li><code>search</code> - search cache</li><li><code>ai</code> - AI cache</li><li><code>all</code> - all cache types</li>
+<h3>/help Command</h3>
+Shows help:
+<pre><code>
+/help category:"search"
+</code></pre>
+<strong>Categories:</strong><li><code>search</code> - search commands</li><li><code>ai</code> - AI commands</li><li><code>documents</code> - working with documents</li><li><code>files</code> - working with files</li><li><code>analytics</code> - analytical commands</li><li><code>operations</code> - operational commands</li>
+<h2>🔒 Security</h2>
+<h3>Rate Limiting</h3>
+The bot has a request limiting system to prevent abuse:<li>Search: 10 requests per minute</li><li>AI analysis: 5 requests per 2 minutes</li><li>Export: 3 requests per 5 minutes</li>
+<h3>Data Validation</h3>
+All input data is automatically checked for:<li>Length (max. 500 characters for text)</li><li>Presence of forbidden characters</li><li>Date format</li>
+<h2>📤 Data Export</h2>
+Most commands support result export:
+1. Execute a search or analysis command
+2. Click the "Export" button in the response
+3. Select export format (Excel, CSV, PDF, DOCX)
+4. Download the file
+<h2>❓ Frequently Asked Questions</h2>
+<h3>How to get access to the bot?</h3>
+Contact your Discord server administrator to obtain the necessary roles.
+<h3>What file formats are supported?</h3>
+The bot supports working with:<li>Google Sheets</li><li>Google Docs</li><li>PDF files</li><li>Microsoft Word documents</li><li>Text files</li>
+<h3>Is AI usage safe?</h3>
+Yes, the bot ensures maximum security:<li>Data is not transmitted to third parties (when using Ollama)</li><li>All data is masked in logs</li><li>Access control through roles</li></ul>
+<h2>📞 Support</h2>
+If you encounter problems:
+1. Check this guide
+2. Execute the <code>/help</code> command
+3. Contact your server administrator
+4. Create an issue in the GitHub repository
+© 2025 Dmitry Shivachov (Dmitze). All rights reserved.
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\en\USAGE_GUIDE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📚 Discord AI Assistant Bot Usage Guide</a>
+            <a href="pages\enhanced\GOOGLE_DRIVE_ENHANCEMENTS.html" class="nav-button">🚀 Покращення для взаємодії з Google документами <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

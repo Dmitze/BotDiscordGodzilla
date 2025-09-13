@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>❓ FAQ and Godzilla Bot Support - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> ❓ FAQ and Godzilla Bot Support</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>❓ FAQ and Godzilla Bot Support</h1>
+<h2>📋 Contents</h2>
+<h2>🔧 Common Issues</h2>
+<h3>🤖 Bot Not Responding</h3>
+Symptoms: Bot doesn't respond to commands, "Interaction failed" or "Interaction has already been acknowledged" message, bot offline or not responding
+Solutions:
+1. Check bot status: <code>/status</code>
+2. Restart service: 
+3. Check permissions: Ensure bot has necessary permissions on server, check role and channel settings, ensure bot is added to server with correct scope
+4. Check connection: Ensure server has internet access, check firewall settings, try disabling VPN if used
+<h3>🔍 Commands Not Working or Not Loading</h3>
+Symptoms: Commands don't appear in list, "Unknown interaction" error, commands not registering
+Solutions:
+1. Deploy commands: 
+2. Check configuration: 
+3. Check bot permissions: <code>bot</code> scope, <code>applications.commands</code> scope, required permissions
+<h3>📊 Google Sheets Not Working</h3>
+Symptoms: "Google Sheets API error", "Permission denied", data not loading
+Solutions:
+1. Check Service Account: File exists, service account email has access to table
+2. Check settings: 
+3. Grant access to table: Open Google Sheets, click "Share", add service account email
+<h3>🤖 AI Not Working</h3>
+Symptoms: "AI service unavailable", "OpenAI API error", AI not responding
+Solutions:
+1. Check API keys: 
+2. Check Ollama: 
+3. Check network: OpenAI API access, local Ollama access
+<h2>❓ Frequently Asked Questions</h2>
+<h3>🤔 How to Setup Bot?</h3>
+Answer:
+1. Clone repository
+2. Install dependencies: 
+3. Copy to 
+4. Configure environment variables
+5. Deploy commands: 
+6. Start bot: 
+Detailed instructions: SETUP.md
+<h3>🤔 What Commands Are Available?</h3>
+Answer:<ul><li><code>/summary</code> - summary values</li><li><code>/recent</code> - last records</li><li><code>/search</code> - field search</li><li><code>/advanced-search</code> - extended search</li><li><code>/ai-assistant</code> - AI assistant</li><li><code>/files</code> - file operations</li><li><code>/statistics</code> - bot statistics</li><li><code>/help</code> - help</li>
+Full list: COMMANDS_REFERENCE.md
+<h3>🤔 How to Use AI Functions?</h3>
+Answer:
+Examples: AI_EXAMPLES.md
+<h3>🤔 How to Export Data?</h3>
+Answer:
+1. Execute search
+2. Use <code>/export-search</code> command
+3. Download Excel file
+Supported formats: Excel (.xlsx), CSV, PDF, DOCX
+<h3>🤔 How to Setup Access Rights?</h3>
+Answer:
+1. Create roles on Discord server:
+2. Assign roles to users
+3. Configure rights in configuration
+Details: SECURITY_GUIDE.md
+<h3>🤔 How to Improve Performance?</h3>
+Answer:
+1. Setup Redis caching
+2. Optimize Google Sheets queries
+3. Use rate limiting
+4. Regularly clear cache: 
+<h3>🤔 How to Add New Commands?</h3>
+Answer:
+1. Create file in <code>src/commands/</code> folder
+2. Add command to <code>src/commands/index.ts</code>
+3. Integrate in <code>src/core/Bot.ts</code>
+4. Deploy commands: 
+Example: ARCHITECTURE.md
+<h2>🚨 Error Resolution</h2>
+<h3>❌ "Interaction failed"</h3>
+Cause: Command processing error
+Solution:
+1. Check logs: 
+2. Check configuration
+3. Restart bot
+<h3>❌ "Rate limit exceeded"</h3>
+Cause: Request limit exceeded
+Solution:
+1. Wait for limit reset
+2. Reduce request frequency
+3. Configure rate limiting
+<h3>❌ "Permission denied"</h3>
+Cause: Insufficient rights
+Solution:
+1. Check user roles
+2. Configure access rights
+3. Contact administrator
+<h3>❌ "Google Sheets API error"</h3>
+Cause: Google API problem
+Solution:
+1. Check Service Account
+2. Check table access rights
+3. Check API quotas
+<h3>❌ "AI service unavailable"</h3>
+Cause: AI service problem
+Solution:
+1. Check API keys
+2. Check network connection
+3. Check AI service status
+<h3>❌ "File not found"</h3>
+Cause: File not found in Google Drive
+Solution:
+1. Check file name
+2. Check access rights
+3. Check search folder
+<h2>📞 Support Contacts</h2>
+<h3>🆘 Quick Help</h3>
+Discord support server: Join our Discord server
+Support channel for technical questions
+General channel for discussions
+GitHub Issues: Create issue for bugs, create feature request for new functions, review existing issues
+<h3>📧 Email Support</h3>
+Technical support: Email: support@discordaibot.com, response within 24 hours, priority for critical problems
+Commercial support: Email: business@discordaibot.com, individual solutions, setup consultations
+<h3>💬 Chat Support</h3>
+Telegram channel: @DiscordAIBotSupport, quick responses, user group
+Slack workspace: Join Slack, channels by topics, bot integration
+<h2>📚 Useful Resources</h2>
+<h3>📖 Documentation</h3>
+Main documentation:<li>README.md - project overview</li><li>USAGE_GUIDE.md - usage guide</li><li>COMMANDS_REFERENCE.md - commands reference</li>
+Technical documentation:<li>ARCHITECTURE.md - architecture</li><li>SECURITY_GUIDE.md - security</li><li>SETUP.md - setup</li>
+Learning materials:<li>INTERACTIVE_LEARNING_GUIDE.md - interactive guide</li><li>VIDEO_TUTORIAL_GUIDE.md - video tutorials</li><li>AI_EXAMPLES.md - AI examples</li>
+<h3>🎥 Video Tutorials</h3>
+YouTube channel: Educational videos, feature demonstrations, technical tutorials
+Screencasts: Quick demos, problem solutions, setup
+<h3>🛠️ Tools</h3>
+Online tools:<li>Discord Developer Portal</li><li>Google Cloud Console</li><li>OpenAI API Dashboard</li>
+Local tools:<li>Ollama for local LLM</li><li>Redis for caching</li><li>Prometheus for metrics</li>
+<h3>🔗 Useful Links</h3>
+Official resources:<li>Discord.js Documentation</li><li>Google Sheets API</li><li>OpenAI API</li><li>Ollama Documentation</li>
+Communities:<li>Discord.js Community</li><li>Google Cloud Community</li><li>OpenAI Community</li><li>Ollama Community</li>
+<h2>🚀 Support Improvements</h2>
+<h3>📊 Problem Analytics</h3>
+Problem types:<li>Setup (40%)</li><li>API errors (25%)</li><li>Access rights (20%)</li><li>Performance (10%)</li><li>Other (5%)</li>
+Average resolution time:<li>Critical: 2 hours</li><li>Important: 24 hours</li><li>Regular: 72 hours</li>
+<h3>🎯 Improvement Plans</h3>
+Short-term:<li>Automated diagnostics</li><li>Support chatbot</li><li>Knowledge base</li>
+Long-term:<li>AI support assistant</li><li>Video consultations</li><li>Personal manager</li>
+<h2>🎉 Thanks</h2>
+Thank you to all users for feedback and help in improving the bot!
+Special thanks:<li>Testers for finding bugs</li><li>Developers for code contributions</li><li>Users for improvement ideas</li></ul>
+Last update: Version 2.3.0 2024
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\en\COMMANDS_REFERENCE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📋 Complete List of Discord Bot Commands with AI</a>
+            <a href="pages\en\QUICK_START.html" class="nav-button">🚀 Quick Start with Godzilla Bot <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

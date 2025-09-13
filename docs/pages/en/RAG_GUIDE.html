@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG (Retrieval-Augmented Generation) in BotDiscordGodzilla - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> RAG (Retrieval-Augmented Generation) in BotDiscordGodzilla</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>RAG (Retrieval-Augmented Generation) in BotDiscordGodzilla</h1>
+This guide describes how to enable and use the RAG pipeline: Retriever → Augmenter → Generator.
+<h2>Components</h2><ul><li><strong>Retriever</strong> (<code>src/rag/Retriever.ts</code>): retrieves relevant documents from <code>SearchIndex</code>.</li>
+  Supported modes: <code>fts</code> (default) and <code>hybrid</code> (FTS + embeddings with cosine similarity).<li><strong>Augmenter</strong> (<code>src/rag/Augmenter.ts</code>): forms contextual snippets, adheres to token limits, applies PII masking.</li><li><strong>RagPipeline</strong> (<code>src/rag/RagPipeline.ts</code>): assembles Ukrainian prompt with sources and calls <code>AIService</code>.</li><li><strong>RagService</strong> (<code>src/services/RagService.ts</code>): service wrapper for use in commands and chat.</li>
+> Security: all UI buttons/selects use signed <code>customId</code> (HMAC + TTL) to protect against tampering and replay. Details in <code>docs/guides/SECURITY.md</code>.
+<h2>Integration</h2><li><strong>/ai</strong> (<code>src/commands/aiAssistant.ts</code>): first tries <code>RagService</code>, otherwise uses regular <code>AIService</code>.</li><li><strong>QnA Chat</strong> (<code>src/chat/ChatRouter.ts</code> → <code>replyQna()</code>): responds through RAG with cited sources.</li>
+<h2>Environment Variables</h2>
+Add to <code>.env</code> (see example in <code>env.example</code>):<li><code>RETRIEVER_K</code> — top-K documents (default 6)</li><li><code>RETRIEVER_ALPHA</code> — weight for hybrid mode (0..1; default 0.5). Higher values give more influence to embeddings.</li><li><code>EMBEDDINGS_ENABLE</code> — enables hybrid mode (embeddings). <code>true|false</code> (default false)</li><li><code>EMBEDDINGS_PROVIDER</code> — <code>openai|mock</code> (default <code>mock</code> for local run without key)</li><li><code>EMBEDDINGS_MODEL</code> — embedding model (e.g., <code>text-embedding-3-small</code>)</li><li><code>RAG_MAX_CONTEXT_TOKENS</code> — context token budget (default 1200)</li><li><code>AI_MAX_TOKENS</code> — response token limit (default 512)</li><li><code>SEARCH_INDEX_PATH</code>, <code>SEARCH_FTS_TOKENIZER</code>, <code>SEARCH_BATCH_SIZE</code> — index settings (SQLite FTS)</li>
+When using <code>EMBEDDINGS_PROVIDER=openai</code>, a valid <code>OPENAI_API_KEY</code> is required (see AI section in <code>env.example</code>).
+<h3>FTS Tokenizer Switching and Migration</h3><li><code>SEARCH_FTS_TOKENIZER=porter|unicode61</code>. When changing the value, the FTS index will be automatically rebuilt.</li><li>For fast rebuild, a segment cache (<code>segment_cache</code>) is used — normalized text is stored during indexing and applied during <code>documents_fts</code> reconstruction.</li>
+PII masking is configured in <code>src/config/security.ts</code> through <code>SECURITY_PII_*</code> variables.
+<h2>Search Filters and Drive Q&A</h2><li><code>SearchFilters</code> supports <code>fileId?: string[]</code> — you can limit search to specific file(s).</li><li>The <code>Question</code> button in the file card (see <code>src/ui/FileCardBuilder.ts</code> and processing in <code>FileManagerCommand</code>) uses RAG with <code>filters.fileId = [driveFileId]</code>. If RAG is unavailable, the bot takes contextual snippets from <code>SearchIndex</code> with the same filter. Only if the index is unavailable/empty — Google Drive export is executed as a fallback.</li><li>Limits:</li><li><code>RAG_MAX_CONTEXT_TOKENS</code> — context budget for RAG</li><li><code>DRIVE_QA_MAX_TOKENS</code> — response token limit (overrides <code>AI_MAX_TOKENS</code>)</li><li><code>DRIVE_QA_MAX_CONTEXT_CHARS</code> — maximum length of text context from snippets/export</li>
+<h2>Call Examples</h2>
+<pre><code>ts
+const rag = new RagService(searchIndex, aiService);
+const ans = await rag.answer(
+  'What is known about the project?',
+  { k: 6, mode: 'hybrid' },// RetrieverOptions: 'fts' | 'hybrid'
+  { maskPII: true },       // AugmentOptions
+  { maxTokens: 512 },      // GenerateWithContextOptions
+);
+console.log(ans.answer, ans.chunks);
+</code></pre>
+<h2>Tests</h2><li>Unit tests in <code>src/tests/unit/services/</code>:</li><li><code>RagPipeline.test.ts</code>: mock <code>SearchIndex</code> and <code>AIService</code>, check PII masking, Ukrainian prompt, and limits.</li><li><code>RagService.test.ts</code>: integration path through service, check citations and masking.</li>
+<h2>Future Improvements Plan</h2><li>Type-safe <code>getService()</code>/DI and reducing method complexity in commands/router.</li><li>More heuristics for snippet selection (re-ranking, diversity, dedup).</li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\en\QUICK_START.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🚀 Quick Start with Godzilla Bot</a>
+            <a href="pages\en\README.html" class="nav-button">🦖 **DISCORD AI ASSISTANT BOT - GODZILLA** <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

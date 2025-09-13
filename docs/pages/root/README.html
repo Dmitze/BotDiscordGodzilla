@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦖 **DISCORD AI ASSISTANT BOT - GODZILLA** - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🦖 <strong>DISCORD AI ASSISTANT BOT - GODZILLA</strong></h1>
+<strong>Потужний Discord бот з AI функціоналом для Збройних Сил України</strong>
+<a href="https://img.shields.io/badge/version-3.0.0-blue.svg">![Version</a>](https://github.com/Dmitze/BotDiscordGodzilla)
+<a href="https://img.shields.io/badge/license-Godzilla%20Bot%20License%20v3.0-green.svg">![License</a>](../../LICENSE.md)
+<a href="https://img.shields.io/badge/node.js-18+-yellow.svg">![Node.js</a>](https://nodejs.org/)
+<a href="https://img.shields.io/badge/typescript-5.3+-blue.svg">![TypeScript</a>](https://www.typescriptlang.org/)
+---
+<h2>🚀 Key Features</h2>
+<h3>🤖 AI Assistant</h3><ul><li>Natural language document search and analysis</li><li>Context-aware responses with conversation history</li><li>Multi-model support (OpenAI, Ollama)</li><li>RAG-enhanced document retrieval</li>
+<h3>📄 Document Management</h3><li>Google Drive integration with real-time indexing</li><li>Advanced search with hybrid vector/text retrieval</li><li>Document analysis and summarization</li><li>Compliance and audit tracking</li>
+<h3>🎨 Enhanced Discord Experience</h3><li>Rich markdown rendering with syntax highlighting</li><li>Interactive buttons and menus for document navigation</li><li>Thread-based conversations with context preservation</li><li>Multi-language support (primarily Ukrainian)</li>
+<h3>🔧 Automation & Integration</h3><li>n8n workflow automation for document processing</li><li>Scheduled tasks and notifications</li><li>External API integrations (Jira, Trello, Notion)</li><li>Real-time document change monitoring</li>
+---
+<h2>📚 <strong>ДОКУМЕНТАЦІЯ</strong></h2><li><strong><a href="../INDEX.md">🔗 Індекс документації</a></strong> — огляд і швидкі переходи</li><li><strong><a href="../ARCHITECTURE.md">🏗️ Архітектура</a></strong> — карта системи, технології, потоки</li><li><strong><a href="../security/SECURITY_GUIDE.md">🛡️ Безпека</a></strong> — політика і технічні захисти</li><li><strong><a href="../API_OVERVIEW.md">🧩 API та команди</a></strong> — огляд публічних інтерфейсів</li><li><strong><a href="../DEVELOPER_GUIDE.md">🧭 Гайд розробника</a></strong> — як працювати з кодом</li><li><strong><a href="../guides/rag.md">🧠 RAG та пошук</a></strong> — гібридний пошук, embeddings, ENV</li>
+> Примітка: детальні README з підпапок коду переїхали в <code>docs/...</code> з тію самою структурою (див. нижче «README по папках коду»).
+<h2>🎯 <strong>ОСНОВНІ КОМАНДИ</strong></h2>
+<h3><strong>🔍 Пошук та аналіз</strong></h3>
+<pre><code>bash
+/пошук запит:"особовий склад" тип_документа:"накази"
+/розумний-пошук кількість_вище:100 ціна_нижче:1000
+/ai запит:проаналізуй залишки та дай рекомендації
+</code></pre>
+<h3><strong>📄 Управління документами</strong></h3>
+<pre><code>bash
+/документи особовий-склад список
+/документи техніка додати назва:"Танк Т-72"
+/файли завантажити файл:document.pdf
+</code></pre>
+<h3><strong>📊 Аналітика</strong></h3>
+<pre><code>bash
+/статистика
+/аналітика звіт тип:general
+/продуктивність моніторинг
+</code></pre>
+<h3><strong>⚡ Операції</strong></h3>
+<pre><code>bash
+/операції ситуація поточний_стан
+/операції завдання створити опис:"Патрулювання"
+/операції координація зв'язок_з_штабом
+</code></pre>
+<h3><strong>📋 Аналіз документів</strong></h3>
+<pre><code>bash
+/analyze-doc file:"Наказ №123" type:"full"
+/analyze-doc file:"Звіт про постачання" type:"structure"
+/analyze-doc file:"План операції" type:"summary"
+/analyze-doc file:"Договір" type:"actions"
+/analyze-doc file:"Фінансовий звіт" type:"compliance"
+/analyze-doc file:"Протокол" type:"quality"
+</code></pre>
+---
+<h2>🏗️ <strong>АРХІТЕКТУРА</strong></h2>
+<h3><strong>📁 Структура проекту</strong></h3>
+<pre><code>
+src/
+├── commands/          # Команди бота
+├── services/          # Бізнес-логіка
+├── core/             # Ядро системи
+├── config/           # Конфігурація
+├── utils/            # Утиліти
+└── tests/            # Тести
+</code></pre>
+<h3><strong>🔧 Основні компоненти</strong></h3><li><strong>Bot</strong> - головний клас бота</li><li><strong>CommandManager</strong> - управління командами</li><li><strong>ServiceContainer</strong> - контейнер сервісів</li><li><strong>ErrorHandler</strong> - обробка помилок</li><li><strong>EventManager</strong> - управління подіями</li>
+<h3><strong>🛠️ Сервіси</strong></h3><li><strong>AIService</strong> - AI функціональність</li><li><strong>GoogleService</strong> - робота з Google API</li><li><strong>CacheService</strong> - кешування</li><li><strong>MetricsService</strong> - метрики</li><li><strong>SchedulerService</strong> - планувальник</li><li><strong>DocumentAnalysisService</strong> - аналіз документів</li>
+<h3><strong>🧠 Функції аналізу документів</strong></h3><li><strong>Структурний аналіз</strong> - визначення розділів, заголовків, типу документа</li><li><strong>Підсумування</strong> - короткий, середній та детальний опис</li><li><strong>Витяг дій</strong> - завдання, відповідальні особи, терміни</li><li><strong>Генерація питань</strong> - фактичні, аналітичні та оцінювальні запитання</li><li><strong>Перевірка відповідності</strong> - дотримання стандартів та політик</li><li><strong>Переклад</strong> - переклад документів українською мовою</li><li><strong>Оцінка якості</strong> - читабельність, структура, граматика</li><li><strong>Аналіз даних</strong> - витяг числових даних та статистики</li><li><strong>Огляд безпеки</strong> - визначення конфіденційної інформації</li><li><strong>Аналіз змін</strong> - порівняння версій документів</li><li><strong>Прогнозування ефективності</strong> - оцінка сприйняття аудиторією</li><li><strong>Аналіз зацікавлених сторін</strong> - визначення учасників та їх ролей</li><li><strong>Аналіз бюджету</strong> - витрати, джерела фінансування</li><li><strong>Оцінка ризиків</strong> - потенційні загрози та заходи з протидії</li><li><strong>Сегментація аудиторії</strong> - визначення цільових груп</li><li><strong>Хронологічний аналіз</strong> - витяг таймлайнів та подій</li><li><strong>Кластеризація ключових слів</strong> - групування термінів та концепцій</li><li><strong>Візуалізація даних</strong> - рекомендації щодо графіків та діаграм</li><li><strong>Перевірка цитування</strong> - верифікація джерел та посилань</li><li><strong>Аналіз мовного стилю</strong> - оцінка тону та формальності</li><li><strong>Аналіз прогалин</strong> - визначення відсутньої інформації</li><li><strong>Переосмислення вмісту</strong> - ідеї для репурпузингу контенту</li><li><strong>Оцінка доступності</strong> - перевірка відповідності стандартам</li><li><strong>Оптимізація процесів</strong> - вдосконалення описаних процедур</li><li><strong>Персоналізація контенту</strong> - адаптація під різні аудиторії</li><li><strong>Бенчмаркинг</strong> - встановлення показників ефективності</li>
+---
+<h2>🚀 <strong>ЗАПУСК</strong></h2>
+<h3><strong>⚡ Швидкий запуск</strong></h3>
+<pre><code>bash
+<h1>Клонування репозиторію</h1>
+git clone https://github.com/Dmitze/BotDiscordGodzilla.git
+cd BotDiscordGodzilla
+<h1>Встановлення залежностей</h1>
+npm install
+<h1>Налаштування змінних середовища</h1>
+cp .env.example .env
+<h1>Відредагуйте .env файл</h1>
+<h1>Запуск</h1>
+npm run dev
+</code></pre>
+<h3><strong>🐳 Docker запуск</strong></h3>
+<pre><code>
+<h1>Збірка образу</h1>
+docker build -t godzilla-bot .
+<h1>Запуск контейнера</h1>
+docker run -d --name godzilla-bot godzilla-bot
+</code></pre>
+---
+<h2>🔧 <strong>НАЛАШТУВАННЯ</strong></h2>
+<h3><strong>📋 Обов'язкові змінні середовища</strong></h3>
+<pre><code>
+<h1>Discord</h1>
+DISCORD_TOKEN=your_discord_token
+DISCORD_CLIENT_ID=your_client_id
+DISCORD_GUILD_ID=your_guild_id
+<h1>Google</h1>
+GOOGLE_API_KEY=your_google_api_key
+GOOGLE_APP_SCRIPT_URL=your_app_script_url
+<h1>AI</h1>
+<h1>Провайдер AI: ollama (локальна LLM)</h1>
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3
+<h1>Пошук/RAG (уривки, індекси, ембеддінги)</h1>
+SEARCH_INDEX_PATH=.data/search/index.sqlite
+SEARCH_FTS_TOKENIZER=unicode61
+RETRIEVER_K=8
+RETRIEVER_ALPHA=0.7
+EMBEDDINGS_ENABLE=true
+EMBEDDINGS_PROVIDER=local
+EMBEDDINGS_MODEL=nomic-embed-text
+RAG_MAX_CONTEXT_TOKENS=3000
+AI_MAX_TOKENS=1024
+<h1>OpenAI (опційно)</h1>
+OPENAI_API_KEY=your_openai_api_key
+</code></pre>
+<h3><strong>🎯 Рекомендовані налаштування</strong></h3><li><strong>Node.js</strong> 18+ </li><li><strong>RAM</strong> 2GB+</li><li><strong>Discord</strong> Developer Portal налаштування</li><li><strong>Google Cloud</strong> проект</li>
+---
+<h2>📊 <strong>МЕТРИКИ ТА МОНІТОРИНГ</strong></h2>
+<h3><strong>📈 Ключові показники</strong></h3><li><strong>Час відповіді:</strong> < 1.5 секунди</li><li><strong>Доступність:</strong> 99.9%</li><li><strong>Покриття тестами:</strong> 95%+</li><li><strong>Використання пам'яті:</strong> < 500MB</li>
+<h3><strong>🔍 Моніторинг</strong></h3><li><strong>Prometheus</strong> метрики</li><li><strong>Winston</strong> логування</li><li><strong>Health checks</strong> кожні 30 секунд</li><li><strong>Memory monitoring</strong> кожну хвилину</li></ul>
+---
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\root\PROJECT_STATUS_AND_ROADMAP.html" class="nav-button"><i class="fas fa-arrow-left"></i> BotDiscordGodzilla - Project Status and Roadmap</a>
+            <a href="pages\security\README.html" class="nav-button">🔒 **SECURITY - БЕЗПЕКА** <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

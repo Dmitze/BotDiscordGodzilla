@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIDEO_TUTORIAL_GUIDE - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> VIDEO_TUTORIAL_GUIDE</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            п# 🎥 Гід по створенню навчальних відео
+<h2>📋 Огляд</h2>
+Цей документ містить план та сценарії для створення навчальних відео по Discord AI Assistant Bot v2.3.0.
+---
+<h2>🎯 Цільова аудиторія</h2>
+<h3>Основні групи:</h3>
+1. <strong>Адміністратори Discord серверів</strong> - налаштування та управління
+2. <strong>Користувачі бота</strong> - використання команд та функцій
+3. <strong>Розробники</strong> - технічна документація та API
+<h3>Рівні досвіду:</h3><ul><li><strong>Початківці</strong> - базові функції</li><li><strong>Середній рівень</strong> - розширені можливості</li><li><strong>Досвідчені</strong> - технічні деталі</li>
+---
+<h2>📹 План відео-серії</h2>
+<h3>🎬 Серія 1: Знайомство з ботом (5-7 хв)</h3>
+<h4>Відео 1.1: Огляд проекту</h4>
+<strong>Тривалість:</strong> 3-4 хвилини
+<strong>Сценарій:</strong>
+1. <strong>Вступ</strong> (30 сек)<li>Привітання та представлення</li><li>Що таке Discord AI Assistant Bot</li><li>Основні можливості</li>
+2. <strong>Демонстрація інтерфейсу</strong> (1 хв)<li>Discord сервер з ботом</li><li>Основні команди</li><li>Красиві embed повідомлення</li>
+3. <strong>Ключові функції</strong> (1.5 хв)<li>AI-асистент</li><li>Робота з Google Sheets</li><li>Робота з файлами</li><li>Експорт даних</li>
+4. <strong>Висновок</strong> (30 сек)<li>Що буде в наступних відео</li><li>Де знайти документацію</li>
+<strong>Візуальні елементи:</strong><li>Скріншоти Discord</li><li>Анімація команд</li><li>Інфографіка функцій</li>
+---
+<h3>🎬 Серія 2: Налаштування (10-12 хв)</h3>
+<h4>Відео 2.1: Підготовка середовища</h4>
+<strong>Тривалість:</strong> 4-5 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Системні вимоги</strong> (30 сек)<li>Node.js 18+</li><li>Git</li><li>Discord Developer Portal</li>
+2. <strong>Клонування проекту</strong> (1 хв)
+   <pre><code>bash
+   git clone https://github.com/Dmitze/BotDiscordGodzilla.git
+   cd BotDiscordGodzilla
+   npm install
+   </code></pre>
+3. <strong>Налаштування Discord бота</strong> (1.5 хв)<li>Створення додатку в Discord Developer Portal</li><li>Отримання токена</li><li>Налаштування прав</li>
+4. <strong>Налаштування Google API</strong> (1 хв)<li>Google Cloud Console</li><li>Service Account</li><li>API ключі</li>
+<strong>Візуальні елементи:</strong><li>Скріншоти Discord Developer Portal</li><li>Google Cloud Console</li><li>Термінал з командами</li>
+<h4>Відео 2.2: Конфігурація та запуск</h4>
+<strong>Тривалість:</strong> 4-5 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Налаштування .env файлу</strong> (1.5 хв)
+   <pre><code>env
+   DISCORD_TOKEN=your_bot_token
+   GOOGLE_SPREADSHEET_ID=your_spreadsheet_id
+   OPENAI_API_KEY=your_openai_key
+   </code></pre>
+2. <strong>Створення ролей Discord</strong> (1 хв)<li>Адміністратор</li><li>Бот-Користувач</li><li>Sheets-Доступ</li><li>AI-Доступ</li>
+3. <strong>Deploy команд</strong> (1 хв)
+   <pre><code>bash
+   npm run deploy
+   </code></pre>
+4. <strong>Запуск бота</strong> (1 хв)
+   <pre><code>bash
+   npm start
+   </code></pre>
+5. <strong>Перевірка роботи</strong> (30 сек)<li>Тест команди <code>/допомога</code></li><li>Перевірка статусу</li>
+<strong>Візуальні елементи:</strong><li>Редактор коду з .env файлом</li><li>Discord сервер з ролями</li><li>Термінал з логами</li>
+---
+<h3>🎬 Серія 3: Основні команди (15-18 хв)</h3>
+<h4>Відео 3.1: Команди пошуку</h4>
+<strong>Тривалість:</strong> 5-6 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Команда /залишки</strong> (1 хв)<li>Показ підсумкових значень</li><li>Приклад використання</li>
+2. <strong>Команда /оновити</strong> (1 хв)<li>Останні записи</li><li>Навігація</li>
+3. <strong>Команда /пошук</strong> (2 хв)<li>Пошук за полями</li><li>Приклади запитів:</li>
+     <pre><code>
+     /пошук поле:найменування запит:iPhone
+     /пошук поле:контрагент запит:Apple
+     </code></pre>
+4. <strong>Команда /розумний-пошук</strong> (1.5 хв)<li>Пошук за кількома критеріями</li><li>Фільтри по ціні та кількості</li>
+<strong>Візуальні елементи:</strong><li>Discord з командами</li><li>Результати пошуку</li><li>Красиві embed повідомлення</li>
+<h4>Відео 3.2: AI-функції</h4>
+<strong>Тривалість:</strong> 6-7 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Команда /ai</strong> (3 хв)<li>Природномовні запити</li><li>Приклади:</li>
+     <pre><code>
+     /ai запит:знайди товари iPhone
+     /ai запит:проаналізуй залишки
+     /ai запит:створіть звіт по продажах
+     </code></pre>
+2. <strong>Контекстна пам'ять</strong> (1.5 хв)<li>Бот пам'ятає розмову</li><li>Продовження контексту</li>
+3. <strong>AI-аналіз даних</strong> (1.5 хв)<li>Автоматичний аналіз</li><li>Рекомендації</li>
+<strong>Візуальні елементи:</strong><li>AI відповіді</li><li>Контекстні розмови</li><li>Аналітичні звіти</li>
+<h4>Відео 3.3: Робота з файлами</h4>
+<strong>Тривалість:</strong> 5-6 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Команда /файли пошук</strong> (1.5 хв)<li>Пошук файлів в Google Drive</li><li>Фільтрація по типах</li>
+2. <strong>Команда /файли читати</strong> (1.5 хв)<li>Читання PDF, Word, Google Docs</li><li>Відображення вмісту</li>
+3. <strong>Команда /файли аналіз</strong> (1.5 хв)<li>AI-аналіз файлів</li><li>Типи аналізу</li>
+4. <strong>Команда /файли звіт</strong> (1 хв)<li>Створення звітів</li><li>Формати експорту</li>
+<strong>Візуальні елементи:</strong><li>Google Drive</li><li>Файли різних форматів</li><li>Згенеровані звіти</li>
+---
+<h3>🎬 Серія 4: Розширені можливості (12-15 хв)</h3>
+<h4>Відео 4.1: Експорт та звіти</h4>
+<strong>Тривалість:</strong> 5-6 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Команда /пошук-експортовано</strong> (2 хв)<li>Експорт в Excel</li><li>Включення метаданих</li>
+2. <strong>Формати експорту</strong> (1.5 хв)<li>Excel (.xlsx)</li><li>CSV</li><li>PDF</li><li>DOCX</li>
+3. <strong>Налаштування експорту</strong> (1.5 хв)<li>Вибір полів</li><li>Фільтрація даних</li>
+<strong>Візуальні елементи:</strong><li>Експортовані файли</li><li>Налаштування експорту</li><li>Різні формати</li>
+<h4>Відео 4.2: Адміністративні функції</h4>
+<strong>Тривалість:</strong> 5-6 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Команда /статистика</strong> (2 хв)<li>Статистика використання</li><li>Метрики продуктивності</li>
+2. <strong>Команда /очистити-кеш</strong> (1.5 хв)<li>Типи кешу</li><li>Очищення даних</li>
+3. <strong>Команда /допомога</strong> (1.5 хв)<li>Категорії команд</li><li>Навігація по довідці</li>
+<strong>Візуальні елементи:</strong><li>Статистичні дашборди</li><li>Кеш-менеджер</li><li>Інтерактивна довідка</li>
+<h4>Відео 4.3: Безпека та права доступу</h4>
+<strong>Тривалість:</strong> 4-5 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Система ролей</strong> (2 хв)<li>Ролі та права</li><li>Налаштування доступу</li>
+2. <strong>Rate limiting</strong> (1.5 хв)<li>Обмеження запитів</li><li>Повідомлення про ліміти</li>
+3. <strong>Логування безпеки</strong> (1 хв)<li>Події безпеки</li><li>Моніторинг</li>
+<strong>Візуальні елементи:</strong><li>Налаштування ролей Discord</li><li>Rate limiting повідомлення</li><li>Логи безпеки</li>
+---
+<h3>🎬 Серія 5: Технічна документація (20-25 хв)</h3>
+<h4>Відео 5.1: Архітектура системи</h4>
+<strong>Тривалість:</strong> 8-10 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Загальна архітектура</strong> (2 хв)<li>Компоненти системи</li><li>Взаємодія модулів</li>
+2. <strong>Discord.js інтеграція</strong> (2 хв)<li>Slash команди</li><li>Обробка подій</li>
+3. <strong>Google API інтеграція</strong> (2 хв)<li>Sheets API</li><li>Drive API</li>
+4. <strong>AI інтеграція</strong> (2 хв)<li>OpenAI API</li><li>Ollama fallback</li>
+5. <strong>Кешування та метрики</strong> (2 хв)<li>Redis кеш</li><li>Prometheus метрики</li>
+<strong>Візуальні елементи:</strong><li>Діаграми архітектури</li><li>Код приклади</li><li>Схеми взаємодії</li>
+<h4>Відео 5.2: Розробка та тестування</h4>
+<strong>Тривалість:</strong> 8-10 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Структура проекту</strong> (2 хв)<li>Організація файлів</li><li>Модульна архітектура</li>
+2. <strong>Додавання нових команд</strong> (3 хв)<li>Створення команди</li><li>Інтеграція з системою</li>
+3. <strong>Тестування</strong> (2 хв)
+   <pre><code>bash
+   npm run test:comprehensive
+   npm run test:commands
+   npm run test:load
+   </code></pre>
+4. <strong>Deploy та моніторинг</strong> (1 хв)<li>Розгортання</li><li>Моніторинг продуктивності</li>
+<strong>Візуальні елементи:</strong><li>Структура папок</li><li>Код приклади</li><li>Результати тестів</li>
+<h4>Відео 5.3: Docker та масштабування</h4>
+<strong>Тривалість:</strong> 6-8 хвилин
+<strong>Сценарій:</strong>
+1. <strong>Docker розгортання</strong> (3 хв)
+   <pre><code>bash
+   npm run docker:build
+   npm run docker:compose
+   </code></pre>
+2. <strong>Масштабування</strong> (2 хв)<li>Кластеризація</li><li>Load balancing</li>
+3. <strong>Моніторинг</strong> (1.5 хв)<li>Prometheus метрики</li><li>Grafana дашборди</li>
+<strong>Візуальні елементи:</strong><li>Docker контейнери</li><li>Метрики продуктивності</li><li>Дашборди моніторингу</li>
+---
+<h2>🎬 Технічні вимоги</h2>
+<h3>Оборудовання:</h3><li><strong>Камера:</strong> Full HD (1920x1080) або вище</li><li><strong>Мікрофон:</strong> Якісний з шумопоглинанням</li><li><strong>Програма запису:</strong> OBS Studio, Camtasia, або подібна</li><li><strong>Редактор:</strong> DaVinci Resolve, Adobe Premiere, або подібний</li>
+<h3>Налаштування запису:</h3><li><strong>Роздільна здатність:</strong> 1920x1080</li><li><strong>Частота кадрів:</strong> 30 FPS</li><li><strong>Бітрейт:</strong> 5000-8000 kbps</li><li><strong>Формат:</strong> MP4 (H.264)</li>
+<h3>Програми для демонстрації:</h3><li><strong>Discord Desktop</strong> - для показу бота</li><li><strong>VS Code</strong> - для коду</li><li><strong>Термінал</strong> - для команд</li><li><strong>Браузер</strong> - для Google API</li>
+---
+<h2>📝 Сценарії та текст</h2>
+<h3>Загальні принципи:</h3>
+1. <strong>Чіткість</strong> - говорити повільно та зрозуміло
+2. <strong>Структурованість</strong> - логічна послідовність
+3. <strong>Практичність</strong> - реальні приклади
+4. <strong>Інтерактивність</strong> - залучення глядачів
+<h3>Структура кожного відео:</h3>
+1. <strong>Вступ</strong> (10-15 сек)<li>Привітання</li><li>Тема відео</li><li>Що буде розглянуто</li>
+2. <strong>Основна частина</strong> (80-85% часу)<li>Демонстрація функцій</li><li>Пояснення коду</li><li>Практичні приклади</li>
+3. <strong>Висновок</strong> (10-15 сек)<li>Підсумок</li><li>Наступне відео</li><li>Корисні посилання</li>
+---
+<h2>🎨 Візуальні елементи</h2>
+<h3>Графічні елементи:</h3><li><strong>Логотип проекту</strong> - в інтро та аутро</li><li><strong>Інфографіка</strong> - для пояснення концепцій</li><li><strong>Діаграми</strong> - архітектура та процеси</li><li><strong>Іконки</strong> - для навігації</li>
+<h3>Кольорова схема:</h3><li><strong>Основний колір:</strong> #5865F2 (Discord Blue)</li><li><strong>Додатковий:</strong> #57F287 (Discord Green)</li><li><strong>Акцентний:</strong> #FEE75C (Discord Yellow)</li><li><strong>Фон:</strong> #2C2F33 (Discord Dark)</li>
+<h3>Шрифти:</h3><li><strong>Заголовки:</strong> Inter Bold</li><li><strong>Основний текст:</strong> Inter Regular</li><li><strong>Код:</strong> JetBrains Mono</li>
+---
+<h2>📊 Метрики успіху</h2>
+<h3>Кількісні показники:</h3><li><strong>Перегляди</strong> - мінімум 1000 на відео</li><li><strong>Тривалість перегляду</strong> - мінімум 60%</li><li><strong>Лайки</strong> - мінімум 80% від переглядів</li><li><strong>Коментарі</strong> - активна дискусія</li>
+<h3>Якісні показники:</h3><li><strong>Зрозумілість</strong> - відгуки про ясність пояснень</li><li><strong>Корисність</strong> - практичне застосування</li><li><strong>Технічна якість</strong> - якість запису та монтажу</li>
+---
+<h2>🚀 План випуску</h2>
+<h3>Тиждень 1:</h3><li>[ ] Відео 1.1: Огляд проекту</li><li>[ ] Відео 2.1: Підготовка середовища</li>
+<h3>Тиждень 2:</h3><li>[ ] Відео 2.2: Конфігурація та запуск</li><li>[ ] Відео 3.1: Команди пошуку</li>
+<h3>Тиждень 3:</h3><li>[ ] Відео 3.2: AI-функції</li><li>[ ] Відео 3.3: Робота з файлами</li>
+<h3>Тиждень 4:</h3><li>[ ] Відео 4.1: Експорт та звіти</li><li>[ ] Відео 4.2: Адміністративні функції</li>
+<h3>Тиждень 5:</h3><li>[ ] Відео 4.3: Безпека та права доступу</li><li>[ ] Відео 5.1: Архітектура системи</li>
+<h3>Тиждень 6:</h3><li>[ ] Відео 5.2: Розробка та тестування</li><li>[ ] Відео 5.3: Docker та масштабування</li>
+---
+<h2>📚 Додаткові матеріали</h2>
+<h3>Для кожного відео:</h3><li><strong>Субтитри</strong> - українською та англійською</li><li><strong>Тайм-коди</strong> - для навігації</li><li><strong>Посилання</strong> - на документацію та ресурси</li><li><strong>Чат-бот</strong> - для відповідей на питання</li>
+<h3>Платформи для розповсюдження:</h3><li><strong>YouTube</strong> - основна платформа</li><li><strong>Discord</strong> - спільнота розробників</li><li><strong>GitHub</strong> - README з посиланнями</li><li><strong>LinkedIn</strong> - професійна мережа</li>
+---
+<h2>🎯 Висновок</h2>
+Цей гід забезпечує повне покриття всіх аспектів Discord AI Assistant Bot v2.3.0 через навчальні відео. Серія розрахована на різні рівні досвіду та забезпечує як практичні навички, так і технічне розуміння.
+<strong>Ключові переваги:</strong><li>✅ Систематичний підхід до навчання</li><li>✅ Практичні приклади</li><li>✅ Технічна глибина</li><li>✅ Візуальна якість</li><li>✅ Масштабованість</li></ul>
+---
+_Створено для Discord AI Assistant Bot v2.3.0_
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\USAGE_GUIDE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📚 Гід по використанню Discord AI Assistant Bot</a>
+            <a href="pages\helpers\README.html" class="nav-button">🛠️ **HELPERS - ДОПОМІЖНІ ФУНКЦІЇ** <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

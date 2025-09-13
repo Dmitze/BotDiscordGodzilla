@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG (Retrieval-Augmented Generation) у BotDiscordGodzilla - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> RAG (Retrieval-Augmented Generation) у BotDiscordGodzilla</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>RAG (Retrieval-Augmented Generation) у BotDiscordGodzilla</h1>
+У цьому гіді описано, як увімкнути та використовувати RAG-пайплайн: Retriever → Augmenter → Generator.
+<h2>Компоненти</h2><ul><li><strong>Retriever</strong> (<code>src/rag/Retriever.ts</code>): дістає релевантні документи з <code>SearchIndex</code>.</li>
+  Підтримуються режими: <code>fts</code> (за замовчуванням) та <code>hybrid</code> (FTS + ембеддінги з косинусною схожістю).<li><strong>Augmenter</strong> (<code>src/rag/Augmenter.ts</code>): формує контекстні уривки, дотримується ліміту токенів, застосовує PII-маскування.</li><li><strong>RagPipeline</strong> (<code>src/rag/RagPipeline.ts</code>): збирає промпт українською з джерелами та викликає <code>AIService</code>.</li><li><strong>RagService</strong> (<code>src/services/RagService.ts</code>): сервіс-обгортка для використання у командах і чаті.</li>
+> Security: усі кнопки/селекти у UI використовують підписані <code>customId</code> (HMAC + TTL) для захисту від підміни та повторного відтворення. Деталі у <code>docs/guides/SECURITY.md</code>.
+<h2>Інтеграція</h2><li><strong>/ai</strong> (<code>src/commands/aiAssistant.ts</code>): спершу намагається <code>RagService</code>, інакше — звичайний <code>AIService</code>.</li><li><strong>Чат QnA</strong> (<code>src/chat/ChatRouter.ts</code> → <code>replyQna()</code>): відповідає через RAG з цитуванням джерел.</li>
+<h2>Змінні середовища</h2>
+Додайте до <code>.env</code> (див. приклад у <code>env.example</code>):<li><code>RETRIEVER_K</code> — top‑K документів (дефолт 6)</li><li><code>RETRIEVER_ALPHA</code> — вага для гібридного режиму (0..1; дефолт 0.5). Чим більше — тим більший вплив ембеддінгів.</li><li><code>EMBEDDINGS_ENABLE</code> — вмикає гібридний режим (ембеддінги). <code>true|false</code> (дефолт false)</li><li><code>EMBEDDINGS_PROVIDER</code> — <code>openai|mock</code> (дефолт <code>mock</code> для локального запуску без ключа)</li><li><code>EMBEDDINGS_MODEL</code> — модель ембеддінгів (наприклад, <code>text-embedding-3-small</code>)</li><li><code>RAG_MAX_CONTEXT_TOKENS</code> — бюджет токенів для контексту (дефолт 1200)</li><li><code>AI_MAX_TOKENS</code> — обмеження токенів відповіді (дефолт 512)</li><li><code>SEARCH_INDEX_PATH</code>, <code>SEARCH_FTS_TOKENIZER</code>, <code>SEARCH_BATCH_SIZE</code> — налаштування індексу (SQLite FTS)</li>
+За використання <code>EMBEDDINGS_PROVIDER=openai</code> потрібен дійсний <code>OPENAI_API_KEY</code> (див. розділ AI у <code>env.example</code>).
+<h3>Перемикання токенайзера FTS і міграції</h3><li><code>SEARCH_FTS_TOKENIZER=porter|unicode61</code>. Під час зміни значення індекс FTS буде автоматично перебудовано.</li><li>Для швидкої перебудови використовується кеш сегментів (<code>segment_cache</code>) — нормалізований текст зберігається під час індексації та застосовується під час реконструкції <code>documents_fts</code>.</li>
+PII-маскування налаштовується у <code>src/config/security.ts</code> через <code>SECURITY_PII_*</code> змінні.
+<h2>Фільтри пошуку та Drive Q&A</h2><li><code>SearchFilters</code> підтримує <code>fileId?: string[]</code> — можна обмежити пошук конкретним(и) файлом(ами).</li><li>Кнопка <code>Question</code> у картці файлу (див. <code>src/ui/FileCardBuilder.ts</code> та обробку в <code>FileManagerCommand</code>) використовує RAG із <code>filters.fileId = [driveFileId]</code>. Якщо RAG недоступний, бот бере контекстні уривки зі <code>SearchIndex</code> тим самим фільтром. Лише якщо індекс недоступний/порожній — виконується експорт Google Drive як запасний шлях.</li><li>Ліміти:</li><li><code>RAG_MAX_CONTEXT_TOKENS</code> — бюджет контексту для RAG</li><li><code>DRIVE_QA_MAX_TOKENS</code> — ліміт токенів відповіді (override <code>AI_MAX_TOKENS</code>)</li><li><code>DRIVE_QA_MAX_CONTEXT_CHARS</code> — максимальна довжина текстового контексту зі сніпетів/експорту</li>
+<h2>Приклади викликів</h2>
+<pre><code>ts
+const rag = new RagService(searchIndex, aiService);
+const ans = await rag.answer(
+  'Що відомо про проект?',
+  { k: 6, mode: 'hybrid' },// RetrieverOptions: 'fts' | 'hybrid'
+  { maskPII: true },       // AugmentOptions
+  { maxTokens: 512 },      // GenerateWithContextOptions
+);
+console.log(ans.answer, ans.chunks);
+</code></pre>
+<h2>Тести</h2><li>Юніт-тести у <code>src/tests/unit/services/</code>:</li><li><code>RagPipeline.test.ts</code>: мок <code>SearchIndex</code> і <code>AIService</code>, перевірка PII-маскування, укр. промпту та лімітів.</li><li><code>RagService.test.ts</code>: інтеграційний шлях через сервіс, перевірка цитувань і маскування.</li>
+<h2>План подальших покращень</h2><li>Типобезпечний <code>getService()</code>/DI та зниження складності методів у командах/роутері.</li><li>Більше евристик для відбору уривків (re-ranking, diversity, dedup).</li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\QUICK_START.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🚀 Швидкий старт з Godzilla Bot</a>
+            <a href="pages\guides\README.html" class="nav-button">📚 **GUIDES - ГАЙДИ ТА ІНСТРУКЦІЇ** <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

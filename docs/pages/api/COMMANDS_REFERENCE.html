@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📋 Повний список команд Discord Bot з AI - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📋 Повний список команд Discord Bot з AI</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📋 Повний список команд Discord Bot з AI</h1>
+<h2>🤖 AI-команди (нові)</h2>
+<h3><code>/ai-аналіз</code></h3>
+<strong>Опис:</strong> Автоматичний AI-аналіз даних з таблиці
+<strong>Використання:</strong> <code>/ai-аналіз</code>
+<strong>Результат:</strong> Статистика, тренди, аномалії, рекомендації
+<h3><code>/ai-пошук [запит]</code></h3>
+<strong>Опис:</strong> Природномовний пошук за допомогою AI
+<strong>Використання:</strong> <code>/ai-пошук запит:покажи товари дешевше 1000 грн</code>
+<strong>Приклади:</strong><ul><li><code>/ai-пошук запит:знайди товари від постачальника "Компанія А"</code></li><li><code>/ai-пошук запит:покажи товари з кількістю більше 10</code></li><li><code>/ai-пошук запит:знайди найдорожчі товари</code></li>
+<h3><code>/ai-рекомендації</code></h3>
+<strong>Опис:</strong> AI-рекомендації на основі даних
+<strong>Використання:</strong> <code>/ai-рекомендації</code>
+<strong>Результат:</strong> Поради по оптимізації, покращенню ефективності
+<h3><code>/ai-звіт [тип]</code></h3>
+<strong>Опис:</strong> Створює розумний звіт
+<strong>Використання:</strong> <code>/ai-звіт тип:general</code>
+<strong>Типи звітів:</strong><li><code>general</code> - загальний звіт</li><li><code>inventory</code> - звіт по залишках</li><li><code>sales</code> - звіт по продажах</li><li><code>suppliers</code> - звіт по постачальниках</li>
+<h2>📊 Основні команди (існуючі)</h2>
+<h3><code>/залишки</code></h3>
+<strong>Опис:</strong> Показує підсумкові значення з таблиці
+<strong>Використання:</strong> <code>/залишки</code>
+<strong>Результат:</strong> Загальна вартість, кількість, ціна
+<h3><code>/оновити</code></h3>
+<strong>Опис:</strong> Показує останні 10 записів з таблиці
+<strong>Використання:</strong> <code>/оновити</code>
+<strong>Результат:</strong> Останні записи з таблиці
+<h3><code>/пошук [поле] [запит]</code></h3>
+<strong>Опис:</strong> Пошук за полями таблиці
+<strong>Використання:</strong> <code>/пошук поле:назва запит:стол</code>
+<strong>Поля для пошуку:</strong><li><code>назва</code> - Найменування</li><li><code>серія</code> - Серійний номер</li><li><code>контрагент</code> - Контрагент</li><li><code>кількість</code> - Кількість</li><li><code>ціна</code> - Ціна</li>
+<h3><code>/розумний-пошук</code></h3>
+<strong>Опис:</strong> Пошук за кількома полями
+<strong>Використання:</strong> <code>/розумний-пошук номенклатура:стол контрагент:Компанія А</code>
+<strong>Параметри:</strong><li><code>номенклатура</code> - Шукати за назвою товару</li><li><code>контрагент</code> - Шукати за контрагентом</li><li><code>серія</code> - Шукати за серійним номером</li><li><code>ціна_вище</code> - Показувати товари дорожче цього значення</li><li><code>кількість_вище</code> - Показувати товари з кількістю більше</li>
+<h3><code>/пошук-експортовано [поле] [запит]</code></h3>
+<strong>Опис:</strong> Експортує результати пошуку в Excel
+<strong>Використання:</strong> <code>/пошук-експортовано поле:назва запит:стол</code>
+<strong>Результат:</strong> Файл Excel з результатами пошуку
+<h3><code>/експорт</code></h3>
+<strong>Опис:</strong> Експортує всю таблицю в Excel
+<strong>Використання:</strong> <code>/експорт</code>
+<strong>Результат:</strong> Файл Excel з усією таблицею
+<h3><code>/help</code></h3>
+<strong>Опис:</strong> Показує список усіх доступних команд
+<strong>Використання:</strong> <code>/help</code>
+<strong>Результат:</strong> Список команд з описом
+<h2>💬 Текстові команди (існуючі)</h2>
+<h3><code>!додати [назва] [кількість]</code></h3>
+<strong>Опис:</strong> Додає новий запис через Google Apps Script
+<strong>Використання:</strong> <code>!додати Стол 5</code>
+<strong>Результат:</strong> Новий запис додано до таблиці
+<h3><code>!експорт</code></h3>
+<strong>Опис:</strong> Експортується вся таблиця
+<strong>Використання:</strong> <code>!експорт</code>
+<strong>Результат:</strong> Файл Excel з усією таблицею
+<h2>🎯 Приклади використання</h2>
+<h3>AI-пошук (найкорисніші приклади):</h3>
+<pre><code>
+/ai-пошук запит:покажи товари дешевше 1000 грн
+/ai-пошук запит:знайди товари від постачальника "ООО Рога і Копита"
+/ai-пошук запит:покажи товари з кількістю більше 10
+/ai-пошук запит:знайди найдорожчі товари
+/ai-пошук запит:покажи товари з назвою що містить "компьютер"
+/ai-пошук запит:знайди товари з серійним номером що починається з "SN"
+</code></pre>
+<h3>Комбінований пошук:</h3>
+<pre><code>
+/ai-пошук запит:покажи товари дешевше 500 грн з кількістю більше 5
+/ai-пошук запит:знайди товари від постачальника "Компанія А" з ціною вище 2000
+</code></pre>
+<h3>Звичайний пошук:</h3>
+<pre><code>
+/пошук поле:назва запит:стол
+/пошук поле:контрагент запит:Компанія А
+/пошук поле:ціна запит:1000
+</code></pre>
+<h3>Розумний пошук:</h3>
+<pre><code>
+/розумний-пошук номенклатура:стол ціна_вище:500
+/розумний-пошук контрагент:Компанія А кількість_вище:10
+</code></pre>
+<h2>📊 AI-звіти (приклади)</h2>
+<h3>Загальний звіт:</h3>
+<pre><code>
+/ai-звіт тип:general
+</code></pre>
+<h3>Звіт по залишках:</h3>
+<pre><code>
+/ai-звіт тип:inventory
+</code></pre>
+<h3>Звіт по продажах:</h3>
+<pre><code>
+/ai-звіт тип:sales
+</code></pre>
+<h3>Звіт по постачальниках:</h3>
+<pre><code>
+/ai-звіт тип:suppliers
+</code></pre>
+<h2>🔧 Технічні деталі</h2>
+<h3>Обмеження:</h3><li>AI-пошук: максимум 20 результатів</li><li>AI-аналіз: перші 50 рядків даних</li><li>Експорт файлів: автоматичне видалення через 10 секунд</li>
+<h3>Вимоги:</h3><li>OpenAI API ключ для AI-функцій</li><li>Google Sheets API для роботи з таблицями</li><li>Discord Bot Token для роботи бота</li>
+<h3>Кешування:</h3><li>Результати пошуку кешуються на 5 хвилин</li><li>Можна експортувати кешовані результати</li></ul>
+<h2>🆘 Допомога</h2>
+<h3>Якщо команди не працюють:</h3>
+1. Перевірте права бота на сервері
+2. Переконайтеся, що всі API ключі налаштовані
+3. Перевірте логи в папці <code>logs/</code>
+<h3>Для AI-функцій:</h3>
+1. Переконайтеся, що є OpenAI API ключ
+2. Запустіть тест: <code>node test-ai.js</code>
+3. Перевірте баланс на OpenAI рахунку
+<h3>Для Google Sheets:</h3>
+1. Перевірте доступ до таблиці
+2. Переконайтеся, що Google Sheets API увімкнено
+3. Перевірте правильність SHEET_ID
+---
+<strong>💡 Порада:</strong> Почніть з команди <code>/help</code> для ознайомлення з усіма можливостями бота! 
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\api\API_DOCUMENTATION.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📚 API Документація Discord AI Assistant Bot</a>
+            <a href="pages\api\README.html" class="nav-button">⚠️ ЗАСТАРІЛО: API-документація (папка `docs/api/`) <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

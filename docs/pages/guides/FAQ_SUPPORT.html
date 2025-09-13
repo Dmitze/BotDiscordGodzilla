@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>❓ FAQ та Підтримка Godzilla Bot - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> ❓ FAQ та Підтримка Godzilla Bot</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>❓ FAQ та Підтримка Godzilla Bot</h1>
+<h2>📋 Зміст</h2><ul><li><a href="#-поширені-проблеми">🔧 Поширені проблеми</a></li><li><a href="#-часті-питання">❓ Часті питання</a></li><li><a href="#-нові-можливості">🚀 Нові можливості</a></li><li><a href="#-безпека-та-доступ">🔒 Безпека та доступ</a></li><li><a href="#-вирішення-помилок">🚨 Вирішення помилок</a></li><li><a href="#-контакти-підтримки">📞 Контакти підтримки</a></li><li><a href="#-корисні-ресурси">📚 Корисні ресурси</a></li>
+---
+<h2>🔧 Поширені проблеми</h2>
+<h3>🤖 Бот не відповідає</h3>
+<strong>Симптоми:</strong><li>Бот не реагує на команди</li><li>Повідомлення "Interaction failed" або "Interaction has already been acknowledged"</li><li>Бот офлайн або не відповідає</li>
+<strong>Рішення:</strong>
+1. <strong>Перевірте статус бота:</strong>
+   <pre><code>bash
+   # Перевірка статусу процесу
+   npm run status
+   # Перегляд логів у реальному часі
+   npm run logs
+   </code></pre>
+2. <strong>Перезапустіть сервіс:</strong>
+   <pre><code>bash
+   # Звичайний перезапуск
+   npm restart
+   # Повний перезапуск з очищенням кешу
+   npm run rebuild
+   </code></pre>
+3. <strong>Перевірка прав:</strong><li>Переконайтеся, що бот має необхідні дозволи на сервері</li><li>Перевірте налаштування ролей та каналів</li><li>Переконайтеся, що бот доданий на сервер з правильними scope</li>
+4. <strong>Перевірка підключення:</strong><li>Переконайтеся, що сервер має вихід в інтернет</li><li>Перевірте налаштування фаєрволу</li><li>Спробуйте вимкнути VPN, якщо використовується</li>
+<h3>🔍 Команди не працюють або не завантажуються</h3>
+<strong>Симптоми:</strong><li>Команди не з'являються в списку</li><li>"Unknown interaction" помилка</li><li>Команди не реєструються</li>
+<strong>Рішення:</strong>
+1. <strong>Deploy команди:</strong>
+   <pre><code>bash
+   npm run deploy
+   </code></pre>
+2. <strong>Перевірте конфігурацію:</strong>
+   <pre><code>env
+   DISCORD_TOKEN=your_bot_token
+   DISCORD_CLIENT_ID=your_client_id
+   DISCORD_GUILD_ID=your_guild_id
+   </code></pre>
+3. <strong>Перевірте права бота:</strong><li><code>applications.commands</code> scope</li><li><code>bot</code> scope</li><li>Необхідні permissions</li>
+<h3>📊 Google Sheets не працює</h3>
+<strong>Симптоми:</strong><li>"Google Sheets API error"</li><li>"Permission denied"</li><li>Дані не завантажуються</li>
+<strong>Рішення:</strong>
+1. <strong>Перевірте Service Account:</strong><li>Файл <code>google-credentials.json</code> існує</li><li>Email сервісного акаунта має доступ до таблиці</li>
+2. <strong>Перевірте налаштування:</strong>
+   <pre><code>env
+   GOOGLE_SPREADSHEET_ID=your_spreadsheet_id
+   GOOGLE_APPLICATION_CREDENTIALS=./google-credentials.json
+   </code></pre>
+3. <strong>Надайте доступ до таблиці:</strong><li>Відкрийте Google Sheets</li><li>Натисніть "Надати доступ"</li><li>Додайте email сервісного акаунта</li>
+<h3>🤖 AI не працює</h3>
+<strong>Симптоми:</strong><li>"AI service unavailable"</li><li>"OpenAI API error"</li><li>AI не відповідає</li>
+<strong>Рішення:</strong>
+1. <strong>Перевірте API ключі:</strong>
+   <pre><code>env
+   OPENAI_API_KEY=your_openai_key
+   OLLAMA_HOST=http://localhost:11434
+   </code></pre>
+2. <strong>Перевірте Ollama:</strong>
+   <pre><code>bash
+   # Запуск Ollama
+   ollama serve
+   # Перевірка моделей
+   ollama list
+   </code></pre>
+3. <strong>Перевірте мережу:</strong><li>Доступ до OpenAI API</li><li>Локальний доступ до Ollama</li>
+---
+<h2>❓ Часті питання</h2>
+<h3>🤔 Як налаштувати бота?</h3>
+<strong>Відповідь:</strong>
+1. Клонуйте репозиторій
+2. Встановіть залежності: <code>npm install</code>
+3. Скопіюйте <code>.env.example</code> в <code>.env</code>
+4. Налаштуйте змінні середовища
+5. Deploy команди: <code>npm run deploy</code>
+6. Запустіть бота: <code>npm start</code>
+<strong>Детальна інструкція:</strong> <a href="SETUP.md">SETUP.md</a>
+<h3>🤔 Які команди доступні?</h3>
+<strong>Відповідь:</strong><li><code>/залишки</code> - підсумкові значення</li><li><code>/оновити</code> - останні записи</li><li><code>/пошук</code> - пошук за полями</li><li><code>/розумний-пошук</code> - розширений пошук</li><li><code>/ai</code> - AI-асистент</li><li><code>/файли</code> - робота з файлами</li><li><code>/статистика</code> - статистика бота</li><li><code>/допомога</code> - довідка</li>
+<strong>Повний список:</strong> <a href="COMMANDS_REFERENCE.md">COMMANDS_REFERENCE.md</a>
+<h3>🤔 Як використовувати AI-функції?</h3>
+<strong>Відповідь:</strong>
+<pre><code>
+/ai запит:знайди товари iPhone
+/ai запит:проаналізуй залишки
+/ai запит:створіть звіт по продажах
+</code></pre>
+<strong>Приклади:</strong> <a href="AI_EXAMPLES.md">AI_EXAMPLES.md</a>
+<h3>🤔 Як експортувати дані?</h3>
+<strong>Відповідь:</strong>
+1. Виконайте пошук
+2. Використайте команду <code>/пошук-експортовано</code>
+3. Завантажте Excel файл
+<strong>Підтримувані формати:</strong> Excel (.xlsx), CSV, PDF, DOCX
+<h3>🤔 Як налаштувати права доступу?</h3>
+<strong>Відповідь:</strong>
+1. Створіть ролі на Discord сервері:<li><code>Адміністратор</code></li><li><code>Бот-Користувач</code></li><li><code>Sheets-Доступ</code></li><li><code>AI-Доступ</code></li><li><code>Експорт-Доступ</code></li>
+2. Призначте ролі користувачам
+3. Налаштуйте права в конфігурації
+<strong>Деталі:</strong> <a href="SECURITY_GUIDE.md">SECURITY_GUIDE.md</a>
+<h3>🤔 Як підвищити продуктивність?</h3>
+<strong>Відповідь:</strong>
+1. Налаштуйте Redis кешування
+2. Оптимізуйте запити до Google Sheets
+3. Використовуйте rate limiting
+4. Регулярно очищайте кеш: <code>/очистити-кеш</code>
+<h3>🤔 Як додати нові команди?</h3>
+<strong>Відповідь:</strong>
+1. Створіть файл в папці <code>commands/</code>
+2. Додайте команду в <code>deploy-commands.js</code>
+3. Інтегруйте в <code>index.js</code>
+4. Deploy команди: <code>npm run deploy</code>
+<strong>Приклад:</strong> <a href="ARCHITECTURE.md">ARCHITECTURE.md</a>
+---
+<h2>🚨 Вирішення помилок</h2>
+<h3>❌ "Interaction failed"</h3>
+<strong>Причина:</strong> Помилка обробки команди
+<strong>Рішення:</strong>
+1. Перевірте логи: <code>tail -f logs/bot.log</code>
+2. Перевірте конфігурацію
+3. Перезапустіть бота
+<h3>❌ "Rate limit exceeded"</h3>
+<strong>Причина:</strong> Перевищено ліміт запитів
+<strong>Рішення:</strong>
+1. Дочекайтеся скидання ліміту
+2. Зменшіть частоту запитів
+3. Налаштуйте rate limiting
+<h3>❌ "Permission denied"</h3>
+<strong>Причина:</strong> Недостатньо прав
+<strong>Рішення:</strong>
+1. Перевірте ролі користувача
+2. Налаштуйте права доступу
+3. Зверніться до адміністратора
+<h3>❌ "Google Sheets API error"</h3>
+<strong>Причина:</strong> Проблема з Google API
+<strong>Рішення:</strong>
+1. Перевірте Service Account
+2. Перевірте права доступу до таблиці
+3. Перевірте API квоти
+<h3>❌ "AI service unavailable"</h3>
+<strong>Причина:</strong> Проблема з AI сервісами
+<strong>Рішення:</strong>
+1. Перевірте API ключі
+2. Перевірте мережеве з'єднання
+3. Перевірте статус AI сервісів
+<h3>❌ "File not found"</h3>
+<strong>Причина:</strong> Файл не знайдено в Google Drive
+<strong>Рішення:</strong>
+1. Перевірте назву файлу
+2. Перевірте права доступу
+3. Перевірте папку пошуку
+---
+<h2>📞 Контакти підтримки</h2>
+<h3>🆘 Швидка допомога</h3>
+<strong>Discord сервер підтримки:</strong><li>Приєднуйтесь до нашого Discord сервера</li><li>Канал #support для технічних питань</li><li>Канал #general для загальних обговорень</li>
+<strong>GitHub Issues:</strong><li>Створіть issue для багів</li><li>Створіть feature request для нових функцій</li><li>Перегляньте існуючі issues</li>
+<h3>📧 Email підтримка</h3>
+<strong>Технічна підтримка:</strong><li>Email: support@discord-ai-bot.com</li><li>Відповідь протягом 24 годин</li><li>Пріоритет для критичних проблем</li>
+<strong>Комерційна підтримка:</strong><li>Email: business@discord-ai-bot.com</li><li>Індивідуальні рішення</li><li>Консультації по налаштуванню</li>
+<h3>💬 Чат підтримка</h3>
+<strong>Telegram канал:</strong><li>@DiscordAIBotSupport</li><li>Швидкі відповіді</li><li>Група користувачів</li>
+<strong>Slack workspace:</strong><li>Приєднуйтесь до Slack</li><li>Канали по темах</li><li>Інтеграція з ботом</li>
+---
+<h2>📚 Корисні ресурси</h2>
+<h3>📖 Документація</h3>
+<strong>Основна документація:</strong><li><a href="README.md">README.md</a> - огляд проекту</li><li><a href="USAGE_GUIDE.md">USAGE_GUIDE.md</a> - гід по використанню</li><li><a href="COMMANDS_REFERENCE.md">COMMANDS_REFERENCE.md</a> - довідник команд</li>
+<strong>Технічна документація:</strong><li><a href="ARCHITECTURE.md">ARCHITECTURE.md</a> - архітектура</li><li><a href="SECURITY_GUIDE.md">SECURITY_GUIDE.md</a> - безпека</li><li><a href="SETUP.md">SETUP.md</a> - налаштування</li>
+<strong>Навчальні матеріали:</strong><li><a href="INTERACTIVE_LEARNING_GUIDE.md">INTERACTIVE_LEARNING_GUIDE.md</a> - інтерактивний гід</li><li><a href="VIDEO_TUTORIAL_GUIDE.md">VIDEO_TUTORIAL_GUIDE.md</a> - відео-уроки</li><li><a href="AI_EXAMPLES.md">AI_EXAMPLES.md</a> - приклади AI</li>
+<h3>🎥 Відео-уроки</h3>
+<strong>YouTube канал:</strong><li>Навчальні відео</li><li>Демонстрації функцій</li><li>Технічні туторіали</li>
+<strong>Скрінкасти:</strong><li>Швидкі демонстрації</li><li>Рішення проблем</li><li>Налаштування</li>
+<h3>🛠️ Інструменти</h3>
+<strong>Онлайн інструменти:</strong><li>Discord Developer Portal</li><li>Google Cloud Console</li><li>OpenAI API Dashboard</li>
+<strong>Локальні інструменти:</strong><li>Ollama для локальних LLM</li><li>Redis для кешування</li><li>Prometheus для метрик</li>
+<h3>🔗 Корисні посилання</h3>
+<strong>Офіційні ресурси:</strong><li><a href="https://discord.js.org/">Discord.js Documentation</a></li><li><a href="https://developers.google.com/sheets/api">Google Sheets API</a></li><li><a href="https://platform.openai.com/docs">OpenAI API</a></li><li><a href="https://ollama.ai/docs">Ollama Documentation</a></li>
+<strong>Спільноти:</strong><li>Discord.js Community</li><li>Google Cloud Community</li><li>OpenAI Community</li><li>Ollama Community</li>
+---
+<h2>🚀 Покращення підтримки</h2>
+<h3>📊 Аналітика проблем</h3>
+<strong>Типи проблем:</strong><li>Налаштування (40%)</li><li>API помилки (25%)</li><li>Права доступу (20%)</li><li>Продуктивність (10%)</li><li>Інші (5%)</li>
+<strong>Середній час вирішення:</strong><li>Критичні: 2 години</li><li>Важливі: 24 години</li><li>Звичайні: 72 години</li>
+<h3>🎯 Плани покращення</h3>
+<strong>Короткострокові:</strong><li>Автоматизована діагностика</li><li>Чат-бот підтримки</li><li>База знань</li>
+<strong>Довгострокові:</strong><li>AI-асистент підтримки</li><li>Відео-консультації</li><li>Персональний менеджер</li>
+---
+<h2>🎉 Подяки</h2>
+Дякуємо всім користувачам за зворотній зв'язок та допомогу в покращенні бота!
+<strong>Особлива подяка:</strong><li>Тестувачам за знаходження багів</li><li>Розробникам за внесок в код</li><li>Користувачам за ідеї покращень</li></ul>
+---
+_Останнє оновлення: Версія 2.3.0 - 2024_
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\FINAL_IMPLEMENTATION_SUMMARY.html" class="nav-button"><i class="fas fa-arrow-left"></i> Final Implementation Summary - BotDiscordGodzilla Markdown Rendering and Ollama Integration</a>
+            <a href="pages\guides\INTERACTIVE_LEARNING_GUIDE.html" class="nav-button">🎓 Інтерактивний навчальний гід Discord AI Assistant Bot <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

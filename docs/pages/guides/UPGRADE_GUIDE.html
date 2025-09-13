@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Гід по оновленню проекту - Версія 2.2.0 - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🚀 Гід по оновленню проекту - Версія 2.2.0</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🚀 Гід по оновленню проекту - Версія 2.2.0</h1>
+<h2>📋 Що нового в версії 2.2.0</h2>
+<h3>✨ <strong>Архітектурні покращення:</strong></h3><ul><li>🏗️ <strong>Модульна архітектура</strong> - код розділено на логічні модулі</li><li>⚙️ <strong>Централізована конфігурація</strong> - всі налаштування в одному місці</li><li>🔄 <strong>Система повторних спроб</strong> - автоматичні повторні спроби при помилках</li><li>📊 <strong>Система метрик Prometheus</strong> - детальний моніторинг роботи бота</li>
+<h3>🔍 <strong>Покращений пошук:</strong></h3><li>📈 <strong>Пошук за діапазонами</strong> - ціна від/до, кількість від/до</li><li>🔄 <strong>Сортування результатів</strong> - за будь-яким полем</li><li>🎯 <strong>Розширені фільтри</strong> - комбінований пошук</li><li>📋 <strong>Покращена пагінація</strong> - кнопки "Перша/Остання сторінка"</li>
+<h3>📤 <strong>Покращений експорт:</strong></h3><li>📄 <strong>Метадані в файлах</strong> - інформація про експорт</li><li>📊 <strong>Підтримка CSV</strong> - експорт в різних форматах</li><li>📋 <strong>Звіти аналізу</strong> - експорт результатів AI-аналізу</li><li>🧹 <strong>Автоочищення</strong> - видалення старих файлів</li>
+<h3>🛠️ <strong>Утиліти та форматування:</strong></h3><li>📝 <strong>Форматування даних</strong> - красиве відображення чисел, дат, валют</li><li>🔧 <strong>Утиліти повторних спроб</strong> - надійна робота з API</li><li>📊 <strong>Статистика експорту</strong> - відстеження використання</li>
+<h2>🚀 Кроки оновлення</h2>
+<h3>1. <strong>Оновлення залежностей</strong></h3>
+<pre><code>bash
+<h1>Встановлюємо нові залежності</h1>
+npm install express prom-client
+<h1>Перевіряємо встановлення</h1>
+npm list
+</code></pre>
+<h3>2. <strong>Оновлення змінних середовища</strong></h3>
+Додайте нові змінні до <code>.env</code>:
+<pre><code>env
+<h1>Metrics Configuration</h1>
+METRICS_ENABLED=true
+METRICS_PORT=3000
+METRICS_PATH=/metrics
+<h1>Performance Configuration</h1>
+REQUEST_TIMEOUT=30000
+MAX_RETRIES=3
+<h1>Export Configuration</h1>
+MAX_FILE_SIZE=26214400
+TEMP_FILE_TTL=60000
+INCLUDE_METADATA=true
+<h1>Search Configuration</h1>
+SEARCH_MAX_RESULTS=100
+FUZZY_MATCH=true
+CASE_SENSITIVE=false
+ENABLE_STEMMING=false
+<h1>OpenAI Configuration (опціонально)</h1>
+OPENAI_MODEL=gpt-3.5-turbo
+OPENAI_MAX_TOKENS=800
+OPENAI_TEMPERATURE=0.3
+<h1>Security Configuration (опціонально)</h1>
+RATE_LIMIT_WINDOW=900000
+RATE_LIMIT_MAX=100
+ALLOWED_ROLES=
+ADMIN_ROLES=
+</code></pre>
+<h3>3. <strong>Оновлення команд</strong></h3>
+<pre><code>bash
+<h1>Оновлюємо slash-команди</h1>
+node deploy-commands.js
+</code></pre>
+<h3>4. <strong>Тестування нових функцій</strong></h3>
+<pre><code>bash
+<h1>Тестуємо AI-функції</h1>
+node test-ai.js
+<h1>Перевіряємо метрики (якщо увімкнено)</h1>
+curl http://localhost:3000/metrics
+curl http://localhost:3000/health
+</code></pre>
+<h2>🆕 Нові команди</h2>
+<h3><strong>Покращений пошук:</strong></h3>
+<pre><code>
+/розумний-пошук-покращений номенклатура:стол ціна_від:100 ціна_до:1000 сортування:ціна порядок:desc
+</code></pre>
+<h3><strong>Нові параметри пошуку:</strong></h3><li><code>ціна_від</code> - мінімальна ціна</li><li><code>ціна_до</code> - максимальна ціна  </li><li><code>кількість_від</code> - мінімальна кількість</li><li><code>кількість_до</code> - максимальна кількість</li><li><code>сортування</code> - поле для сортування</li><li><code>порядок</code> - asc/desc</li>
+<h2>📊 Система метрик</h2>
+<h3><strong>Доступні метрики:</strong></h3><li><code>discord_bot_commands_total</code> - кількість команд</li><li><code>discord_bot_command_duration_seconds</code> - час виконання</li><li><code>discord_bot_api_requests_total</code> - API запити</li><li><code>discord_bot_cache_hits_total</code> - попадання в кеш</li><li><code>discord_bot_errors_total</code> - помилки</li><li><code>discord_bot_memory_usage_bytes</code> - використання пам'яті</li>
+<h3><strong>Перегляд метрик:</strong></h3>
+<pre><code>bash
+<h1>Prometheus формат</h1>
+curl http://localhost:3000/metrics
+<h1>Health check</h1>
+curl http://localhost:3000/health
+</code></pre>
+<h2>🔧 Нові файли та структура</h2>
+<h3><strong>Нові папки:</strong></h3>
+<pre><code>
+utils/           # Утиліти
+├── retry.js     # Повторні спроби
+├── formatters.js # Форматування
+└── exportHelpers.js # Експорт
+config/          # Конфігурація
+└── config.js    # Центральна конфігурація
+metrics/         # Метрики
+└── prometheus.js # Prometheus метрики
+commands/        # Команди (майбутнє)
+└── enhancedSearch.js # Покращений пошук
+</code></pre>
+<h3><strong>Оновлені файли:</strong></h3><li><code>index.js</code> - інтеграція нових модулів</li><li><code>package.json</code> - нові залежності</li><li><code>env.example</code> - нові змінні середовища</li>
+<h2>🧪 Тестування</h2>
+<h3><strong>Тестування пошуку:</strong></h3>
+<pre><code>bash
+<h1>Запускаємо бота</h1>
+node index.js
+<h1>Тестуємо нові команди в Discord</h1>
+/розумний-пошук-покращений номенклатура:стол ціна_від:100
+/статистика
+/статус
+</code></pre>
+<h3><strong>Тестування експорту:</strong></h3>
+<pre><code>bash
+<h1>Експорт з метаданими</h1>
+/пошук поле:назва запит:стол
+<h1>Натискаємо кнопку "📊 Експорт Excel"</h1>
+</code></pre>
+<h3><strong>Тестування метрик:</strong></h3>
+<pre><code>bash
+<h1>Перевіряємо доступність метрик</h1>
+curl http://localhost:3000/health
+curl http://localhost:3000/metrics | grep discord_bot
+</code></pre>
+<h2>🔧 Налаштування</h2>
+<h3><strong>Вимкнення метрик:</strong></h3>
+<pre><code>env
+METRICS_ENABLED=false
+</code></pre>
+<h3><strong>Налаштування експорту:</strong></h3>
+<pre><code>env
+MAX_FILE_SIZE=52428800  # 50MB
+TEMP_FILE_TTL=300000    # 5 хвилин
+INCLUDE_METADATA=false  # Без метаданих
+</code></pre>
+<h3><strong>Налаштування пошуку:</strong></h3>
+<pre><code>env
+SEARCH_MAX_RESULTS=200  # Більше результатів
+FUZZY_MATCH=false       # Точний пошук
+CASE_SENSITIVE=true     # Чутливий до регістру
+</code></pre>
+<h2>🐛 Вирішення проблем</h2>
+<h3><strong>Проблема: "Модуль не знайдено"</strong></h3>
+<pre><code>bash
+<h1>Перевіряємо залежності</h1>
+npm install
+npm list
+<h1>Перевіряємо шляхи</h1>
+node -e "console.log(require.resolve('./config/config.js'))"
+</code></pre>
+<h3><strong>Проблема: "Метрики не працюють"</strong></h3>
+<pre><code>bash
+<h1>Перевіряємо порт</h1>
+netstat -an | grep 3000
+<h1>Перевіряємо конфігурацію</h1>
+echo $METRICS_ENABLED
+</code></pre>
+<h3><strong>Проблема: "Експорт не працює"</strong></h3>
+<pre><code>bash
+<h1>Перевіряємо права доступу</h1>
+ls -la tmp/
+<h1>Перевіряємо розмір файлу</h1>
+du -sh tmp/*
+</code></pre>
+<h2>📈 Моніторинг</h2>
+<h3><strong>Grafana Dashboard (опціонально):</strong></h3>
+<pre><code>yaml
+<h1>docker-compose.yml</h1>
+services:
+  grafana:
+    image: grafana/grafana:latest
+    ports:<li>"3001:3000"</li>
+    environment:<li>GF_SECURITY_ADMIN_PASSWORD=admin</li>
+    volumes:<li>grafana_data:/var/lib/grafana</li>
+  prometheus:
+    image: prom/prometheus:latest
+    ports:<li>"9090:9090"</li>
+    volumes:<li>./prometheus.yml:/etc/prometheus/prometheus.yml</li><li>prometheus_data:/prometheus</li>
+</code></pre>
+<h3><strong>Prometheus конфігурація:</strong></h3>
+<pre><code>yaml
+<h1>prometheus.yml</h1>
+global:
+  scrape_interval: 15s
+scrape_configs:<li>job_name: 'discord-bot'</li>
+    static_configs:<li>targets: ['localhost:3000']</li>
+    metrics_path: '/metrics'
+</code></pre>
+<h2>🔄 Відкат змін</h2>
+<h3><strong>Якщо щось не працює:</strong></h3>
+<pre><code>bash
+<h1>Відключаємо метрики</h1>
+export METRICS_ENABLED=false
+<h1>Використовуємо старий пошук</h1>
+<h1>Команди /пошук та /розумний-пошук залишаються працювати</h1>
+<h1>Відновлюємо стару конфігурацію</h1>
+cp env.example.backup .env
+</code></pre>
+<h2>📚 Документація</h2>
+<h3><strong>Корисні посилання:</strong></h3><li><a href="https://prometheus.io/docs/concepts/metric_types/">Prometheus метрики</a></li><li><a href="https://expressjs.com/">Express.js документація</a></li><li><a href="https://discord.js.org/">Discord.js документація</a></li>
+<h3><strong>Приклади використання:</strong></h3><li><a href="AI_EXAMPLES.md">AI_EXAMPLES.md</a> - приклади AI-функцій</li><li><a href="COMMANDS_REFERENCE.md">COMMANDS_REFERENCE.md</a> - всі команди</li><li><a href="LAUNCH_INSTRUCTIONS.md">LAUNCH_INSTRUCTIONS.md</a> - запуск</li></ul>
+---
+<strong>🎉 Вітаємо з успішним оновленням! Ваш бот тепер має професійну архітектуру та розширений функціонал!</strong> 
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\TYPESCRIPT_MIGRATION_GUIDE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🚀 TypeScript Migration Guide</a>
+            <a href="pages\guides\USAGE_GUIDE.html" class="nav-button">📚 Гід по використанню Discord AI Assistant Bot <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

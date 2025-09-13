@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Інструкції по запуску доробленого проекту - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🚀 Інструкції по запуску доробленого проекту</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🚀 Інструкції по запуску доробленого проекту</h1>
+<h2>📋 Що було додано в версії 2.1.0</h2>
+<h3>✨ Нові функції:</h3><ul><li>📊 <strong>Система статистики</strong> - відстеження використання бота</li><li>🏆 <strong>Топ команд</strong> - найпопулярніші команди</li><li>👥 <strong>Топ користувачів</strong> - найактивніші користувачі</li><li>🔧 <strong>Статус системи</strong> - моніторинг працездатності</li><li>🤖 <strong>Покращений AI</strong> - розширений функціонал</li>
+<h3>🔧 Покращення:</h3><li>✅ Виправлено Git конфлікти в PowerShell скрипті</li><li>📝 Створено шаблон <code>.env</code> файлу</li><li>🔄 Автоматичне оновлення slash-команд</li><li>📊 Логування статистики та помилок</li></ul>
+<h2>🚀 Кроки для запуску</h2>
+<h3>1. Підготовка середовища</h3>
+<h4>Створіть файл <code>.env</code> на основі <code>env.example</code>:</h4>
+<pre><code>bash
+<h1>Скопіюйте env.example в .env</h1>
+cp env.example .env
+</code></pre>
+<h4>Заповніть <code>.env</code> файл:</h4>
+<pre><code>env
+<h1>Discord Bot Configuration</h1>
+BOT_TOKEN=your_discord_bot_token_here
+<h1>Google Sheets Configuration</h1>
+SHEET_ID=your_google_sheet_id_here
+GOOGLE_API_KEY=your_google_api_key_here
+APP_SCRIPT_URL=your_google_apps_script_url_here
+<h1>OpenAI Configuration (для AI-функціоналу)</h1>
+OPENAI_API_KEY=your_openai_api_key_here
+<h1>Optional: Logging Configuration</h1>
+LOG_LEVEL=info
+<h1>Optional: Bot Configuration</h1>
+BOT_PREFIX=!
+GUILD_ID=your_guild_id_here
+<h1>Optional: Performance Configuration</h1>
+CACHE_TTL=300000
+MAX_SEARCH_RESULTS=20
+MAX_ANALYSIS_ROWS=50
+</code></pre>
+<h3>2. Встановлення залежностей</h3>
+<pre><code>bash
+<h1>Встановлюємо залежності</h1>
+npm install
+<h1>Перевіряємо, що все встановлено</h1>
+npm list
+</code></pre>
+<h3>3. Оновлення slash-команд</h3>
+<pre><code>bash
+<h1>Оновлюємо команди в Discord</h1>
+node deploy-commands.js
+</code></pre>
+<strong>Очікуваний результат:</strong>
+<pre><code>
+🔄 Початок оновлення slash-команд...
+✅ Slash-команди успішно оновлені!
+📊 Всього команд: 15
+📋 Список команд:
+1. /залишки - Показує підсумкові значення з таблиці
+2. /оновити - Показує останні 10 записів з таблиці
+...
+</code></pre>
+<h3>4. Тестування AI-функціоналу</h3>
+<pre><code>bash
+<h1>Тестуємо AI-функції</h1>
+node test-ai.js
+</code></pre>
+<strong>Очікуваний результат:</strong>
+<pre><code>
+🤖 Тестування AI-функціоналу...
+📊 Тест 1: AI-аналіз даних
+[результат аналізу]
+🔍 Тест 2: Природномовний пошук
+Результати пошуку: X
+Пояснення: [пояснення]
+💡 Тест 3: AI-рекомендації
+[рекомендації]
+📋 Тест 4: AI-звіт
+[звіт]
+</code></pre>
+<h3>5. Запуск бота</h3>
+<h4>Варіант 1: PowerShell скрипт (рекомендовано)</h4>
+<pre><code>powershell
+<h1>Запускаємо через PowerShell</h1>
+.\запуск-бота.ps1
+</code></pre>
+<h4>Варіант 2: Прямий запуск</h4>
+<pre><code>bash
+<h1>Запускаємо бота</h1>
+node index.js
+</code></pre>
+<strong>Очікуваний результат:</strong>
+<pre><code>
+🤖 Запускаємо Discord бота...
+Бот BotName#1234 онлайн!
+Slash-команди зареєстровані!
+</code></pre>
+<h2>🧪 Тестування нових функцій</h2>
+<h3>1. Тестування статистики</h3>
+Використайте команди в Discord:
+<pre><code>
+/статистика
+/топ-команди
+/топ-користувачі
+/статус
+</code></pre>
+<h3>2. Тестування AI-функцій</h3>
+<pre><code>
+/ai-аналіз
+/ai-пошук запит:покажи товари дешевше 1000 грн
+/ai-рекомендації
+/ai-звіт тип:general
+</code></pre>
+<h3>3. Тестування основних функцій</h3>
+<pre><code>
+/залишки
+/оновити
+/пошук поле:назва запит:стол
+/help
+</code></pre>
+<h2>🔧 Вирішення проблем</h2>
+<h3>Проблема: "Одна з обов'язкових ENV-змінних відсутня"</h3>
+<strong>Рішення:</strong> Перевірте файл <code>.env</code> та заповніть всі необхідні змінні
+<h3>Проблема: "Slash-команди не оновлюються"</h3>
+<strong>Рішення:</strong> Запустіть <code>node deploy-commands.js</code> та перевірте права бота
+<h3>Проблема: "AI-функції не працюють"</h3>
+<strong>Рішення:</strong> 
+1. Перевірте <code>OPENAI_API_KEY</code> в <code>.env</code>
+2. Запустіть <code>node test-ai.js</code>
+3. Перевірте баланс на OpenAI рахунку
+<h3>Проблема: "Помилка підключення до Google Sheets"</h3>
+<strong>Рішення:</strong>
+1. Перевірте <code>SHEET_ID</code> та <code>GOOGLE_API_KEY</code>
+2. Переконайтеся, що Google Sheets API увімкнено
+3. Перевірте права доступу до таблиці
+<h2>📊 Моніторинг</h2>
+<h3>Перевірка логів:</h3>
+<pre><code>bash
+<h1>Переглядаємо логи</h1>
+tail -f logs/combined.log
+tail -f logs/error.log
+</code></pre>
+<h3>Перевірка статистики:</h3>
+<pre><code>bash
+<h1>Переглядаємо файл статистики</h1>
+cat logs/stats.json
+</code></pre>
+<h2>🔄 Оновлення проекту</h2>
+<h3>Отримання оновлень:</h3>
+<pre><code>bash
+git pull origin main
+npm install
+node deploy-commands.js
+</code></pre>
+<h3>Скидання статистики (за потреби):</h3>
+<pre><code>bash
+<h1>Відредагуйте stats.js та додайте метод resetStats()</h1>
+<h1>Або видаліть файл logs/stats.json</h1>
+</code></pre>
+<h2>📞 Підтримка</h2>
+<h3>Якщо щось не працює:</h3>
+1. Перевірте логи в папці <code>logs/</code>
+2. Використайте команду <code>/статус</code>
+3. Запустіть тести: <code>node test-ai.js</code>
+4. Перевірте налаштування в <code>.env</code>
+<h3>Корисні команди для діагностики:</h3>
+<pre><code>bash
+<h1>Перевірка версії Node.js</h1>
+node --version
+<h1>Перевірка залежностей</h1>
+npm list
+<h1>Перевірка синтаксису</h1>
+node -c index.js
+node -c stats.js
+node -c aiHelpers.js
+<h1>Тестування AI</h1>
+node test-ai.js
+<h1>Оновлення команд</h1>
+node deploy-commands.js
+</code></pre>
+---
+<strong>🎉 Вітаємо! Ваш Discord бот тепер має повноцінну систему статистики та покращений AI-функціонал!</strong> 
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\INTERACTIVE_LEARNING_GUIDE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🎓 Інтерактивний навчальний гід Discord AI Assistant Bot</a>
+            <a href="pages\guides\LOCAL_AI.html" class="nav-button">🦙 Локальний AI з Ollama <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

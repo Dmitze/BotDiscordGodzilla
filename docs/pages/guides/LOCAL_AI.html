@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦙 Локальний AI з Ollama - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🦙 Локальний AI з Ollama</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🦙 Локальний AI з Ollama</h1>
+Цей посібник описує, як налаштувати та використовувати локальні AI-моделі за допомогою Ollama у вашому боті.
+<h2>📋 Передумови</h2><ul><li>Встановлений <a href="https://www.docker.com/">Docker</a></li><li>Принаймні 8GB вільної оперативної пам'яті (рекомендовано 16GB+)</li><li>10GB вільного місця на диску</li>
+<h2>🚀 Швидкий старт</h2>
+<h3>1. Встановлення Ollama</h3>
+<pre><code>bash
+<h1>Запуск Ollama через Docker</h1>
+docker run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
+<h1>Перевірка роботи</h1>
+curl http://localhost:11434/api/tags
+</code></pre>
+<h3>2. Завантаження моделі</h3>
+<pre><code>bash
+<h1>Завантаження моделі (наприклад, llama3)</h1>
+docker exec -it ollama ollama pull llama3
+<h1>Доступні моделі: llama3, mistral, codellama, phi3, тощо</h1>
+</code></pre>
+<h3>3. Налаштування бота</h3>
+Додайте до вашого <code>.env</code> файлу:
+<pre><code>env
+<h1>Ollama налаштування</h1>
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3  # або інша завантажена модель
+OLLAMA_TIMEOUT=30000  # мс
+<h1>Вимкнення хмарних AI-провайдерів</h1>
+AI_PROVIDER=local
+OPENAI_API_KEY=  # залиште порожнім
+</code></pre>
+<h2>🛠️ Використання</h2>
+<h3>Перевірка підключення</h3>
+<pre><code>bash
+<h1>Перевірка роботи Ollama</h1>
+curl http://localhost:11434/api/version
+<h1>Перевірка доступних моделей</h1>
+curl http://localhost:11434/api/tags
+</code></pre>
+<h3>Приклад запиту до API</h3>
+<pre><code>bash
+curl http://localhost:11434/api/generate -d '{
+  "model": "llama3",
+  "prompt": "Привіт, як справи?",
+  "stream": false
+}'
+</code></pre>
+<h2>🔧 Розширені налаштування</h2>
+<h3>Використання GPU (якщо доступно)</h3>
+<pre><code>bash
+docker run -d --gpus=all -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
+</code></pre>
+<h3>Налаштування параметрів моделі</h3>
+Створіть файл <code>Modelfile</code> для кастомних налаштувань:
+<pre><code>dockerfile
+FROM llama3
+<h1>Параметри генерації</h1>
+PARAMETER num_ctx 4096
+PARAMETER temperature 0.7
+PARAMETER top_k 50
+PARAMETER top_p 0.9
+</code></pre>
+Потім створіть кастомну модель:
+<pre><code>bash
+docker exec -it ollama ollama create my-model -f /path/to/Modelfile
+</code></pre>
+<h2>🔄 Інтеграція з RAG</h2>
+Для використання з RAG додайте до конфігурації:
+<pre><code>typescript
+// У конфігурації RAG-сервісу
+const ragConfig = {
+  retriever: {
+    type: 'hybrid',
+    options: {
+      k: 5,
+      alpha: 0.5
+    }
+  },
+  generator: {
+    provider: 'ollama',
+    model: 'llama3',
+    temperature: 0.7,
+    maxTokens: 2000
+  }
+};
+</code></pre>
+<h2>⚠️ Обмеження</h2><li>Швидкість відповіді залежить від апаратних можливостей</li><li>Великі моделі можуть вимагати багато оперативної пам'яті</li><li>Деякі моделі можуть мати обмеження контексту</li>
+<h2>🔍 Діагностика проблем</h2>
+<h3>Перевірка використання пам'яті</h3>
+<pre><code>bash
+docker stats ollama
+</code></pre>
+<h3>Перезапуск сервісу</h3>
+<pre><code>bash
+docker restart ollama
+</code></pre>
+<h3>Перегляд логів</h3>
+<pre><code>bash
+docker logs ollama
+</code></pre>
+<h2>📚 Додаткові ресурси</h2><li><a href="https://ollama.ai/">Офіційна документація Ollama</a></li><li><a href="https://ollama.ai/library">Доступні моделі</a></li><li><a href="https://github.com/ollama/ollama/blob/main/docs/api.md">Приклади використання API</a></li></ul>
+<h2>🤖 Приклад використання в коді</h2>
+<pre><code>typescript
+import { Ollama } from 'ollama';
+const ollama = new Ollama({
+  host: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+});
+async function generateResponse(prompt: string) {
+  try {
+    const response = await ollama.generate({
+      model: process.env.OLLAMA_MODEL || 'llama3',
+      prompt: prompt,
+      stream: false,
+      options: {
+        temperature: 0.7,
+        top_p: 0.9,
+      },
+    });
+    return response.response;
+  } catch (error) {
+    console.error('Помилка генерації відповіді:', error);
+    throw error;
+  }
+}
+</code></pre>
+<h2>🔄 Оновлення моделей</h2>
+Для оновлення моделі до останньої версії:
+<pre><code>bash
+docker exec -it ollama ollama pull llama3:latest
+</code></pre>
+<h2>🚨 Важливі зауваження</h2>
+1. Завжди перевіряйте ліцензію моделі перед використанням у продакшені
+2. Деякі моделі можуть вимагати додаткових дозволів або мати обмеження на комерційне використання
+3. Рекомендується використовувати VPN або захищене з'єднання при роботі з конфіденційними даними
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\LAUNCH_INSTRUCTIONS.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🚀 Інструкції по запуску доробленого проекту</a>
+            <a href="pages\guides\PERFORMANCE_GUIDE.html" class="nav-button">Performance Guide <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

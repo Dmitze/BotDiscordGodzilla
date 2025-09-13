@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏗️ Архітектура Discord AI Assistant Bot - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🏗️ Архітектура Discord AI Assistant Bot</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🏗️ Архітектура Discord AI Assistant Bot</h1>
+<h2>📋 Зміст</h2><ul><li><a href="#-загальний-огляд">🗺️ Загальний огляд</a></li><li><a href="#-ключові-компоненти">🧩 Ключові компоненти</a></li><li><a href="#-потоки-даних">🔄 Потоки даних</a></li><li><a href="#️-технологічний-стек">⚙️ Технологічний стек</a></li><li><a href="#-конфігурація">🔧 Конфігурація</a></li><li><a href="#-безпека">🔐 Безпека</a></li><li><a href="#-додаткова-документація">📚 Додаткова документація</a></li>
+---
+<h2>🗺️ Загальний огляд</h2>
+<h3>Діаграма архітектури</h3>
+<pre><code>mermaid
+graph TB
+    subgraph "Discord Platform"
+        U[Користувач]
+        D[Discord API]
+        C[Discord Client]
+    end
+    subgraph "Bot Application"
+        B[Bot Core]
+        R[Command Router]
+        S[Security Layer]
+        subgraph "Commands"
+            SC1[SearchCommand]
+            SC2[DocCommand]
+            SC3[StatisticsCommand]
+            SC4[FileManagerCommand]
+        end
+        subgraph "Services"
+            SV1[GoogleService]
+            SV2[EmbeddingsService]
+            SV3[RagService]
+            SV4[CacheService]
+        end
+    end
+    subgraph "Data Storage"
+        DS1[(SQLite FTS)]
+        DS2[(Vector DB)]
+        DS3[(Redis Cache)]
+    end
+    subgraph "External Services"
+        G[Google Sheets API]
+        O[Ollama API]
+    end
+    U -->|Interaction| D
+    D --> B
+    B --> R
+    R --> S
+    S --> Commands
+    SC1 --> SV1 & SV2 & SV3
+    SC2 --> SV1 & SV2
+    SC3 --> SV1
+    SC4 --> SV1 & SV3
+    SV1 --> G
+    SV2 --> O
+    SV3 --> DS1 & DS2
+    SV4 --> DS3
+    DS2 -.->|Optional| O
+</code></pre>
+<h3>Основні компоненти</h3>
+1. <strong>Ядро бота (<code>src/core/</code>)</strong><li><code>Bot.ts</code> - головний клас бота, ініціалізація, обробка подій</li><li><code>CommandManager.ts</code> - реєстрація та управління командами</li><li><code>ServiceContainer.ts</code> - DI контейнер для сервісів</li><li><code>EventManager.ts</code> - система подій</li>
+2. <strong>Команди (<code>src/commands/</code>)</strong><li><code>BaseCommand.ts</code> - батьківський клас для всіх команд</li><li><code>SearchCommand.ts</code> - пошук по документах</li><li><code>DocCommand.ts</code> - управління документами</li><li><code>StatisticsCommand.ts</code> - статистика використання</li><li><code>FileManagerCommand.ts</code> - управління файлами</li>
+3. <strong>Сервіси (<code>src/services/</code>)</strong><li><code>GoogleService.ts</code> - робота з Google API</li><li><code>EmbeddingsService.ts</code> - генерація та робота з ембедінгами</li><li><code>RagService.ts</code> - RAG пайплайн</li><li><code>CacheService.ts</code> - кешування даних</li>
+4. <strong>Пошук (<code>src/search/</code>)</strong><li><code>SearchIndex.ts</code> - інтерфейс пошукового індексу</li><li><code>sqlite/</code> - реалізація FTS на SQLite</li><li><code>hybrid/</code> - гібридний пошук (FTS + векторний)</li>
+5. <strong>RAG (<code>src/rag/</code>)</strong><li><code>Retriever.ts</code> - пошук релевантних фрагментів</li><li><code>Augmenter.ts</code> - підготовка контексту</li><li><code>Generator.ts</code> - генерація відповіді</li>
+---
+<h2>🔄 Потоки даних</h2>
+<h3>Індексація документів</h3>
+<pre><code>mermaid
+flowchart LR
+    A[Джерело даних] -->|PDF/DOCX/TXT/Sheets| B[Парсери]
+    B --> C[Нормалізація тексту]
+    C --> D[Токенізація]
+    D --> E[Збереження в FTS]
+    D --> F[Генерація ембеддінгів]
+    F --> G[Збереження у Vector DB]
+</code></pre>
+<h3>Обробка запиту</h3>
+<pre><code>mermaid
+sequenceDiagram
+    participant U as Користувач
+    participant D as Discord
+    participant B as Bot
+    participant R as Retriever
+    participant L as LLM
+    U->>D: /search запит
+    D->>B: Отримано інтеракцію
+    B->>R: Пошук релевантних даних
+    R-->>B: Контекстні фрагменти
+    B->>L: Запит до LLM з контекстом
+    L-->>B: Згенерована відповідь
+    B->>D: Відповідь користувачу
+    D->>U: Відображення результату
+</code></pre>
+---
+<h2>⚙️ Технологічний стек</h2>
+<h3>Основні технології</h3><li><strong>Мова</strong>: TypeScript 5.0+</li><li><strong>Платформа</strong>: Node.js 20.x (LTS)</li><li><strong>Фреймворк</strong>: Discord.js 14.x</li><li><strong>База даних</strong>: SQLite3 (FTS5), Redis (кеш)</li><li><strong>AI/ML</strong>: Ollama (локально), OpenAI API (опційно)</li><li><strong>Інтеграції</strong>: Google Sheets API</li>
+<h3>Бібліотеки</h3><li><strong>DI</strong>: <code>tsyringe</code></li><li><strong>Валідація</strong>: <code>zod</code></li><li><strong>Логування</strong>: <code>winston</code></li><li><strong>Тестування</strong>: <code>jest</code>, <code>supertest</code></li><li><strong>Моніторинг</strong>: Prometheus + Grafana</li>
+---
+<h2>🔧 Конфігурація</h2>
+Основні параметри конфігурації (<code>.env</code>):
+<pre><code>env
+<h1>Discord</h1>
+DISCORD_TOKEN=your_token_here
+DISCORD_CLIENT_ID=your_client_id
+<h1>Google API</h1>
+GOOGLE_SHEETS_ID=your_sheet_id
+GOOGLE_CREDENTIALS_JSON={...}
+<h1>AI</h1>
+AI_PROVIDER=ollama  # або 'openai'
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3
+<h1>Пошук</h1>
+SEARCH_INDEX_PATH=./data/search.db
+SEARCH_FTS_TOKENIZER=unicode61
+SEARCH_BATCH_SIZE=100
+<h1>RAG</h1>
+RAG_MAX_CONTEXT_TOKENS=4000
+RAG_RETRIEVER_K=5
+RAG_RETRIEVER_ALPHA=0.5
+</code></pre>
+Детальніше: <a href="guides/SETUP.md">Гайд з налаштування</a>
+---
+<h2>🔐 Безпека</h2>
+<h3>Ключові механізми</h3>
+1. <strong>Підпис компонентів</strong><li>Усі кнопки та селектори підписуються через HMAC-SHA256</li><li>TTL для кожного компоненту (за замовчуванням 15 хв)</li><li>Відмова у доступі до прострочених компонентів</li>
+2. <strong>Робота з даними</strong><li>PII-маскування у логах</li><li>Шифрування конфіденційних даних</li><li>Обмежений доступ до API ключів</li>
+3. <strong>Захист API</strong><li>Rate limiting</li><li>Валідація вхідних даних</li><li>Обробка помилок без розголошення деталей</li>
+Детальніше: <a href="security/SECURITY_GUIDE.md">Керівництво з безпеки</a>
+---
+<h2>📚 Додаткова документація</h2><li><a href="QUICK_START.md">Швидкий старт</a> - як швидко почати роботу</li><li><a href="guides/rag.md">Гайд з RAG</a> - робота з RAG пайплайном</li><li><a href="guides/LOCAL_AI.md">Локальний AI</a> - налаштування Ollama</li><li><a href="API_OVERVIEW.md">API документація</a> - опис API бота</li><li><a href="DEVELOPER_GUIDE.md">Розробка</a> - гайд для розробників</li></ul>
+---
+<h2>🚀 Майбутні вдосконалення</h2>
+1. Підтримка додаткових векторних БД (Pinecone, Weaviate)
+2. Поліпшена обробка таблиць та інших складних форматів
+3. Розширена аналітика використання
+4. Графічний інтерфейс для налаштувань
+5. Додаткові інтеграції з хмарними сховищами
+---
+> © 2025 Godzilla Bot Team | <a href="../LICENSE">Ліцензія MIT</a> | <a href="changelog/CHANGELOG.md">Історія змін</a>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\ARCHITECTURE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🏗️ Архітектура Discord AI Assistant Bot</a>
+            <a href="pages\archive\README.html" class="nav-button">Архів документів <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

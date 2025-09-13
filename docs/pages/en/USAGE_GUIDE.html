@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 Discord AI Assistant Bot Usage Guide - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📚 Discord AI Assistant Bot Usage Guide</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📚 Discord AI Assistant Bot Usage Guide</h1>
+<h2>🎯 Overview</h2>
+Discord AI Assistant Bot is a powerful tool for working with Google Sheets, Google Drive, and AI data analysis directly in Discord. The bot supports natural language queries, file operations, and report generation.
+<h2>🚀 Quick Start</h2>
+<h3>1. Role Setup</h3>
+Create the following roles on your Discord server:<ul><li>Administrator - full access to all functions</li><li>Bot User - basic access</li><li>Sheets Access - access to Google Sheets</li><li>AI Access - AI functions access</li><li>Export Access - data export access</li>
+<h3>2. First Commands</h3>
+<h2>🔍 Search Commands</h2>
+<h3>Field Search</h3>
+Description: Search data by specific table field
+Parameters:<li>field to search (name, serial number, counterparty, quantity, price)</li><li>what to search for</li>
+Examples:
+<h3>Smart Search</h3>
+Description: Search by multiple criteria simultaneously
+Parameters:<li>search by product name</li><li>search by counterparty</li><li>search by serial number</li><li>products more expensive than specified price</li><li>products with quantity more than specified</li>
+Examples:
+<h3>Summary Values</h3>
+Description: Shows summary values from table
+Example:
+<h3>Recent Records</h3>
+Description: Shows last 10 records from table
+Example:
+<h2>🤖 AI Functions</h2>
+<h3>AI Assistant</h3>
+Description: Natural language query to AI for data work
+Parameters:<li>what you want to do</li><li>additional context (optional)</li>
+Query Examples:
+Examples with context:
+<h2>📁 File Operations</h2>
+<h3>Google Drive Work</h3>
+Description: Search, read, and analyze files in Google Drive
+Parameters:<li>what to do (search, read, analyze, report)</li><li>file name or ID</li><li>folder ID for search (optional)</li><li>analysis type (only for "analyze" action)</li><li>report format (only for "report" action)</li>
+File Search
+File Reading
+AI File Analysis
+Report Generation
+<h2>📤 Data Export</h2>
+<h3>Search Results Export</h3>
+Description: Exports search results to Excel format
+Parameters:<li>field to search</li><li>what to search for</li>
+Examples:
+<h2>⚙️ Administrative Commands</h2>
+<h3>Bot Statistics</h3>
+Description: Shows bot usage statistics
+Example:
+<h3>Cache Clear</h3>
+Description: Clears user cache
+Parameters:<li>cache type to clear (search, ai, all)</li>
+Examples:
+<h3>Help</h3>
+Description: Shows command help
+Parameters:<li>command category (basic, search, ai, files, admin)</li>
+Examples:
+<h2>🎯 Usage Examples</h2>
+<h3>Scenario 1: Stock Analysis</h3>
+<h3>Scenario 2: Document Work</h3>
+<h3>Scenario 3: Sales Analysis</h3>
+<h2>🔧 Setup</h2>
+<h3>Environment Variables</h3>
+Main variables for setup:
+<h3>Roles and Access Rights</h3><li>Administrator - full access</li><li>Bot User - basic commands</li><li>Sheets Access - Google Sheets work</li><li>AI Access - AI functions</li><li>Export Access - data export</li>
+<h2>🚨 Security</h2>
+<h3>Rate Limiting</h3>
+Bot has built-in request limiting system:<li>Search: 10 requests per minute</li><li>AI analysis: 5 requests per 2 minutes</li><li>Export: 3 requests per 5 minutes</li>
+<h3>Input Data Validation</h3>
+All input data is automatically cleaned
+Request length limits
+XSS attack protection
+<h3>Logging</h3>
+All user actions are logged for security:<li>Commands</li><li>File access</li><li>AI queries</li><li>Errors</li></ul>
+<h2>🆘 Troubleshooting</h2>
+<h3>Common Issues</h3>
+Bot not responding:
+1. Check if bot is online
+2. Check access rights
+3. Check logs for errors
+Google API errors:
+1. Check Google setup
+2. Check file access rights
+3. Check API quotas
+AI not working:
+1. Check OpenAI/Ollama setup
+2. Check API key balance
+3. Check internet connection
+Diagnostic Commands
+<h2>📞 Support</h2>
+If you encounter issues:
+1. Check this guide
+2. View bot logs
+3. Try command
+4. Contact administrator
+<h2>🔄 Updates</h2>
+To update bot:
+1. Stop bot
+2. Update code
+3. Install new dependencies:
+4. Start bot:
+Last update: Version 2.3.0
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\en\SETUP.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🔧 Godzilla Bot Setup</a>
+            <a href="pages\en\USER_GUIDE.html" class="nav-button">📚 User Guide <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

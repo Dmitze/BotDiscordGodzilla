@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шаблон README модуля - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Шаблон README модуля</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Шаблон README модуля</h1>
+> Скопіюйте цей файл у відповідну папку як <code>README.md</code> і заповніть секції.
+<h2>Призначення</h2>
+Короткий опис модуля, його ролі в системі та цінності для користувачів/розробників.
+<h2>Структура</h2>
+<pre><code>text
+<module-root>/
+  ├─ src/                 # вихідний код
+  ├─ tests/               # тести (unit/integration)
+  ├─ fixtures/            # тестові дані (за потреби)
+  └─ README.md            # цей файл
+</code></pre>
+<h2>Ключові модулі та інтерфейси</h2><ul><li><code>.../SomeService.ts</code> — основна логіка сервісу (інжектується через ServiceManager)</li><li><code>.../types.ts</code> — типи/інтерфейси публічного API модуля</li><li><code>.../utils.ts</code> — хелпери/утиліти</li>
+<h2>Залежності й інтеграції</h2><li>Залежить від: <code>src/core/<em></code>, <code>src/services/</em></code> (вказати конкретні)</li><li>Використовує конфігурацію з <code>.env</code> (див. <code>env.example</code>)</li><li>Інтеграція з іншими підсистемами: RAG/FTS/Embeddings/Discord UI (вказати)</li>
+<h2>Конфігурація</h2>
+Перелік ключових змінних середовища й налаштувань:<li><code>MODULE_ENABLED</code> — вмикає/вимикає модуль (true/false)</li><li><code>MODULE_LIMIT</code> — ліміт або розмір батчів</li>
+Приклад <code>.env</code>:
+<pre><code>env
+MODULE_ENABLED=true
+MODULE_LIMIT=100
+</code></pre>
+<h2>Скрипти та команди</h2>
+<pre><code>bash
+npm run test:unit  # юніт-тести для модуля
+npm run lint       # лінт коду
+</code></pre>
+<h2>Тестування</h2><li>Покриття: не менше X%</li><li>Юніт-тести: <code>tests/unit/*</code></li><li>Інтеграційні тести: <code>tests/integration/*</code></li><li>E2E (якщо є): короткий опис сценаріїв</li>
+<h2>Приклади використання</h2>
+<pre><code>ts
+import { SomeService } from './SomeService';
+const svc = new SomeService(/<em> deps </em>/);
+await svc.doWork();
+</code></pre>
+<h2>Безпека та i18n</h2><li>Використовуйте підпис компонентів <code>signComponentId</code> для UI/дій (якщо застосовно)</li><li>Локаль за замовчуванням: <code>uk</code> (українська)</li><li>Не використовуйте <code>console.*</code> поза <code>src/scripts/</code>; застосовуйте централізований логер</li>
+<h2>Діагностика та логування</h2><li>Рівні логів: <code>debug|info|warn|error</code></li><li>Метрики (за потреби): Prometheus-лічильники/таймери</li>
+<h2>Повʼязані документи</h2><li>Архітектура: <code>docs/ARCHITECTURE.md</code></li><li>Гайд розробника: <code>docs/DEVELOPER_GUIDE.md</code></li><li>Безпека: <code>SECURITY.md</code>, <code>docs/security/SECURITY_GUIDE.md</code></li><li>RAG/пошук: <code>docs/guides/rag.md</code></li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\src\README.html" class="nav-button"><i class="fas fa-arrow-left"></i> README</a>
+            <a href="pages\src\tests\README.html" class="nav-button">🧪 **TESTS - ТЕСТУВАННЯ** <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

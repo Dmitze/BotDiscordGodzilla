@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployment Guide - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Deployment Guide</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Deployment Guide</h1>
+This guide provides comprehensive instructions for deploying the Discord AI Assistant Bot in various environments.
+<h2>Table of Contents</h2><ul><li><a href="#prerequisites">Prerequisites</a></li><li><a href="#environment-configuration">Environment Configuration</a></li><li><a href="#docker-deployment">Docker Deployment</a></li><li><a href="#manual-deployment">Manual Deployment</a></li><li><a href="#cloud-deployment">Cloud Deployment</a></li><li><a href="#service-management">Service Management</a></li><li><a href="#monitoring-and-maintenance">Monitoring and Maintenance</a></li>
+<h2>Prerequisites</h2>
+<h3>System Requirements</h3><li>Node.js 18+ (for manual deployment)</li><li>Docker and Docker Compose (for Docker deployment)</li><li>At least 2GB RAM</li><li>At least 10GB free disk space</li>
+<h3>Required Accounts</h3><li>Discord Developer Account</li><li>Google Cloud Platform Account</li><li>OpenAI API Key (optional, for AI features)</li><li>Ollama (optional, for local AI)</li>
+<h2>Environment Configuration</h2>
+<h3>Environment Variables</h3>
+Create a <code>.env</code> file in the project root based on <code>.env.example</code>:
+<pre><code>bash
+cp .env.example .env
+</code></pre>
+Required variables:
+<pre><code>env
+<h1>Discord Configuration</h1>
+DISCORD_TOKEN=your_discord_bot_token
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_GUILD_ID=your_guild_id
+<h1>Google Configuration</h1>
+GOOGLE_API_KEY=your_google_api_key
+GOOGLE_APP_SCRIPT_URL=your_app_script_url
+<h1>AI Configuration (optional)</h1>
+OPENAI_API_KEY=your_openai_api_key
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3
+<h1>Database Configuration</h1>
+DATABASE_URL=your_database_url
+<h1>Redis Configuration</h1>
+REDIS_URL=redis://localhost:6379
+<h1>Security</h1>
+ENCRYPTION_KEY=your_encryption_key
+</code></pre>
+<h3>Configuration Files</h3><li><code>config/</code> - Contains configuration files for various services</li><li><code>src/config/</code> - Application-specific configuration</li>
+<h2>Docker Deployment</h2>
+<h3>Quick Start</h3>
+1. Install Docker and Docker Compose
+2. Configure environment variables in <code>.env</code>
+3. Run:
+   <pre><code>bash
+   docker-compose up -d
+   </code></pre>
+<h3>Docker Services</h3>
+The Docker Compose configuration includes:<li><strong>discord-bot</strong>: Main bot service</li><li><strong>n8n</strong>: Workflow automation</li><li><strong>postgres</strong>: Database for n8n</li><li><strong>redis</strong>: In-memory cache</li>
+<h3>Docker Commands</h3>
+<pre><code>bash
+<h1>Start all services</h1>
+docker-compose up -d
+<h1>View logs</h1>
+docker-compose logs -f
+<h1>Stop services</h1>
+docker-compose down
+<h1>Update services</h1>
+docker-compose pull
+docker-compose up -d
+<h1>Access container shell</h1>
+docker-compose exec discord-bot sh
+</code></pre>
+<h2>Manual Deployment</h2>
+<h3>Installation</h3>
+1. Clone the repository:
+   <pre><code>bash
+   git clone https://github.com/Dmitze/BotDiscordGodzilla.git
+   cd BotDiscordGodzilla
+   </code></pre>
+2. Install dependencies:
+   <pre><code>bash
+   npm install
+   </code></pre>
+3. Configure environment variables in <code>.env</code>
+4. Build the project:
+   <pre><code>bash
+   npm run build
+   </code></pre>
+5. Start the bot:
+   <pre><code>bash
+   npm start
+   </code></pre>
+<h3>Development Mode</h3>
+<pre><code>bash
+<h1>Start in development mode with auto-reload</h1>
+npm run dev
+</code></pre>
+<h3>Production Mode</h3>
+<pre><code>bash
+<h1>Build and start in production mode</h1>
+npm run build
+npm start
+</code></pre>
+<h2>Cloud Deployment</h2>
+<h3>Heroku Deployment</h3>
+1. Create a Heroku account
+2. Install Heroku CLI
+3. Login to Heroku:
+   <pre><code>bash
+   heroku login
+   </code></pre>
+4. Create a new app:
+   <pre><code>bash
+   heroku create your-app-name
+   </code></pre>
+5. Set environment variables:
+   <pre><code>bash
+   heroku config:set DISCORD_TOKEN=your_token
+   heroku config:set GOOGLE_API_KEY=your_key
+   # ... other variables
+   </code></pre>
+6. Deploy:
+   <pre><code>bash
+   git push heroku main
+   </code></pre>
+<h3>AWS Deployment</h3>
+1. Create an EC2 instance
+2. Install Docker and Docker Compose
+3. Clone the repository
+4. Configure environment variables
+5. Start services with Docker Compose
+<h3>Google Cloud Deployment</h3>
+1. Create a Compute Engine instance
+2. Install Docker and Docker Compose
+3. Clone the repository
+4. Configure environment variables
+5. Start services with Docker Compose
+<h2>Service Management</h2>
+<h3>Process Management</h3>
+For production deployments, use a process manager like PM2:
+1. Install PM2 globally:
+   <pre><code>bash
+   npm install -g pm2
+   </code></pre>
+2. Start the bot with PM2:
+   <pre><code>bash
+   pm2 start dist/index.js --name discord-bot
+   </code></pre>
+3. Set up auto-restart on system boot:
+   <pre><code>bash
+   pm2 startup
+   pm2 save
+   </code></pre>
+<h3>Service Monitoring</h3>
+<pre><code>bash
+<h1>View running processes</h1>
+pm2 list
+<h1>View logs</h1>
+pm2 logs discord-bot
+<h1>Restart service</h1>
+pm2 restart discord-bot
+<h1>Stop service</h1>
+pm2 stop discord-bot
+</code></pre>
+<h2>Monitoring and Maintenance</h2>
+<h3>Health Checks</h3>
+The bot includes built-in health checks:<li><code>/health</code> endpoint for HTTP health checks</li><li>Docker health checks</li><li>Log monitoring</li>
+<h3>Log Management</h3>
+Logs are stored in:<li><code>data/logs/</code> - Application logs</li><li><code>data/metrics/</code> - Performance metrics</li>
+<h3>Backup Strategy</h3>
+Regular backups should include:<li>Configuration files</li><li>Database data</li><li>Custom workflows</li><li>User data (if applicable)</li>
+<h3>Update Process</h3>
+1. Pull the latest code:
+   <pre><code>bash
+   git pull origin main
+   </code></pre>
+2. Install updated dependencies:
+   <pre><code>bash
+   npm install
+   </code></pre>
+3. Rebuild the project:
+   <pre><code>bash
+   npm run build
+   </code></pre>
+4. Restart the service:
+   <pre><code>bash
+   # For Docker
+   docker-compose down
+   docker-compose up -d
+   # For PM2
+   pm2 restart discord-bot
+   </code></pre>
+<h3>Troubleshooting</h3>
+Common issues and solutions:
+1. <strong>Bot not responding</strong>:<li>Check Discord token validity</li><li>Verify bot is online in Discord</li><li>Check logs for errors</li>
+2. <strong>Google API errors</strong>:<li>Verify API key permissions</li><li>Check Google Sheets access</li><li>Validate spreadsheet ID</li>
+3. <strong>AI service issues</strong>:<li>Check OpenAI API key</li><li>Verify Ollama is running</li><li>Check model availability</li>
+4. <strong>Database connection errors</strong>:<li>Verify database credentials</li><li>Check network connectivity</li><li>Ensure database service is running</li></ul>
+<h3>Performance Optimization</h3>
+1. Use Redis for caching
+2. Implement proper rate limiting
+3. Optimize database queries
+4. Use connection pooling
+5. Monitor memory usage
+<h2>Security Best Practices</h2>
+1. Never commit sensitive data to version control
+2. Use environment variables for secrets
+3. Regularly rotate API keys
+4. Implement proper access controls
+5. Keep dependencies updated
+6. Use HTTPS for all external communications
+7. Implement rate limiting
+8. Regular security audits
+<h2>Scaling Considerations</h2>
+For high-traffic deployments:
+1. Use load balancers
+2. Implement horizontal scaling
+3. Use external databases
+4. Implement caching strategies
+5. Monitor resource usage
+6. Set up auto-scaling rules
+<h2>Backup and Recovery</h2>
+<h3>Backup Strategy</h3>
+1. Daily configuration backups
+2. Weekly database backups
+3. Monthly full system backups
+4. Store backups in multiple locations
+<h3>Recovery Process</h3>
+1. Restore from latest backup
+2. Verify configuration files
+3. Test service functionality
+4. Monitor for issues
+<h2>Migration Guide</h2>
+When migrating between environments:
+1. Export configuration
+2. Backup data
+3. Set up new environment
+4. Import configuration
+5. Restore data
+6. Test functionality
+7. Update DNS/URLs if needed
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\data\README.html" class="nav-button"><i class="fas fa-arrow-left"></i> README</a>
+            <a href="pages\deployment\DOCKER.html" class="nav-button">Docker Deployment Guide <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

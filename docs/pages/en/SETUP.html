@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Godzilla Bot Setup - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🔧 Godzilla Bot Setup</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🔧 Godzilla Bot Setup</h1>
+<h2>📋 Required Environment Variables</h2>
+Create a <code>.env</code> file in the project root using <code>.env.example</code> as a base:
+<h2>🔑 Discord Bot Setup</h2>
+<h3>1. Obtaining Discord Token</h3>
+1. Go to Discord Developer Portal
+2. Click "New Application" and enter a name
+3. In the "Bot" section, create a new bot
+4. Copy the token (click "Copy" next to "Token")
+5. Enable required Intents:
+   ✅ Message Content Intent
+   ✅ Server Members Intent
+   ✅ Presence Intent
+   ✅ Message Content
+<h3>2. Adding Bot to Server</h3>
+1. In the "OAuth2" "URL Generator" section, select:
+   Permissions: Send Messages, Use Slash Commands, Embed Links, Attach Files, Read Message History
+2. Generate URL and ask administrator to add bot to server
+<h2>⚙️ Database Setup</h2>
+1. SQLite3 installs automatically
+2. Database will be created at <code>data/database.sqlite</code>
+3. For migrations, use:
+<h2>🔑 Obtaining API Keys</h2>
+<h3>OpenAI API Key</h3>
+1. Go to OpenAI Platform
+2. Log in or create an account
+3. Go to "API Keys" section
+4. Click "Create new secret key"
+5. Copy the key
+<h3>Google Sheets Setup</h3>
+<h4>1. Creating a Table</h4>
+1. Create a new Google Sheet
+2. Add headers in the first row (for example):
+   Product Name, Serial Number, Counterparty, Quantity, Price, Cost
+<h4>2. Getting Table ID</h4>
+1. Open your Google Sheet
+2. Copy ID from URL:
+<h4>3. Setting Access</h4>
+1. Click "Share" in the upper right corner
+2. Add your Google API key as editor
+3. Or set public access (read-only only)
+<h2>🤖 Discord Bot Setup</h2>
+<h3>1. Adding Bot to Server</h3>
+1. In Discord Developer Portal, go to "OAuth2" "URL Generator" section
+2. Select scopes: bot, applications.commands
+3. Select permissions: Send Messages, Use Slash Commands, Embed Links, Attach Files, Read Message History
+4. Copy the generated URL
+5. Open URL in browser and add bot to your server
+<h3>2. Command Setup</h3>
+Bot automatically registers slash commands on startup.
+If you need to update commands:
+<h2>🚀 Bot Launch</h2>
+<h3>1. Installing Dependencies</h3>
+<h3>2. Launch</h3>
+Or use PowerShell script:
+<h2>🔍 Testing</h2>
+Main commands for testing:
+1. <code>/help</code> - check bot operation
+2. <code>/summary</code> - check Google Sheets connection
+3. <code>/ai-analyze</code> - check AI functionality
+<h3>Log Checking</h3>
+Check files in <code>logs/</code> folder for diagnostics.
+<h2>❗ Common Issues</h2>
+<h3>1. "Invalid token"</h3><ul><li>Check Discord Bot Token correctness</li><li>Ensure token doesn't contain extra characters</li>
+<h3>2. "Google Sheets API error"</h3><li>Check Google API Key correctness</li><li>Enable Google Sheets API in Google Cloud Console</li><li>Check table access</li>
+<h3>3. "OpenAI API error"</h3><li>Check OpenAI API Key correctness</li><li>Ensure you have credits on OpenAI account</li>
+<h3>4. "Command not found"</h3><li>Restart bot after changing commands</li><li>Check that bot has rights to use slash commands</li></ul>
+<h2>📞 Support</h2>
+If you encounter issues:
+1. Check logs in <code>logs/</code> folder
+2. Ensure all environment variables are configured correctly
+3. Check internet connection
+4. Create Issue in repository with detailed problem description
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\en\SECURITY.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🛡️ Security</a>
+            <a href="pages\en\USAGE_GUIDE.html" class="nav-button">📚 Discord AI Assistant Bot Usage Guide <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

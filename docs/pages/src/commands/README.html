@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📁 Команди бота (`src/commands/`) - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📁 Команди бота (`src/commands/`)</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📁 Команди бота (<code>src/commands/</code>)</h1>
+Я розробив та підтримую модуль команд, який відповідає за взаємодію користувача з ботом через Slash-команди Discord. Кожна команда типізована, має чітку валідацію аргументів, структурні логи та інкапсульовану бізнес-логіку.
+<h2>🔗 Швидкі посилання</h2><ul><li>Архітектура команд: ../../docs/architecture/NEW_COMMANDS_ARCHITECTURE.md</li><li>Довідник команд: ../../docs/api/COMMANDS_REFERENCE.md</li><li>Метрики і валідація команд: modules/README.md</li>
+<h2>📦 Вміст каталогу</h2><li><code>AIAssistantCommand.ts</code> — AI асистент (натуральна мова, аналіз, відповіді)</li><li><code>AnalyticsCommand.ts</code> — розширена аналітика</li><li><code>DocumentsCommand.ts</code> — робота з документами</li><li><code>EnhancedSearchCommand.ts</code> — покращений пошук</li><li><code>FileManagerCommand.ts</code> — файлові операції</li><li><code>OperationsCommand.ts</code> — операційна діяльність</li><li><code>PerformanceCommand.ts</code> — продуктивність та моніторинг</li><li><code>SearchCommand.ts</code> — пошук</li><li><code>statistics.ts</code> — статистика</li><li><code>BaseCommand.ts</code>, <code>BaseCommandRefactored.ts</code> — базові класи команд</li><li><code>modules/</code> — підмодулі метрик і валідації команд</li>
+<h2>🧭 Принципи</h2><li>Строга типізація, <code>exactOptionalPropertyTypes</code></li><li>Структурне логування з <code>component</code> і meta</li><li>Безпечна валідація вводу та обробка помилок</li>
+<h2>🧩 Як додати нову команду</h2>
+1) Створіть файл <code>MyCommand.ts</code> на основі <code>BaseCommand.ts</code>
+2) Зареєструйте команду в <code>CommandManager.ts</code>
+3) Додайте валідацію в <code>modules/CommandValidator.ts</code>
+4) Додайте метрики в <code>modules/CommandMetrics.ts</code>
+---
+<h3>📞 Контакти</h3><li>Discord: dmitry_shivachov3756  </li><li>Telegram: https://t.me/Dmitry_Shiva  </li><li>Email: dmitze_shivachov@outlook.com  </li><li>GitHub: https://github.com/Dmitze  </li><li>Проект: https://github.com/Dmitze/BotDiscordGodzilla</li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\SIMPLIFIED_COMMANDS.html" class="nav-button"><i class="fas fa-arrow-left"></i> Спрощена структура команд</a>
+            <a href="pages\src\README.html" class="nav-button">README <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

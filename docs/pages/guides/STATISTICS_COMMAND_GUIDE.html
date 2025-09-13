@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 ГІД ПО КОМАНДІ STATISTICS - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📊 ГІД ПО КОМАНДІ STATISTICS</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📊 ГІД ПО КОМАНДІ STATISTICS</h1>
+<h2>🎯 <strong>ОПИС КОМАНДИ</strong></h2>
+Команда <code>/statistics</code> дозволяє отримувати детальну статистику з Google Sheets з підтримкою складних формул, включаючи:<ul><li>Підрахунок по парних/непарних стовпцях</li><li>Агрегацію даних по багатьох аркушах</li><li>Виконання складних формул типу ARRAY_CONSTRAIN + SUMPRODUCT</li><li>Групування та фільтрацію результатів</li>
+---
+<h2>🚀 <strong>БАЗОВЕ ВИКОРИСТАННЯ</strong></h2>
+<h3><strong>Синтаксис команди:</strong></h3>
+<pre><code>
+/statistics operation:<тип_операції> sheets:<аркуші> [опції]
+</code></pre>
+<h3><strong>Приклади використання:</strong></h3>
+<h4><strong>1. Простий підрахунок суми:</strong></h4>
+<pre><code>
+/statistics operation:sum sheets:"1Б БАК,2Б БАК,3Б БАК" range:"H6:AB6"
+</code></pre>
+<h4><strong>2. Підрахунок по парних стовпцях:</strong></h4>
+<pre><code>
+/statistics operation:even_columns sheets:"1Б БАК,2Б БАК,РОЗВІД. рота" range:"H6:AB6"
+</code></pre>
+<h4><strong>3. Складена формула:</strong></h4>
+<pre><code>
+/statistics operation:complex_formula sheets:"1Б БАК,2Б БАК" custom_formula:"ARRAY_CONSTRAIN(SUMPRODUCT(...))"
+</code></pre>
+---
+<h2>📋 <strong>ПАРАМЕТРИ КОМАНДИ</strong></h2>
+<h3><strong>🔧 Обов'язкові параметри:</strong></h3>
+| Параметр | Тип | Опис | Приклад |
+|----------|-----|------|---------|
+| <code>operation</code> | string | Тип операції | <code>sum</code>, <code>even_columns</code>, <code>complex_formula</code> |
+| <code>sheets</code> | string | Аркуші для аналізу | <code>"1Б БАК,2Б БАК,3Б БАК"</code> |
+<h3><strong>⚙️ Додаткові параметри:</strong></h3>
+| Параметр | Тип | Опис | За замовчуванням |
+|----------|-----|------|------------------|
+| <code>range</code> | string | Діапазон даних | <code>"H6:AB6"</code> |
+| <code>column_type</code> | string | Тип стовпців | <code>"all"</code> |
+| <code>group_by</code> | string | Групування | - |
+| <code>filters</code> | JSON | Фільтри | <code>{}</code> |
+| <code>custom_formula</code> | string | Власна формула | - |
+---
+<h2>🎯 <strong>ТИПИ ОПЕРАЦІЙ</strong></h2>
+<h3><strong>📊 Базові операції:</strong></h3>
+<h4><strong>1. <code>sum</code> - Сума</strong></h4>
+<pre><code>bash
+/statistics operation:sum sheets:"1Б БАК,2Б БАК" range:"H6:AB6"
+</code></pre>
+<strong>Результат:</strong> Загальна сума всіх числових значень у вказаному діапазоні.
+<h4><strong>2. <code>average</code> - Середнє значення</strong></h4>
+<pre><code>bash
+/statistics operation:average sheets:"1Б БАК,2Б БАК" range:"H6:AB6"
+</code></pre>
+<strong>Результат:</strong> Середнє арифметичне всіх числових значень.
+<h4><strong>3. <code>count</code> - Кількість</strong></h4>
+<pre><code>bash
+/statistics operation:count sheets:"1Б БАК,2Б БАК" range:"H6:AB6"
+</code></pre>
+<strong>Результат:</strong> Кількість непорожніх комірок з числовими значеннями.
+<h4><strong>4. <code>max</code> - Максимум</strong></h4>
+<pre><code>bash
+/statistics operation:max sheets:"1Б БАК,2Б БАК" range:"H6:AB6"
+</code></pre>
+<strong>Результат:</strong> Найбільше числове значення у діапазоні.
+<h4><strong>5. <code>min</code> - Мінімум</strong></h4>
+<pre><code>bash
+/statistics operation:min sheets:"1Б БАК,2Б БАК" range:"H6:AB6"
+</code></pre>
+<strong>Результат:</strong> Найменше числове значення у діапазоні.
+<h3><strong>🔢 Розширені операції:</strong></h3>
+<h4><strong>6. <code>even_columns</code> - Парні стовпці</strong></h4>
+<pre><code>bash
+/statistics operation:even_columns sheets:"1Б БАК,2Б БАК,3Б БАК" range:"H6:AB6"
+</code></pre>
+<strong>Результат:</strong> Сума значень тільки з парних стовпців (H, J, L, N, ...).
+<h4><strong>7. <code>odd_columns</code> - Непарні стовпці</strong></h4>
+<pre><code>bash
+/statistics operation:odd_columns sheets:"1Б БАК,2Б БАК,3Б БАК" range:"H6:AB6"
+</code></pre>
+<strong>Результат:</strong> Сума значень тільки з непарних стовпців (I, K, M, O, ...).
+<h4><strong>8. <code>complex_formula</code> - Складена формула</strong></h4>
+<pre><code>bash
+/statistics operation:complex_formula sheets:"1Б БАК,2Б БАК" custom_formula:"ARRAY_CONSTRAIN(SUMPRODUCT(...))"
+</code></pre>
+<strong>Результат:</strong> Виконання власної складной формули Google Sheets.
+---
+<h2>📝 <strong>ПРИКЛАДИ СКЛАДНИХ ФОРМУЛ</strong></h2>
+<h3><strong>🎯 Формула для підрахунку по парних стовпцях:</strong></h3>
+<pre><code>bash
+/statistics operation:complex_formula sheets:"1Б БАК,2Б БАК,3Б БАК,РОЗВІД. рота,Рота БАК,Рота УБАК,Рота РЕБ,ІНЖ.САП. рота,Рота ЗВ<code>ЯЗКУ,Рота ОХОРОНИ,РЕМ.ТЕХ. рота,Рота МАТ.ТЕХ.ЗАБ.,МЕДПУНКТ,ПОЖЕЖНА,Гр. псих. віднов.,Взвод ІНСТР.,Взвод ЗАБЕЗП." custom_formula:"ARRAY_CONSTRAIN(ARRAYFORMULA(+SUMPRODUCT((MOD(COLUMN('1Б БАК'!H6:'1Б БАК'!AB6)-COLUMN('1Б БАК'!H6);2)=0)<em>('1Б БАК'!H6:'1Б БАК'!AB6))+SUMPRODUCT((MOD(COLUMN('2Б БАК'!H6:'2Б БАК'!AB6)-COLUMN('2Б БАК'!H6);2)=0)</em>('2Б БАК'!H6:'2Б БАК'!AB6))+SUMPRODUCT((MOD(COLUMN('3Б БАК'!H6:'3Б БАК'!AB6)-COLUMN('3Б БАК'!H6);2)=0)<em>('3Б БАК'!H6:'3Б БАК'!AB6))+SUMPRODUCT((MOD(COLUMN('РОЗВІД. рота'!H6:'РОЗВІД. рота'!AB6)-COLUMN('РОЗВІД. рота'!H6);2)=0)</em>('РОЗВІД. рота'!H6:'РОЗВІД. рота'!AB6))+SUMPRODUCT((MOD(COLUMN('Рота БАК'!H6:'Рота БАК'!AB6)-COLUMN('Рота БАК'!H6);2)=0)<em>('Рота БАК'!H6:'Рота БАК'!AB6))+SUMPRODUCT((MOD(COLUMN('Рота УБАК'!H6:'Рота УБАК'!AB6)-COLUMN('Рота УБАК'!H6);2)=0)</em>('Рота УБАК'!H6:'Рота УБАК'!AB6))+SUMPRODUCT((MOD(COLUMN('Рота РЕБ'!H6:'Рота РЕБ'!AB6)-COLUMN('Рота РЕБ'!H6);2)=0)<em>('Рота РЕБ'!H6:'Рота РЕБ'!AB6))+SUMPRODUCT((MOD(COLUMN('ІНЖ.САП. рота'!H6:'ІНЖ.САП. рота'!AB6)-COLUMN('ІНЖ.САП. рота'!H6);2)=0)</em>('ІНЖ.САП. рота'!H6:'ІНЖ.САП. рота'!AB6))+SUMPRODUCT((MOD(COLUMN('Рота ЗВ</code>ЯЗКУ'!H6:'Рота ЗВ<code>ЯЗКУ'!AB6)-COLUMN('Рота ЗВ</code>ЯЗКУ'!H6);2)=0)<em>('Рота ЗВ<code>ЯЗКУ'!H6:'Рота ЗВ</code>ЯЗКУ'!AB6))+SUMPRODUCT((MOD(COLUMN('Рота ОХОРОНИ'!H6:'Рота ОХОРОНИ'!AB6)-COLUMN('Рота ОХОРОНИ'!H6);2)=0)</em>('Рота ОХОРОНИ'!H6:'Рота ОХОРОНИ'!AB6))+SUMPRODUCT((MOD(COLUMN('РЕМ.ТЕХ. рота'!H6:'РЕМ.ТЕХ. рота'!AB6)-COLUMN('РЕМ.ТЕХ. рота'!H6);2)=0)<em>('РЕМ.ТЕХ. рота'!H6:'РЕМ.ТЕХ. рота'!AB6))+SUMPRODUCT((MOD(COLUMN('Рота МАТ.ТЕХ.ЗАБ.'!H6:'Рота МАТ.ТЕХ.ЗАБ.'!AB6)-COLUMN('Рота МАТ.ТЕХ.ЗАБ.'!H6);2)=0)</em>('Рота МАТ.ТЕХ.ЗАБ.'!H6:'Рота МАТ.ТЕХ.ЗАБ.'!AB6))+SUMPRODUCT((MOD(COLUMN('МЕДПУНКТ'!H6:'МЕДПУНКТ'!AB6)-COLUMN('МЕДПУНКТ'!H6);2)=0)<em>('МЕДПУНКТ'!H6:'МЕДПУНКТ'!AB6))+SUMPRODUCT((MOD(COLUMN('ПОЖЕЖНА'!H6:'ПОЖЕЖНА'!AB6)-COLUMN('ПОЖЕЖНА'!H6);2)=0)</em>('ПОЖЕЖНА'!H6:'ПОЖЕЖНА'!AB6))+SUMPRODUCT((MOD(COLUMN('Гр. псих. віднов.'!H6:'Гр. псих. віднов.'!AB6)-COLUMN('Гр. псих. віднов.'!H6);2)=0)<em>('Гр. псих. віднов.'!H6:'Гр. псих. віднов.'!AB6))+SUMPRODUCT((MOD(COLUMN('Взвод ІНСТР.'!H6:'Взвод ІНСТР.'!AB6)-COLUMN('Взвод ІНСТР.'!H6);2)=0)</em>('Взвод ІНСТР.'!H6:'Взвод ІНСТР.'!AB6))+SUMPRODUCT((MOD(COLUMN('Взвод ЗАБЕЗП.'!H6:'Взвод ЗАБЕЗП.'!AB6)-COLUMN('Взвод ЗАБЕЗП.'!H6);2)=0)*('Взвод ЗАБЕЗП.'!H6:'Взвод ЗАБЕЗП.'!AB6))); 1; 1)"
+</code></pre>
+<h3><strong>📊 Формула для агрегації по групах:</strong></h3>
+<pre><code>bash
+/statistics operation:complex_formula sheets:"1Б БАК,2Б БАК,3Б БАК" custom_formula:"SUMPRODUCT((A:A='Бойові підрозділи')*(B:B))" group_by:"Тип підрозділу"
+</code></pre>
+---
+<h2>🔧 <strong>ФІЛЬТРИ ТА ГРУПУВАННЯ</strong></h2>
+<h3><strong>📋 Фільтри (JSON формат):</strong></h3>
+<pre><code>bash
+/statistics operation:sum sheets:"1Б БАК,2Б БАК" filters:'{"статус": "активний", "категорія": "бойовий"}'
+</code></pre>
+<h3><strong>📊 Групування:</strong></h3>
+<pre><code>bash
+/statistics operation:sum sheets:"1Б БАК,2Б БАК" group_by:"Тип підрозділу"
+</code></pre>
+---
+<h2>📊 <strong>ТИПИ СТОВПЦІВ</strong></h2>
+<h3><strong>🔢 <code>all</code> - Всі стовпці (за замовчуванням)</strong></h3>
+Аналізує всі стовпці у вказаному діапазоні.
+<h3><strong>📈 <code>even</code> - Парні стовпці</strong></h3>
+Аналізує тільки парні стовпці (H, J, L, N, P, R, T, V, X, Z, AB).
+<h3><strong>📉 <code>odd</code> - Непарні стовпці</strong></h3>
+Аналізує тільки непарні стовпці (I, K, M, O, Q, S, U, W, Y, AA).
+---
+<h2>🎯 <strong>ПРАКТИЧНІ ПРИКЛАДИ</strong></h2>
+<h3><strong>📋 Приклад 1: Підрахунок особового складу</strong></h3>
+<pre><code>bash
+/statistics operation:sum sheets:"1Б БАК,2Б БАК,3Б БАК,РОЗВІД. рота" range:"H6:AB6" column_type:even
+</code></pre>
+<strong>Результат:</strong> Загальна кількість особового складу по парних стовпцях (наприклад, офіцери, сержанти).
+<h3><strong>📊 Приклад 2: Середня кількість по підрозділах</strong></h3>
+<pre><code>bash
+/statistics operation:average sheets:"1Б БАК,2Б БАК,3Б БАК" range:"H6:AB6" group_by:"Тип підрозділу"
+</code></pre>
+<strong>Результат:</strong> Середня кількість особового складу по типах підрозділів.
+<h3><strong>🔍 Приклад 3: Максимальна кількість</strong></h3>
+<pre><code>bash
+/statistics operation:max sheets:"1Б БАК,2Б БАК,3Б БАК,РОЗВІД. рота,Рота БАК" range:"H6:AB6"
+</code></pre>
+<strong>Результат:</strong> Найбільша кількість особового складу серед всіх підрозділів.
+---
+<h2>⚠️ <strong>ОБМЕЖЕННЯ ТА ВИМОГИ</strong></h2>
+<h3><strong>📏 Технічні обмеження:</strong></h3><li><strong>Максимальна довжина формули:</strong> 50,000 символів</li><li><strong>Максимальна кількість аркушів:</strong> 50</li><li><strong>Максимальний розмір діапазону:</strong> 1,000 комірок</li><li><strong>Таймаут виконання:</strong> 30 секунд</li>
+<h3><strong>🔒 Вимоги до прав доступу:</strong></h3><li>Читальний доступ до Google Sheets</li><li>Доступ до всіх вказаних аркушів</li><li>Валідний API ключ Google</li>
+<h3><strong>📋 Підтримувані функції:</strong></h3><li><code>SUMPRODUCT</code></li><li><code>ARRAY_CONSTRAIN</code></li><li><code>ARRAYFORMULA</code></li><li><code>MOD</code></li><li><code>COLUMN</code></li><li><code>SUM</code></li><li><code>AVERAGE</code></li><li><code>COUNT</code></li><li><code>MAX</code></li><li><code>MIN</code></li>
+---
+<h2>🚀 <strong>ОПТИМІЗАЦІЯ ПРОДУКТИВНОСТІ</strong></h2>
+<h3><strong>⚡ Поради для швидкої роботи:</strong></h3>
+1. <strong>Обмежуйте діапазон:</strong> Використовуйте конкретні діапазони замість цілих стовпців
+2. <strong>Кешування:</strong> Результати кешуються на 5 хвилин
+3. <strong>Групування:</strong> Використовуйте групування для зменшення обсягу даних
+4. <strong>Фільтри:</strong> Застосовуйте фільтри для обмеження набору даних
+<h3><strong>📊 Моніторинг продуктивності:</strong></h3>
+Команда надає детальну інформацію про:<li>Час обробки</li><li>Кількість оброблених аркушів</li><li>Розмір результатів</li><li>Використання кешу</li>
+---
+<h2>🛠️ <strong>УСТРАНЕННЯ ПРОБЛЕМ</strong></h2>
+<h3><strong>❌ Поширені помилки:</strong></h3>
+<h4><strong>1. "Формула занадто довга"</strong></h4>
+<strong>Рішення:</strong> Розділіть формулу на менші частини або використовуйте простіші операції.
+<h4><strong>2. "Непідтримувана функція"</strong></h4>
+<strong>Рішення:</strong> Перевірте список підтримуваних функцій або зверніться до адміністратора.
+<h4><strong>3. "Таймаут виконання"</strong></h4>
+<strong>Рішення:</strong> Зменшіть кількість аркушів або розмір діапазону.
+<h4><strong>4. "Немає доступу до аркуша"</strong></h4>
+<strong>Рішення:</strong> Перевірте права доступу до Google Sheets.
+<h3><strong>🔧 Діагностика:</strong></h3>
+<pre><code>bash
+<h1>Перевірка доступності аркушів</h1>
+/statistics operation:count sheets:"1Б БАК" range:"A1:A10"
+<h1>Тест простої формули</h1>
+/statistics operation:sum sheets:"1Б БАК" range:"H6:H10"
+</code></pre>
+---
+<h2>📈 <strong>РОЗШИРЕНІ МОЖЛИВОСТІ</strong></h2>
+<h3><strong>🤖 AI-аналіз формул:</strong></h3>
+Команда використовує AI для аналізу складних формул та оптимізації їх виконання.
+<h3><strong>📊 Детальна статистика:</strong></h3><li>Розбивка по аркушах</li><li>Аналіз продуктивності</li><li>Моніторинг використання ресурсів</li>
+<h3><strong>🔄 Автоматичне оновлення:</strong></h3>
+Результати автоматично оновлюються при зміні даних у Google Sheets.
+---
+<h2>📞 <strong>ПІДТРИМКА</strong></h2>
+<h3><strong>📧 Зворотній зв'язок:</strong></h3>
+Якщо у вас виникли проблеми або є пропозиції щодо покращення команди, звертайтеся до адміністратора.
+<h3><strong>📚 Додаткові ресурси:</strong></h3><li><a href="https://developers.google.com/sheets/api">Google Sheets API Documentation</a></li><li><a href="https://support.google.com/docs/answer/3093281">Формули Google Sheets</a></li><li><a href="https://support.google.com/docs/answer/2494886">Права доступу</a></li></ul>
+---
+<strong>📅 Останнє оновлення:</strong> ${new Date().toLocaleDateString('uk-UA')}
+<strong>👨‍💻 Версія:</strong> 3.0.0
+<strong>🚀 Статус:</strong> Активна 
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\SETUP.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🔧 Налаштування Godzilla Bot</a>
+            <a href="pages\guides\TESTING_GUIDE.html" class="nav-button">🧪 РУКОВОДСТВО ПО ТЕСТИРОВАНИЮ DISCORD БОТА <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

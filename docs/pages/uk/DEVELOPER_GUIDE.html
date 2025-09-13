@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛠️ Гайд розробника - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🛠️ Гайд розробника</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🛠️ Гайд розробника</h1>
+<h1>Посібник розробника Discord AI Assistant Bot</h1>
+<h2>🎯 Вступ</h2>
+Цей посібник призначений для розробників, які хочуть зробити внесок у розвиток Discord AI Assistant Bot або розширити його функціональність.
+<h2>🏗️ Архітектура проекту</h2>
+<h3>Структура каталогів</h3>
+<pre><code>
+src/
+├── commands/          # Команди бота
+├── services/          # Бізнес-логіка
+├── core/             # Ядро системи
+├── config/           # Конфігурація
+├── utils/            # Утиліти
+└── tests/            # Тести
+</code></pre>
+<h3>Основні компоненти</h3><ul><li><strong>Bot</strong> - головний клас бота</li><li><strong>CommandManager</strong> - управління командами</li><li><strong>ServiceContainer</strong> - контейнер сервісів</li><li><strong>ErrorHandler</strong> - обробка помилок</li><li><strong>EventManager</strong> - управління подіями</li>
+<h2>🧪 Розробка сервісів</h2>
+<h3>Створення нового сервісу</h3>
+Всі сервіси повинні наслідувати клас <code>BaseService</code>:
+<pre><code>typescript
+import { BaseService } from '@/core/BaseService';
+import type { BotConfig } from '@/types';
+export class MyNewService extends BaseService {
+  constructor(config: BotConfig) {
+    super('MyNewService', config);
+  }
+  protected async onInitialize(): Promise<void> {
+    // Логіка ініціалізації
+  }
+  protected async onShutdown(): Promise<void> {
+    // Логіка завершення роботи
+  }
+  protected async onHealthCheck(): Promise<HealthStatus> {
+    // Перевірка стану сервісу
+    return { healthy: true, service: this.name };
+  }
+}
+</code></pre>
+<h2>📝 Розробка команд</h2>
+<h3>Створення нової команди</h3>
+Команди розміщуються в каталозі <a href="file:///c%3A/Users/dmitz/Documents/GitHub/BotDiscordGodzilla/src/commands">src/commands</a>:
+<pre><code>typescript
+import { SlashCommandBuilder } from '@discordjs/builders';
+import type { Command } from '@/types';
+export const myCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('mycommand')
+    .setDescription('Опис команди')
+    .addStringOption(option =>
+      option.setName('параметр')
+        .setDescription('Опис параметра')
+        .setRequired(true)),
+  async execute(interaction) {
+    // Логіка виконання команди
+    await interaction.reply('Відповідь команди');
+  }
+};
+</code></pre>
+<h2>🔌 Інтеграція з Google API</h2>
+<h3>Налаштування доступу</h3>
+1. Створіть Service Account у Google Cloud Console
+2. Надайте необхідні права доступу
+3. Завантажте ключ Service Account
+4. Налаштуйте змінні середовища
+<h3>Приклад використання GoogleService</h3>
+<pre><code>typescript
+const googleService = new GoogleService(config);
+const sheetData = await googleService.getSheetData(spreadsheetId, range);
+</code></pre>
+<h2>🤖 Інтеграція з AI</h2>
+<h3>Підтримувані провайдери</h3><li><strong>OpenAI</strong> - хмарні моделі OpenAI</li><li><strong>Ollama</strong> - локальні моделі</li>
+<h3>Приклад використання AIService</h3>
+<pre><code>typescript
+const aiService = new AIService(config);
+const response = await aiService.generateResponse('Ваш запит тут');
+</code></pre>
+<h2>🧪 Тестування</h2>
+<h3>Одиничне тестування</h3>
+<pre><code>bash
+npm run test:unit
+</code></pre>
+<h3>Інтеграційне тестування</h3>
+<pre><code>bash
+npm run test:integration
+</code></pre>
+<h3>E2E тестування</h3>
+<pre><code>bash
+npm run test:e2e
+</code></pre>
+<h2>🐳 Розробка з Docker</h2>
+<h3>Локальний запуск</h3>
+<pre><code>bash
+docker-compose up -d
+</code></pre>
+<h3>Перебудова образу</h3>
+<pre><code>bash
+docker-compose build
+</code></pre>
+<h2>📊 Моніторинг та метрики</h2>
+<h3>Prometheus метрики</h3>
+Бот експортує метрики для Prometheus:<li>Використання пам'яті</li><li>Час відповіді</li><li>Кількість запитів</li>
+<h3>Логування</h3>
+Використовується бібліотека Winston для структурованого логування.
+<h2>🔧 Налаштування середовища розробки</h2>
+<h3>Необхідні інструменти</h3><li>Node.js 18+</li><li>npm або yarn</li><li>Docker (опційно)</li><li>Google Cloud обліковий запис</li><li>Discord Developer обліковий запис</li>
+<h3>Встановлення залежностей</h3>
+<pre><code>bash
+npm install
+</code></pre>
+<h3>Запуск у режимі розробки</h3>
+<pre><code>bash
+npm run dev
+</code></pre>
+<h2>📤 Внесок у проект</h2>
+<h3>Git workflow</h3>
+1. Створіть fork репозиторію
+2. Створіть feature branch
+3. Внесіть зміни
+4. Напишіть тести
+5. Створіть Pull Request
+<h3>Стиль коду</h3><li>Використовується TypeScript</li><li>ESLint для перевірки коду</li><li>Prettier для форматування</li></ul>
+<h2>📞 Підтримка</h2>
+Якщо у вас виникли питання щодо розробки:
+1. Перевірте документацію
+2. Створіть issue у репозиторії GitHub
+3. Зверніться до спільноти розробників
+© 2025 Dmitry Shivachov (Dmitze). Всі права захищені.
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\uk\COMMANDS_REFERENCE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📋 Довідник команд</a>
+            <a href="pages\uk\FAQ.html" class="nav-button">❓ Часті питання <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

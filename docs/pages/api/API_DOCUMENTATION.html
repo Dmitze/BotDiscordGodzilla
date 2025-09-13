@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 API Документація Discord AI Assistant Bot - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📚 API Документація Discord AI Assistant Bot</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📚 API Документація Discord AI Assistant Bot</h1>
+<strong>Оновлено: 28.07.2025</strong>
+Детальна документація API для всіх команд та сервісів Discord AI Assistant Bot.
+<h2>📋 <strong>ЗМІСТ</strong></h2><ul><li><a href="#-команда-пошуку">🔍 Команда Пошуку</a></li><li><a href="#-ai-асистент">🤖 AI Асистент</a></li><li><a href="#-управління-документами">📄 Управління Документами</a></li><li><a href="#-аналітика">📊 Аналітика</a></li><li><a href="#️-операції">⚔️ Операції</a></li><li><a href="#️-архітектура-api">🏗️ Архітектура API</a></li><li><a href="#-безпека">🔒 Безпека</a></li><li><a href="#-метрики">📊 Метрики</a></li>
+---
+<h2>🔍 <strong>КОМАНДА ПОШУКУ</strong></h2>
+<h3><strong>Опис</strong></h3>
+Гнучка команда пошуку по всіх документах ЗСУ з підтримкою фільтрації та кешування.
+<h3><strong>Синтаксис</strong></h3>
+<pre><code>
+/пошук запит: <текст> [тип_документа: <тип>] [дата_від: <дата>] [дата_до: <дата>] [підрозділ: <назва>] [пріоритет: <рівень>] [ліміт: <число>]
+</code></pre>
+<h3><strong>Параметри</strong></h3>
+| Параметр        | Тип     | Обов'язковий | Опис                         | Приклад                |
+| --------------- | ------- | ------------ | ---------------------------- | ---------------------- |
+| <code>запит</code>         | string  | ✅           | Пошуковий запит              | "особовий склад"       |
+| <code>тип_документа</code> | enum    | ❌           | Тип документа                | "накази", "доповіді"   |
+| <code>дата_від</code>      | date    | ❌           | Початкова дата               | "01.01.2025"           |
+| <code>дата_до</code>       | date    | ❌           | Кінцева дата                 | "31.12.2025"           |
+| <code>підрозділ</code>     | string  | ❌           | Назва підрозділу             | "1-й батальйон"        |
+| <code>пріоритет</code>     | enum    | ❌           | Пріоритет документа          | "критичний", "високий" |
+| <code>ліміт</code>         | integer | ❌           | Кількість результатів (1-50) | 20                     |
+<h3><strong>Типи документів</strong></h3><li><code>all</code> - Всі документи</li><li><code>orders</code> - Накази</li><li><code>reports</code> - Доповіді</li><li><code>statistics</code> - Звіти</li><li><code>plans</code> - Плани</li><li><code>instructions</code> - Інструкції</li><li><code>protocols</code> - Протоколи</li><li><code>cards</code> - Картки</li><li><code>journals</code> - Журнали</li>
+<h3><strong>Пріоритети</strong></h3><li><code>all</code> - Всі</li><li><code>critical</code> - Критичний</li><li><code>high</code> - Високий</li><li><code>medium</code> - Середній</li><li><code>low</code> - Низький</li>
+<h3><strong>Приклади використання</strong></h3>
+<h4><strong>Простий пошук</strong></h4>
+<pre><code>
+/пошук запит: "сержанти"
+</code></pre>
+<h4><strong>Пошук з фільтрами</strong></h4>
+<pre><code>
+/пошук запит: "техніка" тип_документа: "накази" дата_від: "01.01.2025" пріоритет: "високий" ліміт: 10
+</code></pre>
+<h4><strong>Пошук по підрозділу</strong></h4>
+<pre><code>
+/пошук запит: "особовий склад" підрозділ: "2-й батальйон" дата_до: "31.12.2025"
+</code></pre>
+<h3><strong>Відповідь</strong></h3>
+<h4><strong>Успішна відповідь</strong></h4>
+<pre><code>json
+{
+  "embeds": [
+    {
+      "title": "🔍 Результати пошуку",
+      "description": "Знайдено 15 результатів для запиту: \"сержанти\"",
+      "fields": [
+        {
+          "name": "1. Сержант Іванов І.І.",
+          "value": "Посада: командир відділення, Статус: активний",
+          "inline": false
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "type": "ACTION_ROW",
+      "components": [
+        {
+          "type": "BUTTON",
+          "label": "◀️ Попередня",
+          "style": "SECONDARY",
+          "disabled": true
+        },
+        {
+          "type": "BUTTON",
+          "label": "Наступна ▶️",
+          "style": "PRIMARY"
+        }
+      ]
+    }
+  ]
+}
+</code></pre>
+<h4><strong>Помилка валідації</strong></h4>
+<pre><code>json
+{
+  "content": "❌ Помилка валідації: Запит не може бути порожнім",
+  "ephemeral": true
+}
+</code></pre>
+<h3><strong>Кешування</strong></h3><li><strong>Тривалість</strong>: 5 хвилин</li><li><strong>Ключ</strong>: <code>search:${JSON.stringify(searchQuery)}</code></li><li><strong>Умовне кешування</strong>: тільки при наявності результатів</li>
+---
+<h2>🤖 <strong>AI АСИСТЕНТ</strong></h2>
+<h3><strong>Опис</strong></h3>
+AI асистент для аналізу документів, генерації звітів та надання рекомендацій.
+<h3><strong>Синтаксис</strong></h3>
+<pre><code>
+/ai запит: <текст> [контекст: <текст>] [режим: <режим>]
+</code></pre>
+<h3><strong>Параметри</strong></h3>
+| Параметр   | Тип    | Обов'язковий | Опис                | Приклад                      |
+| ---------- | ------ | ------------ | ------------------- | ---------------------------- |
+| <code>запит</code>    | string | ✅           | Запит до AI         | "Проаналізуй особовий склад" |
+| <code>контекст</code> | string | ❌           | Додатковий контекст | "Дані за 2025 рік"           |
+| <code>режим</code>    | enum   | ❌           | Режим роботи AI     | "аналіз", "звіт"             |
+<h3><strong>Режими роботи</strong></h3><li><code>general</code> - Загальний (за замовчуванням)</li><li><code>analysis</code> - Аналіз даних</li><li><code>report</code> - Генерація звіту</li><li><code>explanation</code> - Пояснення</li><li><code>recommendations</code> - Рекомендації</li>
+<h3><strong>Приклади використання</strong></h3>
+<h4><strong>Загальний запит</strong></h4>
+<pre><code>
+/ai запит: "Як покращити бойову готовність підрозділу?"
+</code></pre>
+<h4><strong>Аналіз з контекстом</strong></h4>
+<pre><code>
+/ai запит: "Проаналізуй особовий склад" контекст: "Дані за останній місяць" режим: "аналіз"
+</code></pre>
+<h4><strong>Генерація звіту</strong></h4>
+<pre><code>
+/ai запит: "Створи звіт про технічний стан" режим: "звіт"
+</code></pre>
+<h3><strong>Відповідь</strong></h3>
+<h4><strong>Успішна відповідь</strong></h4>
+<pre><code>json
+{
+  "embeds": [
+    {
+      "title": "🤖 AI Відповідь",
+      "description": "На основі аналізу даних особового складу...",
+      "fields": [
+        {
+          "name": "📝 Режим",
+          "value": "Аналіз даних",
+          "inline": true
+        },
+        {
+          "name": "👤 Користувач",
+          "value": "testuser#1234",
+          "inline": true
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "type": "ACTION_ROW",
+      "components": [
+        {
+          "type": "BUTTON",
+          "label": "🔍 Пояснити",
+          "style": "SECONDARY"
+        },
+        {
+          "type": "BUTTON",
+          "label": "📊 Аналізувати",
+          "style": "SECONDARY"
+        }
+      ]
+    }
+  ]
+}
+</code></pre>
+<h3><strong>Кешування</strong></h3><li><strong>Тривалість</strong>: 30 хвилин</li><li><strong>Ключ</strong>: <code>ai:${base64(JSON.stringify(aiRequest))}</code></li><li><strong>Умовне кешування</strong>: тільки успішні відповіді</li>
+---
+<h2>📄 <strong>УПРАВЛІННЯ ДОКУМЕНТАМИ</strong></h2>
+<h3><strong>Опис</strong></h3>
+Комплексне управління документами ЗСУ з підтримкою різних категорій та дій.
+<h3><strong>Синтаксис</strong></h3>
+<pre><code>
+/документи <підкоманда> дія: <дія> [запит: <текст>]
+</code></pre>
+<h3><strong>Підкоманди</strong></h3>
+<h4><strong>Особовий склад</strong></h4>
+<pre><code>
+/документи особовий-склад дія: <дія> [запит: <текст>]
+</code></pre>
+<h4><strong>Техніка</strong></h4>
+<pre><code>
+/документи техніка дія: <дія> [запит: <текст>]
+</code></pre>
+<h4><strong>Матеріали</strong></h4>
+<pre><code>
+/документи матеріали дія: <дія> [запит: <текст>]
+</code></pre>
+<h4><strong>Операції</strong></h4>
+<pre><code>
+/документи операції дія: <дія> [запит: <текст>]
+</code></pre>
+<h4><strong>Накази</strong></h4>
+<pre><code>
+/документи накази дія: <дія> [запит: <текст>]
+</code></pre>
+<h3><strong>Дії для всіх підкоманд</strong></h3>
+| Дія      | Опис    | Підтримується |
+| -------- | ------- | ------------- |
+| <code>search</code> | Пошук   | ✅ Всі        |
+| <code>add</code>    | Додати  | ✅ Всі        |
+| <code>update</code> | Оновити | ✅ Всі        |
+| <code>report</code> | Звіт    | ✅ Всі        |
+<h3><strong>Спеціальні дії</strong></h3>
+<h4><strong>Особовий склад</strong></h4><li><code>status</code> - Статус особового складу</li><li><code>check</code> - Перевірка документів</li>
+<h4><strong>Техніка</strong></h4><li><code>maintenance</code> - Обслуговування</li><li><code>status</code> - Статус техніки</li>
+<h4><strong>Матеріали</strong></h4><li><code>stock</code> - Складські залишки</li><li><code>replenish</code> - Поповнення</li>
+<h4><strong>Операції</strong></h4><li><code>planning</code> - Планування</li><li><code>archive</code> - Архівування</li>
+<h4><strong>Накази</strong></h4><li><code>create</code> - Створення</li><li><code>edit</code> - Редагування</li><li><code>approve</code> - Підтвердження</li><li><code>archive</code> - Архівування</li>
+<h3><strong>Приклади використання</strong></h3>
+<h4><strong>Пошук особового складу</strong></h4>
+<pre><code>
+/документи особовий-склад дія: "пошук" запит: "сержанти"
+</code></pre>
+<h4><strong>Обслуговування техніки</strong></h4>
+<pre><code>
+/документи техніка дія: "обслуговування"
+</code></pre>
+<h4><strong>Складські залишки</strong></h4>
+<pre><code>
+/документи матеріали дія: "склад"
+</code></pre>
+<h4><strong>Планування операцій</strong></h4>
+<pre><code>
+/документи операції дія: "планування"
+</code></pre>
+<h4><strong>Створення наказу</strong></h4>
+<pre><code>
+/документи накази дія: "створення"
+</code></pre>
+<h3><strong>Відповідь</strong></h3>
+<h4><strong>Успішна відповідь</strong></h4>
+<pre><code>json
+{
+  "embeds": [
+    {
+      "title": "👥 Особовий склад",
+      "description": "Знайдено 25 сержантів у системі",
+      "fields": [
+        {
+          "name": "🔧 Дія",
+          "value": "Пошук",
+          "inline": true
+        },
+        {
+          "name": "👤 Користувач",
+          "value": "testuser#1234",
+          "inline": true
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "type": "ACTION_ROW",
+      "components": [
+        {
+          "type": "BUTTON",
+          "label": "🔍 Пошук",
+          "style": "SECONDARY"
+        },
+        {
+          "type": "BUTTON",
+          "label": "📊 Звіт",
+          "style": "SECONDARY"
+        }
+      ]
+    }
+  ]
+}
+</code></pre>
+---
+<h2>📊 <strong>АНАЛІТИКА</strong></h2>
+<h3><strong>Опис</strong></h3>
+Система аналітики для генерації звітів, статистики та прогнозування.
+<h3><strong>Синтаксис</strong></h3>
+<pre><code>
+/аналітика <підкоманда> [параметри]
+</code></pre>
+<h3><strong>Підкоманди</strong></h3>
+<h4><strong>Звіт</strong></h4>
+<pre><code>
+/аналітика звіт тип: <тип> період: <період>
+</code></pre>
+<h4><strong>Статистика</strong></h4>
+<pre><code>
+/аналітика статистика категорія: <категорія>
+</code></pre>
+<h4><strong>Прогноз</strong></h4>
+<pre><code>
+/аналітика прогноз показник: <показник>
+</code></pre>
+<h4><strong>Порівняння</strong></h4>
+<pre><code>
+/аналітика порівняння період1: <період1> період2: <період2>
+</code></pre>
+<h3><strong>Параметри</strong></h3>
+<h4><strong>Типи звітів</strong></h4><li><code>особовий-склад</code> - Звіт по особовому складу</li><li><code>техніка</code> - Звіт по техніці</li><li><code>матеріали</code> - Звіт по матеріалам</li><li><code>операції</code> - Звіт по операціях</li><li><code>накази</code> - Звіт по наказах</li>
+<h4><strong>Періоди</strong></h4><li><code>день</code> - За день</li><li><code>тиждень</code> - За тиждень</li><li><code>місяць</code> - За місяць</li><li><code>квартал</code> - За квартал</li><li><code>рік</code> - За рік</li>
+<h4><strong>Показники</strong></h4><li><code>боєготовність</code> - Бойова готовність</li><li><code>особовий-склад</code> - Стан особового складу</li><li><code>техніка</code> - Технічний стан</li><li><code>матеріали</code> - Забезпеченість матеріалами</li>
+<h3><strong>Приклади використання</strong></h3>
+<h4><strong>Звіт по особовому складу</strong></h4>
+<pre><code>
+/аналітика звіт тип: "особовий-склад" період: "місяць"
+</code></pre>
+<h4><strong>Статистика техніки</strong></h4>
+<pre><code>
+/аналітика статистика категорія: "техніка"
+</code></pre>
+<h4><strong>Прогноз бойової готовності</strong></h4>
+<pre><code>
+/аналітика прогноз показник: "боєготовність"
+</code></pre>
+<h4><strong>Порівняння періодів</strong></h4>
+<pre><code>
+/аналітика порівняння період1: "січень" період2: "лютий"
+</code></pre>
+---
+<h2>⚔️ <strong>ОПЕРАЦІЇ</strong></h2>
+<h3><strong>Опис</strong></h3>
+Управління військовими операціями в реальному часі.
+<h3><strong>Синтаксис</strong></h3>
+<pre><code>
+/операції <підкоманда> [параметри]
+</code></pre>
+<h3><strong>Підкоманди</strong></h3>
+<h4><strong>Ситуація</strong></h4>
+<pre><code>
+/операції ситуація сектор: <сектор> координати: <координати>
+</code></pre>
+<h4><strong>Завдання</strong></h4>
+<pre><code>
+/операції завдання дія: <дія> підрозділ: <підрозділ>
+</code></pre>
+<h4><strong>Координація</strong></h4>
+<pre><code>
+/операції координація тип: <тип> частота: <частота>
+</code></pre>
+<h4><strong>Розвідка</strong></h4>
+<pre><code>
+/операції розвідка тип: <тип> район: <район>
+</code></pre>
+<h4><strong>Зв'язок</strong></h4>
+<pre><code>
+/операції зв'язок тип: <тип> стан: <стан>
+</code></pre>
+<h3><strong>Параметри</strong></h3>
+<h4><strong>Сектори</strong></h4><li><code>A</code>, <code>B</code>, <code>C</code>, <code>D</code> - Основні сектори</li><li><code>Alpha</code>, <code>Bravo</code>, <code>Charlie</code> - Альтернативні назви</li>
+<h4><strong>Дії</strong></h4><li><code>розвідка</code> - Розвідувальні дії</li><li><code>наступ</code> - Наступальні дії</li><li><code>оборона</code> - Оборонні дії</li><li><code>відхід</code> - Відхід</li>
+<h4><strong>Типи координації</strong></h4><li><code>зв'язок</code> - Радіозв'язок</li><li><code>навігація</code> - Навігація</li><li><code>логістика</code> - Логістика</li>
+<h4><strong>Типи розвідки</strong></h4><li><code>повітряна</code> - Повітряна розвідка</li><li><code>наземна</code> - Наземна розвідка</li><li><code>технічна</code> - Технічна розвідка</li>
+<h4><strong>Типи зв'язку</strong></h4><li><code>радіо</code> - Радіозв'язок</li><li><code>супутник</code> - Супутниковий зв'язок</li><li><code>оптичний</code> - Оптичний зв'язок</li>
+<h4><strong>Стани</strong></h4><li><code>активний</code> - Активний</li><li><code>резерв</code> - Резерв</li><li><code>ремонт</code> - На ремонті</li>
+<h3><strong>Приклади використання</strong></h3>
+<h4><strong>Ситуація в секторі</strong></h4>
+<pre><code>
+/операції ситуація сектор: "A" координати: "50.4501,30.5234"
+</code></pre>
+<h4><strong>Розвідувальне завдання</strong></h4>
+<pre><code>
+/операції завдання дія: "розвідка" підрозділ: "1-й батальйон"
+</code></pre>
+<h4><strong>Координація зв'язку</strong></h4>
+<pre><code>
+/операції координація тип: "зв'язок" частота: "123.45 МГц"
+</code></pre>
+<h4><strong>Повітряна розвідка</strong></h4>
+<pre><code>
+/операції розвідка тип: "повітряна" район: "північний"
+</code></pre>
+<h4><strong>Статус радіозв'язку</strong></h4>
+<pre><code>
+/операції зв'язок тип: "радіо" стан: "активний"
+</code></pre>
+---
+<h2>🏗️ <strong>АРХІТЕКТУРА API</strong></h2>
+<h3><strong>Загальна структура</strong></h3>
+<h4><strong>Всі команди мають:</strong></h4><li><strong>Валідацію вхідних даних</strong></li><li><strong>Централізовану обробку помилок</strong></li><li><strong>Інтеграцію з сервісами</strong></li><li><strong>Кешування результатів</strong></li><li><strong>Метрики та логування</strong></li>
+<h4><strong>Структура відповіді</strong></h4>
+<pre><code>json
+{
+  "embeds": [
+    {
+      "title": "Заголовок",
+      "description": "Опис",
+      "fields": [],
+      "timestamp": "2025-07-28T12:00:00.000Z"
+    }
+  ],
+  "components": [
+    {
+      "type": "ACTION_ROW",
+      "components": []
+    }
+  ]
+}
+</code></pre>
+<h3><strong>Обробка помилок</strong></h3>
+<h4><strong>Типи помилок</strong></h4><li><code>VALIDATION_ERROR</code> - Помилка валідації</li><li><code>PERMISSION_ERROR</code> - Помилка прав доступу</li><li><code>SERVICE_ERROR</code> - Помилка сервісу</li><li><code>NETWORK_ERROR</code> - Мережева помилка</li><li><code>UNKNOWN_ERROR</code> - Невідома помилка</li>
+<h4><strong>Структура помилки</strong></h4>
+<pre><code>json
+{
+  "content": "❌ Опис помилки",
+  "ephemeral": true
+}
+</code></pre>
+<h3><strong>Валідація</strong></h3>
+<h4><strong>Загальні правила</strong></h4><li>Максимальна довжина запиту: 500 символів</li><li>Максимальна довжина контексту: 1000 символів</li><li>Обов'язкові поля повинні бути заповнені</li><li>Дати у форматі ДД.ММ.РРРР</li>
+<h4><strong>Санітизація</strong></h4><li>Видалення HTML тегів</li><li>Екранування спеціальних символів</li><li>Обмеження розміру вхідних даних</li>
+---
+<h2>🔒 <strong>БЕЗПЕКА</strong></h2>
+<h3><strong>Авторизація</strong></h3>
+<h4><strong>Ролі Discord</strong></h4><li><code>Адміністратор</code> - Повний доступ</li><li><code>Бот-Користувач</code> - Базовий доступ</li><li><code>Sheets-Доступ</code> - Доступ до Google Sheets</li><li><code>AI-Доступ</code> - Доступ до AI функцій</li><li><code>Експорт-Доступ</code> - Доступ до експорту</li>
+<h4><strong>Перевірка прав</strong></h4>
+<pre><code>javascript
+// Приклад перевірки ролі
+if (!interaction.member.roles.cache.some(role => role.name === 'Бот-Користувач')) {
+  return interaction.reply({
+    content: '❌ У вас немає прав для використання цієї команди',
+    ephemeral: true,
+  });
+}
+</code></pre>
+<h3><strong>Rate Limiting</strong></h3>
+<h4><strong>Обмеження</strong></h4><li><strong>Загальні команди</strong>: 100 запитів/15 хвилин</li><li><strong>AI команди</strong>: 50 запитів/15 хвилин</li><li><strong>Пошук</strong>: 200 запитів/15 хвилин</li>
+<h4><strong>Структура обмеження</strong></h4>
+<pre><code>javascript
+{
+  windowMs: 900000, // 15 хвилин
+  maxRequests: 100, // Максимум запитів
+  message: '❌ Забагато запитів. Спробуйте пізніше.'
+}
+</code></pre>
+<h3><strong>Логування безпеки</strong></h3>
+<h4><strong>Події, що логуються</strong></h4><li>Спроби доступу без прав</li><li>Перевищення лімітів запитів</li><li>Підозріла активність</li><li>Помилки валідації</li>
+<h4><strong>Формат логу</strong></h4>
+<pre><code>json
+{
+  "timestamp": "2025-07-28T12:00:00.000Z",
+  "level": "warn",
+  "event": "SECURITY_VIOLATION",
+  "user": "testuser#1234",
+  "userId": "123456789",
+  "command": "пошук",
+  "details": "Попытка доступа без прав"
+}
+</code></pre>
+---
+<h2>📊 <strong>МЕТРИКИ</strong></h2>
+<h3><strong>Команди</strong></h3>
+<h4><strong>Лічильники</strong></h4><li><code>commands_total</code> - Загальна кількість команд</li><li><code>commands_success</code> - Успішні команди</li><li><code>commands_error</code> - Помилки команд</li>
+<h4><strong>Гістограми</strong></h4><li><code>command_duration_seconds</code> - Час виконання команд</li><li><code>command_response_time_seconds</code> - Час відповіді</li>
+<h3><strong>Сервіси</strong></h3>
+<h4><strong>AI сервіс</strong></h4><li><code>ai_requests_total</code> - Загальна кількість AI запитів</li><li><code>ai_requests_success</code> - Успішні AI запити</li><li><code>ai_requests_error</code> - Помилки AI запитів</li><li><code>ai_response_time_seconds</code> - Час відповіді AI</li>
+<h4><strong>Google сервіс</strong></h4><li><code>google_requests_total</code> - Загальна кількість Google запитів</li><li><code>google_requests_success</code> - Успішні Google запити</li><li><code>google_requests_error</code> - Помилки Google запитів</li><li><code>google_response_time_seconds</code> - Час відповіді Google</li>
+<h4><strong>Кеш сервіс</strong></h4><li><code>cache_hits_total</code> - Попадання в кеш</li><li><code>cache_misses_total</code> - Промахи кешу</li><li><code>cache_size_bytes</code> - Розмір кешу</li>
+<h3><strong>Система</strong></h3>
+<h4><strong>Ресурси</strong></h4><li><code>memory_usage_bytes</code> - Використання пам'яті</li><li><code>cpu_usage_percent</code> - Використання CPU</li><li><code>uptime_seconds</code> - Час роботи</li>
+<h4><strong>Discord</strong></h4><li><code>discord_guilds_total</code> - Кількість серверів</li><li><code>discord_users_total</code> - Кількість користувачів</li><li><code>discord_connections_total</code> - Кількість підключень</li>
+<h3><strong>Доступ до метрик</strong></h3>
+<h4><strong>Prometheus endpoint</strong></h4>
+<pre><code>
+GET /metrics
+</code></pre>
+<h4><strong>Приклад відповіді</strong></h4>
+<pre><code>
+<h1>HELP commands_total Total number of commands</h1>
+<h1>TYPE commands_total counter</h1>
+commands_total{command="пошук"} 150
+<h1>HELP command_duration_seconds Command execution duration</h1>
+<h1>TYPE command_duration_seconds histogram</h1>
+command_duration_seconds_bucket{command="пошук",le="0.1"} 50
+command_duration_seconds_bucket{command="пошук",le="0.5"} 100
+command_duration_seconds_bucket{command="пошук",le="1.0"} 150
+</code></pre>
+---
+<h2>📝 <strong>ПРИКЛАДИ ІНТЕГРАЦІЇ</strong></h2>
+<h3><strong>JavaScript/Node.js</strong></h3>
+<h4><strong>Виклик команди пошуку</strong></h4>
+<pre><code>javascript
+const { Client, GatewayIntentBits } = require('discord.js');
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+});
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName === 'пошук') {
+    const query = interaction.options.getString('запит');
+    const documentType = interaction.options.getString('тип_документа');
+    // Логіка обробки команди
+    await interaction.reply(<code>Пошук: ${query}, Тип: ${documentType}</code>);
+  }
+});
+</code></pre>
+<h4><strong>Інтеграція з сервісами</strong></h4>
+<pre><code>javascript
+const bot = require('./src/core/Bot');
+// Отримання сервісу
+const aiService = bot.getService('ai');
+const googleService = bot.getService('google');
+// Використання сервісів
+const response = await aiService.generateResponse('Запит');
+const data = await googleService.getSheetData();
+</code></pre>
+<h3><strong>Python</strong></h3>
+<h4><strong>Виклик через Discord API</strong></h4>
+<pre><code>python
+import discord
+from discord.ext import commands
+bot = commands.Bot(command_prefix='!')
+@bot.command()
+async def search(ctx, query: str):
+    # Логіка пошуку
+    await ctx.send(f'Пошук: {query}')
+bot.run('YOUR_TOKEN')
+</code></pre>
+<h3><strong>cURL</strong></h3>
+<h4><strong>Тестування API</strong></h4>
+<pre><code>bash
+<h1>Тест команди пошуку</h1>
+curl -X POST "https://discord.com/api/v10/interactions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": 2,
+    "data": {
+      "name": "пошук",
+      "options": [
+        {
+          "name": "запит",
+          "value": "сержанти"
+        }
+      ]
+    }
+  }'
+</code></pre>
+---
+<h2>🔧 <strong>НАЛАШТУВАННЯ</strong></h2>
+<h3><strong>Конфігурація</strong></h3>
+<h4><strong>Основні налаштування</strong></h4>
+<pre><code>javascript
+// config/Config.js
+module.exports = {
+  discord: {
+    token: process.env.DISCORD_TOKEN,
+    clientId: process.env.DISCORD_CLIENT_ID,
+  },
+  google: {
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+    apiKey: process.env.GOOGLE_API_KEY,
+  },
+  ai: {
+    provider: process.env.AI_PROVIDER || 'openai',
+    openai: {
+      apiKey: process.env.OPENAI_API_KEY,
+    },
+  },
+};
+</code></pre>
+<h4><strong>Налаштування кешування</strong></h4>
+<pre><code>javascript
+const cacheConfig = {
+  ttl: 300, // 5 хвилин
+  maxSize: 1000, // Максимум елементів
+  cleanupInterval: 60000, // Очищення кожну хвилину
+};
+</code></pre>
+<h4><strong>Налаштування метрик</strong></h4>
+<pre><code>javascript
+const metricsConfig = {
+  enabled: true,
+  port: 9090,
+  path: '/metrics',
+  collectDefaultMetrics: true,
+};
+</code></pre>
+<h3><strong>Моніторинг</strong></h3>
+<h4><strong>Health Check</strong></h4>
+<pre><code>bash
+curl http://localhost:9090/health
+</code></pre>
+<h4><strong>Метрики</strong></h4>
+<pre><code>bash
+curl http://localhost:9090/metrics
+</code></pre>
+<h4><strong>Логи</strong></h4>
+<pre><code>bash
+tail -f logs/bot.log
+</code></pre>
+---
+<h2>📞 <strong>ПІДТРИМКА</strong></h2>
+<h3><strong>Корисні команди</strong></h3>
+<h4><strong>Допомога</strong></h4>
+<pre><code>
+/допомога
+</code></pre>
+<h4><strong>Статистика</strong></h4>
+<pre><code>
+/статистика
+</code></pre>
+<h4><strong>Очищення кешу</strong></h4>
+<pre><code>
+/очистити-кеш
+</code></pre>
+<h3><strong>Логування</strong></h3>
+<h4><strong>Рівні логування</strong></h4><li><code>error</code> - Помилки</li><li><code>warn</code> - Попередження</li><li><code>info</code> - Інформація</li><li><code>debug</code> - Детальна інформація</li>
+<h4><strong>Файли логів</strong></h4><li><code>logs/bot.log</code> - Загальні логи</li><li><code>logs/error.log</code> - Помилки</li><li><code>logs/commands.log</code> - Логи команд</li></ul>
+<h3><strong>Діагностика</strong></h3>
+<h4><strong>Перевірка стану сервісів</strong></h4>
+<pre><code>javascript
+const bot = require('./src/core/Bot');
+const services = bot.getServiceManager().getServicesStatus();
+console.log('Статус сервісів:', services);
+</code></pre>
+<h4><strong>Перевірка метрик</strong></h4>
+<pre><code>javascript
+const metrics = bot.getService('metrics');
+const stats = metrics.getStats();
+console.log('Метрики:', stats);
+</code></pre>
+---
+<strong>📚 Ця документація оновлюється регулярно. Останнє оновлення: 28.07.2025</strong>
+        </div>
+        
+        <div class="navigation">
+            <a href="#" class="nav-button disabled" style="opacity: 0.5; cursor: not-allowed;"><i class="fas fa-arrow-left"></i> Попередня</a>
+            <a href="pages\api\COMMANDS_REFERENCE.html" class="nav-button">📋 Повний список команд Discord Bot з AI <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

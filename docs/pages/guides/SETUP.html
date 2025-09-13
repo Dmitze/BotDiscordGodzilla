@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Налаштування Godzilla Bot - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🔧 Налаштування Godzilla Bot</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🔧 Налаштування Godzilla Bot</h1>
+<h2>📋 Обов'язкові змінні середовища</h2>
+Створіть файл <code>.env</code> в корені проекту, використавши <code>env.example</code> як основу:
+<pre><code>env
+<h1>===== ОСНОВНІ НАЛАШТУВАННЯ =====</h1>
+NODE_ENV=development
+LOG_LEVEL=info
+<h1>===== DISCORD =====</h1>
+DISCORD_TOKEN=your_discord_bot_token_here
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_GUILD_ID=your_guild_id  # Опційно, для розробки
+<h1>===== БЕЗПЕКА =====</h1>
+HMAC_SECRET=generate_secure_random_string
+COMPONENT_TTL=300000  # 5 хвилин у мілісекундах
+<h1>===== БАЗА ДАНИХ =====</h1>
+DB_PATH=./data/godzilla.db
+DB_MIGRATIONS_PATH=./src/db/migrations
+<h1>===== ПОШУК ТА ІНДЕКСАЦІЯ =====</h1>
+SEARCH_INDEX_PATH=./data/search-index
+SEARCH_BATCH_SIZE=50
+SEARCH_FTS_TOKENIZER=unicode61  # Або porter для англійської
+<h1>===== AI ТА RAG =====</h1>
+<h1>Виберіть провайдера: openai, ollama, mock</h1>
+AI_PROVIDER=ollama
+AI_MODEL=llama3  # Або інша модель
+AI_MAX_TOKENS=4096
+AI_TEMPERATURE=0.7
+<h1>Налаштування RAG (Retrieval-Augmented Generation)</h1>
+RAG_ENABLED=true
+RAG_MAX_CONTEXT_TOKENS=2000
+RETRIEVER_K=5
+RETRIEVER_ALPHA=0.5  # Вага гібридного пошуку (0-1)
+<h1>===== ВСТАНОВЛЕННЯ (для Ollama) =====</h1>
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3  # Вкажіть бажану модель
+<h1>===== МЕТРИКИ ТА МОНІТОРИНГ =====</h1>
+METRICS_ENABLED=true
+PROMETHEUS_ENABLED=true
+PROMETHEUS_PORT=9091
+</code></pre>
+<h2>🔑 Налаштування Discord Bot</h2>
+<h3>1. Отримання Discord Token</h3>
+1. Перейдіть на <a href="https://discord.com/developers/applications">Discord Developer Portal</a>
+2. Натисніть "New Application" та введіть назву
+3. У розділі "Bot" створіть нового бота
+4. Скопіюйте токен (натисніть "Copy" біля "Token")
+5. Увімкніть необхідні Intents:<ul><li>✅ Message Content Intent</li><li>✅ Server Members Intent</li><li>✅ Presence Intent</li><li>✅ Message Content</li>
+<h3>2. Додавання бота на сервер</h3>
+1. У розділі "OAuth2" > "URL Generator" оберіть:<li><code>bot</code></li><li><code>applications.commands</code></li><li>Дозволи: <code>Send Messages</code>, <code>Embed Links</code>, <code>Read Message History</code></li>
+2. Згенеруйте URL та запросіть адміністратора додати бота
+<h2>⚙️ Налаштування бази даних</h2>
+1. SQLite3 встановлюється автоматично
+2. База даних створиться за шляхом <code>./data/godzilla.db</code>
+3. Для міграцій використовуйте:
+   <pre><code>bash
+   npm run db:migrate
+   </code></pre>
+<h2>🔑 Отримання API ключів</h2>
+<h3>OpenAI API Key</h3>
+1. Перейдіть на <a href="https://platform.openai.com/">OpenAI Platform</a>
+2. Увійдіть або створіть обліковий запис
+3. Перейдіть у розділ "API Keys"
+4. Натисніть "Create new secret key"
+5. Скопіюйте ключ
+<h2>📊 Налаштування Google Sheets</h2>
+<h3>1. Створення таблиці</h3>
+1. Створіть нову Google Sheet
+2. Додайте заголовки в перший рядок (наприклад):<li>Найменування номенклатури</li><li>Серійний номер</li><li>Контрагент</li><li>Кількість</li><li>Ціна</li><li>Вартість</li>
+<h3>2. Отримання ID таблиці</h3>
+1. Відкрийте вашу Google Sheet
+2. Скопіюйте ID з URL:
+   <pre><code>
+   https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID_HERE/edit
+   </code></pre>
+<h3>3. Налаштування доступу</h3>
+1. Натисніть "Share" в правому верхньому куті
+2. Додайте ваш Google API ключ як редактор
+3. Або налаштуйте публічний доступ (тільки для читання)
+<h2>🤖 Налаштування Discord Bot</h2>
+<h3>1. Додавання бота на сервер</h3>
+1. В Discord Developer Portal перейдіть в розділ "OAuth2" > "URL Generator"
+2. Виберіть scopes: <code>bot</code>, <code>applications.commands</code>
+3. Виберіть permissions:<li>Send Messages</li><li>Use Slash Commands</li><li>Embed Links</li><li>Attach Files</li><li>Read Message History</li>
+4. Скопіюйте згенерований URL
+5. Відкрийте URL в браузері та додайте бота на ваш сервер
+<h3>2. Налаштування команд</h3>
+Бот автоматично зареєструє slash-команди при запуску. Якщо потрібно оновити команди:
+<pre><code>bash
+node index.js
+</code></pre>
+<h2>🚀 Запуск бота</h2>
+<h3>1. Встановлення залежностей</h3>
+<pre><code>bash
+npm install
+</code></pre>
+<h3>2. Запуск</h3>
+<pre><code>bash
+node index.js
+</code></pre>
+Або використовуйте PowerShell скрипт:
+<pre><code>powershell
+.\запуск-бота.ps1
+</code></pre>
+<h2>🔍 Тестування</h2>
+<h3>Основні команди для тестування:</h3>
+1. <code>/help</code> - перевірка роботи бота
+2. <code>/залишки</code> - перевірка підключення до Google Sheets
+3. <code>/ai-аналіз</code> - перевірка AI-функціоналу
+<h3>Перевірка логів</h3>
+Перевіряйте файли в папці <code>logs/</code> для діагностики проблем.
+<h2>❗ Поширені проблеми</h2>
+<h3>1. "Invalid token"</h3><li>Перевірте правильність Discord Bot Token</li><li>Переконайтеся, що токен не містить зайвих символів</li>
+<h3>2. "Google Sheets API error"</h3><li>Перевірте правильність Google API Key</li><li>Увімкніть Google Sheets API в Google Cloud Console</li><li>Перевірте доступ до таблиці</li>
+<h3>3. "OpenAI API error"</h3><li>Перевірте правильність OpenAI API Key</li><li>Переконайтеся, що у вас є кредити на рахунку OpenAI</li>
+<h3>4. "Command not found"</h3><li>Перезапустіть бота після зміни команд</li><li>Перевірте, що бот має права на використання slash-команд</li></ul>
+<h2>Підтримка</h2>
+Якщо у вас виникли проблеми:
+1. Перевірте логи в папці <code>logs/</code>
+2. Переконайтеся, що всі змінні середовища налаштовані правильно
+3. Перевірте підключення до інтернету
+4. Створіть Issue в репозиторії з детальним описом проблеми
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\SECURITY.html" class="nav-button"><i class="fas fa-arrow-left"></i> Security Guide</a>
+            <a href="pages\guides\STATISTICS_COMMAND_GUIDE.html" class="nav-button">📊 ГІД ПО КОМАНДІ STATISTICS <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Rendering Service - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Markdown Rendering Service</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Markdown Rendering Service</h1>
+<h2>Overview</h2>
+The Markdown Rendering Service provides enhanced markdown rendering capabilities for the BotDiscordGodzilla project, leveraging the CordMd library to create beautiful formatted responses in Discord.
+<h2>Features</h2><ul><li><strong>Text Rendering</strong>: Enhanced markdown formatting for Discord messages</li><li><strong>Image Rendering</strong>: Convert markdown to images for complex documents</li><li><strong>Code Block Syntax Highlighting</strong>: Beautiful code formatting with language support</li><li><strong>Table Formatting</strong>: Improved table display in Discord</li><li><strong>Input Sanitization</strong>: Safe handling of user-provided markdown</li><li><strong>Caching</strong>: Performance optimization through rendered content caching</li><li><strong>Memory Management</strong>: Efficient handling of large documents</li><li><strong>Metrics Collection</strong>: Performance monitoring and statistics</li>
+<h2>Usage</h2>
+<h3>Text Rendering</h3>
+<pre><code>typescript
+const markdownService = interaction.client.serviceContainer.get('markdownRendering');
+const renderedText = await markdownService.renderToText('# Hello World\nThis is <strong>bold</strong> text!');
+</code></pre>
+<h3>Image Rendering</h3>
+<pre><code>typescript
+const markdownService = interaction.client.serviceContainer.get('markdownRendering');
+const attachment = await markdownService.renderToImage('# Hello World\nThis is <strong>bold</strong> text!');
+</code></pre>
+<h3>Command Usage</h3>
+Users can use the <code>/markdown</code> command to render markdown content:
+<pre><code>
+/markdown content:"# Hello World
+This is <strong>bold</strong> text!" format:text
+</code></pre>
+<h2>Configuration</h2>
+The service can be configured through environment variables:
+<pre><code>env
+<h1>Markdown Rendering Configuration</h1>
+MARKDOWN_THEME=dark
+MARKDOWN_FONT_SIZE=16
+MARKDOWN_MAX_WIDTH=800
+MARKDOWN_MAX_HEIGHT=600
+</code></pre>
+<h2>API Reference</h2>
+<h3><code>renderToText(markdown: string): Promise<string></code></h3>
+Render markdown content as formatted Discord text.
+<h3><code>renderToImage(markdown: string, options?: RenderOptions): Promise<AttachmentBuilder></code></h3>
+Render markdown content as an image attachment.
+<h3><code>validateMarkdown(markdown: string): ValidationResult</code></h3>
+Validate markdown content for syntax errors.
+<h3><code>extractCodeBlocks(markdown: string): CodeBlock[]</code></h3>
+Extract code blocks from markdown content.
+<h3><code>getMetrics(): RenderingMetrics</code></h3>
+Get performance metrics for the rendering service.
+<h2>Error Handling</h2>
+The service includes comprehensive error handling:<li>Invalid markdown syntax</li><li>Rendering timeouts</li><li>Memory overflow protection</li><li>Font loading failures</li><li>Canvas rendering errors</li></ul>
+<h2>Performance Optimization</h2>
+<h3>Caching</h3>
+The service implements a caching mechanism to avoid re-rendering the same content:
+<pre><code>typescript
+class MarkdownCache {
+  private cache: Map<string, { buffer: Buffer; timestamp: number }>;
+  private maxSize: number = 100;
+  private ttl: number = 300000; // 5 minutes
+}
+</code></pre>
+<h3>Memory Management</h3>
+Memory usage is monitored to prevent overflow:
+<pre><code>typescript
+class MemoryMonitor {
+  private threshold: number = 500 <em> 1024 </em> 1024; // 500MB
+}
+</code></pre>
+<h2>Internationalization</h2>
+The service supports Ukrainian language content through proper Unicode handling and font support.
+<h2>Security</h2>
+Input sanitization prevents XSS and other security issues:
+<pre><code>typescript
+class InputSanitizer {
+  public sanitizeMarkdown(markdown: string): string {
+    // Remove potentially dangerous HTML
+    let sanitized = markdown.replace(/<[^>]*>/g, '');
+    // Limit length
+    if (sanitized.length > 10000) {
+      sanitized = sanitized.substring(0, 10000);
+    }
+    // Escape Discord-specific characters
+    sanitized = sanitized.replace(/@/g, '@\u200b'); // Prevent mentions
+    sanitized = sanitized.replace(/<code>/g, '\\</code>'); // Escape backticks
+    return sanitized;
+  }
+}
+</code></pre>
+<h2>Testing</h2>
+The service includes comprehensive unit and integration tests:
+<pre><code>bash
+npm run test:services -- MarkdownRenderingService
+npm run test:commands -- MarkdownCommand
+</code></pre>
+<h2>Future Enhancements</h2>
+Planned features include:
+1. Real-time collaborative markdown editing
+2. Export to multiple formats (PDF, DOCX, HTML)
+3. Version control for markdown documents
+4. Template system for common document types
+5. Integration with cloud storage providers
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\markdown-rendering-service-spec.html" class="nav-button"><i class="fas fa-arrow-left"></i> Markdown Rendering Service Specification</a>
+            <a href="pages\ollama-integration.html" class="nav-button">Ollama Integration <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

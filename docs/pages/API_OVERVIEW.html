@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 API та команди - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📚 API та команди</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📚 API та команди</h1>
+<h2>📑 Зміст</h2><ul><li><a href="#-огляд-команд">Огляд команд</a></li><li><a href="#-детальний-опис-команд">Детальний опис команд</a></li><li><a href="#-приклади-використання">Приклади використання</a></li><li><a href="#-безпека">Безпека</a></li><li><a href="#-корисні-посилання">Корисні посилання</a></li>
+<h2>🚀 Огляд команд</h2>
+| Команда | Опис | Основні параметри |
+|---------|------|------------------|
+| <code>/пошук</code> | Пошук у FTS/Google/гібрид | <code>запит</code>, <code>режим</code>, <code>фільтри</code> |
+| <code>/ai</code> | AI асистент з підтримкою RAG | <code>запит</code>, <code>режим</code>, <code>макс_токенів</code> |
+| <code>/док</code> | Довідник з документацією | <code>розділ</code>, <code>версія</code> |
+| <code>/stats</code> | Статистика використання | <code>період</code>, <code>формат</code> |
+| <code>/файл</code> | Керування файлами | <code>дія</code>, <code>шлях</code>, <code>параметри</code> |
+<h2>🔍 Детальний опис команд</h2>
+<h3>🔎 <code>/пошук</code></h3>
+Виконує пошук у зазначених джерелах з можливістю фільтрації.
+<strong>Параметри:</strong><li><code>запит</code> (обов'язковий) - Пошуковий запит</li><li><code>режим</code> - Режим пошуку: <code>fts</code>, <code>google</code>, <code>гібрид</code> (за замовчуванням: <code>гібрид</code>)</li><li><code>фільтри</code> - Додаткові фільтри пошуку (формат: <code>ключ:значення</code>)</li>
+<h3>🤖 <code>/ai</code></h3>
+Взаємодія з AI-асистентом з підтримкою контексту.
+<strong>Параметри:</strong><li><code>запит</code> (обов'язковий) - Запит до AI</li><li><code>режим</code> - Режим роботи: <code>стандарт</code>, <code>розгорнутий</code>, <code>стислий</code></li><li><code>макс_токенів</code> - Максимальна кількість токенів у відповіді</li>
+<h3>📄 <code>/док</code></h3>
+Довідник з документацією до бота.
+<strong>Параметри:</strong><li><code>розділ</code> - Назва розділу документації</li><li><code>версія</code> - Версія документації (за замовчуванням: поточна)</li>
+<h3>📊 <code>/stats</code></h3>
+Отримання статистики використання.
+<strong>Параметри:</strong><li><code>період</code> - Період: <code>сьогодні</code>, <code>тиждень</code>, <code>місяць</code>, <code>рік</code></li><li><code>формат</code> - Формат виводу: <code>текст</code>, <code>графік</code>, <code>таблиця</code></li>
+<h2>💡 Приклади використання</h2>
+<pre><code>bash
+<h1>Пошук інформації</h1>
+/пошук запит:"особовий склад 2025"
+/пошук запит:"звіт про оперативну обстановку" режим:гібрид
+<h1>Робота з AI</h1>
+/ai запит:"проаналізуй останні звіти"
+/ai запит:"зроби висновок" режим:розгорнутий макс_токенів:1000
+<h1>Робота з документацією</h1>
+/док розділ:"встановлення"
+/док розділ:"налаштування" версія:2.0
+<h1>Перегляд статистики</h1>
+/stats період:тиждень
+/stats період:місяць формат:графік
+</code></pre>
+<h2>🔒 Безпека</h2>
+Усі інтерактивні компоненти захищені:<li>Підписані через HMAC з встановленим TTL</li><li>Валідація джерела та цілісності даних</li><li>Обмеження частоти запитів (rate limiting)</li>
+<h2>🔗 Корисні посилання</h2><li><a href="api/COMMANDS_REFERENCE.md">Повний довідник команд</a></li><li><a href="api/API_DOCUMENTATION.md">Детальна API документація</a></li><li><a href="DEVELOPER_GUIDE.md">Гайд розробника</a></li><li><a href="ARCHITECTURE.md">Архітектура системи</a></li></ul>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\api\README.html" class="nav-button"><i class="fas fa-arrow-left"></i> ⚠️ ЗАСТАРІЛО: API-документація (папка `docs/api/`)</a>
+            <a href="pages\architecture\NEW_SERVICES_ARCHITECTURE.html" class="nav-button">🏗️ Архітектура нових сервісів Discord AI Assistant Bot <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚠️ ЗАСТАРІЛО: Архітектурна документація (папка `docs/architecture/`) - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> ⚠️ ЗАСТАРІЛО: Архітектурна документація (папка `docs/architecture/`)</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>⚠️ ЗАСТАРІЛО: Архітектурна документація (папка <code>docs/architecture/</code>)</h1>
+> Цей розділ збережений лише для сумісності. Актуальна архітектура зведена у файлах:
+>
+> - Основна архітектура: <code>docs/ARCHITECTURE.md</code>
+> - Індекс документації: <code>docs/INDEX.md</code>
+>
+> Будь ласка, використовуйте їх. Цей розділ буде переміщено до <code>docs/archive/</code> або видалено у найближчих релізах.
+<h2>🏗️ <strong>ARCHITECTURE - АРХІТЕКТУРНА ДОКУМЕНТАЦІЯ</strong></h2>
+<h2>📁 <strong>Структура папки architecture/</strong></h2>
+Ця папка містить всю архітектурну документацію Discord AI Assistant Bot. Включає технічні схеми, принципи проектування та плани розвитку системи.
+---
+<h2>🎯 <strong>ОСНОВНІ КОМПОНЕНТИ</strong></h2>
+<h3><strong>🏗️ Архітектура системи</strong></h3><ul><li><strong><a href="ARCHITECTURE.md">🏗️ ARCHITECTURE.md</a></strong> - технічна архітектура системи</li><li><strong><a href="NEW_COMMANDS_ARCHITECTURE.md">🎯 NEW_COMMANDS_ARCHITECTURE.md</a></strong> - архітектура команд</li><li><strong><a href="ROADMAP.md">🗺️ ROADMAP.md</a></strong> - план розвитку проекту</li>
+---
+<h2>🔧 <strong>ДЕТАЛЬНИЙ ОПИС</strong></h2>
+<h3><strong>🏗️ ARCHITECTURE.md</strong></h3>
+Технічна архітектура системи:
+<h4><strong>🎯 Принципи архітектури</strong></h4><li><strong>Модульність</strong> - незалежні компоненти</li><li><strong>Сервісна архітектура</strong> - розділення відповідальності</li><li><strong>Масштабованість</strong> - горизонтальне масштабування</li><li><strong>Надійність</strong> - fault tolerance</li><li><strong>Безпека</strong> - багаторівнева безпека</li>
+<h4><strong>🏗️ Компоненти системи</strong></h4><li><strong>Bot Core</strong> - головний клас бота</li><li><strong>Command Manager</strong> - управління командами</li><li><strong>Service Container</strong> - контейнер сервісів</li><li><strong>Event Manager</strong> - управління подіями</li><li><strong>Error Handler</strong> - обробка помилок</li>
+<h4><strong>🛠️ Сервіси</strong></h4><li><strong>AI Service</strong> - штучний інтелект</li><li><strong>Google Service</strong> - робота з Google API</li><li><strong>Cache Service</strong> - кешування даних</li><li><strong>Metrics Service</strong> - метрики та моніторинг</li><li><strong>Scheduler Service</strong> - планувальник завдань</li>
+<h4><strong>📊 Схеми та діаграми</strong></h4><li><strong>Архітектурна схема</strong> - загальна структура</li><li><strong>Схема даних</strong> - потоки даних</li><li><strong>Схема безпеки</strong> - рівні безпеки</li><li><strong>Схема розгортання</strong> - процес розгортання</li>
+<h3><strong>🎯 NEW_COMMANDS_ARCHITECTURE.md</strong></h3>
+Архітектура команд:
+<h4><strong>🏗️ Принципи проектування</strong></h4><li><strong>Гнучкість</strong> - адаптивні команди</li><li><strong>Спеціалізація</strong> - для ЗСУ</li><li><strong>Модульність</strong> - незалежні компоненти</li><li><strong>Розширюваність</strong> - легке додавання нових команд</li>
+<h4><strong>📋 Типи команд</strong></h4><li><strong>Пошукові команди</strong> - пошук та фільтрація</li><li><strong>AI команди</strong> - штучний інтелект</li><li><strong>Документні команди</strong> - управління документами</li><li><strong>Аналітичні команди</strong> - звіти та статистика</li><li><strong>Операційні команди</strong> - військові операції</li>
+<h4><strong>🔄 Життєвий цикл команди</strong></h4>
+1. <strong>Реєстрація</strong> - реєстрація команди
+2. <strong>Валідація</strong> - перевірка параметрів
+3. <strong>Виконання</strong> - виконання логіки
+4. <strong>Відповідь</strong> - формування відповіді
+5. <strong>Логування</strong> - запис події
+<h3><strong>🗺️ ROADMAP.md</strong></h3>
+План розвитку проекту:
+<h4><strong>📅 Етапи розвитку</strong></h4><li><strong>Етап 1</strong> - базова функціональність</li><li><strong>Етап 2</strong> - оптимізація та покращення</li><li><strong>Етап 3</strong> - розширені функції</li><li><strong>Етап 4</strong> - масштабування</li><li><strong>Етап 5</strong> - інновації</li>
+<h4><strong>🎯 Цілі кожного етапу</strong></h4><li><strong>Функціональність</strong> - нові можливості</li><li><strong>Продуктивність</strong> - оптимізація</li><li><strong>Безпека</strong> - покращення безпеки</li><li><strong>Масштабованість</strong> - підготовка до росту</li>
+<h4><strong>📊 Метрики успіху</strong></h4><li><strong>Користувачі</strong> - кількість активних користувачів</li><li><strong>Продуктивність</strong> - час відповіді</li><li><strong>Надійність</strong> - uptime системи</li><li><strong>Безпека</strong> - кількість інцидентів</li>
+---
+<h2>🚀 <strong>ВИКОРИСТАННЯ</strong></h2>
+<h3><strong>📖 Для архітекторів</strong></h3>
+1. <strong>ARCHITECTURE.md</strong> - технічна архітектура
+2. <strong>NEW_COMMANDS_ARCHITECTURE.md</strong> - архітектура команд
+3. <strong>ROADMAP.md</strong> - плани розвитку
+4. <strong>Схеми</strong> - технічні схеми
+<h3><strong>🔧 Для розробників</strong></h3>
+1. <strong>Компоненти</strong> - опис компонентів
+2. <strong>Сервіси</strong> - архітектура сервісів
+3. <strong>Інтерфейси</strong> - API та інтерфейси
+4. <strong>Принципи</strong> - принципи проектування
+<h3><strong>📊 Для менеджерів</strong></h3>
+1. <strong>ROADMAP.md</strong> - плани розвитку
+2. <strong>Метрики</strong> - ключові показники
+3. <strong>Ризики</strong> - технічні ризики
+4. <strong>Ресурси</strong> - необхідні ресурси
+---
+<h2>🏗️ <strong>АРХІТЕКТУРНІ ПРИНЦИПИ</strong></h2>
+<h3><strong>🎯 SOLID принципи</strong></h3><li><strong>Single Responsibility</strong> - одна відповідальність</li><li><strong>Open/Closed</strong> - відкритий для розширення</li><li><strong>Liskov Substitution</strong> - заміна підкласів</li><li><strong>Interface Segregation</strong> - розділення інтерфейсів</li><li><strong>Dependency Inversion</strong> - інверсія залежностей</li>
+<h3><strong>🔄 Патерни проектування</strong></h3><li><strong>Factory Pattern</strong> - створення об'єктів</li><li><strong>Observer Pattern</strong> - спостереження за подіями</li><li><strong>Strategy Pattern</strong> - стратегії обробки</li><li><strong>Command Pattern</strong> - команди</li><li><strong>Repository Pattern</strong> - робота з даними</li>
+<h3><strong>📊 Масштабування</strong></h3><li><strong>Горизонтальне масштабування</strong> - додавання серверів</li><li><strong>Вертикальне масштабування</strong> - збільшення ресурсів</li><li><strong>Кешування</strong> - стратегії кешування</li><li><strong>Балансування навантаження</strong> - розподіл навантаження</li>
+---
+<h2>🧪 <strong>ТЕСТУВАННЯ АРХІТЕКТУРИ</strong></h2>
+<h3><strong>📋 Типи тестів</strong></h3><li><strong>Unit тести</strong> - тестування компонентів</li><li><strong>Integration тести</strong> - тестування взаємодії</li><li><strong>Architecture тести</strong> - тестування архітектури</li><li><strong>Performance тести</strong> - тестування продуктивності</li>
+<h3><strong>🔧 Інструменти</strong></h3><li><strong>Jest</strong> - unit тестування</li><li><strong>Supertest</strong> - integration тестування</li><li><strong>Artillery</strong> - performance тестування</li><li><strong>ArchUnit</strong> - architecture тестування</li>
+<h3><strong>📊 Метрики якості</strong></h3><li><strong>Покриття тестами</strong> - відсоток покриття</li><li><strong>Складність</strong> - цикломатична складність</li><li><strong>Зв'язність</strong> - coupling між модулями</li><li><strong>Згуртованість</strong> - cohesion модулів</li>
+---
+<h2>📚 <strong>ДОКУМЕНТАЦІЯ</strong></h2>
+<h3><strong>📖 Пов'язана документація</strong></h3><li><strong><a href="../api/">API документація</a></strong> - технічна документація</li><li><strong><a href="../guides/">Гайди</a></strong> - гайди користувача</li><li><strong><a href="../documentation/">Звіти</a></strong> - звіти розробки</li>
+<h3><strong>🎓 Навчальні ресурси</strong></h3><li><strong>Архітектурні патерни</strong> - опис патернів</li><li><strong>Приклади реалізації</strong> - готові приклади</li><li><strong>Best Practices</strong> - найкращі практики</li><li><strong>Anti-patterns</strong> - що не робити</li>
+---
+<h2>🔧 <strong>РОЗВИТОК</strong></h2>
+<h3><strong>📝 Створення нової архітектури</strong></h3>
+<pre><code>markdown
+<h1>Нова архітектура</h1>
+<h2>Принципи</h2><li>Опис принципів архітектури</li>
+<h2>Компоненти</h2><li>Список компонентів</li>
+<h2>Взаємодія</h2><li>Схема взаємодії</li>
+<h2>Масштабування</h2><li>Стратегії масштабування</li></ul>
+</code></pre>
+<h3><strong>🧪 Тестування архітектури</strong></h3>
+<pre><code>typescript
+describe('Architecture', () => {
+  test('should follow SOLID principles', () => {
+    // Тести принципів
+  });
+  test('should be scalable', () => {
+    // Тести масштабованості
+  });
+});
+</code></pre>
+---
+<h2>🤝 <strong>КОНТАКТИ</strong></h2>
+<em>Автор:</em> Dmitry Shivachov (Dmitze)  
+<em>Email:</em> <a href="mailto:dmitze_shivachov@outlook.com">dmitze_shivachov@outlook.com</a>  
+<em>GitHub:</em> <a href="https://github.com/Dmitze">https://github.com/Dmitze</a>  
+<em>Discord:</em> dmitry_shivachov3756  
+<em>Telegram:</em> <a href="https://t.me/Dmitry_Shiva">https://t.me/Dmitry_Shiva</a>  
+---
+<strong>Godzilla Bot - Потужний, Надійний, Український!</strong>
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\architecture\NEW_SERVICES_ARCHITECTURE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🏗️ Архітектура нових сервісів Discord AI Assistant Bot</a>
+            <a href="pages\architecture\ROADMAP.html" class="nav-button">🗺️ Роадмап розвитку Discord AI Assistant Bot <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏗️ Discord AI Assistant Bot Architecture - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🏗️ Discord AI Assistant Bot Architecture</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🏗️ Discord AI Assistant Bot Architecture</h1>
+<h2>📋 Contents</h2>
+<h2>🗺️ Overview</h2>
+Architecture Diagram
+Main Components
+1. <strong>Bot Core</strong> (<code>src/core/Bot.ts</code>)<ul><li>Main bot class, initialization, event handling</li><li>Command registration and management</li><li>DI container for services</li><li>Event system</li>
+2. <strong>Commands</strong> (<code>src/commands/</code>)<li>Parent class for all commands</li><li>Search in documents</li><li>Document management</li><li>Usage statistics</li><li>File management</li>
+3. <strong>Services</strong> (<code>src/services/</code>)<li>Google API integration</li><li>Embedding generation and work</li><li>RAG pipeline</li><li>Data caching</li>
+4. <strong>Search</strong> (<code>src/search/</code>)<li>Search index interface</li><li>FTS implementation on SQLite</li><li>Hybrid search (FTS + vector)</li>
+5. <strong>RAG</strong> (<code>src/rag/</code>)<li>Search for relevant fragments</li><li>Context preparation</li><li>Response generation</li>
+<h2>🔄 Data Flows</h2>
+Document Indexing
+Request Processing
+<h2>⚙️ Technology Stack</h2>
+Main Technologies<li><strong>Language</strong>: TypeScript 5.0+</li><li><strong>Platform</strong>: Node.js 20.x (LTS)</li><li><strong>Framework</strong>: Discord.js 14.x</li><li><strong>Database</strong>: SQLite3 (FTS5), Redis (cache)</li><li><strong>AI/ML</strong>: Ollama (local), OpenAI API (optional)</li><li><strong>Integrations</strong>: Google Sheets API</li><li><strong>Libraries</strong>: DI, Validation, Logging, Testing, Monitoring</li>
+<h2>🔧 Configuration</h2>
+Main Configuration Parameters (<code>src/config/</code>):
+More details: Setup Guide
+<h2>🔐 Security</h2>
+Key Mechanisms
+1. <strong>Component Signing</strong><li>All buttons and selectors are signed via HMAC-SHA256</li><li>TTL for each component (default 15 minutes)</li><li>Deny access to expired components</li>
+2. <strong>Data Handling</strong><li>PII masking in logs</li><li>Encryption of confidential data</li><li>Limited access to API keys</li>
+3. <strong>API Protection</strong><li>Rate limiting</li><li>Input data validation</li><li>Error handling without revealing details</li></ul>
+More details: Security Guide
+<h2>📚 Additional Documentation</h2>
+Quick Start - how to get started quickly
+RAG Guide - working with the RAG pipeline
+Local AI - Ollama setup
+API Documentation - bot API description
+Development Guide - developer guide
+<h2>🚀 Future Enhancements</h2>
+1. Support for additional vector databases (Pinecone, Weaviate)
+2. Improved processing of tables and other complex formats
+3. Extended usage analytics
+4. Graphical interface for settings
+5. Additional cloud storage integrations
+© 2025 Godzilla Bot Team
+License: MIT
+Change History
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\DOCUMENTATION_ORGANIZATION_PLAN.html" class="nav-button"><i class="fas fa-arrow-left"></i> Documentation Organization Plan</a>
+            <a href="pages\en\COMMANDS_REFERENCE.html" class="nav-button">📋 Complete List of Discord Bot Commands with AI <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

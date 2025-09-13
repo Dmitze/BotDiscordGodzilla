@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 РУКОВОДСТВО ПО ТЕСТИРОВАНИЮ DISCORD БОТА - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🧪 РУКОВОДСТВО ПО ТЕСТИРОВАНИЮ DISCORD БОТА</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🧪 РУКОВОДСТВО ПО ТЕСТИРОВАНИЮ DISCORD БОТА</h1>
+<h2>📋 ПРЕДВАРИТЕЛЬНАЯ ПОДГОТОВКА</h2>
+<h3>1. Настройка переменных окружения</h3>
+Создайте файл <code>.env</code> в корне проекта на основе <code>src/config/environment/env.example</code>:
+<pre><code>bash
+<h1>Скопируйте пример</h1>
+cp src/config/environment/env.example .env
+<h1>Отредактируйте .env файл</h1>
+nano .env
+</code></pre>
+<strong>Обязательные переменные для тестирования:</strong>
+<pre><code>env
+<h1>Discord настройки</h1>
+DISCORD_TOKEN=your_discord_bot_token_here
+DISCORD_CLIENT_ID=your_discord_client_id_here
+DISCORD_GUILD_ID=your_guild_id_here
+<h1>Google настройки (для команд поиска)</h1>
+GOOGLE_SPREADSHEET_ID=your_spreadsheet_id_here
+GOOGLE_API_KEY=your_google_api_key_here
+<h1>AI настройки (для AI ассистента)</h1>
+AI_PROVIDER=openai
+OPENAI_API_KEY=your_openai_api_key_here
+</code></pre>
+<h3>2. Сборка проекта</h3>
+<pre><code>bash
+<h1>Установка зависимостей</h1>
+npm install
+<h1>Сборка TypeScript</h1>
+npm run build
+</code></pre>
+<h3>3. Регистрация команд в Discord</h3>
+<pre><code>bash
+<h1>Регистрация команд</h1>
+npm run deploy:commands
+</code></pre>
+<h2>🚀 ЗАПУСК БОТА</h2>
+<h3>1. Запуск в режиме разработки</h3>
+<pre><code>bash
+<h1>Запуск с автоматической перезагрузкой</h1>
+npm run dev
+</code></pre>
+<h3>2. Запуск в продакшн режиме</h3>
+<pre><code>bash
+<h1>Сборка и запуск</h1>
+npm run build
+npm start
+</code></pre>
+<h2>🧪 ТЕСТИРОВАНИЕ КОМАНД</h2>
+<h3>1. Базовые команды поиска</h3>
+<strong>Команда: <code>/пошук</code></strong>
+<pre><code>
+Тест 1: Простой поиск<ul><li>Введите: /пошук запит:тест</li><li>Ожидаемый результат: Список результатов из Google Sheets</li>
+Тест 2: Поиск с фильтрами<li>Введите: /пошук запит:документ дата_від:2024-01-01 дата_до:2024-12-31</li><li>Ожидаемый результат: Отфильтрованные результаты по датам</li>
+</code></pre>
+<strong>Команда: <code>/розширений_пошук</code></strong>
+<pre><code>
+Тест 1: Расширенный поиск<li>Введите: /розширений_пошук номенклатура:товар ціна_від:100 ціна_до:1000</li><li>Ожидаемый результат: Результаты с фильтрацией по цене</li>
+Тест 2: Сортировка<li>Введите: /розширений_пошук сортування:ціна порядок:desc</li><li>Ожидаемый результат: Результаты отсортированные по цене</li>
+</code></pre>
+<h3>2. Команды мониторинга</h3>
+<strong>Команда: <code>/продуктивність</code></strong>
+<pre><code>
+Тест 1: Общий статус<li>Введите: /продуктивність статус</li><li>Ожидаемый результат: Информация о состоянии бота</li>
+Тест 2: Статистика кеша<li>Введите: /продуктивність кеш</li><li>Ожидаемый результат: Статистика использования кеша</li>
+</code></pre>
+<h3>3. AI команды</h3>
+<strong>Команда: <code>/ai_асистент</code></strong>
+<pre><code>
+Тест 1: Простой запрос<li>Введите: /ai_асистент запит:Привіт, як справи?</li><li>Ожидаемый результат: Ответ от AI</li>
+Тест 2: Сложный запрос<li>Введите: /ai_асистент запит:Поясни принцип роботи Discord ботів</li><li>Ожидаемый результат: Подробный ответ от AI</li>
+</code></pre>
+<h3>4. Команды документов</h3>
+<strong>Команда: <code>/документи</code></strong>
+<pre><code>
+Тест 1: Поиск документов<li>Введите: /документи особовий_склад пошук:Іванов</li><li>Ожидаемый результат: Список документов по персоналу</li>
+Тест 2: Экспорт<li>Введите: /документи техніка експорт:excel</li><li>Ожидаемый результат: Файл Excel с данными</li>
+</code></pre>
+<h3>5. Команды файлов</h3>
+<strong>Команда: <code>/файли</code></strong>
+<pre><code>
+Тест 1: Поиск файлов<li>Введите: /файли пошук запит:звіт</li><li>Ожидаемый результат: Список файлов в Google Drive</li>
+Тест 2: Анализ файла<li>Введите: /файли аналіз id:file_id тип:summary</li><li>Ожидаемый результат: AI анализ содержимого файла</li>
+</code></pre>
+<h3>6. Оперативные команды</h3>
+<strong>Команда: <code>/операції</code></strong>
+<pre><code>
+Тест 1: Оперативная ситуация<li>Введите: /операції ситуація сектор:all</li><li>Ожидаемый результат: Общая оперативная ситуация</li>
+Тест 2: Управление задачами<li>Введите: /операції завдання дія:current</li><li>Ожидаемый результат: Список текущих задач</li>
+</code></pre>
+<h3>7. Аналитические команды</h3>
+<strong>Команда: <code>/аналітика</code></strong>
+<pre><code>
+Тест 1: Генерация отчета<li>Введите: /аналітика звіт тип:daily формат:excel</li><li>Ожидаемый результат: Ежедневный отчет в Excel</li>
+Тест 2: Статистика<li>Введите: /аналітика статистика категорія:general</li><li>Ожидаемый результат: Общая статистика</li>
+</code></pre>
+<h2>🔍 ПРОВЕРКА РАБОТЫ</h2>
+<h3>1. Проверка подключения к Discord</h3>
+После запуска бота вы должны увидеть:
+<pre><code>
+🤖 Discord бот успішно ініціалізовано
+🤖 Бот [BotName] готовий до роботи
+</code></pre>
+<h3>2. Проверка регистрации команд</h3>
+В Discord сервере команды должны появиться в списке slash-команд.
+<h3>3. Проверка работы с Google Sheets</h3>
+Выполните команду <code>/пошук</code> и убедитесь, что:<li>Бот получает данные из Google Sheets</li><li>Результаты отображаются корректно</li><li>Кеширование работает (второй запрос должен быть быстрее)</li>
+<h3>4. Проверка AI функциональности</h3>
+Выполните команду <code>/ai_асистент</code> и убедитесь, что:<li>AI отвечает на запросы</li><li>Ответы релевантны</li><li>Нет ошибок подключения к AI сервису</li>
+<h2>🐛 ОТЛАДКА ПРОБЛЕМ</h2>
+<h3>1. Проблемы с подключением к Discord</h3>
+<strong>Симптомы:</strong> Бот не подключается к Discord
+<strong>Решение:</strong><li>Проверьте правильность <code>DISCORD_TOKEN</code></li><li>Убедитесь, что бот добавлен на сервер</li><li>Проверьте права бота</li>
+<h3>2. Проблемы с Google Sheets</h3>
+<strong>Симптомы:</strong> Команды поиска не работают
+<strong>Решение:</strong><li>Проверьте <code>GOOGLE_API_KEY</code></li><li>Убедитесь, что <code>GOOGLE_SPREADSHEET_ID</code> правильный</li><li>Проверьте доступ к таблице</li>
+<h3>3. Проблемы с AI</h3>
+<strong>Симптомы:</strong> AI ассистент не отвечает
+<strong>Решение:</strong><li>Проверьте <code>OPENAI_API_KEY</code></li><li>Убедитесь, что есть баланс на OpenAI</li><li>Проверьте настройки модели</li>
+<h3>4. Проблемы с командами</h3>
+<strong>Симптомы:</strong> Команды не регистрируются
+<strong>Решение:</strong>
+<pre><code>bash
+<h1>Перерегистрируйте команды</h1>
+npm run deploy:commands
+<h1>Перезапустите бота</h1>
+npm run dev
+</code></pre>
+<h2>📊 МОНИТОРИНГ ПРОИЗВОДИТЕЛЬНОСТИ</h2>
+<h3>1. Проверка статистики</h3>
+Используйте команду <code>/продуктивність статус</code> для получения:<li>Времени работы бота</li><li>Количества выполненных команд</li><li>Статистики ошибок</li><li>Использования памяти</li>
+<h3>2. Проверка кеша</h3>
+Используйте команду <code>/продуктивність кеш</code> для получения:<li>Hit/miss ratio кеша</li><li>Размера кеша</li><li>Статистики использования</li></ul>
+<h2>✅ КРИТЕРИИ УСПЕШНОГО ТЕСТИРОВАНИЯ</h2>
+1. <strong>Все команды регистрируются</strong> ✅
+2. <strong>Бот подключается к Discord</strong> ✅
+3. <strong>Команды поиска работают</strong> ✅
+4. <strong>AI ассистент отвечает</strong> ✅
+5. <strong>Кеширование функционирует</strong> ✅
+6. <strong>Обработка ошибок работает</strong> ✅
+7. <strong>Производительность удовлетворительная</strong> ✅
+<h2>🎯 СЛЕДУЮЩИЕ ШАГИ</h2>
+После успешного тестирования:
+1. <strong>Настройка продакшн окружения</strong>
+2. <strong>Настройка мониторинга</strong>
+3. <strong>Создание unit тестов</strong>
+4. <strong>Оптимизация производительности</strong>
+5. <strong>Добавление новых функций</strong> 
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\STATISTICS_COMMAND_GUIDE.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📊 ГІД ПО КОМАНДІ STATISTICS</a>
+            <a href="pages\guides\TYPESCRIPT_MIGRATION_GUIDE.html" class="nav-button">🚀 TypeScript Migration Guide <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

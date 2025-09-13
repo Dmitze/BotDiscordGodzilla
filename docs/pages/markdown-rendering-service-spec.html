@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Rendering Service Specification - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Markdown Rendering Service Specification</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Markdown Rendering Service Specification</h1>
+<h2>Overview</h2>
+This document specifies the implementation of a Markdown Rendering Service for the BotDiscordGodzilla project, leveraging the CordMd library to provide enhanced markdown rendering capabilities in Discord responses.
+<h2>Requirements</h2>
+<h3>Functional Requirements</h3>
+1. Render markdown text to formatted Discord messages
+2. Support syntax highlighting for code blocks
+3. Provide table formatting improvements
+4. Enable image embedding in responses
+5. Support mathematical expressions rendering
+6. Allow customization of rendering options (colors, fonts, sizes)
+<h3>Non-Functional Requirements</h3>
+1. Response time under 2 seconds for typical markdown content
+2. Support for Ukrainian language content
+3. Error handling for malformed markdown
+4. Memory efficient processing for large documents
+5. Compatibility with existing Discord message formatting
+<h2>Architecture</h2>
+<h3>Component Diagram</h3>
+<pre><code>
+┌─────────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
+│   Discord Client    │────│  Markdown Service    │────│    CordMd Library    │
+└─────────────────────┘    └──────────────────────┘    └──────────────────────┘
+                                    │                           │
+                                    ▼                           ▼
+                         ┌──────────────────────┐    ┌──────────────────────┐
+                         │   Discord.js API     │    │   Canvas Rendering   │
+                         └──────────────────────┘    └──────────────────────┘
+</code></pre>
+<h3>Service Interface</h3>
+<pre><code>typescript
+interface MarkdownRenderingService {
+  renderToText(markdown: string): Promise<string>;
+  renderToImage(markdown: string, options?: RenderOptions): Promise<Buffer>;
+  validateMarkdown(markdown: string): ValidationResult;
+  extractCodeBlocks(markdown: string): CodeBlock[];
+}
+interface RenderOptions {
+  theme?: 'light' | 'dark';
+  fontSize?: number;
+  fontFamily?: string;
+  maxWidth?: number;
+  maxHeight?: number;
+}
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+interface CodeBlock {
+  language: string;
+  content: string;
+  startLine: number;
+  endLine: number;
+}
+</code></pre>
+<h2>Implementation Details</h2>
+<h3>Core Service Implementation</h3>
+The service will be implemented as a singleton class that wraps the CordMd library functionality:
+<pre><code>typescript
+import { renderMarkdown, validateMarkdown } from 'cordmd';
+import { AttachmentBuilder } from 'discord.js';
+import logger from '@/utils/logger';
+export class MarkdownRenderingService {
+  private static instance: MarkdownRenderingService;
+  private constructor() {}
+  public static getInstance(): MarkdownRenderingService {
+    if (!MarkdownRenderingService.instance) {
+      MarkdownRenderingService.instance = new MarkdownRenderingService();
+    }
+    return MarkdownRenderingService.instance;
+  }
+  /<em></em>
+   * Render markdown to formatted text
+   */
+  public async renderToText(markdown: string): Promise<string> {
+    try {
+      // Validate markdown first
+      const validation = this.validateMarkdown(markdown);
+      if (!validation.isValid) {
+        logger.warn('Invalid markdown provided for rendering', { errors: validation.errors });
+      }
+      // For text rendering, we'll use Discord's native markdown support
+      // with some enhancements for better formatting
+      return this.enhanceMarkdownForDiscord(markdown);
+    } catch (error) {
+      logger.error('Error rendering markdown to text', { error });
+      throw new Error('Failed to render markdown to text');
+    }
+  }
+  /<em></em>
+   * Render markdown to image buffer
+   */
+  public async renderToImage(markdown: string, options?: RenderOptions): Promise<Buffer> {
+    try {
+      // Validate markdown first
+      const validation = this.validateMarkdown(markdown);
+      if (!validation.isValid) {
+        logger.warn('Invalid markdown provided for image rendering', { errors: validation.errors });
+      }
+      // Use CordMd to render to image
+      const buffer = await renderMarkdown(markdown);
+      return buffer;
+    } catch (error) {
+      logger.error('Error rendering markdown to image', { error });
+      throw new Error('Failed to render markdown to image');
+    }
+  }
+  /<em></em>
+   * Validate markdown content
+   */
+  public validateMarkdown(markdown: string): ValidationResult {
+    try {
+      // Use CordMd validation
+      const validated = validateMarkdown(markdown);
+      return {
+        isValid: true,
+        errors: [],
+        warnings: []
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        errors: [error instanceof Error ? error.message : 'Invalid markdown'],
+        warnings: []
+      };
+    }
+  }
+  /<em></em>
+   * Extract code blocks from markdown
+   */
+  public extractCodeBlocks(markdown: string): CodeBlock[] {
+    const codeBlocks: CodeBlock[] = [];
+    const codeBlockRegex = /</code></pre>(\w<em>)\n([\s\S]</em>?)<pre><code>/g;
+    let match;
+    let lineCounter = 1;
+    while ((match = codeBlockRegex.exec(markdown)) !== null) {
+      const [, language, content] = match;
+      const startLine = lineCounter;
+      const lines = content.split('\n').length;
+      const endLine = startLine + lines - 1;
+      codeBlocks.push({
+        language: language || 'text',
+        content,
+        startLine,
+        endLine
+      });
+      lineCounter += lines + 2; // +2 for the opening and closing </code></pre>
+    }
+    return codeBlocks;
+  }
+  /<em></em>
+   * Enhance markdown for better Discord display
+   */
+  private enhanceMarkdownForDiscord(markdown: string): string {
+    // Apply Discord-specific formatting enhancements
+    let enhanced = markdown;
+    // Improve code block formatting
+    enhanced = enhanced.replace(/<pre><code>(\w+)\n([\s\S]*?)</code></pre>/g, (match, lang, code) => {
+      return <code>\</code>\<code>\</code>${lang}\n${code.trim()}\n\<code>\</code>\<code></code>;
+    });
+    // Improve table formatting
+    enhanced = enhanced.replace(/(\|[^\n]<em>\|\n\|[^\n]</em>\|\n\|[^\n]*\|)/g, (table) => {
+      return <code>\n${table}\n</code>;
+    });
+    // Limit message length for Discord
+    if (enhanced.length > 2000) {
+      enhanced = enhanced.substring(0, 1997) + '...';
+    }
+    return enhanced;
+  }
+}
+<pre><code>
+<h3>Command Integration</h3>
+The markdown rendering service will be integrated into existing commands through dependency injection:
+</code></pre>typescript
+import { BaseCommand } from '@/commands/BaseCommand';
+import { MarkdownRenderingService } from '@/services/MarkdownRenderingService';
+export class EnhancedAICommand extends BaseCommand {
+  private markdownService: MarkdownRenderingService;
+  constructor(config: BotConfig, googleService?: GoogleService) {
+    super(/<em> ... </em>/);
+    this.markdownService = MarkdownRenderingService.getInstance();
+  }
+  protected async onExecute(options: CommandExecuteOptions): Promise<void> {
+    const { interaction } = options;
+    // Generate AI response
+    const aiResponse = await this.generateAIResponse(options);
+    // Render response with markdown
+    const renderedResponse = await this.markdownService.renderToText(aiResponse);
+    // Send response to Discord
+    await interaction.reply({ content: renderedResponse });
+  }
+}
+<pre><code>
+<h2>Configuration</h2>
+<h3>Environment Variables</h3>
+</code></pre>env
+<h1>Markdown Rendering Configuration</h1>
+MARKDOWN_THEME=dark
+MARKDOWN_FONT_SIZE=16
+MARKDOWN_MAX_WIDTH=800
+MARKDOWN_MAX_HEIGHT=600
+<pre><code>
+<h3>Service Configuration</h3>
+</code></pre>typescript
+interface MarkdownConfig {
+  theme: 'light' | 'dark';
+  fontSize: number;
+  fontFamily: string;
+  maxWidth: number;
+  maxHeight: number;
+  enableImageRendering: boolean;
+  enableSyntaxHighlighting: boolean;
+}
+const defaultMarkdownConfig: MarkdownConfig = {
+  theme: 'dark',
+  fontSize: 16,
+  fontFamily: 'sans-serif',
+  maxWidth: 800,
+  maxHeight: 600,
+  enableImageRendering: true,
+  enableSyntaxHighlighting: true
+};
+<pre><code>
+<h2>Error Handling</h2>
+<h3>Common Error Scenarios</h3>
+1. Invalid markdown syntax
+2. Rendering timeout
+3. Memory overflow for large documents
+4. Font loading failures
+5. Canvas rendering errors
+<h3>Error Recovery Strategies</h3>
+1. Fallback to plain text rendering
+2. Truncate large content
+3. Retry rendering with reduced quality
+4. Return error message to user with suggestion
+<h2>Testing Strategy</h2>
+<h3>Unit Tests</h3>
+</code></pre>typescript
+describe('MarkdownRenderingService', () => {
+  let service: MarkdownRenderingService;
+  beforeEach(() => {
+    service = MarkdownRenderingService.getInstance();
+  });
+  describe('renderToText', () => {
+    it('should render simple markdown correctly', async () => {
+      const markdown = '# Hello World\nThis is <strong>bold</strong> text!';
+      const result = await service.renderToText(markdown);
+      expect(result).toContain('Hello World');
+      expect(result).toContain('<strong>bold</strong>');
+    });
+    it('should handle code blocks', async () => {
+      const markdown = '<pre><code>javascript\nconsole.log("Hello");\n</code></pre>';
+      const result = await service.renderToText(markdown);
+      expect(result).toContain('<pre><code>javascript');
+    });
+  });
+  describe('renderToImage', () => {
+    it('should generate image buffer', async () => {
+      const markdown = '# Hello World';
+      const buffer = await service.renderToImage(markdown);
+      expect(buffer).toBeInstanceOf(Buffer);
+      expect(buffer.length).toBeGreaterThan(0);
+    });
+  });
+  describe('validateMarkdown', () => {
+    it('should validate correct markdown', () => {
+      const markdown = '# Valid Markdown';
+      const result = service.validateMarkdown(markdown);
+      expect(result.isValid).toBe(true);
+    });
+  });
+});
+</code></pre>
+<h3>Integration Tests</h3>
+<pre><code>typescript
+describe('Markdown Rendering Integration', () => {
+  it('should integrate with Discord commands', async () => {
+    // Test integration with actual Discord command execution
+    // This would require a mock Discord client
+  });
+  it('should handle Ukrainian language content', async () => {
+    const ukrainianMarkdown = '# Привіт Світ\nЦе <strong>жирний</strong> текст!';
+    const result = await service.renderToText(ukrainianMarkdown);
+    expect(result).toContain('Привіт Світ');
+  });
+});
+</code></pre>
+<h2>Performance Optimization</h2>
+<h3>Caching Strategy</h3>
+<pre><code>typescript
+class MarkdownCache {
+  private cache: Map<string, { buffer: Buffer; timestamp: number }>;
+  private maxSize: number;
+  private ttl: number;
+  constructor(maxSize: number = 100, ttl: number = 300000) { // 5 minutes
+    this.cache = new Map();
+    this.maxSize = maxSize;
+    this.ttl = ttl;
+  }
+  public get(key: string): Buffer | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.buffer;
+  }
+  public set(key: string, buffer: Buffer): void {
+    if (this.cache.size >= this.maxSize) {
+      // Remove oldest entry
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+    this.cache.set(key, { buffer, timestamp: Date.now() });
+  }
+}
+</code></pre>
+<h3>Memory Management</h3>
+<pre><code>typescript
+class MemoryMonitor {
+  private threshold: number;
+  constructor(threshold: number = 500 <em> 1024 </em> 1024) { // 500MB
+    this.threshold = threshold;
+  }
+  public checkMemory(): { safe: boolean; usage: number } {
+    const usage = process.memoryUsage().heapUsed;
+    return {
+      safe: usage < this.threshold,
+      usage
+    };
+  }
+  public async waitForSafeMemory(): Promise<void> {
+    while (!this.checkMemory().safe) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+}
+</code></pre>
+<h2>Internationalization Support</h2>
+<h3>Ukrainian Language Support</h3>
+The service will support Ukrainian language content through:
+1. Proper Unicode handling
+2. Ukrainian font support
+3. Localization of error messages
+4. RTL language support (if needed in future)
+<h2>Security Considerations</h2>
+<h3>Input Sanitization</h3>
+<pre><code>typescript
+class InputSanitizer {
+  public sanitizeMarkdown(markdown: string): string {
+    // Remove potentially dangerous HTML
+    let sanitized = markdown.replace(/<[^>]*>/g, '');
+    // Limit length
+    if (sanitized.length > 10000) {
+      sanitized = sanitized.substring(0, 10000);
+    }
+    // Escape Discord-specific characters
+    sanitized = sanitized.replace(/@/g, '@\u200b'); // Prevent mentions
+    sanitized = sanitized.replace(/<code>/g, '\\</code>'); // Escape backticks
+    return sanitized;
+  }
+}
+</code></pre>
+<h2>Monitoring and Logging</h2>
+<h3>Performance Metrics</h3>
+<pre><code>typescript
+interface RenderingMetrics {
+  renderCount: number;
+  averageRenderTime: number;
+  errorCount: number;
+  cacheHitRate: number;
+}
+class MetricsCollector {
+  private metrics: RenderingMetrics = {
+    renderCount: 0,
+    averageRenderTime: 0,
+    errorCount: 0,
+    cacheHitRate: 0
+  };
+  public recordRender(startTime: number, success: boolean): void {
+    this.metrics.renderCount++;
+    const renderTime = Date.now() - startTime;
+    this.metrics.averageRenderTime = 
+      (this.metrics.averageRenderTime * (this.metrics.renderCount - 1) + renderTime) / this.metrics.renderCount;
+    if (!success) {
+      this.metrics.errorCount++;
+    }
+  }
+  public getMetrics(): RenderingMetrics {
+    return { ...this.metrics };
+  }
+}
+</code></pre>
+<h2>Deployment Considerations</h2>
+<h3>Docker Configuration</h3>
+<pre><code>dockerfile
+<h1>Install canvas dependencies</h1>
+RUN apt-get update && apt-get install -y \
+    libcairo2-dev \
+    libjpeg-dev \
+    libpango1.0-dev \
+    libgif-dev \
+    build-essential \
+    libpixman-1-0 \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+<h1>Install node-canvas dependencies</h1>
+RUN npm install --build-from-source canvas
+</code></pre>
+<h3>Kubernetes Deployment</h3>
+<pre><code>yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-bot-markdown
+spec:
+  template:
+    spec:
+      containers:<ul><li>name: bot</li></ul>
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+</code></pre>
+<h2>Future Enhancements</h2>
+<h3>Planned Features</h3>
+1. Real-time collaborative markdown editing
+2. Export to multiple formats (PDF, DOCX, HTML)
+3. Version control for markdown documents
+4. Template system for common document types
+5. Integration with cloud storage providers
+<h3>Research Areas</h3>
+1. AI-powered markdown generation
+2. Voice-to-markdown conversion
+3. Handwriting recognition for markdown
+4. Advanced visualization capabilities
+5. Cross-platform synchronization
+<h2>Conclusion</h2>
+This specification provides a comprehensive plan for implementing a Markdown Rendering Service in the BotDiscordGodzilla project. By leveraging the CordMd library and following best practices for Discord bot development, we can provide enhanced markdown rendering capabilities that will significantly improve the user experience, especially for non-technical users who need to work with formatted documents in Discord.
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\INTEGRATION_SUMMARY.html" class="nav-button"><i class="fas fa-arrow-left"></i> Integration Summary</a>
+            <a href="pages\markdown-rendering.html" class="nav-button">Markdown Rendering Service <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

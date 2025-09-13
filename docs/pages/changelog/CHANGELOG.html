@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📝 Журнал змін - Discord Bot з AI - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 📝 Журнал змін - Discord Bot з AI</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>📝 Журнал змін - Discord Bot з AI</h1>
+<h2>🆕 Версія 2.1.0 - Статистика та покращення</h2>
+<h3>✨ Нові функції</h3>
+<h4>📊 Система статистики</h4><ul><li><strong><code>/статистика</code></strong> - Детальна статистика використання бота</li><li>Час роботи бота</li><li>Загальна кількість команд</li><li>Унікальні користувачі</li><li>Денна статистика</li><li>Кількість помилок</li><li><strong><code>/топ-команди</code></strong> - Найпопулярніші команди</li><li>Рейтинг команд за використанням</li><li>Статистика успішності</li><li>Кількість унікальних користувачів</li><li><strong><code>/топ-користувачі</code></strong> - Найактивніші користувачі</li><li>Рейтинг користувачів за активністю</li><li>Улюблені команди</li><li>Дата останньої активності</li><li><strong><code>/статус</code></strong> - Статус системи</li><li>Статус підключення до Google Sheets</li><li>Статус OpenAI API</li><li>Використання пам'яті</li><li>Час роботи</li>
+<h4>🔧 Покращення</h4><li>Автоматичне відстеження статистики всіх команд</li><li>Логування помилок з контекстом</li><li>Покращений PowerShell скрипт запуску</li><li>Шаблон <code>.env</code> файлу</li><li>Автоматичне оновлення slash-команд</li>
+<h3>🔧 Технічні зміни</h3>
+<h4>Нові файли</h4><li><code>stats.js</code> - Система статистики</li><li><code>aiHelpersEnhanced.js</code> - Покращений AI-функціонал</li><li><code>deploy-commands.js</code> - Оновлення команд</li><li><code>env.example</code> - Шаблон змінних середовища</li>
+<h4>Оновлені файли</h4><li><code>index.js</code> - Додано статистику та нові команди</li><li><code>запуск-бота.ps1</code> - Виправлено Git конфлікти</li><li><code>COMMANDS_REFERENCE.md</code> - Оновлено документацію</li>
+<h3>🎯 Приклади використання</h3>
+<h4>Статистика:</h4>
+<pre><code>
+/статистика
+/топ-команди
+/топ-користувачі
+/статус
+</code></pre>
+<h3>🔑 Налаштування</h3>
+<h4>Нові змінні середовища (опціональні):</h4>
+<pre><code>env
+<h1>Bot Configuration</h1>
+BOT_PREFIX=!
+GUILD_ID=your_guild_id_here
+<h1>Performance Configuration</h1>
+CACHE_TTL=300000
+MAX_SEARCH_RESULTS=20
+MAX_ANALYSIS_ROWS=50
+</code></pre>
+<h3>🧪 Тестування</h3>
+<h4>Оновлення команд:</h4>
+<pre><code>bash
+node deploy-commands.js
+</code></pre>
+<h4>Перевірка статистики:</h4>
+<pre><code>bash
+<h1>Запустіть бота та використайте команди</h1>
+/статистика
+/статус
+</code></pre>
+<h3>📈 Покращення продуктивності</h3><li>Автоматичне кешування статистики</li><li>Оптимізоване збереження даних</li><li>Ефективне відстеження помилок</li><li>Швидке оновлення команд</li>
+<h3>🔒 Безпека</h3><li>Безпечне зберігання статистики</li><li>Обмеження доступу до статистики</li><li>Логування всіх дій</li><li>Захист від переповнення пам'яті</li>
+---
+<h2>🆕 Версія 2.0.0 - AI-функціонал</h2>
+<h3>✨ Нові функції</h3>
+<h4>🤖 AI-команди</h4><li><strong><code>/ai-аналіз</code></strong> - Автоматичний аналіз даних з таблиці</li><li>Загальна статистика</li><li>Основні тренди</li><li>Потенційні аномалії</li><li>Рекомендації</li><li><strong><code>/ai-пошук [запит]</code></strong> - Природномовний пошук</li><li>Пошук за звичайними фразами</li><li>Розумна інтерпретація запитів</li><li>Комбінований пошук за кількома полями</li><li>Приклади: "покажи товари дешевше 1000", "знайди товари від постачальника А"</li><li><strong><code>/ai-рекомендації</code></strong> - AI-рекомендації</li><li>Оптимізація процесів</li><li>Покращення ефективності</li><li>Виявлення проблем</li><li>Розвиток бізнесу</li><li><strong><code>/ai-звіт [тип]</code></strong> - Розумні звіти</li><li>Загальний звіт (<code>general</code>)</li><li>Звіт по залишках (<code>inventory</code>)</li><li>Звіт по продажах (<code>sales</code>)</li><li>Звіт по постачальниках (<code>suppliers</code>)</li>
+<h4>📊 Покращення існуючих функцій</h4><li>Оновлена команда <code>/help</code> з новими AI-командами</li><li>Покращена обробка помилок</li><li>Кращий кеш результатів пошуку</li><li>Оптимізована продуктивність</li>
+<h3>🔧 Технічні зміни</h3>
+<h4>Нові файли</h4><li><code>aiHelpers.js</code> - AI-функціонал</li><li><code>test-ai.js</code> - Тестування AI-функцій</li><li><code>AI_EXAMPLES.md</code> - Приклади використання AI</li><li><code>SETUP.md</code> - Детальне налаштування</li><li><code>QUICK_START.md</code> - Швидкий старт</li><li><code>CHANGELOG.md</code> - Цей файл</li>
+<h4>Оновлені файли</h4><li><code>index.js</code> - Додано AI-команди та обробку</li><li><code>package.json</code> - Додано залежність <code>openai</code></li><li><code>README.md</code> - Оновлена документація</li>
+<h4>Нові залежності</h4><li><code>openai</code> - для роботи з OpenAI API</li>
+<h3>🎯 Приклади використання</h3>
+<h4>AI-пошук</h4>
+<pre><code>
+/ai-пошук запит:покажи товари дешевше 1000 грн
+/ai-пошук запит:знайди товари від постачальника "Компанія А"
+/ai-пошук запит:покажи товари з кількістю більше 10
+</code></pre>
+<h4>AI-аналіз</h4>
+<pre><code>
+/ai-аналіз
+</code></pre>
+<em>Автоматично проаналізує дані та надасть статистику, тренди та рекомендації</em>
+<h4>AI-звіти</h4>
+<pre><code>
+/ai-звіт тип:general
+/ai-звіт тип:inventory
+/ai-звіт тип:sales
+/ai-звіт тип:suppliers
+</code></pre>
+<h3>🔑 Налаштування</h3>
+<h4>Необхідні змінні середовища</h4>
+<pre><code>env
+<h1>Існуючі</h1>
+BOT_TOKEN=your_discord_bot_token
+SHEET_ID=your_google_sheet_id
+GOOGLE_API_KEY=your_google_api_key
+APP_SCRIPT_URL=your_google_apps_script_url
+<h1>Нова для AI</h1>
+OPENAI_API_KEY=your_openai_api_key
+</code></pre>
+<h3>🧪 Тестування</h3>
+<h4>Перевірка AI-функціоналу</h4>
+<pre><code>bash
+node test-ai.js
+</code></pre>
+<h4>Перевірка синтаксису</h4>
+<pre><code>bash
+node -c index.js
+node -c aiHelpers.js
+</code></pre>
+<h3>📈 Покращення продуктивності</h3><li>AI-пошук обмежений 20 результатами для швидкості</li><li>Аналіз використовує перші 50 рядків даних</li><li>Кешування результатів пошуку</li><li>Асинхронна обробка AI-запитів</li>
+<h3>🔒 Безпека</h3><li>Перевірка наявності OpenAI API ключа</li><li>Обробка помилок API</li><li>Логування всіх AI-запитів</li><li>Безпечне зберігання API ключів</li>
+<h3>📚 Документація</h3><li><a href="README.md">README.md</a> - Повна документація</li><li><a href="SETUP.md">SETUP.md</a> - Детальне налаштування</li><li><a href="AI_EXAMPLES.md">AI_EXAMPLES.md</a> - Приклади AI-функцій</li><li><a href="QUICK_START.md">QUICK_START.md</a> - Швидкий старт</li>
+<h3>🐛 Відомі обмеження</h3><li>AI-функції потребують OpenAI API ключ</li><li>Аналіз обмежений першими 50 рядками</li><li>Пошук обмежений 20 результатами</li><li>Залежність від доступності OpenAI API</li>
+<h3>🔄 Плани на майбутнє</h3><li>[x] Система статистики</li><li>[x] Покращений AI-функціонал</li><li>[x] Автоматичне оновлення команд</li><li>[ ] Підтримка інших AI-провайдерів</li><li>[ ] Локальні AI-моделі</li><li>[ ] Графіки та діаграми</li><li>[ ] Автоматичні звіти по розкладу</li><li>[ ] Інтеграція з іншими сервісами</li></ul>
+---
+<h2>📞 Підтримка</h2>
+Якщо у вас виникли питання або проблеми:
+1. Перевірте документацію
+2. Запустіть тести: <code>node test-ai.js</code>
+3. Перевірте статус: <code>/статус</code>
+4. Створіть Issue в репозиторії
+5. Зверніться до розробника 
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\archive\README.html" class="nav-button"><i class="fas fa-arrow-left"></i> Архів документів</a>
+            <a href="pages\changelog\README.html" class="nav-button">📝 **CHANGELOG - ІСТОРІЯ ЗМІН** <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

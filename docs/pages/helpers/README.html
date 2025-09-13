@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛠️ **HELPERS - ДОПОМІЖНІ ФУНКЦІЇ** - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🛠️ **HELPERS - ДОПОМІЖНІ ФУНКЦІЇ**</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🛠️ <strong>HELPERS - ДОПОМІЖНІ ФУНКЦІЇ</strong></h1>
+<h2>📁 <strong>Структура папки helpers/</strong></h2>
+Ця папка містить допоміжні функції та утиліти, які використовуються в різних частинах системи. Всі функції організовані за категоріями для зручності використання.
+---
+<h2>🎯 <strong>ОСНОВНІ КАТЕГОРІЇ</strong></h2>
+<h3><strong>🤖 ai/</strong> - AI допоміжні функції</h3>
+Функції для роботи з штучним інтелектом:<ul><li><strong><a href="ai/aiHelpers.ts">aiHelpers.ts</a></strong> - базові AI функції</li><li><strong><a href="ai/aiHelpersEnhanced.ts">aiHelpersEnhanced.ts</a></strong> - розширені AI функції</li>
+<h3><strong>🔍 search/</strong> - Пошукові функції</h3>
+Функції для пошуку та фільтрації даних:<li><strong><a href="search/searchHelpers.ts">searchHelpers.ts</a></strong> - допоміжні функції пошуку</li>
+<h3><strong>📊 stats/</strong> - Статистичні функції</h3>
+Функції для збору та аналізу статистики:<li><strong><a href="stats/stats.ts">stats.ts</a></strong> - статистичні функції</li>
+---
+<h2>🔧 <strong>ДЕТАЛЬНИЙ ОПИС</strong></h2>
+<h3><strong>🤖 AI Helpers</strong></h3>
+<h4><strong>aiHelpers.ts</strong></h4>
+Базові функції для роботи з AI:<li><strong>Підготовка промптів</strong> - форматування запитів для AI</li><li><strong>Обробка відповідей</strong> - парсинг та форматування відповідей</li><li><strong>Валідація даних</strong> - перевірка коректності AI відповідей</li><li><strong>Fallback механізми</strong> - резервні варіанти при помилках AI</li>
+<h4><strong>aiHelpersEnhanced.ts</strong></h4>
+Розширені AI функції:<li><strong>Контекстний аналіз</strong> - аналіз контексту запитів</li><li><strong>Семантичний пошук</strong> - пошук за змістом</li><li><strong>Генерація звітів</strong> - автоматичне створення звітів</li><li><strong>Рекомендації</strong> - AI рекомендації на основі даних</li>
+<h3><strong>🔍 Search Helpers</strong></h3>
+<h4><strong>searchHelpers.ts</strong></h4>
+Функції для пошуку та фільтрації:<li><strong>Токенізація</strong> - розбиття запитів на токени</li><li><strong>Фільтрація</strong> - фільтрація результатів пошуку</li><li><strong>Сортування</strong> - сортування результатів</li><li><strong>Пагінація</strong> - розбиття на сторінки</li><li><strong>Кешування</strong> - кешування результатів пошуку</li>
+<h3><strong>📊 Stats Helpers</strong></h3>
+<h4><strong>stats.ts</strong></h4>
+Функції для статистики:<li><strong>Збір метрик</strong> - збір різних метрик</li><li><strong>Агрегація</strong> - об'єднання статистичних даних</li><li><strong>Візуалізація</strong> - створення графіків та діаграм</li><li><strong>Експорт</strong> - експорт статистики в різних форматах</li>
+---
+<h2>🚀 <strong>ВИКОРИСТАННЯ</strong></h2>
+<h3><strong>📝 Приклад використання AI Helpers</strong></h3>
+<pre><code>typescript
+import { preparePrompt, processResponse } from '../helpers/ai/aiHelpers';
+// Підготовка промпту
+const prompt = preparePrompt({
+  context: 'Військові дані',
+  query: 'Проаналізуй залишки техніки',
+  format: 'table'
+});
+// Обробка відповіді
+const response = await aiService.generate(prompt);
+const processed = processResponse(response);
+</code></pre>
+<h3><strong>🔍 Приклад використання Search Helpers</strong></h3>
+<pre><code>typescript
+import { tokenizeQuery, filterResults } from '../helpers/search/searchHelpers';
+// Токенізація запиту
+const tokens = tokenizeQuery('особовий склад 1-й батальйон');
+// Фільтрація результатів
+const filtered = filterResults(results, tokens);
+</code></pre>
+<h3><strong>📊 Приклад використання Stats Helpers</strong></h3>
+<pre><code>typescript
+import { collectMetrics, generateReport } from '../helpers/stats/stats';
+// Збір метрик
+const metrics = await collectMetrics();
+// Генерація звіту
+const report = generateReport(metrics, 'html');
+</code></pre>
+---
+<h2>🏗️ <strong>АРХІТЕКТУРА</strong></h2>
+<h3><strong>🎯 Принципи проектування</strong></h3><li><strong>Модульність</strong> - кожна функція має чітку відповідальність</li><li><strong>Перевикористання</strong> - функції можна використовувати в різних місцях</li><li><strong>Тестованість</strong> - всі функції легко тестувати</li><li><strong>Документація</strong> - кожна функція має документацію</li>
+<h3><strong>🔄 Життєвий цикл</strong></h3>
+1. <strong>Імпорт</strong> - імпорт потрібних функцій
+2. <strong>Підготовка</strong> - підготовка вхідних даних
+3. <strong>Виконання</strong> - виконання функції
+4. <strong>Обробка</strong> - обробка результатів
+5. <strong>Валідація</strong> - перевірка коректності результатів
+---
+<h2>🧪 <strong>ТЕСТУВАННЯ</strong></h2>
+<h3><strong>📋 Тестові сценарії</strong></h3><li><strong>Unit тести</strong> - тестування окремих функцій</li><li><strong>Integration тести</strong> - тестування взаємодії функцій</li><li><strong>Performance тести</strong> - тестування продуктивності</li><li><strong>Error handling тести</strong> - тестування обробки помилок</li>
+<h3><strong>🔧 Налаштування тестів</strong></h3>
+<pre><code>typescript
+import { testHelpers } from '../tests/utils/testHelpers';
+describe('AI Helpers', () => {
+  test('should prepare prompt correctly', () => {
+    const result = preparePrompt(testData);
+    expect(result).toMatchSnapshot();
+  });
+});
+</code></pre>
+---
+<h2>📚 <strong>ДОКУМЕНТАЦІЯ</strong></h2>
+<h3><strong>📖 Детальна документація</strong></h3><li><strong><a href="../docs/api/API_DOCUMENTATION.md#ai-functions">AI документація</a></strong> - AI функції</li><li><strong><a href="../docs/api/API_DOCUMENTATION.md#search-functions">Пошук документація</a></strong> - пошукові функції</li><li><strong><a href="../docs/api/API_DOCUMENTATION.md#stats-functions">Статистика документація</a></strong> - статистичні функції</li>
+<h3><strong>🎓 Навчальні матеріали</strong></h3><li><strong><a href="../docs/guides/USAGE_GUIDE.md">Гід користувача</a></strong> - як використовувати</li><li><strong><a href="../docs/guides/TESTING_GUIDE.md">Тестування</a></strong> - як тестувати</li></ul>
+---
+<h2>🔧 <strong>РОЗВИТОК</strong></h2>
+<h3><strong>📝 Додавання нової функції</strong></h3>
+<pre><code>typescript
+/<em></em>
+ * Нова допоміжна функція
+ * @param input - вхідні дані
+ * @returns оброблені дані
+ */
+export function newHelperFunction(input: any): any {
+  // логіка функції
+  return processedData;
+}
+</code></pre>
+<h3><strong>🧪 Додавання тестів</strong></h3>
+<pre><code>typescript
+describe('New Helper Function', () => {
+  test('should process data correctly', () => {
+    const result = newHelperFunction(testInput);
+    expect(result).toBe(expectedOutput);
+  });
+});
+</code></pre>
+---
+<h2>🤝 <strong>КОНТАКТИ</strong></h2>
+<strong>👨‍💻 Автор:</strong> Dmitry Shivachov (Dmitze)  
+<strong>📧 Email:</strong> dmitze_shivachov@outlook.com  
+<strong>🌐 GitHub:</strong> https://github.com/Dmitze  
+<strong>💬 Discord:</strong> dmitry_shivachov3756  
+<strong>📱 Telegram:</strong> https://t.me/Dmitry_Shiva  
+---
+<strong>🦖 Godzilla Bot - Потужний, Надійний, Український!</strong> 
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\VIDEO_TUTORIAL_GUIDE.html" class="nav-button"><i class="fas fa-arrow-left"></i> VIDEO_TUTORIAL_GUIDE</a>
+            <a href="pages\i18n-coverage.html" class="nav-button">i18n Coverage Report <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏗️ Архітектура нових сервісів Discord AI Assistant Bot - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🏗️ Архітектура нових сервісів Discord AI Assistant Bot</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🏗️ Архітектура нових сервісів Discord AI Assistant Bot</h1>
+<h2>📋 Зміст</h2><ul><li><a href="#-огляд">🎯 Огляд</a></li><li><a href="#-contextmemoryservice">🧠 ContextMemoryService</a></li><li><a href="#-responsecacheservice"> ResponseCacheService</a></li><li><a href="#-knowledgebaseservice">📚 KnowledgeBaseService</a></li><li><a href="#-enhancedragservice">🔍 EnhancedRagService</a></li><li><a href="#-інтеграція-сервісів">🔄 Інтеграція сервісів</a></li><li><a href="#-тестування">🧪 Тестування</a></li>
+---
+<h2>🎯 Огляд</h2>
+У версії 3.0.0 бот отримав чотири нові ключові сервіси, які значно покращують його можливості:
+1. <strong>ContextMemoryService</strong> - зберігає контекст користувача та історію запитів
+2. <strong>ResponseCacheService</strong> - кешування відповідей з TTL для покращення продуктивності
+3. <strong>KnowledgeBaseService</strong> - управління базою знань з категоризацією та тегуванням
+4. <strong>EnhancedRagService</strong> - покращений RAG з автоматичною індексацією Google Drive
+---
+<h2>🧠 ContextMemoryService</h2>
+<h3>Призначення</h3>
+Зберігає історію запитів користувачів та їхні переваги для контекстної обробки.
+<h3>Архітектура</h3>
+<code></code>mermaid
+graph TB
+    A[ContextMemoryService] --> B[LRU Cache]
+    A --> C[User Preferences]
+    A --> D[Query History]
+    B --> E[Memory Storage]
+    C --> F[Preference Tracking]
+    D --> G[Query Context]
+<pre><code>
+<h3>Основні функції</h3><li>Зберігання останніх 5 запитів користувача</li><li>Відстеження користувацьких переваг (мова, домен, стиль відповідей)</li><li>Формування контекстних запитів для AI</li><li>Автоматичне очищення старих даних</li>
+<h3>API</h3>
+</code></pre>typescript
+class ContextMemoryService {
+  addQuery(userId: string, query: string): void
+  getRecentQueries(userId: string, limit?: number): QueryContext[]
+  updateUserPreferences(userId: string, preferences: UserPreferences): void
+  buildContextualPrompt(userId: string, currentQuery: string): string
+  getStats(): ContextStats
+}
+<pre><code>
+---
+<h2>💾 ResponseCacheService</h2>
+<h3>Призначення</h3>
+Кешування відповідей з TTL (30 хвилин) для покращення продуктивності та зменшення навантаження на AI.
+<h3>Архітектура</h3>
+<code></code>mermaid
+graph TB
+    A[ResponseCacheService] --> B[Map-based Storage]
+    A --> C[TTL Management]
+    A --> D[Pattern-based Keys]
+    B --> E[Cache Entries]
+    C --> F[Expiration Cleanup]
+    D --> G[Key Generation]
+</code></pre>
+<h3>Основні функції</h3><li>Кешування відповідей з TTL 30 хвилин</li><li>Пошук за патернами ключів</li><li>Статистика використання кешу</li><li>Автоматичне очищення прострочених записів</li>
+<h3>API</h3>
+<pre><code>typescript
+class ResponseCacheService {
+  get<T>(key: string): T | null
+  set<T>(key: string, value: T, ttlMinutes?: number): void
+  delete(key: string): boolean
+  clear(): void
+  getStats(): CacheStats
+  extendTTL(key: string, additionalMinutes: number): boolean
+}
+</code></pre>
+---
+<h2>📚 KnowledgeBaseService</h2>
+<h3>Призначення</h3>
+Управління структурованою базою знань з категоризацією, тегуванням та пошуком.
+<h3>Архітектура</h3>
+<code></code>mermaid
+graph TB
+    A[KnowledgeBaseService] --> B[Entry Management]
+    A --> C[Search Engine]
+    A --> D[Tag System]
+    B --> E[Knowledge Entries]
+    C --> F[Semantic Search]
+    C --> G[Keyword Search]
+    D --> H[Tag Indexing]
+<pre><code>
+<h3>Основні функції</h3><li>Створення та управління записами знань</li><li>Категоризація та тегування знань</li><li>Пошук за ключовими словами та семантичний пошук</li><li>Інтеграція з AI для обробки знань</li>
+<h3>API</h3>
+</code></pre>typescript
+class KnowledgeBaseService {
+  addEntry(entry: KnowledgeEntry): string
+  getEntry(id: string): KnowledgeEntry | null
+  search(query: string, options?: SearchOptions): KnowledgeEntry[]
+  updateEntry(id: string, updates: Partial<KnowledgeEntry>): boolean
+  deleteEntry(id: string): boolean
+  getTrendingTopics(limit?: number): TrendingTopic[]
+  getStats(): KnowledgeStats
+}
+<pre><code>
+---
+<h2>🔍 EnhancedRagService</h2>
+<h3>Призначення</h3>
+Покращений RAG сервіс з автоматичною індексацією документів Google Drive.
+<h3>Архітектура</h3>
+<code></code>mermaid
+graph TB
+    A[EnhancedRagService] --> B[Auto Indexing]
+    A --> C[RAG Pipeline]
+    A --> D[Google Drive Integration]
+    B --> E[File Monitoring]
+    B --> F[Indexing Scheduler]
+    C --> G[Document Retrieval]
+    C --> H[Context Augmentation]
+    D --> I[Drive API]
+    D --> J[File Processing]
+</code></pre>
+<h3>Основні функції</h3><li>Автоматична індексація документів Google Drive</li><li>Планування індексації за розкладом</li><li>Підтримка різних типів файлів (PDF, Google Docs, Sheets, Word, Excel, текст)</li><li>Інтеграція з існуючим RAG функціоналом</li>
+<h3>API</h3>
+<pre><code>typescript
+class EnhancedRagService extends RagService {
+  search(query: string, options?: SearchOptions): Promise<SearchResult[]>
+  triggerManualIndexing(folderId?: string): Promise<void>
+  getIndexingStats(): IndexingStats
+  updateAutoIndexConfig(config: Partial<AutoIndexConfig>): void
+  shutdown(): Promise<void>
+}
+</code></pre>
+---
+<h2>🔄 Інтеграція сервісів</h2>
+<h3>Потік даних</h3>
+<code></code>mermaid
+sequenceDiagram
+    participant U as Користувач
+    participant C as ContextMemoryService
+    participant K as KnowledgeBaseService
+    participant R as EnhancedRagService
+    participant Cache as ResponseCacheService
+    participant AI as AIService
+    U->>C: Новий запит
+    C->>C: Зберігає запит в історію
+    C->>C: Формує контекстний запит
+    C->>Cache: Перевіряє кеш
+    alt Кеш знайдено
+        Cache-->>U: Повертає кешовану відповідь
+    else Кеш не знайдено
+        C->>K: Пошук в базі знань
+        K-->>C: Результати пошуку
+        C->>R: RAG пошук
+        R-->>C: Результати RAG
+        C->>AI: Запит до AI з контекстом
+        AI-->>C: Відповідь AI
+        C->>Cache: Зберігає відповідь в кеш
+        C->>U: Повертає відповідь користувачу
+    end
+<pre><code>
+<h3>ServiceManager інтеграція</h3>
+<code></code>typescript
+// Реєстрація нових сервісів
+container.register('contextMemory', ContextMemoryService);
+container.register('responseCache', ResponseCacheService);
+container.register('knowledgeBase', KnowledgeBaseService);
+container.register('enhancedRag', EnhancedRagService);
+</code></pre>
+---
+<h2>🧪 Тестування</h2>
+<h3>Покриття тестами</h3><li>Unit тести для кожного сервісу</li><li>Інтеграційні тести для взаємодії сервісів</li><li>E2E тести для повного робочого процесу</li>
+<h3>Ключові тести</h3>
+1. <strong>ContextMemoryService</strong><li>Зберігання та отримання історії запитів</li><li>Управління перевагами користувача</li><li>Формування контекстних запитів</li>
+2. <strong>ResponseCacheService</strong><li>Кешування та отримання значень</li><li>TTL управління</li><li>Пошук за патернами</li>
+3. <strong>KnowledgeBaseService</strong><li>Створення та управління записами</li><li>Пошук за ключовими словами</li><li>Семантичний пошук</li>
+4. <strong>EnhancedRagService</strong><li>Автоматична індексація</li><li>Пошук документів</li><li>Інтеграція з Google Drive</li>
+<h3>Метрики тестування</h3><li>Покриття тестами: 95%+</li><li>Час відповіді: < 1.5 секунди</li><li>Успішність інтеграційних тестів: 100%</li>
+<h1>Нові сервіси для взаємодії з Google документами</h1>
+<h2>Огляд реалізованих покращень</h2>
+У цьому документі описано нові сервіси та команди, реалізовані для покращення взаємодії з Google документами:
+<h3>1. Покращений навігатор по документах</h3><li><strong>Команда</strong>: <code>/drive-navigate</code></li><li><strong>Покращення</strong>: Додано розширені фільтри за типами файлів, датами, розміром</li><li><strong>Файли</strong>: <code>src/commands/DriveNavigateCommand.ts</code></li>
+<h3>2. Розумна класифікація документів</h3><li><strong>Сервіс</strong>: <code>SmartDocumentClassifier</code></li><li><strong>Функціонал</strong>: Автоматична категоризація документів за типом вмісту</li><li><strong>Файли</strong>: <code>src/services/SmartDocumentClassifier.ts</code></li>
+<h3>3. Покращений пошук в документах</h3><li><strong>Команда</strong>: <code>/drive-search</code></li><li><strong>Функціонал</strong>: Розширений пошук з фасетними фільтрами</li><li><strong>Файли</strong>: <code>src/commands/EnhancedDriveSearchCommand.ts</code></li>
+<h3>4. Інтерактивні картки документів</h3><li><strong>Компонент</strong>: <code>DocumentCardBuilder</code></li><li><strong>Функціонал</strong>: Розширені картки з прев'ю вмісту та статистикою</li><li><strong>Файли</strong>: <code>src/ui/DocumentCardBuilder.ts</code></li>
+<h3>5. Сповіщення про зміни</h3><li><strong>Сервіс</strong>: <code>DriveChangesService</code></li><li><strong>Функціонал</strong>: Моніторинг змін в документах та сповіщення</li><li><strong>Файли</strong>: <code>src/services/DriveChangesService.ts</code></li>
+<h3>6. Багатомовна підтримка</h3><li><strong>Сервіс</strong>: <code>MultilingualDocumentProcessor</code></li><li><strong>Функціонал</strong>: Автоматичне визначення мови та переклад документів</li><li><strong>Файли</strong>: <code>src/services/MultilingualDocumentProcessor.ts</code></li>
+<h3>7. Аналітика використання</h3><li><strong>Сервіс</strong>: <code>DocumentAnalyticsService</code></li><li><strong>Функціонал</strong>: Статистика використання та рекомендації</li><li><strong>Файли</strong>: <code>src/services/DocumentAnalyticsService.ts</code></li>
+<h3>8. Згадування документів в чаті</h3><li><strong>Сервіс</strong>: <code>DocumentMentionHandler</code></li><li><strong>Функціонал</strong>: Згадування документів за назвою та швидке прикріплення</li><li><strong>Файли</strong>: <code>src/services/DocumentMentionHandler.ts</code></li>
+<h3>9. Автоматична обробка нових документів</h3><li><strong>Сервіс</strong>: <code>AutomatedDocumentProcessor</code></li><li><strong>Функціонал</strong>: Тригери на нові файли та автоматична обробка</li><li><strong>Файли</strong>: <code>src/services/AutomatedDocumentProcessor.ts</code></li>
+<h3>10. Експорт та імпорт</h3><li><strong>Сервіс</strong>: <code>DocumentExportImportService</code></li><li><strong>Функціонал</strong>: Експорт результатів пошуку та документів у різних форматах</li><li><strong>Файли</strong>: <code>src/services/DocumentExportImportService.ts</code></li>
+<h2>Детальний опис сервісів</h2>
+<h3>SmartDocumentClassifier</h3>
+Сервіс для автоматичної класифікації документів на основі їх вмісту та метаданих. Підтримує кілька категорій документів:<li>Накази</li><li>Звіти</li><li>Особовий склад</li><li>Матеріально-технічне забезпечення</li><li>Фінансові документи</li><li>Операційні документи</li><li>Навчальні матеріали</li><li>Комунікації</li>
+<h3>EnhancedDriveSearchCommand</h3>
+Команда для розширеного пошуку документів з підтримкою:<li>Фільтрації за типом файлу</li><li>Фільтрації за датою створення/зміни</li><li>Фільтрації за розміром файлу</li><li>Сортування результатів</li><li>Пагінації</li>
+<h3>DocumentCardBuilder</h3>
+Компонент для створення інтерактивних карток документів з:<li>Прев'ю вмісту</li><li>Статистикою документа (розмір, дата зміни, автор)</li><li>Швидкими діями (аналіз, експорт, тегування)</li><li>Тегами документа</li>
+<h3>DriveChangesService</h3>
+Сервіс для моніторингу змін у документах Google Drive:<li>Відстеження створення нових файлів</li><li>Відстеження змін в існуючих файлах</li><li>Сповіщення про зміни в Discord</li><li>Історія змін</li>
+<h3>MultilingualDocumentProcessor</h3>
+Сервіс для багатомовної обробки документів:<li>Автоматичне визначення мови документа</li><li>Переклад документів зі збереженням форматування</li><li>Підтримка кількох мов (українська, англійська, російська, польська, німецька, французька, іспанська)</li>
+<h3>DocumentAnalyticsService</h3>
+Сервіс для аналітики використання документів:<li>Відстеження доступу до документів</li><li>Аналіз пошукових патернів користувачів</li><li>Генерація персоналізованих рекомендацій</li><li>Статистика найпопулярніших документів</li>
+<h3>DocumentMentionHandler</h3>
+Сервіс для обробки згадок документів у чаті:<li>Розпізнавання згадок документів у повідомленнях</li><li>Автоматичне надсилання інформації про документ</li><li>Швидке прикріплення документів до повідомлень</li>
+<h3>AutomatedDocumentProcessor</h3>
+Сервіс для автоматичної обробки нових документів:<li>Налаштовувані тригери на нові файли</li><li>Автоматичний аналіз та класифікація документів</li><li>Автоматичне тегування на основі вмісту</li><li>Сповіщення про нові документи</li>
+<h3>DocumentExportImportService</h3>
+Сервіс для експорту та імпорту документів:<li>Експорт результатів пошуку у різних форматах (PDF, DOCX, XLSX, CSV, TXT, JSON)</li><li>Експорт окремих документів</li><li>Імпорт документів з локальних файлів</li><li>Синхронізація з локальними файлами</li><li>Резервне копіювання важливих документів</li>
+<h2>Взаємодія сервісів</h2>
+Всі нові сервіси інтегровані з існуючою архітектурою бота та використовують спільні компоненти:<li>GoogleService для взаємодії з Google Drive API</li><li>AIService для обробки мови та генерації відповідей</li><li>SchedulerService для планування завдань</li><li>CacheService для кешування результатів</li>
+<h2>Використання</h2>
+Для використання нових функцій користувачі може використовувати наступні команди:<li><code>/drive-navigate</code> - навігація по документах з фільтрацією</li><li><code>/drive-search</code> - розширений пошук документів</li><li>Згадки документів у повідомленнях (наприклад, "дивіться файл report.pdf")</li><li>Автоматичні сповіщення про нові документи</li></ul>
+Усі сервіси автоматично ініціалізуються при запуску бота та інтегровані з системою логування та моніторингу.
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\API_OVERVIEW.html" class="nav-button"><i class="fas fa-arrow-left"></i> 📚 API та команди</a>
+            <a href="pages\architecture\README.html" class="nav-button">⚠️ ЗАСТАРІЛО: Архітектурна документація (папка `docs/architecture/`) <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

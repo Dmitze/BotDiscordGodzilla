@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Security - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🛡️ Security</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🛡️ Security</h1>
+<h1>Discord AI Assistant Bot Security Guide</h1>
+<h2>🔐 General Security Principles</h2>
+Discord AI Assistant Bot implements a multi-level security system to protect data and prevent abuse:
+<h3>1. Access Control</h3><ul><li>Discord role system</li><li>Rights validation for each command</li><li>Access control to Google documents</li>
+<h3>2. Encryption</h3><li>All data is transmitted encrypted</li><li>API keys are stored in environment variables</li><li>Confidential data is masked in logs</li>
+<h3>3. Monitoring</h3><li>Logging of all operations</li><li>Alerts for suspicious activity</li><li>User action audit</li>
+<h2>🛡️ Roles and Access Rights</h2>
+<h3>Discord Role System</h3>
+The bot uses the following roles to control access:
+1. <strong>Administrator</strong> - full access to all functions
+2. <strong>Bot User</strong> - basic commands
+3. <strong>Sheets Access</strong> - working with Google Sheets
+4. <strong>AI Access</strong> - AI functions
+5. <strong>Export Access</strong> - data export
+<h3>Role Setup</h3>
+The server administrator must:
+1. Create appropriate roles in Discord
+2. Configure channel access rights
+3. Assign roles to users
+<h2>🔒 Data Protection</h2>
+<h3>Confidential Information</h3>
+The bot automatically masks confidential information:<li><strong>Email addresses</strong>: <code>user<strong><em>@</strong></em>.com</code></li><li><strong>Phone numbers</strong>: <code>+380 <strong><em> </strong></em>* 123</code></li><li><strong>API keys</strong>: not stored in logs</li>
+<h3>Encryption</h3><li>All connections use HTTPS/TLS</li><li>API keys are stored only in environment variables</li><li>Data in cache (Redis) can be encrypted</li>
+<h2>🚦 Rate Limiting</h2>
+The bot implements a request limiting system to prevent abuse:
+<h3>Request Limits</h3><li><strong>Search</strong>: 10 requests per minute</li><li><strong>AI analysis</strong>: 5 requests per 2 minutes</li><li><strong>Export</strong>: 3 requests per 5 minutes</li><li><strong>General commands</strong>: 20 requests per minute</li>
+<h3>Limit Bypass</h3>
+When limits are exceeded:
+1. User receives a limit notification
+2. Further requests are ignored until the period ends
+3. Administrator receives an alert about repeated attempts
+<h2>🧪 Data Validation</h2>
+<h3>Input Validation</h3>
+All input data undergoes validation:
+1. <strong>Length</strong>:<li>Search queries: max. 200 characters</li><li>AI queries: max. 1000 characters</li><li>File names: max. 100 characters</li><li>General text: max. 500 characters</li>
+2. <strong>Format</strong>:<li>Dates: DD.MM.YYYY format</li><li>Numbers: only digits and decimal separators</li><li>Email: format validation</li>
+3. <strong>Forbidden Characters</strong>:<li>HTML tags</li><li>SQL injections</li><li>System command special characters</li>
+<h2>📊 Security Monitoring</h2>
+<h3>Logging</h3>
+The bot maintains detailed logging of all operations:
+1. <strong>Security Events</strong>:<li>Access denied</li><li>Request limit exceeded</li><li>Invalid input data</li><li>Security violations</li>
+2. <strong>Usage</strong>:<li>Executed commands</li><li>Processed AI requests</li><li>File access</li>
+<h3>Log Format</h3>
+Logs contain the following information:
+<pre><code>
+[LEVEL] [DATE] [USER_ID] [CHANNEL_ID] MESSAGE
+</code></pre>
+Example:
+<pre><code>
+[INFO] [2025-01-15 14:30:25] [123456789] [987654321] Executed /search command
+</code></pre>
+<h2>⚠️ Incident Response</h2>
+<h3>Incident Types</h3>
+1. <strong>Critical</strong>:<li>Unauthorized access to administrative functions</li><li>Mass rate limiting bypass attempts</li><li>Suspicious AI function activity</li>
+2. <strong>Medium</strong>:<li>Request limit exceeded</li><li>Invalid input data</li><li>Authentication failures</li>
+3. <strong>Low</strong>:<li>Failed login attempts</li><li>Requests from suspicious IP addresses</li><li>Unusual activity</li>
+<h3>Response Plan</h3>
+1. <strong>Detection</strong>:<li>Log and metrics monitoring</li><li>Activity pattern analysis</li>
+2. <strong>Assessment</strong>:<li>Threat level determination</li><li>Impact assessment</li>
+3. <strong>Response</strong>:<li>User/function blocking</li><li>Administrator alerts</li><li>Evidence collection</li>
+4. <strong>Analysis</strong>:<li>Incident cause investigation</li><li>Vulnerability identification</li>
+5. <strong>Recovery</strong>:<li>Functionality restoration</li><li>Identified vulnerability fixes</li>
+<h2>🛠️ Administrator Commands</h2>
+<h3>Monitoring</h3>
+<pre><code>
+/status - shows system status
+/logs last:10 - shows last 10 log entries
+/security incidents - shows recent security incidents
+</code></pre>
+<h3>Security Management</h3>
+<pre><code>
+/security block user:ID - blocks user
+/security unblock user:ID - unblocks user
+/security limits reset - resets limits for all users
+</code></pre>
+<h2>🔧 Security Updates</h2>
+<h3>Regular Checks</h3>
+<strong>Weekly</strong>:<li>Security log review</li><li>Metrics analysis</li><li>Dependency updates</li>
+<strong>Monthly</strong>:<li>Access rights audit</li><li>API key verification</li><li>Security system testing</li>
+<h3>Key Rotation</h3>
+It is recommended to regularly rotate API keys:
+1. Create a new key in the appropriate service
+2. Update the <code>.env</code> file
+3. Restart the bot
+4. Delete the old key
+<h2>🦙 Local AI and Privacy</h2>
+<h3>Local AI Benefits (Ollama)</h3><li>Data does not leave the infrastructure</li><li>No API key limitations</li><li>Offline operation capability</li>
+<h3>Setup</h3>
+By default, AI processing is performed locally through Ollama:<li>Data (queries, RAG context, results) does not leave the host</li><li>External providers (OpenAI/Anthropic) are enabled only with explicit configuration</li>
+<h2>📞 Security Support</h2>
+<h3>Contacts</h3><li><strong>Administrator</strong>: @admin</li><li><strong>Technical Support</strong>: support@example.com</li><li><strong>Emergency Cases</strong>: emergency@example.com</li>
+<h3>Resources</h3><li><a href="https://discord.com/developers/applications">Discord Developer Portal</a></li><li><a href="https://cloud.google.com/security">Google Cloud Security</a></li><li><a href="https://redis.io/topics/security">Redis Security</a></li></ul>
+© 2025 Dmitry Shivachov (Dmitze). All rights reserved.
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\en\README.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**</a>
+            <a href="pages\en\SETUP.html" class="nav-button">🔧 Godzilla Bot Setup <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

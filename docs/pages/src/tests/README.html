@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 **TESTS - ТЕСТУВАННЯ** - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> 🧪 **TESTS - ТЕСТУВАННЯ**</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>🧪 <strong>TESTS - ТЕСТУВАННЯ</strong></h1>
+<h2>📁 <strong>Структура папки tests/</strong></h2>
+Ця папка містить всі тести Discord AI Assistant Bot. Включає unit тести, integration тести, e2e тести та тести продуктивності.
+---
+<h2>🎯 <strong>ОСНОВНІ КАТЕГОРІЇ</strong></h2>
+<h3><strong>🧪 Unit тести</strong></h3><ul><li><strong><a href="unit/commands/">commands/</a></strong> - тести команд бота</li><li><strong><a href="unit/services/">services/</a></strong> - тести сервісів</li><li><strong><a href="unit/utils/">utils/</a></strong> - тести утиліт</li>
+<h3><strong>🔗 Integration тести</strong></h3><li><strong><a href="integration/CommandManager.test.ts">CommandManager.test.ts</a></strong> - тести управління командами</li><li><strong><a href="integration/commands.test.js">commands.test.js</a></strong> - тести команд</li><li><strong><a href="integration/test-integration.js">test-integration.js</a></strong> - інтеграційні тести</li>
+<h3><strong>🌐 E2E тести</strong></h3><li><strong><a href="e2e/BotE2E.test.ts">BotE2E.test.ts</a></strong> - end-to-end тести бота</li>
+<h3><strong>⚡ Performance тести</strong></h3><li><strong><a href="performance/PerformanceTests.test.ts">PerformanceTests.test.ts</a></strong> - тести продуктивності</li>
+<h3><strong>📊 Load тести</strong></h3><li><strong><a href="load/loadTest.js">loadTest.js</a></strong> - навантажувальні тести</li><li><strong><a href="load/LoadTests.test.ts">LoadTests.test.ts</a></strong> - тести навантаження</li><li><strong><a href="load/test-load.js">test-load.js</a></strong> - тести навантаження</li>
+<h3><strong>⚙️ Налаштування</strong></h3><li><strong><a href="setup.ts">setup.ts</a></strong> - налаштування тестів</li>
+---
+<h2>🔧 <strong>ДЕТАЛЬНИЙ ОПИС</strong></h2>
+<h3><strong>🧪 Unit тести</strong></h3>
+<h4><strong>commands/</strong> - Тести команд</h4><li><strong><a href="unit/commands/AIAssistantCommand.test.ts">AIAssistantCommand.test.ts</a></strong> - тести AI асистента</li><li><strong><a href="unit/commands/AnalyticsCommand.test.ts">AnalyticsCommand.test.ts</a></strong> - тести аналітики</li><li><strong><a href="unit/commands/DocumentsCommand.test.ts">DocumentsCommand.test.ts</a></strong> - тести документів</li><li><strong><a href="unit/commands/EnhancedSearchCommand.test.ts">EnhancedSearchCommand.test.ts</a></strong> - тести розширеного пошуку</li><li><strong><a href="unit/commands/FileManagerCommand.test.ts">FileManagerCommand.test.ts</a></strong> - тести управління файлами</li><li><strong><a href="unit/commands/OperationsCommand.test.ts">OperationsCommand.test.ts</a></strong> - тести операцій</li><li><strong><a href="unit/commands/PerformanceCommand.test.ts">PerformanceCommand.test.ts</a></strong> - тести продуктивності</li><li><strong><a href="unit/commands/SearchCommand.test.ts">SearchCommand.test.ts</a></strong> - тести пошуку</li>
+<h4><strong>services/</strong> - Тести сервісів</h4><li><strong><a href="unit/services/AIService.test.ts">AIService.test.ts</a></strong> - тести AI сервісу</li><li><strong><a href="unit/services/CacheService.test.ts">CacheService.test.ts</a></strong> - тести кешування</li><li><strong><a href="unit/services/GoogleService.test.ts">GoogleService.test.ts</a></strong> - тести Google сервісу</li><li><strong><a href="unit/services/MetricsService.test.ts">MetricsService.test.ts</a></strong> - тести метрик</li>
+<h4><strong>utils/</strong> - Тести утиліт</h4><li><strong><a href="unit/utils/formatters.test.ts">formatters.test.ts</a></strong> - тести форматування</li><li><strong><a href="unit/utils/logger.test.ts">logger.test.ts</a></strong> - тести логування</li><li><strong><a href="unit/utils/pagination.test.ts">pagination.test.ts</a></strong> - тести пагінації</li><li><strong><a href="unit/utils/security.test.ts">security.test.ts</a></strong> - тести безпеки</li>
+<h3><strong>🔗 Integration тести</strong></h3>
+<h4><strong>CommandManager.test.ts</strong></h4>
+Тести управління командами:<li><strong>Реєстрація команд</strong> - тести реєстрації</li><li><strong>Валідація команд</strong> - тести валідації</li><li><strong>Виконання команд</strong> - тести виконання</li><li><strong>Обробка помилок</strong> - тести помилок</li>
+<h4><strong>commands.test.js</strong></h4>
+Тести команд:<li><strong>Базові команди</strong> - тести основних команд</li><li><strong>Складні команди</strong> - тести складних команд</li><li><strong>Параметри команд</strong> - тести параметрів</li><li><strong>Відповіді команд</strong> - тести відповідей</li>
+<h4><strong>test-integration.js</strong></h4>
+Інтеграційні тести:<li><strong>Взаємодія компонентів</strong> - тести взаємодії</li><li><strong>Потоки даних</strong> - тести потоків даних</li><li><strong>API інтеграція</strong> - тести API</li><li><strong>Сервісна інтеграція</strong> - тести сервісів</li>
+<h3><strong>🌐 E2E тести</strong></h3>
+<h4><strong>BotE2E.test.ts</strong></h4>
+End-to-end тести бота:<li><strong>Повний цикл</strong> - тести повного циклу</li><li><strong>Користувацькі сценарії</strong> - тести сценаріїв</li><li><strong>Інтеграція з Discord</strong> - тести Discord</li><li><strong>Обробка помилок</strong> - тести помилок</li>
+<h3><strong>⚡ Performance тести</strong></h3>
+<h4><strong>PerformanceTests.test.ts</strong></h4>
+Тести продуктивності:<li><strong>Час відповіді</strong> - тести швидкості</li><li><strong>Використання пам'яті</strong> - тести пам'яті</li><li><strong>CPU використання</strong> - тести CPU</li><li><strong>Масштабованість</strong> - тести масштабування</li>
+<h3><strong>📊 Load тести</strong></h3>
+<h4><strong>loadTest.js</strong></h4>
+Навантажувальні тести:<li><strong>Високе навантаження</strong> - тести під навантаженням</li><li><strong>Стрес тести</strong> - тести стрес-тестування</li><li><strong>Витривалість</strong> - тести витривалості</li><li><strong>Відновлення</strong> - тести відновлення</li>
+<h4><strong>LoadTests.test.ts</strong></h4>
+Тести навантаження:<li><strong>Конкурентні запити</strong> - тести конкурентності</li><li><strong>Обробка черг</strong> - тести черг</li><li><strong>Кешування</strong> - тести кешування</li><li><strong>Оптимізація</strong> - тести оптимізації</li>
+---
+<h2>🚀 <strong>ВИКОРИСТАННЯ</strong></h2>
+<h3><strong>📖 Для розробників</strong></h3>
+1. <strong>Unit тести</strong> - тестування окремих функцій
+2. <strong>Integration тести</strong> - тестування взаємодії
+3. <strong>E2E тести</strong> - тестування повного циклу
+4. <strong>Performance тести</strong> - тестування продуктивності
+<h3><strong>🧪 Для тестувальників</strong></h3>
+1. <strong>Load тести</strong> - навантажувальні тести
+2. <strong>Сценарії</strong> - користувацькі сценарії
+3. <strong>Автоматизація</strong> - автоматизовані тести
+4. <strong>Звіти</strong> - звіти тестування
+<h3><strong>📊 Для менеджерів</strong></h3>
+1. <strong>Покриття</strong> - покриття тестами
+2. <strong>Якість</strong> - якість коду
+3. <strong>Продуктивність</strong> - метрики продуктивності
+4. <strong>Ризики</strong> - технічні ризики
+---
+<h2>🏗️ <strong>АРХІТЕКТУРА ТЕСТУВАННЯ</strong></h2>
+<h3><strong>🎯 Принципи тестування</strong></h3><li><strong>Піраміда тестів</strong> - правильна структура тестів</li><li><strong>Ізоляція</strong> - незалежність тестів</li><li><strong>Детермінованість</strong> - передбачувані результати</li><li><strong>Швидкість</strong> - швидке виконання</li>
+<h3><strong>🔄 Життєвий цикл тестування</strong></h3>
+1. <strong>Планування</strong> - планування тестів
+2. <strong>Розробка</strong> - написання тестів
+3. <strong>Виконання</strong> - запуск тестів
+4. <strong>Аналіз</strong> - аналіз результатів
+5. <strong>Покращення</strong> - покращення тестів
+<h3><strong>📊 Метрики тестування</strong></h3><li><strong>Покриття</strong> - відсоток покриття</li><li><strong>Швидкість</strong> - час виконання тестів</li><li><strong>Надійність</strong> - стабільність тестів</li><li><strong>Ефективність</strong> - знаходження дефектів</li>
+---
+<h2>🧪 <strong>ТЕСТУВАННЯ</strong></h2>
+<h3><strong>📋 Типи тестів</strong></h3><li><strong>Unit тести</strong> - тестування функцій</li><li><strong>Integration тести</strong> - тестування інтеграції</li><li><strong>E2E тести</strong> - end-to-end тестування</li><li><strong>Performance тести</strong> - тестування продуктивності</li><li><strong>Load тести</strong> - навантажувальні тести</li>
+<h3><strong>🔧 Інструменти</strong></h3><li><strong>Jest</strong> - основний фреймворк тестування</li><li><strong>Supertest</strong> - тестування HTTP API</li><li><strong>Artillery</strong> - load тестування</li><li><strong>Playwright</strong> - E2E тестування</li>
+<h3><strong>📊 Критерії успіху</strong></h3><li><strong>95%+ покриття</strong> - високе покриття</li><li><strong>< 30s виконання</strong> - швидкі тести</li><li><strong>0% false positives</strong> - точні результати</li><li><strong>100% автоматизація</strong> - повна автоматизація</li>
+---
+<h2>📚 <strong>ДОКУМЕНТАЦІЯ</strong></h2>
+<h3><strong>📖 Пов'язана документація</strong></h3><li><strong><a href="../docs/guides/TESTING_GUIDE.md">Гайди тестування</a></strong> - гайди по тестуванню</li><li><strong><a href="../docs/api/">API документація</a></strong> - технічна документація</li><li><strong><a href="../docs/architecture/">Архітектура</a></strong> - архітектурна документація</li>
+<h3><strong>🎓 Навчальні ресурси</strong></h3><li><strong>Jest документація</strong> - офіційна документація</li><li><strong>Testing patterns</strong> - патерни тестування</li><li><strong>Best practices</strong> - найкращі практики</li><li><strong>Anti-patterns</strong> - що не робити</li></ul>
+---
+<h2>🔧 <strong>РОЗВИТОК</strong></h2>
+<h3><strong>📝 Створення нового тесту</strong></h3>
+<pre><code>typescript
+describe('New Feature', () => {
+  test('should work correctly', () => {
+    // Arrange
+    const input = 'test data';
+    // Act
+    const result = processData(input);
+    // Assert
+    expect(result).toBe('expected output');
+  });
+});
+</code></pre>
+<h3><strong>🧪 Додавання тестів</strong></h3>
+<pre><code>typescript
+// Новий тест
+describe('New Component', () => {
+  test('should handle edge cases', () => {
+    // Тести граничних випадків
+  });
+  test('should be performant', () => {
+    // Тести продуктивності
+  });
+});
+</code></pre>
+---
+<h2>🤝 <strong>КОНТАКТИ</strong></h2>
+<strong>👨‍💻 Автор:</strong> Dmitry Shivachov (Dmitze)  
+<strong>📧 Email:</strong> dmitze_shivachov@outlook.com  
+<strong>🌐 GitHub:</strong> https://github.com/Dmitze  
+<strong>💬 Discord:</strong> dmitry_shivachov3756  
+<strong>📱 Telegram:</strong> https://t.me/Dmitry_Shiva  
+---
+<strong>🦖 Godzilla Bot - Потужний, Надійний, Український!</strong> 
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\src\TEMPLATE_README.html" class="nav-button"><i class="fas fa-arrow-left"></i> Шаблон README модуля</a>
+            <a href="pages\uk\COMMANDS_REFERENCE.html" class="nav-button">📋 Довідник команд <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>

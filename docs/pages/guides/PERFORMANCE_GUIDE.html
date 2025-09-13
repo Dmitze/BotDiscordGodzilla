@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Guide - Godzilla Bot Документація</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Performance Guide</h1>
+            <p>Документація Discord AI Assistant Bot - Godzilla</p>
+        </header>
+        
+        <a href="../index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="content">
+            <h1>Performance Guide</h1>
+This guide provides information on monitoring, optimizing, and troubleshooting the performance of the Discord AI Assistant Bot.
+<h2>Performance Metrics</h2>
+<h3>Key Performance Indicators</h3><ul><li><strong>Response Time</strong>: Time from command execution to response delivery</li><li><strong>Throughput</strong>: Number of commands processed per minute</li><li><strong>Memory Usage</strong>: RAM consumption during operation</li><li><strong>CPU Usage</strong>: Processor utilization</li><li><strong>Error Rate</strong>: Percentage of failed commands</li>
+<h3>Monitoring Tools</h3><li><strong>Prometheus</strong>: Built-in metrics collection</li><li><strong>Winston</strong>: Structured logging</li><li><strong>Health Checks</strong>: Regular service status verification</li><li><strong>Performance Diagnostics</strong>: Built-in diagnostic tools</li>
+<h2>Performance Optimization</h2>
+<h3>Caching Strategies</h3>
+The bot uses Redis for caching to improve performance:
+1. <strong>Search Results Caching</strong><li>Frequently requested searches are cached</li><li>Cache TTL is configurable via environment variables</li><li>Cache size is limited to prevent memory issues</li>
+2. <strong>AI Response Caching</strong><li>Common AI queries are cached</li><li>Cache invalidation based on content changes</li><li>Context-aware caching for conversation history</li>
+<h3>Database Optimization</h3><li><strong>Connection Pooling</strong>: Reuse database connections</li><li><strong>Query Optimization</strong>: Efficient database queries</li><li><strong>Indexing</strong>: Proper database indexing for fast lookups</li><li><strong>Batch Operations</strong>: Group related operations</li>
+<h3>Resource Management</h3><li><strong>Memory Management</strong>: Automatic garbage collection</li><li><strong>CPU Throttling</strong>: Prevent overutilization</li><li><strong>Rate Limiting</strong>: Prevent abuse and overload</li><li><strong>Load Balancing</strong>: Distribute workload across instances</li>
+<h2>Monitoring and Diagnostics</h2>
+<h3>Built-in Monitoring</h3>
+The bot includes several built-in monitoring features:
+1. <strong>Metrics Collection</strong><li>Response time tracking</li><li>Command usage statistics</li><li>Error rate monitoring</li><li>Resource utilization tracking</li>
+2. <strong>Health Checks</strong><li>Discord connection status</li><li>Database connectivity</li><li>Redis availability</li><li>AI service status</li>
+3. <strong>Logging</strong><li>Structured logging with Winston</li><li>Different log levels (debug, info, warn, error)</li><li>Log rotation to prevent disk space issues</li><li>Error tracking and reporting</li>
+<h3>External Monitoring</h3>
+Integration with external monitoring tools:
+1. <strong>Prometheus Integration</strong><li>Expose metrics endpoint</li><li>Custom metrics collection</li><li>Alerting rules configuration</li>
+2. <strong>Grafana Dashboards</strong><li>Pre-built dashboards for bot metrics</li><li>Custom dashboard creation</li><li>Real-time monitoring</li>
+3. <strong>Log Aggregation</strong><li>Centralized log management</li><li>Log analysis and visualization</li><li>Alerting based on log patterns</li>
+<h2>Troubleshooting Performance Issues</h2>
+<h3>Common Performance Problems</h3>
+1. <strong>Slow Response Times</strong><li>Check database query performance</li><li>Review caching effectiveness</li><li>Monitor external API response times</li><li>Analyze network latency</li>
+2. <strong>High Memory Usage</strong><li>Check for memory leaks</li><li>Review cache size and TTL settings</li><li>Monitor object creation and destruction</li><li>Analyze garbage collection patterns</li>
+3. <strong>CPU Overutilization</strong><li>Identify CPU-intensive operations</li><li>Review concurrent operation limits</li><li>Check for infinite loops or recursive operations</li><li>Analyze thread usage</li>
+4. <strong>Database Performance Issues</strong><li>Review slow query logs</li><li>Check database connection pool settings</li><li>Analyze index usage</li><li>Review query optimization</li>
+<h3>Diagnostic Tools</h3>
+1. <strong>Built-in Diagnostics</strong><li><code>/performance</code> command for real-time metrics</li><li><code>/diagnostics</code> command for system health check</li><li><code>/stats</code> command for usage statistics</li>
+2. <strong>External Tools</strong><li>Profiling tools for code analysis</li><li>Database query analyzers</li><li>Network monitoring tools</li><li>System resource monitors</li>
+<h2>Scaling Considerations</h2>
+<h3>Horizontal Scaling</h3><li><strong>Load Balancing</strong>: Distribute requests across multiple instances</li><li><strong>Shared State</strong>: Use external storage for shared data</li><li><strong>Session Management</strong>: Implement sticky sessions or external session storage</li><li><strong>Database Sharding</strong>: Distribute database load</li>
+<h3>Vertical Scaling</h3><li><strong>Resource Allocation</strong>: Increase CPU, memory, and storage</li><li><strong>Database Optimization</strong>: Upgrade database hardware</li><li><strong>Network Optimization</strong>: Improve network bandwidth and latency</li>
+<h3>Microservices Architecture</h3><li><strong>Service Decomposition</strong>: Break down monolithic services</li><li><strong>API Gateway</strong>: Centralize request routing</li><li><strong>Service Discovery</strong>: Dynamic service location</li><li><strong>Circuit Breakers</strong>: Prevent cascade failures</li>
+<h2>Best Practices</h2>
+<h3>Code Optimization</h3><li><strong>Efficient Algorithms</strong>: Use algorithms with optimal time complexity</li><li><strong>Lazy Loading</strong>: Load resources only when needed</li><li><strong>Asynchronous Operations</strong>: Use async/await for non-blocking operations</li><li><strong>Resource Cleanup</strong>: Properly dispose of resources</li>
+<h3>Configuration Optimization</h3><li><strong>Environment Variables</strong>: Use environment-specific configurations</li><li><strong>Feature Flags</strong>: Enable/disable features without deployment</li><li><strong>Dynamic Configuration</strong>: Update configuration without restart</li><li><strong>Performance Tuning</strong>: Adjust settings based on workload</li>
+<h3>Monitoring Best Practices</h3><li><strong>Proactive Monitoring</strong>: Monitor before issues occur</li><li><strong>Alerting</strong>: Set up alerts for critical metrics</li><li><strong>Dashboards</strong>: Create informative dashboards for quick insights</li><li><strong>Regular Reviews</strong>: Regularly review and update monitoring setup</li>
+<h2>Performance Testing</h2>
+<h3>Load Testing</h3><li><strong>Test Scenarios</strong>: Define realistic usage scenarios</li><li><strong>Load Generation</strong>: Use tools to simulate user load</li><li><strong>Metrics Collection</strong>: Collect performance metrics during tests</li><li><strong>Analysis</strong>: Analyze results and identify bottlenecks</li>
+<h3>Stress Testing</h3><li><strong>Maximum Load</strong>: Test under maximum expected load</li><li><strong>Failure Points</strong>: Identify system failure points</li><li><strong>Recovery Testing</strong>: Test system recovery after failure</li><li><strong>Capacity Planning</strong>: Plan for future capacity needs</li>
+<h3>Performance Regression Testing</h3><li><strong>Baseline Metrics</strong>: Establish performance baselines</li><li><strong>Regular Testing</strong>: Run performance tests regularly</li><li><strong>Comparison</strong>: Compare current performance with baselines</li><li><strong>Improvement Tracking</strong>: Track performance improvements over time</li></ul>
+<h2>Conclusion</h2>
+Performance optimization is an ongoing process that requires continuous monitoring, testing, and improvement. By following the guidelines in this document, you can ensure that your Discord AI Assistant Bot provides a fast, reliable, and efficient user experience.
+Regular performance reviews and updates to this guide will help maintain optimal performance as the bot evolves and scales.
+        </div>
+        
+        <div class="navigation">
+            <a href="pages\guides\LOCAL_AI.html" class="nav-button"><i class="fas fa-arrow-left"></i> 🦙 Локальний AI з Ollama</a>
+            <a href="pages\guides\QUICK_START.html" class="nav-button">🚀 Швидкий старт з Godzilla Bot <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+    
+    <script src="../assets/scripts.js"></script>
+</body>
+</html>
