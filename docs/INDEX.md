@@ -3,12 +3,12 @@
 ## 🌍 Languages
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
-  <a href="index.html" style="border: 1px solid #444; border-radius: 8px; padding: 1rem; text-decoration: none; color: #e6e6e6; transition: all 0.2s; background: linear-gradient(135deg, #1e1e2d 0%, #2b2b40 100%);">
+  <a href="uk/README.md" style="border: 1px solid #444; border-radius: 8px; padding: 1rem; text-decoration: none; color: #e6e6e6; transition: all 0.2s; background: linear-gradient(135deg, #1e1e2d 0%, #2b2b40 100%);">
     <h3>🇺🇦 Ukrainian</h3>
     <p>Українська документація</p>
   </a>
   
-  <a href="en/index.html" style="border: 1px solid #444; border-radius: 8px; padding: 1rem; text-decoration: none; color: #e6e6e6; transition: all 0.2s; background: linear-gradient(135deg, #1e1e2d 0%, #2b2b40 100%);">
+  <a href="en/README.md" style="border: 1px solid #444; border-radius: 8px; padding: 1rem; text-decoration: none; color: #e6e6e6; transition: all 0.2s; background: linear-gradient(135deg, #1e1e2d 0%, #2b2b40 100%);">
     <h3>🇺🇸 English</h3>
     <p>English documentation</p>
   </a>
@@ -44,6 +44,8 @@
 - [FAQ and Support](guides/FAQ_SUPPORT.md)
 - [Usage Guide](guides/USAGE_GUIDE.md)
 - [Statistics Commands](guides/STATISTICS_COMMAND_GUIDE.md)
+- [Interactive Learning](guides/INTERACTIVE_LEARNING_GUIDE.md)
+- [Video Tutorial Guide](guides/VIDEO_TUTORIAL_GUIDE.md)
 
 ### 🏗️ Architecture
 - [System Architecture](ARCHITECTURE.md)
@@ -57,11 +59,13 @@
 
 ### 🛡️ Security
 - [Security Guide](security/SECURITY_GUIDE.md)
+- [Security Best Practices](guides/SECURITY.md)
 
 ### 👩‍💻 Development
 - [Developer Guide](DEVELOPER_GUIDE.md)
 - [PR Checklist](PR_CHECKLIST.md)
 - [TypeScript Migration](guides/TYPESCRIPT_MIGRATION_GUIDE.md)
+- [Performance Guide](guides/PERFORMANCE_GUIDE.md)
 
 ### 🧪 Examples
 - [Examples Index](examples/README.md)
@@ -111,5 +115,3 @@
     <span>📞 Contact Developer</span>
   </a>
 </div>
-
----

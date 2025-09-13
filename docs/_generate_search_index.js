@@ -11,8 +11,9 @@ const __dirname = dirname(__filename);
 // Configuration
 const DOCS_DIR = __dirname;
 const OUTPUT_FILE = path.join(DOCS_DIR, 'search-index.json');
-const EXCLUDE_DIRS = ['node_modules', '.git', 'assets', 'img'];
+const EXCLUDE_DIRS = ['node_modules', '.git', 'assets', 'img', 'archive', 'helpers', 'src', 'data'];
 const INCLUDE_EXTENSIONS = ['.html', '.md'];
+const EXCLUDE_FILES = ['search-index.json', '_generate_search_index.js', 'INDEX.md', 'PR_BODY.txt', 'package.json'];
 
 // Track processed files
 const searchIndex = [];
@@ -87,6 +88,11 @@ function processDirectory(directory) {
             if (!EXCLUDE_DIRS.includes(file) && !file.startsWith('.')) {
                 processDirectory(fullPath);
             }
+            return;
+        }
+        
+        // Skip excluded files
+        if (EXCLUDE_FILES.includes(file)) {
             return;
         }
         
