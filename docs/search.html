@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пошук по документації - Godzilla Bot</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <style>
+        :root {
+            --primary: #5865F2;
+            --background: #1e1e2d;
+            --surface: #2b2b40;
+            --text: #e6e6e6;
+            --text-secondary: #a1a1aa;
+            --accent: #7289da;
+            --success: #43b581;
+            --warning: #faa61a;
+            --error: #f04747;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: linear-gradient(135deg, var(--background) 0%, #121212 100%);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .search-box {
+            max-width: 600px;
+            margin: 2rem auto;
+            position: relative;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            border-radius: 50px;
+            border: 2px solid var(--accent);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            font-size: 1.1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.3);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+        
+        .results-container {
+            margin-top: 2rem;
+        }
+        
+        .result-item {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(88, 101, 242, 0.1);
+            cursor: pointer;
+        }
+        
+        .result-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(88, 101, 242, 0.3);
+        }
+        
+        .result-title {
+            color: var(--primary);
+            font-size: 1.4rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .result-url {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        
+        .result-snippet {
+            color: var(--text);
+            line-height: 1.7;
+        }
+        
+        .highlight {
+            background-color: rgba(88, 101, 242, 0.3);
+            padding: 0.2rem 0.3rem;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: var(--accent);
+            transform: translateX(-5px);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 2rem;
+            border-top: 1px solid var(--surface);
+        }
+        
+        /* Floating elements */
+        .floating-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .floating-element {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(88, 101, 242, 0.1) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .floating-element:nth-child(1) {
+            width: 300px;
+            height: 300px;
+            top: 10%;
+            left: 5%;
+            animation-delay: 0s;
+        }
+        
+        .floating-element:nth-child(2) {
+            width: 200px;
+            height: 200px;
+            bottom: 15%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+        
+        .floating-element:nth-child(3) {
+            width: 150px;
+            height: 150px;
+            top: 40%;
+            right: 20%;
+            animation-delay: 4s;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .search-input {
+                padding: 0.8rem 0.8rem 0.8rem 2.5rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-search"></i> Пошук по документації</h1>
+            <p>Швидкий пошук по всій документації Discord AI Assistant Bot</p>
+        </header>
+        
+        <a href="index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Повернутися до головної
+        </a>
+        
+        <div class="search-box">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Введіть пошуковий запит...">
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Пошук документації...</p>
+        </div>
+        
+        <div class="results-container" id="resultsContainer">
+            <div class="no-results" id="noResults">
+                <i class="fas fa-search fa-3x" style="margin-bottom: 1rem;"></i>
+                <p>Введіть пошуковий запит для пошуку документації</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2025 Godzilla Bot | Створено Дмитром Шивачовим (Dmitze)</p>
+            <p>Ліцензія MIT | Версія: v3.0.0</p>
+        </footer>
+    </div>
+
+    <script>
+        // Search functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const noResults = document.getElementById('noResults');
+            const loading = document.getElementById('loading');
+            
+            // Load search index
+            fetch('manifest.json')
+                .then(response => response.json())
+                .then(searchIndex => {
+                    searchInput.addEventListener('input', function() {
+                        const query = this.value.trim().toLowerCase();
+                        
+                        if (query.length === 0) {
+                            resultsContainer.innerHTML = '<div class="no-results" id="noResults"><i class="fas fa-search fa-3x" style="margin-bottom: 1rem;"></i><p>Введіть пошуковий запит для пошуку документації</p></div>';
+                            return;
+                        }
+                        
+                        // Show loading
+                        loading.style.display = 'block';
+                        noResults.style.display = 'none';
+                        
+                        // Simulate search processing
+                        setTimeout(() => {
+                            const results = searchIndex.filter(item => {
+                                return item.title.toLowerCase().includes(query);
+                            });
+                            
+                            displayResults(results, query);
+                            loading.style.display = 'none';
+                        }, 300);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading search index:', error);
+                    resultsContainer.innerHTML = '<div class="no-results"><p>Помилка завантаження індексу пошуку</p></div>';
+                });
+            
+            function displayResults(results, query) {
+                if (results.length === 0) {
+                    resultsContainer.innerHTML = '<div class="no-results"><i class="fas fa-exclamation-circle fa-3x" style="margin-bottom: 1rem;"></i><p>За вашим запитом нічого не знайдено</p></div>';
+                    return;
+                }
+                
+                let resultsHTML = '';
+                results.forEach(item => {
+                    // Highlight search terms
+                    const title = highlightText(item.title, query);
+                    
+                    resultsHTML += `
+                        <div class="result-item animate__animated animate__fadeInUp">
+                            <h3 class="result-title">${title}</h3>
+                            <span class="result-url">${item.url}</span>
+                            <p class="result-snippet">Категорія: ${item.category}</p>
+                        </div>
+                    `;
+                });
+                
+                resultsContainer.innerHTML = resultsHTML;
+                
+                // Add click events to result items
+                document.querySelectorAll('.result-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        // Navigate to the document
+                        window.location.href = this.querySelector('.result-url').textContent;
+                    });
+                });
+            }
+            
+            function highlightText(text, query) {
+                if (!query) return text;
+                const regex = new RegExp(`(${query})`, 'gi');
+                return text.replace(regex, '<span class="highlight">$1</span>');
+            }
+        });
+    </script>
+</body>
+</html>
