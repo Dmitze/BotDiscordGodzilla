@@ -184,6 +184,34 @@
             transform: translateY(-2px);
         }
         
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 1rem 2rem;
+            text-align: center;
+            min-width: 150px;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -293,6 +321,12 @@
             .languages-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .stats {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
         }
         
         /* Gradient background animation */
@@ -314,6 +348,21 @@
         <header>
             <h1>📚 Godzilla Bot Documentation</h1>
             <p class="subtitle">Powerful Discord bot with AI functionality for the Armed Forces of Ukraine</p>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number">72</div>
+                    <div class="stat-label">Documentation Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">12+</div>
+                    <div class="stat-label">Tech Stack</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">6</div>
+                    <div class="stat-label">Core Modules</div>
+                </div>
+            </div>
             
             <div class="features">
                 <div class="feature">
@@ -342,21 +391,21 @@
             </div>
         </header>
         
-        <a href="search.html" class="search-link">
-            <i class="fas fa-search"></i> Search Documentation
+        <a href="search.html" class="search-link animate__animated animate__pulse animate__infinite">
+            <i class="fas fa-search"></i> Search Documentation (72 files indexed)
         </a>
         
         <h2 style="text-align: center; margin: 2rem 0; color: var(--primary);">🌐 Documentation Languages</h2>
         
         <div class="languages-grid">
-            <a href="uk/README.md" class="language-card">
+            <a href="uk/README.md" class="language-card animate__animated animate__fadeInUp">
                 <i class="fas fa-language" style="font-size: 3rem; color: var(--primary);"></i>
                 <h2>🇺🇦 Ukrainian</h2>
                 <p>Повна документація українською мовою для користувачів та розробників</p>
                 <button class="btn">Переглянути</button>
             </a>
             
-            <a href="en/README.md" class="language-card">
+            <a href="en/README.md" class="language-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
                 <i class="fas fa-language" style="font-size: 3rem; color: var(--primary);"></i>
                 <h2>🇺🇸 English</h2>
                 <p>Complete documentation in English for users and developers</p>
