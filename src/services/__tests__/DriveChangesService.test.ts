@@ -51,8 +51,7 @@ const change = (id: string, type: 'created'|'modified'|'removed', folderId = 'FO
   }
   if (type === 'created') {
     // For created files, we should not have a modifiedTime to differentiate them
-    const createdFile = { ...baseFile };
-    delete createdFile.modifiedTime;
+    const createdFile = { ...baseFile, modifiedTime: undefined };
     return { file: createdFile, time: baseFile.createdTime };
   }
   // modified
