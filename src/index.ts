@@ -329,13 +329,16 @@ class Application {
         logger.warn(`⚠️ Високе використання пам'яті: ${Math.round(heapUsedMB)}MB`, {});
       }
 
-      // Перевірка доступності файлової системи
-      const testPath = join(process.cwd(), 'test_write');
-      try {
-        require('fs').writeFileSync(testPath, 'test');
-        require('fs').unlinkSync(testPath);
-      } catch (fsError) {
-        logger.warn('⚠️ Проблеми з файловою системою:', { error: fsError });
+      // Перевірка доступності файлової системи (лише у тест/розробці)
+      if (process.env['NODE_ENV'] !== 'production') {
+        const testPath = join(process.cwd(), 'test_write');
+        try {
+          const fsp = await import('fs/promises');
+          await fsp.writeFile(testPath, 'test');
+          await fsp.unlink(testPath);
+        } catch (fsError) {
+          logger.warn('⚠️ Проблеми з файловою системою:', { error: fsError });
+        }
       }
 
       logger.info('✅ Системні ресурси перевірено', {});
