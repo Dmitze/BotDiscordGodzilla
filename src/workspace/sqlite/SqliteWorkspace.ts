@@ -48,10 +48,13 @@ export class SqliteWorkspace {
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('synchronous = NORMAL');
 
-    // apply schema
-    const schemaPath = resolve(__dirname, './schema.sql');
-    const sql = readFileSync(schemaPath, 'utf8');
-    this.db.exec(sql);
+    // apply schema (can be deferred by env)
+    const initMode = (process.env['DB_SCHEMA_INIT_MODE'] || 'run').toLowerCase();
+    if (initMode !== 'defer') {
+      const schemaPath = resolve(__dirname, './schema.sql');
+      const sql = readFileSync(schemaPath, 'utf8');
+      this.db.exec(sql);
+    }
   }
 
   // Favorites
