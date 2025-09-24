@@ -6,7 +6,7 @@ import type SchedulerService from '@/services/SchedulerService';
 import logger from '@/utils/logger';
 
 // Define the interface for the Drive Changes Provider
-interface IDriveChangesProvider {
+export interface IDriveChangesProvider {
   getStartPageToken(): Promise<string>;
   listChanges(pageToken: string): Promise<{
     changes: Array<{
@@ -156,12 +156,35 @@ export class DriveChangesService extends BaseService {
       
       if (!storedToken) {
         // Get start page token from provider
-        const startToken = await this.provider.getStartPageToken();
-        await this.cache.set('drive:changes:startPageToken', startToken);
-        logger.info('DriveChangesService: initialized with start page token', {
-          component: 'DriveChangesService',
-          startToken
-        });
+        // Add retry logic in case Google Service is not yet fully initialized
+        let startToken: string | null = null;
+        let retries = 0;
+        const maxRetries = 5;
+        const retryDelay = 2000; // 2 seconds
+        
+        while (retries < maxRetries && !startToken) {
+          try {
+            startToken = await this.provider.getStartPageToken();
+          } catch (error) {
+            retries++;
+            if (retries >= maxRetries) {
+              throw error;
+            }
+            logger.warn(`Failed to get start page token, retry ${retries}/${maxRetries} in ${retryDelay}ms`, {
+              component: 'DriveChangesService',
+              error: error instanceof Error ? error.message : String(error)
+            });
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+          }
+        }
+        
+        if (startToken) {
+          await this.cache.set('drive:changes:startPageToken', startToken);
+          logger.info('DriveChangesService: initialized with start page token', {
+            component: 'DriveChangesService',
+            startToken
+          });
+        }
       } else {
         logger.info('DriveChangesService: using existing start page token', {
           component: 'DriveChangesService',
@@ -203,19 +226,34 @@ export class DriveChangesService extends BaseService {
     let finalNewStartPageToken: string | undefined = undefined;
 
     do {
-      // Get changes from provider
-      const { changes, nextPageToken, newStartPageToken } = await this.provider.listChanges(pageToken);
-      
-      // Add changes to our collection
-      allChanges = allChanges.concat(changes);
-      
-      // Keep the newStartPageToken from this page
-      if (newStartPageToken) {
-        finalNewStartPageToken = newStartPageToken;
+      try {
+        // Get changes from provider
+        const { changes, nextPageToken, newStartPageToken } = await this.provider.listChanges(pageToken);
+        
+        // Add changes to our collection
+        allChanges = allChanges.concat(changes);
+        
+        // Keep the newStartPageToken from this page
+        if (newStartPageToken) {
+          finalNewStartPageToken = newStartPageToken;
+        }
+        
+        // Move to next page if available
+        pageToken = nextPageToken || '';
+      } catch (error) {
+        // If we get an error about Google Drive client not being initialized,
+        // we should retry after a short delay
+        if (error instanceof Error && error.message.includes('Google Drive client not initialized')) {
+          logger.warn('Google Drive client not initialized during poll, retrying in 2 seconds...', {
+            component: 'DriveChangesService'
+          });
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Retry the same page token
+          continue;
+        }
+        // For other errors, re-throw
+        throw error;
       }
-      
-      // Move to next page if available
-      pageToken = nextPageToken || '';
     } while (pageToken);
 
     // Filter and map changes to events
