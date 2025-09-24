@@ -477,27 +477,28 @@ class Logger {
    * Очищення старих логів
    */
   private cleanupOldLogs(): void {
-    try {
-      const files = fs.readdirSync(this.logsDir);
-      const now = Date.now();
-      let cleanedCount = 0;
-
-      for (const file of files) {
-        const filePath = path.join(this.logsDir, file);
-        const stats = fs.statSync(filePath);
-
-        if (now - stats.mtime.getTime() > LOGGER_CONFIG.MAX_LOG_AGE) {
-          fs.unlinkSync(filePath);
-          cleanedCount++;
+    // Переведено на асинхронну версію, щоб не блокувати event loop
+    (async () => {
+      try {
+        const fsp = await import('fs/promises');
+        const files = await fsp.readdir(this.logsDir);
+        const now = Date.now();
+        let cleanedCount = 0;
+        for (const file of files) {
+          const filePath = path.join(this.logsDir, file);
+          try {
+            const stats = await fsp.stat(filePath);
+            if (now - stats.mtime.getTime() > LOGGER_CONFIG.MAX_LOG_AGE) {
+              await fsp.unlink(filePath);
+              cleanedCount++;
+            }
+          } catch {}
         }
+        if (cleanedCount > 0) this.info(`Очищено ${cleanedCount} старих лог-файлів`);
+      } catch (error) {
+        console.error('❌ Помилка очищення старих логів:', error);
       }
-
-      if (cleanedCount > 0) {
-        this.info(`Очищено ${cleanedCount} старих лог-файлів`);
-      }
-    } catch (error) {
-      console.error('❌ Помилка очищення старих логів:', error);
-    }
+    })();
   }
 
   /**
