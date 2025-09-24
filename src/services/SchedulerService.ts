@@ -6,6 +6,7 @@
 
 import logger from '../utils/logger';
 import type { Client } from 'discord.js';
+import type { schedule as CronSchedule, ScheduledTask } from 'node-cron';
 
 interface Bot {
   getService(name: string): any;
@@ -14,10 +15,10 @@ interface Bot {
 }
 
 interface JobInfo {
-  job: any;
+  job: ScheduledTask;
   schedule: string;
   task: string;
-  options: any;
+  options: { timezone?: string; scheduled?: boolean };
   createdAt: Date;
   lastRun: Date | null;
   nextRun: Date;
@@ -60,7 +61,7 @@ interface HealthStatus {
 class SchedulerService {
   private bot: Bot;
   private jobs: Map<string, JobInfo>;
-  private scheduler: any;
+  private scheduler: { schedule: typeof CronSchedule } | null;
   private stats: {
     jobsCreated: number;
     jobsExecuted: number;
@@ -339,8 +340,8 @@ class SchedulerService {
     name: string,
     schedule: string,
     task: () => Promise<void> | void,
-    options: any = {}
-  ): any {
+    options: { timezone?: string; scheduled?: boolean } = {}
+  ): ScheduledTask | null {
     try {
       // Пропускаємо планування завдань у тестовому середовищі
       if (this.isCronDisabled()) {
@@ -371,7 +372,7 @@ class SchedulerService {
       let nextRun: Date | null = null;
       try {
         // Перевіряємо, які методи доступні в об'єкті job
-        const jobObject = job as any;
+        const jobObject = job as unknown as { nextDates?: (n?: number) => unknown; nextDate?: () => unknown };
         
         if (typeof jobObject.nextDates === 'function') {
           try {
@@ -419,10 +420,7 @@ class SchedulerService {
       } catch (e) {
         logger.warn('scheduler_next_run_unavailable', { 
           error: e instanceof Error ? e.message : String(e),
-          methodsAvailable: {
-            nextDates: typeof (job as any).nextDates,
-            nextDate: typeof (job as any).nextDate
-          },
+          methodsAvailable: { },
           schedule
         });
         // Фолбек до розрахунку на основі cron виразу
