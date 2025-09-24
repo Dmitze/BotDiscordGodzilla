@@ -47,6 +47,8 @@ export class N8nMonitoringService extends BaseService {
     consecutiveFailures: number;
   };
 
+  private metricsService: any = null;
+
   constructor(config: BotConfig) {
     super('N8nMonitoringService', config);
     
@@ -71,6 +73,25 @@ export class N8nMonitoringService extends BaseService {
   }
 
   /**
+   * Ініціалізація залежностей сервісу
+   * Викликається ServiceManager після створення всіх сервісів
+   */
+  public initializeServices(metricsService?: any): void {
+    this.metricsService = metricsService;
+    // Створення метрик, якщо доступний MetricsService
+    this.createMetrics(this.metricsService).catch(error => {
+      logger.error('Помилка створення метрик після ініціалізації залежностей:', {
+        type: 'n8n_monitoring_service',
+        event: 'metrics_init_failed',
+        component: 'N8nMonitoringService',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    });
+  }
+
+  /**
    * Ініціалізація сервісу моніторингу n8n
    */
   protected override async onInitialize(): Promise<void> {
@@ -82,6 +103,7 @@ export class N8nMonitoringService extends BaseService {
       });
 
       // Створення метрик, якщо доступний MetricsService
+      // MetricsService буде переданий через initializeServices якщо доступний
       await this.createMetrics();
 
       logger.info('✅ N8nMonitoring сервіс ініціалізовано', {
@@ -105,10 +127,9 @@ export class N8nMonitoringService extends BaseService {
   /**
    * Створення метрик для Prometheus
    */
-  private async createMetrics(): Promise<void> {
+  private async createMetrics(metricsService?: any): Promise<void> {
     try {
       // Отримуємо MetricsService якщо він доступний
-      const metricsService = (this as any).getService('metrics');
       if (!metricsService) {
         logger.debug('MetricsService недоступний, метрики не будуть створені', {
           type: 'n8n_monitoring_service',
