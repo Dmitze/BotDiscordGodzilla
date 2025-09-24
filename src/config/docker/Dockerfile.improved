@@ -1,0 +1,59 @@
+# Use a more recent Node.js version with Alpine for smaller image size
+FROM node:18-alpine AS builder
+
+# Set working directory
+WORKDIR /usr/src/app
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install all dependencies including dev dependencies for building
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the TypeScript application
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Set working directory
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy built files from builder stage
+COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/package*.json ./
+
+# Copy essential files needed at runtime
+COPY .env.example .env.example
+COPY src/config/docker/healthcheck.js ./healthcheck.js
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Change ownership of files to non-root user
+RUN chown -R nextjs:nodejs /usr/src/app
+USER nextjs
+
+# Expose port for the API server
+EXPOSE 3000
+
+# Environment variables
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max_old_space_size=1024"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD node healthcheck.js
+
+# Start the application
+CMD ["node", "dist/index.js"]
