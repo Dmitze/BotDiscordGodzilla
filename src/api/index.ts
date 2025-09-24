@@ -9,6 +9,8 @@ import { DocumentAccessAuditService } from '@/services/DocumentAccessAuditServic
 import { DataLossPreventionService } from '@/services/DataLossPreventionService';
 import { ComplianceReportingService } from '@/services/ComplianceReportingService';
 import { DriveIndexerService } from '@/services/DriveIndexerService';
+import { SqliteSearchIndex } from '@/search/sqlite/SqliteSearchIndex';
+import { z } from 'zod';
 
 // Define the API service interface
 interface ApiService {
@@ -350,27 +352,60 @@ app.get('/stats', authenticateToken, async (_req: Request, res: Response, next: 
 // Search documents
 app.get('/search', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const { query, limit, offset } = req.query;
-    
-    if (!query) {
-      res.status(400).json({ error: 'Query parameter is required' });
-      return;
-    }
-    
-    // This would integrate with the search index
-    // For now, we'll return a placeholder response
-    res.json({
-      query,
-      results: [],
-      total: 0,
-      limit: parseInt(limit as string) || 10,
-      offset: parseInt(offset as string) || 0
+    const schema = z.object({
+      query: z.string().min(1, 'query is required'),
+      limit: z.coerce.number().int().min(1).max(200).optional(),
+      offset: z.coerce.number().int().min(0).optional(),
+      mime: z.union([z.string(), z.array(z.string())]).optional(),
+      owner: z.union([z.string(), z.array(z.string())]).optional(),
+      tags: z.union([z.string(), z.array(z.string())]).optional(),
+      language: z.union([z.string(), z.array(z.string())]).optional(),
+      pathPrefix: z.string().optional(),
+      labels: z.union([z.string(), z.array(z.string())]).optional(),
+      modifiedFrom: z.coerce.number().optional(),
+      modifiedTo: z.coerce.number().optional(),
+      sizeFrom: z.coerce.number().optional(),
+      sizeTo: z.coerce.number().optional(),
+      changesOnly: z.coerce.boolean().optional(),
     });
+
+    const parsed = schema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid query parameters', issues: parsed.error.issues });
+      return;
+    }
+
+    const q: any = parsed.data;
+    const toArray = (v?: string | string[]) => (v === undefined ? undefined : Array.isArray(v) ? v : [v]);
+
+    const filters: any = {};
+    const mime = toArray(q.mime); if (mime && mime.length) filters.mime = mime;
+    const owner = toArray(q.owner); if (owner && owner.length) filters.owner = owner;
+    const tags = toArray(q.tags); if (tags && tags.length) filters.tags = tags;
+    const language = toArray(q.language); if (language && language.length) filters.language = language;
+    if (q.pathPrefix) filters.pathPrefix = q.pathPrefix;
+    const labels = toArray(q.labels); if (labels && labels.length) filters.labels = labels;
+    if (q.modifiedFrom !== undefined) filters.modifiedFrom = q.modifiedFrom;
+    if (q.modifiedTo !== undefined) filters.modifiedTo = q.modifiedTo;
+    if (q.sizeFrom !== undefined) filters.sizeFrom = q.sizeFrom;
+    if (q.sizeTo !== undefined) filters.sizeTo = q.sizeTo;
+
+    const searchQuery: any = {
+      text: q.query,
+      limit: q.limit ?? 10,
+      offset: q.offset ?? 0,
+      filters: Object.keys(filters).length ? filters : undefined,
+      changesOnly: q.changesOnly ?? false,
+    };
+
+    const index = getSearchIndex();
+    const { hits, total } = await index.search(searchQuery);
+
+    res.json({ query: q.query, results: hits, total, limit: searchQuery.limit, offset: searchQuery.offset });
+  } catch (error) {
+    next(error);
+  }
+});
   } catch (error) {
     next(error);
   }
