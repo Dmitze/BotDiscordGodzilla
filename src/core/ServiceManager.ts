@@ -32,6 +32,7 @@ import { ResponseCacheService } from '@/services/ResponseCacheService';
 import { KnowledgeBaseService } from '@/services/KnowledgeBaseService';
 import { EnhancedRagService } from '@/services/EnhancedRagService';
 import { DocumentAnalysisService } from '@/services/DocumentAnalysisService';
+import { GoogleDriveChangesProvider } from '@/services/GoogleDriveChangesProvider';
 
 interface Bot {
   config: BotConfig;
@@ -133,7 +134,31 @@ class ServiceManager {
     this.services.set('sheetsContext', new SheetsContextService(this.bot.config));
 
     // Drive Changes Service (polling changes)
-    this.services.set('driveChanges', new DriveChangesService(this.bot.config));
+    const googleService = this.services.get('google');
+    const cacheService = this.services.get('cache');
+    let driveChangesService: DriveChangesService | null = null;
+    
+    if (googleService && cacheService) {
+      try {
+        const driveChangesProvider = new GoogleDriveChangesProvider(googleService as any);
+        driveChangesService = new DriveChangesService(
+          this.bot.config,
+          driveChangesProvider,
+          cacheService as any
+        );
+        this.services.set('driveChanges', driveChangesService as unknown as NonNullable<ServiceRegistry['driveChanges']>);
+      } catch (error) {
+        logger.error('❌ Не вдалося створити DriveChangesService з провайдером', {
+          type: 'service_manager',
+          event: 'drive_changes_register_failed',
+          component: 'ServiceManager',
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+      }
+    } else {
+      // Fallback - create without provider (will show as not initialized)
+      this.services.set('driveChanges', new DriveChangesService(this.bot.config));
+    }
 
     // Drive Indexer Service (потребує доступу до інших сервісів через getService)
     this.services.set(
@@ -685,6 +710,17 @@ class ServiceManager {
           const googleService = this.services.get('google');
           if (googleService && (service as any).setGoogleService) {
             (service as any).setGoogleService(googleService);
+          }
+        } else if (name === 'n8nMonitoring') {
+          const metricsService = this.services.get('metrics');
+          if (metricsService && (service as any).initializeServices) {
+            (service as any).initializeServices(metricsService);
+          }
+        } else if (name === 'driveChanges') {
+          const googleService = this.services.get('google');
+          const schedulerService = this.services.get('scheduler');
+          if (googleService && schedulerService && (service as any).initializeServices) {
+            (service as any).initializeServices(googleService, schedulerService);
           }
         }
 
