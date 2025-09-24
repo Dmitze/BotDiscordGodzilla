@@ -55,13 +55,18 @@ export class SqliteSearchIndex implements SearchIndex {
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('synchronous = NORMAL');
 
-    const schemaPath = resolve(__dirname, './schema.sql');
-    const schemaSql = readFileSync(schemaPath, 'utf8');
-    this.db.exec(schemaSql);
-    // Ensure meta table for migrations
-    this.db.exec(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`);
-    // Ensure required columns exist for metadata persistence
-    this.ensureDocumentColumns();
+    const initMode = (process.env['DB_SCHEMA_INIT_MODE'] || 'run').toLowerCase();
+    if (initMode !== 'defer') {
+      const schemaPath = resolve(__dirname, './schema.sql');
+      const schemaSql = readFileSync(schemaPath, 'utf8');
+      this.db.exec(schemaSql);
+      // Ensure meta table for migrations
+      this.db.exec(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`);
+      // Ensure required columns exist for metadata persistence
+      this.ensureDocumentColumns();
+      // Perform FTS tokenizer migration if requested
+      this.maybeMigrateFtsTokenizer();
+    }
 
     // Prepared statements
     this.insertDocStmt = this.db.prepare(
@@ -103,8 +108,9 @@ export class SqliteSearchIndex implements SearchIndex {
       `SELECT normText FROM segment_cache WHERE contentHash = ?`
     );
 
-    // Perform FTS tokenizer migration if requested
-    this.maybeMigrateFtsTokenizer();
+    if (initMode === 'defer') {
+      // Skip heavy migrations now; they can be run by a separate script before app start
+    }
   }
 
   private ensureDocumentColumns(): void {
@@ -354,13 +360,22 @@ export class SqliteSearchIndex implements SearchIndex {
 
     // changesOnly: отфильтровать те, у кого есть более одной версии
     if (q.changesOnly) {
-      const stmt = this.db.prepare(`SELECT COUNT(1) as c FROM document_versions WHERE fileId = ?`);
-      const filtered: SearchHit[] = [];
-      for (const h of hits) {
-        const { c } = stmt.get(h.fileId) as { c: number };
-        if (c > 1) filtered.push(h);
+      if (!hits.length) return { hits, total: cnt };
+      const ids = hits.map(h => h.fileId);
+      // batch одним запросом через IN; защищаемся от слишком длинного IN (ограничим до 999 — лимит SQLite по умолчанию)
+      const chunk = (arr: string[], n: number) => {
+        const res: string[][] = []; for (let i = 0; i < arr.length; i += n) res.push(arr.slice(i, i+n)); return res;
+      };
+      const chunks = chunk(ids, 900);
+      const changed = new Set<string>();
+      const base = `SELECT fileId FROM document_versions WHERE fileId IN ($PLACEHOLDERS) GROUP BY fileId HAVING MAX(version) > 1`;
+      for (const part of chunks) {
+        const sql = base.replace('$PLACEHOLDERS', part.map(() => '?').join(','));
+        const rows = this.db.prepare(sql).all(...part) as Array<{ fileId: string }>;
+        for (const r of rows) changed.add(r.fileId);
       }
-      return { hits: filtered, total: cnt };
+      const filtered: SearchHit[] = hits.filter(h => changed.has(h.fileId));
+      return { hits: filtered, total: filtered.length };
     }
 
     return { hits, total: cnt };
