@@ -46,7 +46,7 @@ interface Bot {
 interface ServiceStatus {
   isActive: boolean;
   hasMethod: (method: string) => boolean;
-  stats: any;
+  stats: unknown;
 }
 
 interface ServiceManagerStats {
@@ -839,11 +839,13 @@ class ServiceManager {
     methodName: string,
     ...args: any[]
   ): Promise<PromiseSettledResult<any>[]> {
+    const hasMethod = (obj: unknown, name: string): obj is Record<string, (...xs: unknown[]) => unknown> => {
+      return !!obj && typeof (obj as Record<string, unknown>)[name] === 'function';
+    };
     const promises = Array.from(this.services.values()).map(async service => {
-      const fn = (service as any)[methodName];
-      if (typeof fn === 'function') {
+      if (hasMethod(service as unknown, methodName)) {
         try {
-          return await fn.apply(service, args);
+          return await (service as unknown as Record<string, (...xs: unknown[]) => unknown>)[methodName](...args);
         } catch (error) {
           logger.error('Помилка виконання методу на сервісі', {
             type: 'service_manager',
