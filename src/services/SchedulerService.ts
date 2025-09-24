@@ -270,11 +270,27 @@ class SchedulerService {
           break;
         } catch (e) {
           attempt++;
+          // If it's an initialization issue, we might want to retry more aggressively
+          const isInitializationError = e instanceof Error && 
+            (e.message.includes('Google Drive client not initialized') || 
+             e.message.includes('not properly initialized'));
+          
           if (attempt >= maxRetries) {
             logger.error(`pollDriveChanges: помилка після ${attempt} спроб`, e as any);
             break;
           }
-          const wait = Math.min(30000, 1000 * Math.pow(2, attempt));
+          
+          // For initialization errors, use a shorter retry delay
+          const wait = isInitializationError ? 
+            3000 : // 3 seconds for initialization errors
+            Math.min(30000, 1000 * Math.pow(2, attempt)); // Exponential backoff for other errors
+          
+          logger.warn(`pollDriveChanges: retry ${attempt}/${maxRetries} in ${wait}ms`, {
+            component: 'SchedulerService',
+            error: e instanceof Error ? e.message : String(e),
+            isInitializationError
+          });
+          
           await new Promise(r => setTimeout(r, wait));
         }
       }
