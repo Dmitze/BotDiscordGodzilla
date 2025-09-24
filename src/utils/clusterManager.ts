@@ -22,7 +22,7 @@ interface WorkerInfo {
   status: 'starting' | 'online' | 'offline' | 'restarting';
   startTime: number;
   restarts: number;
-  stats?: any;
+  stats?: { load?: number; [k: string]: unknown };
 }
 
 interface ClusterStats {
@@ -33,11 +33,11 @@ interface ClusterStats {
   uptime: number;
 }
 
-interface WorkerMessage {
-  type: string;
-  data: any;
-  timestamp: number;
-}
+type WorkerMessage =
+  | { type: 'stats'; data: { load?: number; [k: string]: unknown }; timestamp: number }
+  | { type: 'error'; data: { message: string; stack?: string }; timestamp: number }
+  | { type: 'ready'; data?: undefined; timestamp: number }
+  | { type: 'custom'; data: Record<string, unknown>; timestamp: number };
 
 class ClusterManager {
   private config: ClusterConfig;
@@ -177,26 +177,31 @@ class ClusterManager {
   /**
    * Обробка повідомлень від workers
    */
-  private handleWorkerMessage(worker: Worker, message: any): void {
+  private handleWorkerMessage(worker: Worker, message: unknown): void {
     try {
       const workerInfo = this.workers.get(worker.id);
       if (!workerInfo) return;
 
-      switch (message.type) {
-        case 'stats':
-          this.updateWorkerStats(worker.id, message.data);
-          break;
-        case 'error':
-          logger.error(`❌ Worker ${worker.id} помилка: ${ClusterManager.formatAny(message.data)}`);
-          break;
-        case 'ready':
-          logger.info(`✅ Worker ${worker.id} готовий`);
-          break;
-        default:
-          logger.debug(
-            `📨 Повідомлення від worker ${worker.id}: ${ClusterManager.formatAny(message)}`
-          );
+      const msg = message as Partial<WorkerMessage>;
+      if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
+        logger.debug(`📨 Некоректне повідомлення від worker ${worker.id}`);
+        return;
       }
+
+      if (msg.type === 'stats' && msg.data && typeof msg.timestamp === 'number') {
+        this.updateWorkerStats(worker.id, msg.data);
+        return;
+      }
+      if (msg.type === 'error' && msg.data && typeof msg.timestamp === 'number') {
+        logger.error(`❌ Worker ${worker.id} помилка: ${ClusterManager.formatAny(msg.data)}`);
+        return;
+      }
+      if (msg.type === 'ready' && typeof msg.timestamp === 'number') {
+        logger.info(`✅ Worker ${worker.id} готовий`);
+        return;
+      }
+      // custom/unknown
+      logger.debug(`📨 Повідомлення від worker ${worker.id}: ${ClusterManager.formatAny(msg)}`);
     } catch (error) {
       logger.error(`❌ Помилка обробки повідомлення worker: ${ClusterManager.formatError(error)}`);
     }
@@ -265,7 +270,7 @@ class ClusterManager {
   /**
    * Оновлення статистики worker
    */
-  private updateWorkerStats(workerId: number, stats: any): void {
+  private updateWorkerStats(workerId: number, stats: { load?: number; [k: string]: unknown }): void {
     const workerInfo = this.workers.get(workerId);
     if (workerInfo) {
       workerInfo.stats = stats;
@@ -308,7 +313,7 @@ class ClusterManager {
     }
 
     try {
-      worker.send(message);
+      worker.send({ ...message, timestamp: message.timestamp ?? Date.now() });
       return true;
     } catch (error) {
       logger.error(
