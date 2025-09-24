@@ -2688,4 +2688,11 @@ export class GoogleService extends BaseServiceClass {
     } catch {}
     return text;
   }
+
+  /**
+   * Get the Drive API client
+   */
+  public getDriveClient(): drive_v3.Drive | null {
+    return this.drive;
+  }
 }
