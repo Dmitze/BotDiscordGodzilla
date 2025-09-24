@@ -243,7 +243,7 @@ export class AIService extends BaseServiceClass {
       logger.info('🔧 Створення AI провайдерів...');
 
       // OpenAI провайдер
-      if (this.config.ai['openai'].apiKey) {
+      if (this.config.ai['openai'].apiKey && this.config.ai['openai'].apiKey.trim() !== '') {
         this.providers['openai'] = this.createOpenAIProvider();
         logger.debug('✅ OpenAI провайдер створено');
       } else {
@@ -251,7 +251,7 @@ export class AIService extends BaseServiceClass {
       }
 
       // Ollama провайдер
-      if (this.config.ai['ollama'].host) {
+      if (this.config.ai['ollama'].host && this.config.ai['ollama'].host.trim() !== '') {
         this.providers['ollama'] = this.createOllamaProvider();
         logger.debug('✅ Ollama провайдер створено');
       } else {
