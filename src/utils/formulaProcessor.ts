@@ -433,43 +433,174 @@ export class FormulaProcessor {
     formula: string,
     variables: Record<string, number>
   ): Promise<number> {
-    return new Promise((resolve, reject) => {
-      try {
-        // Створення безпечного контексту
-        const safeContext: Record<string, any> = {
-          ...variables,
-          ...Object.fromEntries(this.functionCache),
-        };
-
-        // Обмеження часу виконання
-        const timeout = setTimeout(() => {
-          reject(new Error('Таймаут виконання формули'));
-        }, FORMULA_PROCESSOR_CONSTANTS.TIMEOUT);
-
-        // Створення функції з обмеженим контекстом
-        const safeFunction = new Function(
-          ...Object.keys(safeContext),
-          `"use strict"; return (${formula});`
-        );
-
-        // Виконання з обмеженим контекстом
-        const result = safeFunction(...Object.values(safeContext));
-
-        clearTimeout(timeout);
-
-        // Перевірка результату
-        if (typeof result !== 'number' || !isFinite(result)) {
-          reject(new Error('Невірний результат формули'));
+    // Безпечний обчислювач на основі алгоритму shunting-yard (RPN)
+    // Підтримує лише дозволені оператори/функції/змінні
+    const tokenize = (expr: string): Array<{ t: 'num'|'id'|'op'|'lp'|'rp'|'comma'; v: string }> => {
+      const out: Array<{ t: 'num'|'id'|'op'|'lp'|'rp'|'comma'; v: string }> = [];
+      let i = 0;
+      while (i < expr.length) {
+        const ch = expr[i];
+        if (/\s/.test(ch)) { i++; continue; }
+        if (/[0-9.]/.test(ch)) {
+          let j = i + 1;
+          while (j < expr.length && /[0-9.]/.test(expr[j])) j++;
+          out.push({ t: 'num', v: expr.slice(i, j) });
+          i = j; continue;
         }
+        if (/[a-zA-Z_]/.test(ch)) {
+          let j = i + 1;
+          while (j < expr.length && /[a-zA-Z0-9_]/.test(expr[j])) j++;
+          out.push({ t: 'id', v: expr.slice(i, j) });
+          i = j; continue;
+        }
+        if (ch === ',') { out.push({ t: 'comma', v: ',' }); i++; continue; }
+        if (ch === '(') { out.push({ t: 'lp', v: '(' }); i++; continue; }
+        if (ch === ')') { out.push({ t: 'rp', v: ')' }); i++; continue; }
+        if (['+','-','*','/','^','=','<','>','!'].includes(ch)) {
+          // обробка двосимвольних операторів
+          const two = expr.slice(i, i+2);
+          if (["<=",">=","!=","=="].includes(two)) { out.push({ t: 'op', v: two }); i += 2; continue; }
+          out.push({ t: 'op', v: ch }); i++; continue;
+        }
+        throw new Error(`Недопустимий символ у формулі: '${ch}'`);
+      }
+      return out;
+    };
 
-        // Округлення до заданої точності
-        const roundedResult =
-          Math.round(result * Math.pow(10, FORMULA_PROCESSOR_CONSTANTS.PRECISION)) /
-          Math.pow(10, FORMULA_PROCESSOR_CONSTANTS.PRECISION);
+    const precedence: Record<string, number> = { '==':1,'!=':1,'<':1,'>':1,'<=':1,'>=':1,'+':2,'-':2,'*':3,'/':3,'^':4 };
+    const rightAssoc = new Set(['^']);
 
+    const toRpn = (tokens: ReturnType<typeof tokenize>): Array<{ t: 'num'|'id'|'op'|'func'; v: string; argc?: number }> => {
+      const out: Array<{ t: 'num'|'id'|'op'|'func'; v: string; argc?: number }> = [];
+      const ops: Array<{ kind:'op'|'func'|'lp'; v: string; argc?: number }> = [];
+      // функції розпізнаємо як id, за якими йде lp
+      for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+        if (tok.t === 'num' || tok.t === 'id') {
+          // lookahead: if id followed by lp -> function
+          if (tok.t === 'id' && tokens[i+1]?.t === 'lp') {
+            if (!FORMULA_PROCESSOR_CONSTANTS.ALLOWED_FUNCTIONS.includes(tok.v)) {
+              throw new Error(`Недозволена функція: ${tok.v}`);
+            }
+            ops.push({ kind: 'func', v: tok.v, argc: 0 });
+          } else {
+            out.push({ t: tok.t, v: tok.v });
+          }
+        } else if (tok.t === 'comma') {
+          // виводимо оператори до найближчої lp; інкрементуємо argc у поточній функції
+          while (ops.length && ops[ops.length-1].kind !== 'lp') {
+            const top = ops.pop()!;
+            if (top.kind === 'op') out.push({ t: 'op', v: top.v });
+            else if (top.kind === 'func') out.push({ t: 'func', v: top.v, argc: top.argc ?? 0 });
+          }
+          const funcIdx = [...ops].reverse().findIndex(x => x.kind === 'func');
+          if (funcIdx >= 0) {
+            const idx = ops.length - 1 - funcIdx;
+            ops[idx].argc = (ops[idx].argc ?? 0) + 1;
+          }
+        } else if (tok.t === 'op') {
+          while (ops.length && ops[ops.length-1].kind === 'op') {
+            const top = ops[ops.length-1];
+            const p1 = precedence[tok.v] ?? 0;
+            const p2 = precedence[top.v] ?? 0;
+            if ((rightAssoc.has(tok.v) ? p1 < p2 : p1 <= p2)) {
+              out.push({ t: 'op', v: ops.pop()!.v });
+            } else break;
+          }
+          ops.push({ kind: 'op', v: tok.v });
+        } else if (tok.t === 'lp') {
+          ops.push({ kind: 'lp', v: '(' });
+        } else if (tok.t === 'rp') {
+          while (ops.length && ops[ops.length-1].kind !== 'lp') {
+            const top = ops.pop()!;
+            if (top.kind === 'op') out.push({ t: 'op', v: top.v });
+            else if (top.kind === 'func') out.push({ t: 'func', v: top.v, argc: top.argc ?? 0 });
+          }
+          if (!ops.length) throw new Error('Невірна дужкова структура');
+          ops.pop(); // remove lp
+          // якщо зверху функція — вона завершилась
+          if (ops.length && ops[ops.length-1].kind === 'func') {
+            const fn = ops.pop()!;
+            out.push({ t: 'func', v: fn.v, argc: (fn.argc ?? 0) + 1 });
+          }
+        }
+      }
+      while (ops.length) {
+        const top = ops.pop()!;
+        if (top.kind === 'lp') throw new Error('Невірна дужкова структура');
+        if (top.kind === 'op') out.push({ t: 'op', v: top.v });
+        else out.push({ t: 'func', v: top.v, argc: top.argc ?? 0 });
+      }
+      return out;
+    };
+
+    const evaluateRpn = (rpn: Array<{ t: 'num'|'id'|'op'|'func'; v: string; argc?: number }>): number => {
+      const stack: number[] = [];
+      const funcs = Object.fromEntries(this.functionCache);
+      const getVal = (id: string): number => {
+        if (id in variables) return variables[id]!;
+        if (['PI','E','INFINITY','NAN'].includes(id)) return this.variableCache.get(id)!;
+        throw new Error(`Невідома змінна: ${id}`);
+      };
+      for (const tok of rpn) {
+        if (tok.t === 'num') {
+          const n = Number(tok.v);
+          if (!isFinite(n)) throw new Error('Недійсне число');
+          stack.push(n);
+        } else if (tok.t === 'id') {
+          stack.push(getVal(tok.v));
+        } else if (tok.t === 'op') {
+          const b = stack.pop();
+          const a = stack.pop();
+          if (a === undefined || b === undefined) throw new Error('Невірний вираз');
+          let r: number | boolean;
+          switch (tok.v) {
+            case '+': r = a + b; break;
+            case '-': r = a - b; break;
+            case '*': r = a * b; break;
+            case '/': r = a / b; break;
+            case '^': r = Math.pow(a, b); break;
+            case '==': r = a === b; break;
+            case '!=': r = a !== b; break;
+            case '<': r = a < b; break;
+            case '>': r = a > b; break;
+            case '<=': r = a <= b; break;
+            case '>=': r = a >= b; break;
+            default: throw new Error(`Оператор не підтримується: ${tok.v}`);
+          }
+          stack.push(typeof r === 'boolean' ? (r ? 1 : 0) : r);
+        } else if (tok.t === 'func') {
+          const argc = tok.argc ?? 0;
+          const args: number[] = [];
+          for (let i = 0; i < argc; i++) {
+            const v = stack.pop();
+            if (v === undefined) throw new Error('Невірна кількість аргументів функції');
+            args.push(v);
+          }
+          args.reverse();
+          const fn = funcs[tok.v] as unknown as (...xs: number[]) => number;
+          if (typeof fn !== 'function') throw new Error(`Функція не знайдена: ${tok.v}`);
+          const res = fn(...args);
+          if (typeof res !== 'number' || !isFinite(res)) throw new Error('Невірний результат функції');
+          stack.push(res);
+        }
+      }
+      if (stack.length !== 1) throw new Error('Невірний вираз');
+      return stack[0]!;
+    };
+
+    return new Promise((resolve, reject) => {
+      const controller = setTimeout(() => reject(new Error('Таймаут виконання формули')), FORMULA_PROCESSOR_CONSTANTS.TIMEOUT);
+      try {
+        const tokens = tokenize(formula);
+        const rpn = toRpn(tokens);
+        const result = evaluateRpn(rpn);
+        clearTimeout(controller);
+        const roundedResult = Math.round(result * Math.pow(10, FORMULA_PROCESSOR_CONSTANTS.PRECISION)) / Math.pow(10, FORMULA_PROCESSOR_CONSTANTS.PRECISION);
         resolve(roundedResult);
-      } catch (error) {
-        reject(error);
+      } catch (e) {
+        clearTimeout(controller);
+        reject(e);
       }
     });
   }
