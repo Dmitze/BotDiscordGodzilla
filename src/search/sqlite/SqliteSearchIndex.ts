@@ -64,49 +64,67 @@ export class SqliteSearchIndex implements SearchIndex {
       this.db.exec(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`);
       // Ensure required columns exist for metadata persistence
       this.ensureDocumentColumns();
-      // Perform FTS tokenizer migration if requested
-      this.maybeMigrateFtsTokenizer();
     }
 
-    // Prepared statements
-    this.insertDocStmt = this.db.prepare(
+    // Prepared statements (guard for defer mode)
+    if (initMode === 'defer') {
+      // Avoid preparing statements against non-existent tables in defer mode.
+      // Assign a harmless no-op statement so constructor remains safe.
+      const noop = this.db.prepare(`SELECT 1`);
+      this.insertDocStmt = noop as unknown as Statement;
+      this.updateDocStmt = noop as unknown as Statement;
+      this.selectDocStmt = noop as unknown as Statement;
+      this.insertFtsStmt = noop as unknown as Statement;
+      this.deleteFtsByIdStmt = noop as unknown as Statement;
+      this.insertVersionStmt = noop as unknown as Statement;
+      this.selectVersionsStmt = noop as unknown as Statement;
+      this.insertSegmentStmt = noop as unknown as Statement;
+      this.selectAllDocsStmt = noop as unknown as Statement;
+      this.selectSegmentByHashStmt = noop as unknown as Statement;
+    } else {
+      // Normal mode: prepare real statements
+      this.insertDocStmt = this.db.prepare(
       `INSERT INTO documents (fileId, name, mimeType, ownerEmail, sizeBytes, modifiedTime, createdTime, contentHash, textLen, lastIndexedAt, tags, meta, language, labels, path)
        VALUES (@fileId, @name, @mimeType, @ownerEmail, @sizeBytes, @modifiedTime, @createdTime, @contentHash, @textLen, @lastIndexedAt, @tags, @meta, @language, @labels, @path)`
-    );
-    this.updateDocStmt = this.db.prepare(
+      );
+      this.updateDocStmt = this.db.prepare(
       `UPDATE documents SET name=@name, mimeType=@mimeType, ownerEmail=@ownerEmail, sizeBytes=@sizeBytes,
          modifiedTime=@modifiedTime, createdTime=@createdTime, contentHash=@contentHash, textLen=@textLen,
          lastIndexedAt=@lastIndexedAt, tags=@tags, meta=@meta, language=@language, labels=@labels, path=@path WHERE fileId=@fileId`
-    );
-    this.selectDocStmt = this.db.prepare(
+      );
+      this.selectDocStmt = this.db.prepare(
       `SELECT * FROM documents WHERE fileId = ?`
-    );
+      );
 
-    this.insertFtsStmt = this.db.prepare(
+      this.insertFtsStmt = this.db.prepare(
       `INSERT INTO documents_fts (fileId, name, content) VALUES (?, ?, ?)`
-    );
-    this.deleteFtsByIdStmt = this.db.prepare(
+      );
+      this.deleteFtsByIdStmt = this.db.prepare(
       `DELETE FROM documents_fts WHERE fileId = ?`
-    );
+      );
 
-    this.insertVersionStmt = this.db.prepare(
+      this.insertVersionStmt = this.db.prepare(
       `INSERT INTO document_versions (fileId, version, contentHash, textLen, modifiedTime, createdAt, meta)
        VALUES (@fileId, @version, @contentHash, @textLen, @modifiedTime, @createdAt, @meta)`
-    );
-    this.selectVersionsStmt = this.db.prepare(
+      );
+      this.selectVersionsStmt = this.db.prepare(
       `SELECT * FROM document_versions WHERE fileId = ? ORDER BY version DESC LIMIT 2`
-    );
+      );
 
-    // segment cache helpers
-    this.insertSegmentStmt = this.db.prepare(
+      // segment cache helpers
+      this.insertSegmentStmt = this.db.prepare(
       `INSERT OR REPLACE INTO segment_cache (contentHash, text, normText, updatedAt) VALUES (?, ?, ?, ?)`
-    );
-    this.selectAllDocsStmt = this.db.prepare(
+      );
+      this.selectAllDocsStmt = this.db.prepare(
       `SELECT fileId, name, contentHash FROM documents`
-    );
-    this.selectSegmentByHashStmt = this.db.prepare(
+      );
+      this.selectSegmentByHashStmt = this.db.prepare(
       `SELECT normText FROM segment_cache WHERE contentHash = ?`
-    );
+      );
+
+      // Perform FTS tokenizer migration only after statements are ready
+      this.maybeMigrateFtsTokenizer();
+    }
 
     if (initMode === 'defer') {
       // Skip heavy migrations now; they can be run by a separate script before app start
