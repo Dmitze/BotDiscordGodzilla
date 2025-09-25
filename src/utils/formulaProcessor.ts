@@ -439,17 +439,17 @@ export class FormulaProcessor {
       const out: Array<{ t: 'num'|'id'|'op'|'lp'|'rp'|'comma'; v: string }> = [];
       let i = 0;
       while (i < expr.length) {
-        const ch = expr[i];
+        const ch = expr.charAt(i);
         if (/\s/.test(ch)) { i++; continue; }
         if (/[0-9.]/.test(ch)) {
           let j = i + 1;
-          while (j < expr.length && /[0-9.]/.test(expr[j])) j++;
+          while (j < expr.length && /[0-9.]/.test(expr.charAt(j))) j++;
           out.push({ t: 'num', v: expr.slice(i, j) });
           i = j; continue;
         }
         if (/[a-zA-Z_]/.test(ch)) {
           let j = i + 1;
-          while (j < expr.length && /[a-zA-Z0-9_]/.test(expr[j])) j++;
+          while (j < expr.length && /[a-zA-Z0-9_]/.test(expr.charAt(j))) j++;
           out.push({ t: 'id', v: expr.slice(i, j) });
           i = j; continue;
         }
@@ -475,7 +475,7 @@ export class FormulaProcessor {
       const ops: Array<{ kind:'op'|'func'|'lp'; v: string; argc?: number }> = [];
       // функції розпізнаємо як id, за якими йде lp
       for (let i = 0; i < tokens.length; i++) {
-        const tok = tokens[i];
+        const tok = tokens[i]!;
         if (tok.t === 'num' || tok.t === 'id') {
           // lookahead: if id followed by lp -> function
           if (tok.t === 'id' && tokens[i+1]?.t === 'lp') {
@@ -488,7 +488,9 @@ export class FormulaProcessor {
           }
         } else if (tok.t === 'comma') {
           // виводимо оператори до найближчої lp; інкрементуємо argc у поточній функції
-          while (ops.length && ops[ops.length-1].kind !== 'lp') {
+          while (ops.length) {
+            const last = ops[ops.length - 1]!;
+            if (last.kind === 'lp') break;
             const top = ops.pop()!;
             if (top.kind === 'op') out.push({ t: 'op', v: top.v });
             else if (top.kind === 'func') out.push({ t: 'func', v: top.v, argc: top.argc ?? 0 });
@@ -496,11 +498,12 @@ export class FormulaProcessor {
           const funcIdx = [...ops].reverse().findIndex(x => x.kind === 'func');
           if (funcIdx >= 0) {
             const idx = ops.length - 1 - funcIdx;
-            ops[idx].argc = (ops[idx].argc ?? 0) + 1;
+            const target = ops[idx];
+            if (target) target.argc = (target.argc ?? 0) + 1;
           }
         } else if (tok.t === 'op') {
-          while (ops.length && ops[ops.length-1].kind === 'op') {
-            const top = ops[ops.length-1];
+          while (ops.length && ops[ops.length-1]!.kind === 'op') {
+            const top = ops[ops.length-1]!;
             const p1 = precedence[tok.v] ?? 0;
             const p2 = precedence[top.v] ?? 0;
             if ((rightAssoc.has(tok.v) ? p1 < p2 : p1 <= p2)) {
@@ -511,7 +514,9 @@ export class FormulaProcessor {
         } else if (tok.t === 'lp') {
           ops.push({ kind: 'lp', v: '(' });
         } else if (tok.t === 'rp') {
-          while (ops.length && ops[ops.length-1].kind !== 'lp') {
+          while (ops.length) {
+            const last = ops[ops.length - 1]!;
+            if (last.kind === 'lp') break;
             const top = ops.pop()!;
             if (top.kind === 'op') out.push({ t: 'op', v: top.v });
             else if (top.kind === 'func') out.push({ t: 'func', v: top.v, argc: top.argc ?? 0 });
@@ -519,9 +524,12 @@ export class FormulaProcessor {
           if (!ops.length) throw new Error('Невірна дужкова структура');
           ops.pop(); // remove lp
           // якщо зверху функція — вона завершилась
-          if (ops.length && ops[ops.length-1].kind === 'func') {
-            const fn = ops.pop()!;
-            out.push({ t: 'func', v: fn.v, argc: (fn.argc ?? 0) + 1 });
+          if (ops.length) {
+            const last = ops[ops.length - 1]!;
+            if (last.kind === 'func') {
+              const fn = ops.pop()!;
+              out.push({ t: 'func', v: fn.v, argc: (fn.argc ?? 0) + 1 });
+            }
           }
         }
       }
@@ -821,8 +829,11 @@ export const formulaProcessor = new FormulaProcessor();
 
 // Експорт функцій для зручності
 export const validateFormula = (formula: string) => formulaProcessor.validateFormula(formula);
-export const evaluateFormula = (formula: string, variables?: Record<string, number>) =>
-  formulaProcessor.evaluateFormula(formula, variables);
+export const evaluateFormula = async (formula: string, variables?: Record<string, number>) => {
+  const res = await formulaProcessor.evaluateFormula(formula, variables);
+  // Підтримка зворотної сумісності з тестами: повертати лише числовий результат
+  return res.result!;
+};
 export const setVariable = (name: string, value: number) =>
   formulaProcessor.setVariable(name, value);
 export const getVariable = (name: string) => formulaProcessor.getVariable(name);
