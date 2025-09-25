@@ -845,7 +845,11 @@ class ServiceManager {
     const promises = Array.from(this.services.values()).map(async service => {
       if (hasMethod(service as unknown, methodName)) {
         try {
-          return await (service as unknown as Record<string, (...xs: unknown[]) => unknown>)[methodName](...args);
+          const fn = (service as unknown as Record<string, ((...xs: unknown[]) => unknown) | undefined>)[methodName];
+          if (typeof fn === 'function') {
+            return await fn(...args);
+          }
+          return null;
         } catch (error) {
           logger.error('Помилка виконання методу на сервісі', {
             type: 'service_manager',
