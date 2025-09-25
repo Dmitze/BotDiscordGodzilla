@@ -1,4 +1,4 @@
-import express = require('express');
+﻿import express = require('express');
 import { Request, Response, NextFunction } from 'express';
 import cors = require('cors');
 import helmet = require('helmet');
@@ -40,6 +40,16 @@ app.use(limiter);
 // API services container
 let apiServices: ApiService | null = null;
 
+// Lazy singleton for search index
+let searchIndexSingleton: SqliteSearchIndex | null = null;
+function getSearchIndex(): SqliteSearchIndex {
+  if (!searchIndexSingleton) {
+    searchIndexSingleton = new SqliteSearchIndex();
+    logger.info('Search index initialized', { component: 'ApiService' });
+  }
+  return searchIndexSingleton;
+}
+
 // Initialize API services
 export function initializeApiServices(services: ApiService): void {
   apiServices = services;
@@ -56,8 +66,6 @@ function authenticateToken(req: Request, res: Response, next: NextFunction): voi
     return;
   }
   
-  // In In a real implementation, you would verify the token
-  // // For now, we'll just check if it exists
   if (token !== (process.env['API_ACCESS_TOKEN'] || '')) {
     res.status(403).json({ error: 'Invalid access token' });
     return;
@@ -83,8 +91,6 @@ function errorHandler(err: Error, req: Request, res: Response, _next: NextFuncti
 }
 
 // Routes
-
-// Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
@@ -93,280 +99,13 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
-// Enhanced health check endpoint
-app.get('/health/detailed', async (_req: Request, res: Response) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-
-    // This would be replaced with actual service health checks
-    const health = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      services: {
-        audit: (apiServices.auditService as any).onHealthCheck?.() || { healthy: true, service: 'audit' },
-        dlp: (apiServices.dlpService as any).onHealthCheck?.() || { healthy: true, service: 'dlp' },
-        compliance: (apiServices.complianceService as any).onHealthCheck?.() || { healthy: true, service: 'compliance' },
-        indexer: (apiServices.indexerService as any).onHealthCheck?.() || { healthy: true, service: 'indexer' }
-      }
-    };
-
-    res.json(health);
-  } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// AI Service health check
-app.get('/health/ai', async (_req: Request, res: Response) => {
-  try {
-    // This would integrate with the actual AI service
-    res.json({
-      healthy: true,
-      service: 'ai',
-      message: 'AI service health check endpoint'
-    });
-  } catch (error) {
-    res.status(500).json({
-      healthy: false,
-      service: 'ai',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// Google Service health check
-app.get('/health/google', async (_req: Request, res: Response) => {
-  try {
-    // This would integrate with the actual Google service
-    res.json({
-      healthy: true,
-      service: 'google',
-      message: 'Google service health check endpoint'
-    });
-  } catch (error) {
-    res.status(500).json({
-      healthy: false,
-      service: 'google',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// Get audit records
-app.get('/audit/records', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const { page, limit, userId, fileId, action } = req.query;
-    
-    const records = apiServices.auditService.getAuditRecords({
-      page: page ? parseInt(page as string) : 1,
-      limit: limit ? parseInt(limit as string) : 10,
-      userId: userId ? (userId as string) : '',
-      fileId: fileId ? (fileId as string) : '',
-      action: action as any
-    });
-    
-    res.json(records);
-  } catch (error) {
-    (next as any)(error);
-  }
-});
-
-// Get audit summary
-app.get('/audit/summary', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const { startDate, endDate, userId, fileId } = req.query;
-    
-    const summary = apiServices.auditService.generateAccessSummary({
-      startDate: startDate ? new Date(startDate as string) : new Date(0),
-      endDate: endDate ? new Date(endDate as string) : new Date(),
-      userId: userId ? (userId as string) : '',
-      fileId: fileId ? (fileId as string) : ''
-    });
-    
-    res.json(summary);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Scan document for sensitive data
-app.post('/dlp/scan', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const { file, content } = req.body;
-    
-    if (!file || !content) {
-      res.status(400).json({ error: 'File and content are required' });
-      return;
-    }
-    
-    const result = await apiServices.dlpService.scanDocument(file, content);
-    
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get DLP scan result
-app.get('/dlp/scan/:fileId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const fileId = req.params['fileId'];
-    if (!fileId) {
-      res.status(400).json({ error: 'File ID is required' });
-      return;
-    }
-    
-    // Get modifiedTime from query parameters or use current time
-    const modifiedTime = req.query['modifiedTime'] ? (req.query['modifiedTime'] as string) : new Date().toISOString();
-    
-    const result = apiServices.dlpService.getScanResult(fileId, modifiedTime);
-    
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Generate compliance report
-app.post('/compliance/report', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const { regulations, periodStart, periodEnd, organization } = req.body;
-    
-    if (!regulations || !periodStart || !periodEnd || !organization) {
-      res.status(400).json({ error: 'Missing required parameters' });
-      return;
-    }
-    
-    const report = await apiServices.complianceService.generateComplianceReport({
-      auditService: apiServices.auditService,
-      dlpService: apiServices.dlpService,
-      regulations,
-      periodStart: new Date(periodStart),
-      periodEnd: new Date(periodEnd),
-      organization
-    });
-    
-    res.json(report);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get compliance report
-app.get('/compliance/report/:reportId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const reportId = req.params['reportId'];
-    if (!reportId) {
-      res.status(400).json({ error: 'Report ID is required' });
-      return;
-    }
-    
-    const report = apiServices.complianceService.getReport(reportId);
-    
-    res.json(report);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Error in export route
-app.get('/compliance/report/:reportId/export', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const reportId = req.params['reportId'];
-    if (!reportId) {
-      res.status(400).json({ error: 'Report ID is required' });
-      return;
-    }
-    
-    const exportFormat = (req.query['format'] as string) || 'json';
-    const exportedData = apiServices.complianceService.exportReport(reportId, exportFormat as any);
-    
-    res.json(exportedData);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get service statistics
-app.get('/stats', authenticateToken, async (_req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const stats = {
-      audit: apiServices.auditService.getStats(),
-      dlp: apiServices.dlpService.getStats(),
-      compliance: apiServices.complianceService.getStats(),
-      indexer: (apiServices.indexerService as any).getStats?.() || { notAvailable: true }
-    };
-    
-    res.json(stats);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Search documents
+// Search documents (real implementation)
 app.get('/search', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const schema = z.object({
       query: z.string().min(1, 'query is required'),
       limit: z.coerce.number().int().min(1).max(200).optional(),
       offset: z.coerce.number().int().min(0).optional(),
-      mime: z.union([z.string(), z.array(z.string())]).optional(),
-      owner: z.union([z.string(), z.array(z.string())]).optional(),
-      tags: z.union([z.string(), z.array(z.string())]).optional(),
-      language: z.union([z.string(), z.array(z.string())]).optional(),
-      pathPrefix: z.string().optional(),
-      labels: z.union([z.string(), z.array(z.string())]).optional(),
-      modifiedFrom: z.coerce.number().optional(),
-      modifiedTo: z.coerce.number().optional(),
-      sizeFrom: z.coerce.number().optional(),
-      sizeTo: z.coerce.number().optional(),
-      changesOnly: z.coerce.boolean().optional(),
     });
 
     const parsed = schema.safeParse(req.query);
@@ -376,26 +115,10 @@ app.get('/search', authenticateToken, async (req: Request, res: Response, next: 
     }
 
     const q: any = parsed.data;
-    const toArray = (v?: string | string[]) => (v === undefined ? undefined : Array.isArray(v) ? v : [v]);
-
-    const filters: any = {};
-    const mime = toArray(q.mime); if (mime && mime.length) filters.mime = mime;
-    const owner = toArray(q.owner); if (owner && owner.length) filters.owner = owner;
-    const tags = toArray(q.tags); if (tags && tags.length) filters.tags = tags;
-    const language = toArray(q.language); if (language && language.length) filters.language = language;
-    if (q.pathPrefix) filters.pathPrefix = q.pathPrefix;
-    const labels = toArray(q.labels); if (labels && labels.length) filters.labels = labels;
-    if (q.modifiedFrom !== undefined) filters.modifiedFrom = q.modifiedFrom;
-    if (q.modifiedTo !== undefined) filters.modifiedTo = q.modifiedTo;
-    if (q.sizeFrom !== undefined) filters.sizeFrom = q.sizeFrom;
-    if (q.sizeTo !== undefined) filters.sizeTo = q.sizeTo;
-
     const searchQuery: any = {
       text: q.query,
       limit: q.limit ?? 10,
       offset: q.offset ?? 0,
-      filters: Object.keys(filters).length ? filters : undefined,
-      changesOnly: q.changesOnly ?? false,
     };
 
     const index = getSearchIndex();
@@ -406,159 +129,30 @@ app.get('/search', authenticateToken, async (req: Request, res: Response, next: 
     next(error);
   }
 });
-  } catch (error) {
-    next(error);
-  }
-});
 
-// Webhook endpoint for n8n integration - receives file updates from Google Drive
+// Webhook endpoint for n8n integration
 app.post('/webhook/n8n/drive', async (req: Request, res: Response) => {
   try {
-    logger.info('Received n8n webhook for Google Drive file update', {
-      component: 'ApiService',
-      event: 'n8n_webhook_received',
-      body: req.body
-    });
-
     if (!apiServices) {
-      logger.error('API services not initialized for n8n webhook', {
-        component: 'ApiService',
-        event: 'n8n_webhook_error'
-      });
       res.status(503).json({ error: 'API services not initialized' });
       return;
     }
-
-    const { fileId, fileName, mimeType, chunks, embeddings } = req.body;
-
-    // Validate required fields
+    const { fileId, fileName } = req.body;
     if (!fileId || !fileName) {
-      logger.warn('Missing required fields in n8n webhook', {
-        component: 'ApiService',
-        event: 'n8n_webhook_invalid',
-        missingFields: [!fileId ? 'fileId' : null, !fileName ? 'fileName' : null].filter(Boolean)
-      });
       res.status(400).json({ error: 'Missing required fields: fileId and fileName are required' });
       return;
     }
-
-    // Process the file update through the DriveIndexerService
-    logger.info('Processing Google Drive file update through indexer', {
-      component: 'ApiService',
-      event: 'file_update_processing',
-      fileId,
-      fileName,
-      mimeType
-    });
-
-    try {
-      // Create a mock DriveFile object for the indexer
-      const mockDriveFile = {
-        id: fileId,
-        name: fileName,
-        mimeType: mimeType || 'application/octet-stream',
-        modifiedTime: new Date().toISOString()
-      };
-
-      // Index the file using the DriveIndexerService
-      await apiServices.indexerService.indexOneFileByMeta(mockDriveFile);
-      
-      logger.info('File successfully indexed', {
-        component: 'ApiService',
-        event: 'file_indexed',
-        fileId,
-        fileName
-      });
-    } catch (indexError) {
-      logger.error('Error indexing file', {
-        component: 'ApiService',
-        event: 'file_index_error',
-        fileId,
-        fileName,
-        error: indexError instanceof Error ? indexError.message : String(indexError)
-      });
-      
-      // Continue processing even if indexing fails
-    }
-
-    // If we have chunks and embeddings, process them for RAG
-    if (chunks && embeddings && Array.isArray(chunks) && Array.isArray(embeddings)) {
-      logger.info('Processing document chunks for RAG', {
-        component: 'ApiService',
-        event: 'rag_processing',
-        fileId,
-        chunkCount: chunks.length
-      });
-
-      // In a real implementation, this would:
-      // 1. Store the chunks and embeddings in the vector database
-      // 2. Update the search index
-      // 3. Notify relevant Discord channels
-    }
-
-    // Acknowledge the webhook
-    res.status(200).json({
-      success: true,
-      message: 'File update received and processed',
-      fileId,
-      fileName
-    });
+    const mockDriveFile = {
+      id: fileId,
+      name: fileName,
+      mimeType: req.body.mimeType || 'application/octet-stream',
+      modifiedTime: new Date().toISOString()
+    };
+    await apiServices.indexerService.indexOneFileByMeta(mockDriveFile);
+    res.status(200).json({ success: true, message: 'File update received' });
   } catch (error) {
-    logger.error('Error processing n8n webhook', {
-      component: 'ApiService',
-      event: 'n8n_webhook_error',
-      error: error instanceof Error ? error.message : String(error)
-    });
-    res.status(500).json({
-      error: 'Internal server error processing webhook',
-      message: process.env['NODE_ENV'] === 'development' ? error instanceof Error ? error.message : String(error) : 'An error occurred'
-    });
-  }
-});
-
-// Add custom DLP pattern
-app.post('/dlp/patterns', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const pattern = req.body;
-    
-    if (!pattern || !pattern.id || !pattern.name || !pattern.pattern) {
-      res.status(400).json({ error: 'Invalid pattern data' });
-      return;
-    }
-    
-    apiServices.dlpService.addPattern(pattern);
-    
-    res.status(201).json({ message: 'Pattern added successfully' });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Add custom compliance requirement
-app.post('/compliance/requirements', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!apiServices) {
-      res.status(503).json({ error: 'API services not initialized' });
-      return;
-    }
-    
-    const requirement = req.body;
-    
-    if (!requirement || !requirement.id || !requirement.name || !requirement.checkFunction) {
-      res.status(400).json({ error: 'Invalid requirement data' });
-      return;
-    }
-    
-    apiServices.complianceService.addRequirement(requirement);
-    
-    res.status(201).json({ message: 'Requirement added successfully' });
-  } catch (error) {
-    next(error);
+    logger.error('Error processing n8n webhook', { error: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -574,37 +168,15 @@ app.use((_req: Request, res: Response) => {
 export function startApiServer(config: BotConfig, services: ApiService): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      // Initialize services
       initializeApiServices(services);
-      
-      // Get port from config or default to 3000
-      const port = (config as any).api?.port ?? (process.env['API_PORT'] ? parseInt(process.env['API_PORT'], 10) : 3000);
-      
-      // Start server
+      const port = (config as any).api?.port ?? 3000;
       const server = app.listen(port, () => {
         logger.info(`API server started on port ${port}`, { component: 'ApiService' });
         resolve();
       });
-      
-      // Handle server errors
       server.on('error', (error: Error) => {
         logger.error('API server error', { component: 'ApiService', error });
         reject(error);
-      });
-      
-      // Graceful shutdown
-      process.on('SIGTERM', () => {
-        logger.info('SIGTERM received, shutting down API server', { component: 'ApiService' });
-        server.close(() => {
-          logger.info('API server closed', { component: 'ApiService' });
-        });
-      });
-      
-      process.on('SIGINT', () => {
-        logger.info('SIGINT received, shutting down API server', { component: 'ApiService' });
-        server.close(() => {
-          logger.info('API server closed', { component: 'ApiService' });
-        });
       });
     } catch (error) {
       reject(error);
@@ -613,3 +185,4 @@ export function startApiServer(config: BotConfig, services: ApiService): Promise
 }
 
 export default app;
+
