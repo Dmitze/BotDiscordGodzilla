@@ -376,17 +376,18 @@ class SchedulerService {
         
         if (typeof jobObject.nextDates === 'function') {
           try {
-            const dates = jobObject.nextDates(1);
-            const firstDate = Array.isArray(dates) ? dates[0] : dates;
+            const dates: unknown = jobObject.nextDates(1);
+            const firstDate: unknown = Array.isArray(dates as any) ? (dates as any)[0] : dates;
+            const d: any = firstDate as any;
             // Обробка різних типів об'єктів дати
-            if (firstDate && typeof firstDate.toJSDate === 'function') {
-              nextRun = firstDate.toJSDate();
-            } else if (firstDate && typeof firstDate.toDate === 'function') {
-              nextRun = firstDate.toDate();
-            } else if (firstDate instanceof Date) {
-              nextRun = firstDate;
+            if (d && typeof d.toJSDate === 'function') {
+              nextRun = d.toJSDate();
+            } else if (d && typeof d.toDate === 'function') {
+              nextRun = d.toDate();
+            } else if (d instanceof Date) {
+              nextRun = d as Date;
             } else {
-              nextRun = new Date(firstDate);
+              nextRun = new Date(d as any);
             }
           } catch (nextDatesError) {
             logger.debug('nextDates method failed, trying nextDate', {
@@ -397,15 +398,16 @@ class SchedulerService {
         } else if (typeof jobObject.nextDate === 'function') {
           // Фолбек для старих версій node-cron
           try {
-            const dt = jobObject.nextDate();
-            if (dt instanceof Date) {
-              nextRun = dt;
-            } else if (dt && typeof dt.toJSDate === 'function') {
-              nextRun = dt.toJSDate();
-            } else if (dt && typeof dt.toDate === 'function') {
-              nextRun = dt.toDate();
+            const dt: unknown = jobObject.nextDate();
+            const d: any = dt as any;
+            if (d instanceof Date) {
+              nextRun = d as Date;
+            } else if (d && typeof d.toJSDate === 'function') {
+              nextRun = d.toJSDate();
+            } else if (d && typeof d.toDate === 'function') {
+              nextRun = d.toDate();
             } else {
-              nextRun = new Date(dt);
+              nextRun = new Date(d as any);
             }
           } catch (nextDateError) {
             logger.debug('nextDate method failed, using fallback', {
@@ -588,7 +590,11 @@ class SchedulerService {
       nextRun: jobInfo.nextRun,
       executions: jobInfo.executions,
       errors: jobInfo.errors,
-      isActive: jobInfo.job.running,
+      // node-cron v3: використовуємо getStatus(), в інших випадках вважаємо активним
+      isActive: (() => { 
+        const status = (jobInfo.job as any)?.getStatus?.();
+        return typeof status === 'string' ? status !== 'stopped' : true;
+      })(),
     };
   }
 
