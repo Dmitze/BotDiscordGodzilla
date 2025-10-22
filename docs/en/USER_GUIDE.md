@@ -1,4 +1,4 @@
-# 📚 User Guide
+﻿# 📚 User Guide
 # Discord AI Assistant Bot User Guide
 
 ## 🎯 Introduction
@@ -139,7 +139,7 @@ Generates analytical reports:
 
 ### /operations Command
 
-Military operations management:
+operational processes management:
 
 ```
 /operations situation sector:"A"

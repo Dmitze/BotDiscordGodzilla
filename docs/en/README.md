@@ -1,6 +1,6 @@
-# 🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**
+﻿# 🦖 **DISCORD AI ASSISTANT BOT - GODZILLA**
 
-**Powerful Discord bot with AI functionality for the Armed Forces of Ukraine**
+**Powerful Discord bot with AI functionality for the document automation**
 **Updated: August 25, 2025**
 
 This folder contains all project documentation, organized by categories.
@@ -76,7 +76,7 @@ Documentation is automatically updated when:
 
 ### **📋 What is this bot?**
 
-Discord AI Assistant Bot (Godzilla) is an innovative bot designed to automate document work, data analysis, and support operational activities. Specifically adapted for the needs of the Armed Forces of Ukraine and critical organizations.
+Discord AI Assistant Bot (Godzilla) is an innovative bot designed to automate document work, data analysis, and support operational activities. Specifically adapted for the needs of the document automation and critical organizations.
 
 ### **🎯 Key Features:**
 
@@ -84,7 +84,7 @@ Discord AI Assistant Bot (Godzilla) is an innovative bot designed to automate do
 - 📊 **Smart Search** - flexible search across all documents
 - 📄 **Document Management** - working with various file types
 - 📈 **Analytics** - reports and statistics
-- ⚡ **Operations** - military operations management
+- ⚡ **Operations** - operational processes management
 - 🔒 **Security** - maximum level of data protection
 
 ---

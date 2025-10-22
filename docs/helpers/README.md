@@ -1,4 +1,4 @@
-# 🛠️ **HELPERS - ДОПОМІЖНІ ФУНКЦІЇ**
+﻿# 🛠️ **HELPERS - ДОПОМІЖНІ ФУНКЦІЇ**
 
 ## 📁 **Структура папки helpers/**
 
@@ -70,7 +70,7 @@ import { preparePrompt, processResponse } from '../helpers/ai/aiHelpers';
 
 // Підготовка промпту
 const prompt = preparePrompt({
-  context: 'Військові дані',
+  context: 'Конфіденційні дані',
   query: 'Проаналізуй залишки техніки',
   format: 'table'
 });
@@ -85,7 +85,7 @@ const processed = processResponse(response);
 import { tokenizeQuery, filterResults } from '../helpers/search/searchHelpers';
 
 // Токенізація запиту
-const tokens = tokenizeQuery('особовий склад 1-й батальйон');
+const tokens = tokenizeQuery('персонал 1-й відділ');
 
 // Фільтрація результатів
 const filtered = filterResults(results, tokens);

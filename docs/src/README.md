@@ -10,7 +10,7 @@
 - **AIAssistantCommand.ts** - AI асистент
 - **DocumentsCommand.ts** - управління документами
 - **FileManagerCommand.ts** - робота з файлами
-- **OperationsCommand.ts** - військові операції
+- **OperationsCommand.ts** - операційні процеси
 - **AnalyticsCommand.ts** - аналітика та звіти
 - **PerformanceCommand.ts** - моніторинг продуктивності
 - **EnhancedSearchCommand.ts** - розширений пошук
