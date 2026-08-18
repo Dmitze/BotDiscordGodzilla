@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🧠 Команда розширеного аналізу документів
  * Advanced Document Analysis Command
  */
@@ -346,7 +346,7 @@ export class AdvancedAnalysisCommand extends BaseCommand {
     }
     
     const translations: Record<string, string> = {
-      'military_order': 'Військовий наказ',
+      'business_contract': 'операційний наказ',
       'administrative_doc': 'Адміністративний документ',
       'legal_contract': 'Юридичний договір',
       'financial_report': 'Фінансовий звіт',

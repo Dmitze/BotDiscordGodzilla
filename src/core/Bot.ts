@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Основний клас Discord бота
  * Управляє всіма компонентами та сервісами
  * Версія 3.0.0 - Повністю рефакторовано з детальним логуванням
@@ -585,7 +585,7 @@ export class Bot extends BaseServiceClass {
       );
 
       // Встановлення статусу бота
-      this.client.user?.setActivity('ЗСУ Документи', { type: 3 }); // WATCHING
+      this.client.user?.setActivity('Документообіг', { type: 3 }); // WATCHING
     });
 
     // Interaction event

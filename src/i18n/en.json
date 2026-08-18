@@ -1,4 +1,4 @@
-{
+﻿{
   "key": "",
   "common": {
     "error": {
@@ -439,7 +439,7 @@
     },
     "opt": {
       "query": {
-        "description": "What to search for? (e.g., 'personnel', 'equipment', 'weapons')"
+        "description": "What to search for? (e.g., 'personnel', 'equipment', 'assets')"
       },
       "type": {
         "description": "Document type to search"

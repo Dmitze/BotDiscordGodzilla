@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unit тесты для OperationsCommand
  */
 
@@ -27,7 +27,7 @@ describe('OperationsCommand', () => {
     });
 
     it('should have correct description', () => {
-      expect(operationsCommand.getDescription()).toBe('⚔️ Оперативне управління ЗСУ');
+      expect(operationsCommand.getDescription()).toBe('⚔️ Оперативне управління компанією');
     });
   });
 
@@ -105,7 +105,7 @@ describe('OperationsCommand', () => {
       // handler reads 'тип' (ua key) as required; service called with 'emergency'
       mockInteraction.options.getString
         .mockReturnValueOnce('emergency') // for 'тип'
-        .mockReturnValueOnce(undefined); // for 'підрозділ'
+        .mockReturnValueOnce(undefined); // for 'відділ'
 
       // Выполнение
       await operationsCommand.execute(mockInteraction);

@@ -1,4 +1,4 @@
-#!/usr/bin/env ts-node
+﻿#!/usr/bin/env ts-node
 
 /**
  * 🧪 Advanced Services Integration Test
@@ -433,7 +433,7 @@ class AdvancedServicesIntegrationTest {
       }
 
       // Test contextual prompt building
-      const testPrompt = buildContextualPrompt('military', 'Test query', 'Test content');
+      const testPrompt = buildContextualPrompt('business', 'Test query', 'Test content');
       if (!testPrompt || testPrompt.length < 10) {
         throw new Error('Contextual prompt building failed');
       }

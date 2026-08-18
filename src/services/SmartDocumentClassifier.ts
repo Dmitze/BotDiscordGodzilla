@@ -1,4 +1,4 @@
-import { BaseService } from '@/core/BaseService';
+﻿import { BaseService } from '@/core/BaseService';
 import type { BotConfig } from '@/types';
 import type { DriveFile } from '@/types/drive';
 import logger from '@/utils/logger';
@@ -56,7 +56,7 @@ export class SmartDocumentClassifier extends BaseService {
       id: 'personnel',
       name: 'Особовий склад',
       description: 'Документи щодо особового складу',
-      keywords: ['особовий склад', 'військовослужбовець', 'призов', 'звільнення', 'перевірка', 'атестація'],
+      keywords: ['особовий склад', 'операційнослужбовець', 'призов', 'звільнення', 'перевірка', 'атестація'],
       priority: 3
     },
     {
@@ -77,7 +77,7 @@ export class SmartDocumentClassifier extends BaseService {
       id: 'operations',
       name: 'Операційні документи',
       description: 'Документи щодо операційної діяльності',
-      keywords: ['операція', 'бойове завдання', 'маневри', 'тренування', 'взаємодія'],
+      keywords: ['операція', 'робоче завдання', 'маневри', 'тренування', 'взаємодія'],
       priority: 6
     },
     {

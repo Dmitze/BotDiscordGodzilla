@@ -1,5 +1,5 @@
-/**
- * ⚔️ Команди оперативного управління ЗСУ
+﻿/**
+ * ⚔️ Команди оперативного управління Компанія
  * Спеціалізовані функції для оперативної роботи
  */
 
@@ -16,7 +16,7 @@ import logger from '@/utils/logger';
 export class OperationsCommand extends BaseCommand {
   constructor(config: BotConfig) {
     // Command and option names must be lowercase ASCII (Discord constraint)
-    super('operations', '⚔️ Оперативне управління ЗСУ', config, {}, (builder: any) => {
+    super('operations', '⚔️ Оперативне управління компанією', config, {}, (builder: any) => {
       return builder
         .addSubcommand((subcommand: any) =>
           subcommand
@@ -60,7 +60,7 @@ export class OperationsCommand extends BaseCommand {
         .addSubcommand((subcommand: any) =>
           subcommand
             .setName('coordination')
-            .setDescription('🔄 Координація між підрозділами')
+            .setDescription('🔄 Координація між відділами')
             .addStringOption((option: any) =>
               option
                 .setName('type')
@@ -75,7 +75,7 @@ export class OperationsCommand extends BaseCommand {
                 )
             )
             .addStringOption((option: any) =>
-              option.setName('unit').setDescription('Підрозділ для координації').setRequired(false)
+              option.setName('unit').setDescription('відділ для координації').setRequired(false)
             )
         )
         .addSubcommand((subcommand: any) =>
@@ -299,7 +299,7 @@ export class OperationsCommand extends BaseCommand {
       return;
     }
 
-    logger.info('Координація між підрозділами', {
+    logger.info('Координація між відділами', {
       type,
       unit: unit || undefined,
       userId: interaction.user.id,

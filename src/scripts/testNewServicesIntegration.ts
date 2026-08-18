@@ -1,4 +1,4 @@
-#!/usr/bin/env ts-node
+﻿#!/usr/bin/env ts-node
 
 /**
  * 🧪 New Services Integration Test
@@ -173,7 +173,7 @@ class NewServicesIntegrationTest {
       // Test user preferences
       (contextMemory as any).setUserPreferences(userId, {
         language: 'uk',
-        domain: 'military',
+        domain: 'business',
         responseStyle: 'detailed'
       });
 
@@ -293,9 +293,9 @@ class NewServicesIntegrationTest {
 
       // Test adding knowledge entries
       const entryId1 = await (knowledgeBase as any).addEntry(
-        'Test Military Document',
-        'This is a test military document content about tactical operations.',
-        'military',
+        'Test business Document',
+        'This is a test business document content about tactical operations.',
+        'business',
         ['tactics', 'operations'],
         { type: 'manual', createdBy: 'test_user' }
       );
@@ -310,7 +310,7 @@ class NewServicesIntegrationTest {
 
       // Test searching knowledge base
       const searchResults = await (knowledgeBase as any).search({
-        query: 'military tactics',
+        query: 'business tactics',
         limit: 10,
         useSemanticSearch: false
       });
@@ -324,7 +324,7 @@ class NewServicesIntegrationTest {
       });
 
       // Test getting entries by category
-      const militaryEntries = (knowledgeBase as any).getEntriesByCategory('military');
+      const businessEntries = (knowledgeBase as any).getEntriesByCategory('business');
 
       // Test getting entries by tag
       const tacticsEntries = (knowledgeBase as any).getEntriesByTag('tactics');
@@ -340,7 +340,7 @@ class NewServicesIntegrationTest {
         searchResultsCount: searchResults.length,
         entryRetrieved: !!entry,
         entryUpdated: updated,
-        militaryEntriesCount: militaryEntries.length,
+        businessEntriesCount: businessEntries.length,
         tacticsEntriesCount: tacticsEntries.length,
         stats,
         trendingTopicsCount: trending.length
@@ -450,13 +450,13 @@ class NewServicesIntegrationTest {
       const queryId = (contextMemory as any).addQuery(
         userId, 
         'test_channel', 
-        'What are military procedures?', 
+        'What are business procedures?', 
         'knowledge_search'
       );
 
       // Simulate knowledge base search
       const kbResults = await (knowledgeBase as any).search({
-        query: 'military procedures',
+        query: 'business procedures',
         limit: 3
       });
 
@@ -468,9 +468,9 @@ class NewServicesIntegrationTest {
       );
 
       // Test interaction: Response Cache + Knowledge Base
-      const cacheKey = 'kb_search_military_procedures';
+      const cacheKey = 'kb_search_business_procedures';
       (responseCache as any).set(cacheKey, kbResults, 15, {
-        tags: ['knowledge_search', 'military']
+        tags: ['knowledge_search', 'business']
       });
 
       const cachedResults = (responseCache as any).get(cacheKey);
@@ -617,27 +617,27 @@ class NewServicesIntegrationTest {
       const queryId = (contextMemory as any).addQuery(
         userId,
         'e2e_channel',
-        'What are the latest military operational procedures?',
+        'What are the latest business operational procedures?',
         'comprehensive_search'
       );
 
       // Step 2: Check cache for similar queries
       workflow.push('Cache check');
-      const cacheKey = 'military_operational_procedures';
+      const cacheKey = 'business_operational_procedures';
       let cachedAnswer = (responseCache as any).get(cacheKey);
 
       if (!cachedAnswer) {
         // Step 3: Search knowledge base
         workflow.push('Knowledge base search');
         const kbResults = await (knowledgeBase as any).search({
-          query: 'military operational procedures',
+          query: 'business operational procedures',
           limit: 5,
           useSemanticSearch: false
         });
 
         // Step 4: Enhanced RAG search if needed
         workflow.push('Enhanced RAG search');
-        const ragResults = await (enhancedRag as any).search('military operational procedures', {
+        const ragResults = await (enhancedRag as any).search('business operational procedures', {
           limit: 3,
           useCache: true
         });
@@ -652,7 +652,7 @@ class NewServicesIntegrationTest {
         };
 
         (responseCache as any).set(cacheKey, combinedResults, 30, {
-          tags: ['military', 'procedures', 'comprehensive']
+          tags: ['business', 'procedures', 'comprehensive']
         });
 
         cachedAnswer = combinedResults;

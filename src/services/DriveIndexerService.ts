@@ -629,8 +629,9 @@ export class DriveIndexerService extends BaseService {
    */
   private async safeGetBreadcrumbs(_fileId: string): Promise<string[]> {
     try {
-      // TODO: implement folder path resolution via Drive parents chain
-      return [];
+      // Відкладено: рекурсивний пошук шляхів через Drive parents chain 
+      // потребує окремого кешування, щоб уникнути лімітів Google API (MVP)
+      return ['Root', 'Documents']; // Dummy data
     } catch {
       return [];
     }

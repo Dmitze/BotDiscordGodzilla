@@ -1,5 +1,5 @@
-/**
- * 📄 Команди для роботи з військовими документами ЗСУ
+﻿/**
+ * 📄 Команди для роботи з документами компанії
  * Спеціалізовані функції для різних типів документів
  */
 
@@ -20,7 +20,7 @@ interface DocumentAction {
 
 export class DocumentsCommand extends BaseCommand {
   constructor(config: BotConfig) {
-    super('документи', '📄 Робота з військовими документами ЗСУ', config, {}, (builder: any) => {
+    super('документи', '📄 Робота з документами компанії', config, {}, (builder: any) => {
       return builder
         .addSubcommand((subcommand: any) =>
           subcommand

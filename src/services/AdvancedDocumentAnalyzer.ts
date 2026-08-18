@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🧠 Розширений аналізатор документів з AI та машинним навчанням
  * Advanced Document Analyzer with AI & ML capabilities
  */
@@ -27,7 +27,7 @@ interface DocumentRelationship {
 interface DocumentInsight {
   summary: string;
   keyTopics: string[];
-  documentType: 'military_order' | 'administrative_doc' | 'legal_contract' | 'financial_report' | 'technical_spec' | 'communication' | 'other';
+  documentType: 'business_contract' | 'administrative_doc' | 'legal_contract' | 'financial_report' | 'technical_spec' | 'communication' | 'other';
   urgencyLevel: 'critical' | 'high' | 'medium' | 'low';
   actionItems: Array<{
     action: string;
@@ -479,7 +479,7 @@ ${content.substring(0, 2000)}
 
 📋 JSON:
 {
-  "type": "military_order|administrative_doc|legal_contract|financial_report|technical_spec|communication|other",
+  "type": "business_contract|administrative_doc|legal_contract|financial_report|technical_spec|communication|other",
   "urgency": "critical|high|medium|low"
 }` : `
 Classify document by type and urgency:
@@ -498,7 +498,7 @@ ${content.substring(0, 2000)}
 
 📋 JSON:
 {
-  "type": "military_order|administrative_doc|legal_contract|financial_report|technical_spec|communication|other",
+  "type": "business_contract|administrative_doc|legal_contract|financial_report|technical_spec|communication|other",
   "urgency": "critical|high|medium|low"
 }`;
   }
@@ -525,9 +525,9 @@ ${content.substring(0, 2000)}
 
   private initializePatterns(): void {
     // Ініціалізація шаблонів для розпізнавання документів
-    this.patterns.set('military_order', {
-      name: 'Військовий наказ',
-      description: 'Розпізнавання військових наказів',
+    this.patterns.set('business_contract', {
+      name: 'операційний наказ',
+      description: 'Розпізнавання операційних наказів',
       confidence: 0.8,
       category: 'structure'
     });
@@ -618,7 +618,7 @@ ${insight.riskAssessment.factors.length > 0 ?
   // Допоміжні методи перекладу
   private translateDocumentType(type: string): string {
     const translations: Record<string, string> = {
-      'military_order': 'Військовий наказ',
+      'business_contract': 'операційний наказ',
       'administrative_doc': 'Адміністративний документ', 
       'legal_contract': 'Юридичний договір',
       'financial_report': 'Фінансовий звіт',

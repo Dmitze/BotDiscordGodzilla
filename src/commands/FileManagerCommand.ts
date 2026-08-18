@@ -445,10 +445,26 @@ export class FileManagerCommand extends BaseCommand {
   /**
    * Перевірка прав доступу
    */
-  private async checkPermission(_interaction: ChatInputCommandInteraction): Promise<boolean> {
-    // TODO: Реалізувати перевірку прав доступу
-    // Тимчасова реалізація - дозволяємо всім
-    return true;
+  private async checkPermission(interaction: ChatInputCommandInteraction): Promise<boolean> {
+    try {
+      const { PermissionManager } = await import('../core/PermissionManager');
+      const permissionManager = new PermissionManager(this.config);
+      const member = interaction.member;
+      const result = await permissionManager.checkPermission(
+        interaction.user,
+        member as any,
+        interaction.commandName,
+        interaction.channelId
+      );
+      
+      if (!result.granted) {
+        logger.warn(`[FileManager] Access denied for ${interaction.user.tag}: ${result.reason}`);
+      }
+      return result.granted;
+    } catch (error) {
+      logger.error('[FileManager] Error checking permissions', error as Error);
+      return false; // Fail secure
+    }
   }
 
   /**
@@ -824,7 +840,7 @@ export class FileManagerCommand extends BaseCommand {
       isMimeAllowed: this.isMimeAllowed.bind(this),
       isOwnerAllowed: this.isOwnerAllowed.bind(this),
       isTooLarge: this.isTooLarge.bind(this),
-      getAnalysisTypeName: (x: any) => this.getAnalysisTypeName(x),
+      getAnalysisTypeName: (x: string) => this.getAnalysisTypeName(x),
       resolve: <T>(_interaction: ChatInputCommandInteraction, name: string): T | undefined => {
         const anyClient = _interaction.client as any;
         return anyClient?.serviceContainer?.get?.(name) as T | undefined;
@@ -1209,7 +1225,7 @@ export class FileManagerCommand extends BaseCommand {
   }
 
   // --- Google API error mapping ---
-  private mapGoogleApiErrorToMessage(error: any): string | null {
+  private mapGoogleApiErrorToMessage(error: unknown): string | null {
     try {
       const code: number | undefined = (error?.code ?? error?.status ?? error?.response?.status) as number | undefined;
       if (!code) return null;

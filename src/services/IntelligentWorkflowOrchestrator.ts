@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🤖 Інтелектуальний оркестратор робочих процесів документів
  * Intelligent Document Workflow Orchestrator
  */
@@ -379,12 +379,12 @@ export class IntelligentWorkflowOrchestrator {
       enabled: true
     });
 
-    // Правило для військових наказів
-    this.rules.set('military_orders', {
-      id: 'military_orders',
-      name: 'Військові накази',
-      description: 'Обробка військових наказів',
-      condition: 'documentType === "military_order"',
+    // Правило для операційних наказів
+    this.rules.set('business_contracts', {
+      id: 'business_contracts',
+      name: 'операційні накази',
+      description: 'Обробка операційних наказів',
+      condition: 'documentType === "business_contract"',
       actions: [
         {
           type: 'analyze',
@@ -396,8 +396,8 @@ export class IntelligentWorkflowOrchestrator {
         {
           type: 'route',
           config: {
-            targetChannel: 'military_orders',
-            reason: 'Військовий наказ'
+            targetChannel: 'business_contracts',
+            reason: 'операційний наказ'
           }
         }
       ],

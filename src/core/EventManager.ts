@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Event Manager для Discord бота
  * Централізована обробка Discord подій
  * TypeScript версія
@@ -74,7 +74,7 @@ class EventManager {
         type: 'event',
         event: 'ready',
       });
-      this.bot.client.user?.setActivity('ЗСУ Документи', { type: 3 }); // WATCHING
+      this.bot.client.user?.setActivity('Документообіг', { type: 3 }); // WATCHING
     });
 
     // Error event (v14)

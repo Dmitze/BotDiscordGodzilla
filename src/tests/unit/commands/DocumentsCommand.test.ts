@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unit тесты для DocumentsCommand
  */
 
@@ -27,7 +27,7 @@ describe('DocumentsCommand', () => {
     });
 
     it('should have correct description', () => {
-      expect(documentsCommand.getDescription()).toBe('📄 Робота з військовими документами ЗСУ');
+      expect(documentsCommand.getDescription()).toBe('📄 Робота з документами компанії');
     });
   });
 

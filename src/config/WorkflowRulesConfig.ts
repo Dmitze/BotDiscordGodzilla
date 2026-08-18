@@ -7,7 +7,7 @@ export interface WorkflowRuleConfig {
   id: string;
   name: string;
   description: string;
-  domain: 'military' | 'administrative' | 'legal' | 'financial' | 'technical' | 'general';
+  domain: 'business' | 'administrative' | 'legal' | 'financial' | 'technical' | 'general';
   priority: number;
   enabled: boolean;
   conditions: {
@@ -35,14 +35,14 @@ export const WORKFLOW_RULES_CONFIG: WorkflowRuleConfig[] = [
   
   // 🚨 КРИТИЧНІ ДОКУМЕНТИ
   {
-    id: 'critical_military_documents',
-    name: 'Критичні військові документи',
-    description: 'Негайна обробка критичних військових наказів та доповідей',
-    domain: 'military',
+    id: 'critical_business_documents',
+    name: 'Критичні бізнес документи',
+    description: 'Негайна обробка критичних бізнес контрактів та звітів',
+    domain: 'business',
     priority: 100,
     enabled: true,
     conditions: {
-      documentType: ['military_order', 'operational_report'],
+      documentType: ['business_contract', 'business_report'],
       urgency: ['critical'],
       keywords: ['терміново', 'негайно', 'критично', 'надзвичайна ситуація']
     },
@@ -50,10 +50,10 @@ export const WORKFLOW_RULES_CONFIG: WorkflowRuleConfig[] = [
       {
         type: 'notify',
         config: {
-          channels: ['alerts', 'command'],
-          message: '🚨 КРИТИЧНИЙ ВІЙСЬКОВИЙ ДОКУМЕНТ потребує негайної уваги!',
+          channels: ['alerts', 'management'],
+          message: '🚨 КРИТИЧНИЙ БІЗНЕС ДОКУМЕНТ потребує негайної уваги!',
           priority: 'high',
-          mentions: ['@commander', '@duty_officer']
+          mentions: ['@manager', '@duty_manager']
         }
       },
       {

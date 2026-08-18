@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Система розширених AI промптів для різних сценаріїв використання
  * Advanced AI Prompt Templates System
  */
 
 export interface PromptContext {
   userRole?: 'officer' | 'admin' | 'analyst' | 'commander' | 'civilian';
-  documentType?: 'military' | 'administrative' | 'legal' | 'financial' | 'technical';
+  documentType?: 'business' | 'administrative' | 'legal' | 'financial' | 'technical';
   urgency?: 'low' | 'medium' | 'high' | 'critical';
   domain?: 'logistics' | 'personnel' | 'operations' | 'intelligence' | 'finance';
   previousContext?: string[];
@@ -15,17 +15,17 @@ export interface PromptContext {
 export class AIPromptTemplateService {
   
   /**
-   * 🎯 Спеціалізовані промпти для військових документів
+   * 🎯 Спеціалізовані промпти для операційних документів
    */
-  static getMilitaryPrompts() {
+  static getbusinessPrompts() {
     return {
       operationalAnalysis: `
-Ти — старший офіцер Генерального штабу ЗСУ з досвідом аналізу операційних документів.
+Ти — старший офіцер керівництва компанії з досвідом аналізу операційних документів.
 Твоя задача — проаналізувати операційний документ та надати професійну оцінку.
 
 🎖️ ЕКСПЕРТИЗА:
 - 15+ років досвіду в оперативному плануванні
-- Глибоке розуміння української військової доктрини
+- Глибоке розуміння української операційної доктрини
 - Експертиза в аналізі загроз та ризиків
 - Знання НАТО стандартів та процедур
 
@@ -38,7 +38,7 @@ export class AIPromptTemplateService {
 
 🔍 ДОКУМЕНТ ДЛЯ АНАЛІЗУ: {{document}}
 
-💡 НАДАЙ АНАЛІЗ УКРАЇНСЬКОЮ МОВОЮ З ВІЙСЬКОВОЮ ТЕРМІНОЛОГІЄЮ:`,
+💡 НАДАЙ АНАЛІЗ УКРАЇНСЬКОЮ МОВОЮ З операційнОЮ ТЕРМІНОЛОГІЄЮ:`,
 
       logisticsOptimization: `
 Ти — начальник служби логістики з досвідом оптимізації постачань.
@@ -159,7 +159,7 @@ export class AIPromptTemplateService {
 Ти — експерт з аналізу структури документів.
 Проаналізуй структуру цього документа та ідентифікую:
 
-1. Основні розділи та підрозділи
+1. Основні розділи та відділи
 2. Тип документа (звіт, пропозиція, посібник тощо)
 3. Ключові заголовки та їх ієрархію
 4. Зміст, якщо є
