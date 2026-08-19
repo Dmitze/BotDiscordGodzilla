@@ -456,11 +456,10 @@ export class FileManagerCommand extends BaseCommand {
         interaction.commandName,
         interaction.channelId
       );
-      
-      if (!result.granted) {
+      if (!result.allowed) {
         logger.warn(`[FileManager] Access denied for ${interaction.user.tag}: ${result.reason}`);
       }
-      return result.granted;
+      return result.allowed;
     } catch (error) {
       logger.error('[FileManager] Error checking permissions', error as Error);
       return false; // Fail secure
@@ -840,7 +839,7 @@ export class FileManagerCommand extends BaseCommand {
       isMimeAllowed: this.isMimeAllowed.bind(this),
       isOwnerAllowed: this.isOwnerAllowed.bind(this),
       isTooLarge: this.isTooLarge.bind(this),
-      getAnalysisTypeName: (x: string) => this.getAnalysisTypeName(x),
+      getAnalysisTypeName: (x: string) => this.getAnalysisTypeName(x as any),
       resolve: <T>(_interaction: ChatInputCommandInteraction, name: string): T | undefined => {
         const anyClient = _interaction.client as any;
         return anyClient?.serviceContainer?.get?.(name) as T | undefined;
@@ -1227,7 +1226,8 @@ export class FileManagerCommand extends BaseCommand {
   // --- Google API error mapping ---
   private mapGoogleApiErrorToMessage(error: unknown): string | null {
     try {
-      const code: number | undefined = (error?.code ?? error?.status ?? error?.response?.status) as number | undefined;
+      const anyError = error as any;
+      const code: number | undefined = (anyError?.code ?? anyError?.status ?? anyError?.response?.status) as number | undefined;
       if (!code) return null;
       switch (code) {
         case 400: return t('files.error.badRequest') || 'Некоректний запит до Google API. Перевірте параметри.';
