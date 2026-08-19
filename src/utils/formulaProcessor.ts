@@ -100,7 +100,7 @@ export class FormulaProcessor {
   private static instance: FormulaProcessor | null = null;
   private stats!: FormulaProcessorStats;
   private variableCache = new Map<string, number>();
-  private functionCache = new Map<string, Function>();
+  private functionCache = new Map<string, (...args: any[]) => any>();
   private _isInitialized = false;
 
   constructor() {
@@ -151,7 +151,7 @@ export class FormulaProcessor {
    */
   private initializeMathFunctions(): void {
     try {
-      const mathFunctions: Record<string, Function> = {
+      const mathFunctions: Record<string, (...args: any[]) => any> = {
         // Тригонометричні функції
         sin: Math.sin,
         cos: Math.cos,
