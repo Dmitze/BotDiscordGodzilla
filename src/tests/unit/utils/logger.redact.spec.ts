@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { jest, beforeAll, describe, it, expect } from '@jest/globals';
@@ -41,7 +40,6 @@ beforeAll(async () => {
   const mod = await import('@/utils/logger');
   logger = mod.default;
 });
-<<<<<<< HEAD
 
 describe('logger redact', () => {
   it('redacts sensitive fields in meta', () => {
@@ -64,26 +62,3 @@ describe('logger redact', () => {
     expect(nested['secret']).toBe(redacted);
   });
 });
-=======
->>>>>>> 9c806657 (test(unit): перевірка редагування логів)
-=======
-import logger from '@/utils/logger';
-
-describe('logger redact', () => {
-  it('redacts sensitive keys in meta before buffering', () => {
-    logger.info('test redact', {
-      token: 'abc',
-      apiKey: 'sk-secret',
-      nested: { password: 'p@ss', note: 'ok' },
-    });
-
-    const buf = logger.getLogBuffer();
-    const last = buf[buf.length - 1]!;
-    expect(last.meta['token']).toBe('***');
-    expect(last.meta['apiKey']).toBe('***');
-    expect(last.meta['nested']['password']).toBe('***');
-    expect(last.meta['nested']['note']).toBe('ok');
-  });
-});
-
->>>>>>> cb020aab (test(unit): add logger redact spec to verify sensitive data masking)
