@@ -293,7 +293,7 @@ export class SimplifiedCommand extends BaseCommand {
         buildId: this.buildId.bind(this),
         currentPage: 1,
         totalPages: chunks.length,
-        baseAction: 'search' as 'search' // Fix: Use 'search' instead of 'ai' to match expected type
+        baseAction: 'search' as const // Fix: Use 'search' instead of 'ai' to match expected type
       });
       
       const closeRow = buildCloseRow({ buildId: this.buildId.bind(this) });
