@@ -42,7 +42,7 @@ interface SearchResult {
     dateFrom?: string;
     dateTo?: string;
   };
-};
+}
 type PaginationState = {
   currentPage: number;
   totalPages: number;
