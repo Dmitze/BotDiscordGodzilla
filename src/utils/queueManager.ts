@@ -16,7 +16,7 @@ import logger from './logger';
 interface JobData {
   id: string;
   priority: 'high' | 'normal' | 'low';
-  job: Function | TypedJob;
+  job: ((...args: any[]) => any) | TypedJob;
   timestamp: number;
   retries: number;
   maxRetries: number;
@@ -25,7 +25,7 @@ interface JobData {
 interface TypedJob {
   type: 'sheets_query' | 'ai_request' | 'file_operation' | 'export_data';
   data: any;
-  handler?: Function;
+  handler?: (...args: any[]) => any;
 }
 
 interface QueueStats {
@@ -126,7 +126,7 @@ class QueueManager extends EventEmitter {
   /**
    * Додавання завдання в чергу
    */
-  addJob(priority: 'high' | 'normal' | 'low', job: Function | TypedJob): string {
+  addJob(priority: 'high' | 'normal' | 'low', job: ((...args: any[]) => any) | TypedJob): string {
     const jobId = this.generateJobId();
     const jobData: JobData = {
       id: jobId,
