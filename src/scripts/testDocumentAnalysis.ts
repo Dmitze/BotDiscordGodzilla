@@ -282,7 +282,7 @@ class DocumentAnalysisTest {
     console.log('=' .repeat(60));
 
     let passedTests = 0;
-    let totalTests = this.results.length;
+    const totalTests = this.results.length;
 
     for (const result of this.results) {
       const status = result.success ? '✅ PASS' : '❌ FAIL';
