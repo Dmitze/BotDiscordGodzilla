@@ -389,7 +389,7 @@ export class CommandValidator {
     successfulValidations: number;
     failedValidations: number;
   } {
-    // TODO: Реалізувати збір статистики
+    logger.debug('Validation stats tracking will be implemented later', { commandName });
     return {
       totalValidations: 0,
       successfulValidations: 0,
