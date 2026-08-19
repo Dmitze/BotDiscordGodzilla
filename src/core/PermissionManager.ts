@@ -769,7 +769,7 @@ export class PermissionManager {
   private evaluateCondition(condition: PermissionCondition, userInfo: UserPermissionCache): boolean {
     try {
       switch (condition.type) {
-        case 'time':
+        case 'time': {
           // Перевірка часу доступу
           const now = new Date().getTime();
           if (condition.operator === 'between' && Array.isArray(condition.value) && condition.value.length === 2) {
@@ -779,6 +779,7 @@ export class PermissionManager {
             }
           }
           return false;
+        }
 
         case 'userAttribute':
           // Перевірка атрибутів користувача
