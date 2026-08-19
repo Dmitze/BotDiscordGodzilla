@@ -455,7 +455,7 @@ export class N8nMonitoringService extends BaseService {
         message,
       });
 
-      // TODO: Інтеграція з системою сповіщень (Discord, Email, тощо)
+      logger.debug('Сповіщення про помилки N8n буде інтегровано пізніше', { workflowId });
       // Це може бути реалізовано в майбутньому
     } catch (error) {
       logger.error('Помилка відправки алерту:', {
