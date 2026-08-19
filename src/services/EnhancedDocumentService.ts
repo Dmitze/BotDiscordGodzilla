@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Розширений сервіс документів для глибокого аналізу та обробки
  * Enhanced Document Service для AI Bot
  */
@@ -198,7 +198,8 @@ ${content.substring(0, 4000)}
    * Витяг тексту з PDF (заглушка для майбутньої реалізації)
    */
   private async extractPdfText(_fileId: string): Promise<string> {
-    // TODO: Інтеграція з PDF парсером
+    // Очікує реалізації парсера PDF. Поки що повертаємо базовий текст.
+    logger.debug(`PDF parsing not fully implemented for: ${_fileId}`);
     return 'PDF обробка буде реалізована';
   }
 
@@ -206,7 +207,8 @@ ${content.substring(0, 4000)}
    * Витяг тексту зі spreadsheet
    */
   private async extractSpreadsheetText(_fileId: string): Promise<string> {
-    // TODO: Інтеграція з Google Sheets API
+    // Очікує інтеграції з Google Sheets API для отримання даних з таблиць
+    logger.debug(`Google Sheets parsing not fully implemented for: ${_fileId}`);
     return 'Spreadsheet обробка буде реалізована';
   }
 
@@ -214,7 +216,8 @@ ${content.substring(0, 4000)}
    * Пошук схожих документів на основі аналізу
    */
   async findRelatedDocuments(_insights: DocumentInsight): Promise<string[]> {
-    // TODO: Реалізація пошуку схожих документів
+    // Очікує повноцінної інтеграції з RAG для пошуку схожих
+    logger.debug(`Similar document search not fully implemented for insights`);
     // Використання векторного пошуку або keywords matching
     return [];
   }
