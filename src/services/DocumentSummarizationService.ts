@@ -167,15 +167,15 @@ export class DocumentSummarizationService extends BaseService {
     
     // Extract summary text (first part)
     const lines = response.split('\n').filter(line => line.trim() !== '');
-    let summaryText = lines[0] || response.substring(0, 200);
+    const summaryText = lines[0] || response.substring(0, 200);
     
     // Extract key points if requested
     let keyPoints: string[] = [];
     if (options.includeKeyPoints) {
       // Look for bullet points or numbered lists
       keyPoints = lines
-        .filter(line => line.match(/^[\*\-\d]/) || line.length > 20)
-        .map(line => line.replace(/^[\*\-\d\.\s]+/, '').trim())
+        .filter(line => line.match(/^[*-\d]/) || line.length > 20)
+        .map(line => line.replace(/^[\s-]*\**|\**[\s-]*$/g, '').trim())
         .slice(0, 5); // Limit to 5 key points
     }
     
