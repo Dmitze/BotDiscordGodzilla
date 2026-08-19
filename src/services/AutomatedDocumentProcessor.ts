@@ -298,7 +298,7 @@ export class AutomatedDocumentProcessor extends BaseService {
           break;
           
         case 'createdDate':
-        case 'modifiedDate':
+        case 'modifiedDate': {
           // Use modifiedTime for both createdDate and modifiedDate since DriveFile doesn't have createdTime
           const dateValue = file.modifiedTime;
           if (dateValue) {
@@ -306,6 +306,7 @@ export class AutomatedDocumentProcessor extends BaseService {
             matches = this.evaluateCondition(date, condition.operator, condition.value);
           }
           break;
+        }
       }
       
       // Якщо хоч одна умова не виконується, файл не підходить
