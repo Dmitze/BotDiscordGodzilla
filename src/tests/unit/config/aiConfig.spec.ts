@@ -48,7 +48,4 @@ describe('Config AI and Metrics defaults', () => {
     expect(cfg.metrics.port).toBe(9091);
   });
 });
-<<<<<<< HEAD
-=======
 
->>>>>>> e563d3ca (test(unit): add aiConfig.spec for AI and Metrics defaults)
