@@ -69,12 +69,12 @@ describe('SheetsContextService', () => {
     expect(ctx).not.toBeNull();
 
     // Сервис применяет минимальный TTL 30 секунд — перемещаемся дальше
-    ;(Date.now as jest.Mock).mockImplementation(() => base + 31_000);
+    (Date.now as jest.Mock).mockImplementation(() => base + 31_000);
 
     ctx = await service.getContext({ channelId: 'ttl' });
     expect(ctx).toBeNull();
 
     // Восстанавливаем Date.now
-    ;(Date.now as jest.Mock).mockRestore();
+    (Date.now as jest.Mock).mockRestore();
   });
 });
