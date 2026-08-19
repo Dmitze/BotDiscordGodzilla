@@ -285,6 +285,8 @@ export class CommandManager {
     const { WorkspaceCommand } = await import('@/commands/WorkspaceCommand');
     const { MarkdownCommand } = await import('@/commands/MarkdownCommand');
     const { OllamaCommand } = await import('@/commands/OllamaCommand');
+    const StandupCommand = (await import('@/commands/StandupCommand')).default;
+    const SummarizeCommand = (await import('@/commands/SummarizeCommand')).default;
 
     // Create command instances
     const googleService = this.bot.getService ? this.bot.getService('google') : undefined;
@@ -319,6 +321,8 @@ export class CommandManager {
       new WorkspaceCommand(config),
       new MarkdownCommand(config),
       new OllamaCommand(),
+      new StandupCommand(config),
+      new SummarizeCommand(config),
     ];
 
     // Реєструємо команди
@@ -590,7 +594,7 @@ export class CommandManager {
       // Ліниве підключення, щоб уникнути циклічних залежностей у тестах
       const mod = await import('@/core/PermissionManager');
       const PermissionManager = (mod as any).PermissionManager as
-        | (new (config: any) => { checkPermission: Function })
+        | (new (config: any) => { checkPermission: (...args: any[]) => any })
         | undefined;
       if (!PermissionManager) return true;
 
@@ -762,7 +766,7 @@ export class CommandManager {
   /**
    * Сумісність з інтеграційними тестами: виконати команду напряму
    */
-  async execute(interaction: ChatInputCommandInteraction | { commandName: string; reply?: Function; deferred?: boolean; replied?: boolean; user?: any; channelId?: string; guildId?: string | null }): Promise<void> {
+  async execute(interaction: ChatInputCommandInteraction | { commandName: string; reply?: (...args: any[]) => any; deferred?: boolean; replied?: boolean; user?: any; channelId?: string; guildId?: string | null }): Promise<void> {
     // Проксі до приватного handleCommand
     // Нотатка: у тестах може бути спрощений мок Interaction
     return this.handleCommand(interaction as ChatInputCommandInteraction);
