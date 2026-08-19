@@ -206,7 +206,6 @@ process.env['DISABLE_AI_HEALTHCHECK'] = process.env['DISABLE_AI_HEALTHCHECK'] ??
 process.env['METRICS_ENABLE'] = process.env['METRICS_ENABLE'] ?? '0';
 process.env['EMBEDDINGS_ENABLE'] = process.env['EMBEDDINGS_ENABLE'] ?? '0';
 
-<<<<<<< HEAD
 // ТЕСТОВИЙ ШИМ: автоматично викликати .unref() для таймерів Node, щоб уникнути open handle leaks у Jest
 // Має бути якнайраніше після конфігурації env
 {
@@ -241,21 +240,8 @@ if (VERBOSE) {
 afterAll(async () => {
   try {
     const { default: logger } = await import('../utils/logger');
-=======
-// Базові налаштування для тестів
-console.log('🧪 Тестове середовище ініціалізовано');
-
-// Глобальная очистка ресурсов логгера после всех тестов
-import logger from '../utils/logger';
-afterAll(async () => {
-  try {
->>>>>>> 12b4fa92 (test(setup): add global logger cleanup in Jest afterAll to avoid open handles)
     await logger.cleanup();
   } catch (e) {
     // ignore
   }
-<<<<<<< HEAD
 });
-=======
-});
->>>>>>> 12b4fa92 (test(setup): add global logger cleanup in Jest afterAll to avoid open handles)
