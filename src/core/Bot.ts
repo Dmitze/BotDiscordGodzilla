@@ -1,3 +1,4 @@
+import { StandupService } from '@/services/StandupService';
 ﻿/**
  * Основний клас Discord бота
  * Управляє всіма компонентами та сервісами
@@ -574,6 +575,7 @@ export class Bot extends BaseServiceClass {
    * Налаштування обробників подій з детальним логуванням
    */
   private setupEventHandlers(): void {
+    (this.client as any).standupService = new StandupService(this.client);
     // Ready event
     this.client.on(Events.ClientReady, () => {
       this.isReady = true;
